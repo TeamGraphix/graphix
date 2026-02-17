@@ -86,11 +86,11 @@ def _og_1() -> OpenGraphFlowTestCase:
         input_nodes=[0],
         output_nodes=[5],
         measurements={
-            0: Measurement(0.1, Plane.XY),
-            1: Measurement(0.2, Plane.XY),
-            20: Measurement(0.3, Plane.XY),
-            30: Measurement(0.4, Plane.XY),
-            4: Measurement(0.5, Plane.XY),
+            0: Measurement.XY(0.1),
+            1: Measurement.XY(0.2),
+            20: Measurement.XY(0.3),
+            30: Measurement.XY(0.4),
+            4: Measurement.Y,
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
@@ -111,10 +111,10 @@ def _og_2() -> OpenGraphFlowTestCase:
         input_nodes=[1, 2],
         output_nodes=[5, 6],
         measurements={
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.2, Plane.XY),
-            3: Measurement(0.3, Plane.XY),
-            4: Measurement(0.4, Plane.XY),
+            1: Measurement.XY(0.1),
+            2: Measurement.XY(0.2),
+            3: Measurement.XY(0.3),
+            4: Measurement.XY(0.4),
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
@@ -141,9 +141,9 @@ def _og_3() -> OpenGraphFlowTestCase:
         input_nodes=[1, 2, 3],
         output_nodes=[4, 5, 6],
         measurements={
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.2, Plane.XY),
-            3: Measurement(0.3, Plane.XY),
+            1: Measurement.XY(0.1),
+            2: Measurement.XY(0.2),
+            3: Measurement.XY(0.3),
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
@@ -166,10 +166,10 @@ def _og_4() -> OpenGraphFlowTestCase:
         input_nodes=[0, 1],
         output_nodes=[4, 5],
         measurements={
-            0: Measurement(0.1, Plane.XY),
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.2, Plane.XZ),
-            3: Measurement(0.3, Plane.YZ),
+            0: Measurement.XY(0.1),
+            1: Measurement.XY(0.1),
+            2: Measurement.XZ(0.2),
+            3: Measurement.YZ(0.3),
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
@@ -192,8 +192,8 @@ def _og_5() -> OpenGraphFlowTestCase:
         input_nodes=[1, 2],
         output_nodes=[3, 4],
         measurements={
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.1, Plane.XY),
+            1: Measurement.XY(0.1),
+            2: Measurement.XY(0.1),
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
@@ -216,10 +216,10 @@ def _og_6() -> OpenGraphFlowTestCase:
         input_nodes=[0],
         output_nodes=[4],
         measurements={
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0, Plane.XY),  # X
-            2: Measurement(0.1, Plane.XY),  # XY
-            3: Measurement(0, Plane.XY),  # X
+            0: Measurement.XY(0.1),  # XY
+            1: Measurement.X,  # X
+            2: Measurement.XY(0.1),  # XY
+            3: Measurement.X,  # X
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
@@ -238,8 +238,9 @@ def _og_7() -> OpenGraphFlowTestCase:
         input_nodes=[0],
         output_nodes=[2],
         measurements={
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0.5, Plane.YZ),  # Y
+            0: Measurement.XY(0.1),  # XY
+            # If Measurement.Y is used, it is converted to Measurement.XY(0.5) and the graph has causal flow.
+            1: Measurement.YZ(0.5),  # Y
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
@@ -260,12 +261,12 @@ def _og_8() -> OpenGraphFlowTestCase:
         input_nodes=[1, 0],
         output_nodes=[6, 7],
         measurements={
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0.1, Plane.XZ),  # XZ
-            2: Measurement(0.5, Plane.XZ),  # X
-            3: Measurement(0.5, Plane.YZ),  # Y
-            4: Measurement(0.5, Plane.YZ),  # Y
-            5: Measurement(0.1, Plane.YZ),  # YZ
+            0: Measurement.XY(0.1),  # XY
+            1: Measurement.XZ(0.1),  # XZ
+            2: Measurement.X,  # X
+            3: Measurement.Y,  # Y
+            4: Measurement.Y,  # Y
+            5: Measurement.YZ(0.1),  # YZ
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
@@ -286,12 +287,12 @@ def _og_9() -> OpenGraphFlowTestCase:
         input_nodes=[0, 1],
         output_nodes=[6, 7],
         measurements={
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0.1, Plane.XY),  # XY
-            2: Measurement(0.0, Plane.XY),  # X
-            3: Measurement(0.1, Plane.XY),  # XY
-            4: Measurement(0.0, Plane.XY),  # X
-            5: Measurement(0.5, Plane.XY),  # Y
+            0: Measurement.XY(0.1),  # XY
+            1: Measurement.XY(0.1),  # XY
+            2: Measurement.X,  # X
+            3: Measurement.XY(0.1),  # XY
+            4: Measurement.X,  # X
+            5: Measurement.Y,  # Y
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
@@ -319,11 +320,11 @@ def _og_10() -> OpenGraphFlowTestCase:
         input_nodes=[0],
         output_nodes=[5, 6],
         measurements={
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0.1, Plane.XZ),  # XZ
-            2: Measurement(0.5, Plane.YZ),  # Y
-            3: Measurement(0.1, Plane.XY),  # XY
-            4: Measurement(0, Plane.XZ),  # Z
+            0: Measurement.XY(0.1),  # XY
+            1: Measurement.XZ(0.1),  # XZ
+            2: Measurement.Y,  # Y
+            3: Measurement.XY(0.1),  # XY
+            4: Measurement.Z,  # Z
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
@@ -344,12 +345,12 @@ def _og_11() -> OpenGraphFlowTestCase:
         input_nodes=[0, 1],
         output_nodes=[5, 6, 8],
         measurements={
-            0: Measurement(0.1, Plane.XY),
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.0, Plane.XY),
-            3: Measurement(0, Plane.XY),
-            4: Measurement(0.5, Plane.XY),
-            7: Measurement(0, Plane.XY),
+            0: Measurement.XY(0.1),
+            1: Measurement.XY(0.1),
+            2: Measurement.X,
+            3: Measurement.X,
+            4: Measurement.Y,
+            7: Measurement.X,
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
@@ -369,7 +370,7 @@ def _og_12() -> OpenGraphFlowTestCase:
         graph=nx.Graph([(0, 2), (1, 2), (2, 3), (3, 4)]),
         input_nodes=[0, 1],
         output_nodes=[1, 3, 4],
-        measurements={0: Measurement(0.1, Plane.XY), 2: Measurement(0.5, Plane.YZ)},
+        measurements={0: Measurement.XY(0.1), 2: Measurement.YZ(0.5)},
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
 
@@ -391,11 +392,11 @@ def _og_13() -> OpenGraphFlowTestCase:
         input_nodes=[1],
         output_nodes=[6, 2, 7],
         measurements={
-            0: Measurement(0.1, Plane.XZ),
-            1: Measurement(0.1, Plane.XY),
-            3: Measurement(0, Plane.XY),
-            4: Measurement(0.1, Plane.XY),
-            5: Measurement(0.1, Plane.YZ),
+            0: Measurement.XZ(0.1),
+            1: Measurement.XY(0.1),
+            3: Measurement.X,
+            4: Measurement.XY(0.1),
+            5: Measurement.YZ(0.1),
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
@@ -415,7 +416,7 @@ def _og_14() -> OpenGraphFlowTestCase:
         graph=nx.Graph([(0, 1), (0, 2), (2, 3), (1, 3), (4, 6)]),
         input_nodes=[],
         output_nodes=[1, 3, 4],
-        measurements={0: Measurement(0.5, Plane.XZ), 2: Measurement(0, Plane.YZ), 6: Measurement(0.2, Plane.XY)},
+        measurements={0: Measurement.X, 2: Measurement.Z, 6: Measurement.XY(0.2)},
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
 
@@ -437,11 +438,11 @@ def _og_15() -> OpenGraphFlowTestCase:
         input_nodes=[1],
         output_nodes=[6, 2, 7],
         measurements={
-            0: Measurement(0.1, Plane.XZ),
-            1: Measurement(0.1, Plane.XY),
-            3: Measurement(0, Plane.XY),
-            4: Measurement(0.1, Plane.XY),
-            5: Measurement(0.1, Plane.XY),
+            0: Measurement.XZ(0.1),
+            1: Measurement.XY(0.1),
+            3: Measurement.X,
+            4: Measurement.XY(0.1),
+            5: Measurement.XY(0.1),
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
@@ -461,7 +462,7 @@ def _og_16() -> OpenGraphFlowTestCase:
         graph=nx.Graph([(0, 1), (0, 2), (2, 3), (1, 3), (4, 6)]),
         input_nodes=[0],
         output_nodes=[1, 3, 4],
-        measurements={0: Measurement(0.1, Plane.XZ), 2: Measurement(0, Plane.YZ), 6: Measurement(0.2, Plane.XY)},
+        measurements={0: Measurement.XZ(0.1), 2: Measurement.Z, 6: Measurement.XY(0.2)},
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
 
@@ -489,12 +490,12 @@ def _og_17() -> OpenGraphFlowTestCase:
         input_nodes=[1, 8],
         output_nodes=[6, 2, 7],
         measurements={
-            0: Measurement(0.1, Plane.XZ),
-            1: Measurement(0.1, Plane.XY),
-            3: Measurement(0, Plane.XY),
-            4: Measurement(0.1, Plane.XY),
-            5: Measurement(0.1, Plane.YZ),
-            8: Measurement(0.1, Plane.XY),
+            0: Measurement.XZ(0.1),
+            1: Measurement.XY(0.1),
+            3: Measurement.X,
+            4: Measurement.XY(0.1),
+            5: Measurement.YZ(0.1),
+            8: Measurement.XY(0.1),
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
@@ -515,12 +516,12 @@ def _og_18() -> OpenGraphFlowTestCase:
         input_nodes=[0, 1],
         output_nodes=[5, 6, 8],
         measurements={
-            0: Measurement(0, Plane.XY),
-            1: Measurement(0, Plane.XY),
-            2: Measurement(0, Plane.XZ),
-            3: Measurement(0, Plane.XY),
-            4: Measurement(0.5, Plane.XY),
-            7: Measurement(0, Plane.YZ),
+            0: Measurement.X,
+            1: Measurement.X,
+            2: Measurement.Z,
+            3: Measurement.X,
+            4: Measurement.Y,
+            7: Measurement.Z,
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
@@ -545,12 +546,12 @@ def _og_19() -> OpenGraphFlowTestCase:
         input_nodes=[],
         output_nodes=[5, 6, 8],
         measurements={
-            0: Measurement(0, Plane.XZ),
-            1: Measurement(0, Plane.XZ),
-            2: Measurement(0, Plane.XZ),
-            3: Measurement(0, Plane.XZ),
-            4: Measurement(0, Plane.XZ),
-            7: Measurement(0, Plane.XZ),
+            0: Measurement.Z,
+            1: Measurement.Z,
+            2: Measurement.Z,
+            3: Measurement.Z,
+            4: Measurement.Z,
+            7: Measurement.Z,
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
@@ -583,14 +584,14 @@ def _compose_0() -> OpenGraphComposeTestCase:
     g: nx.Graph[int] = nx.Graph([(1, 2)])
     inputs = [1]
     outputs = [2]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og1 = OpenGraph(g, inputs, outputs, meas)
     og2 = OpenGraph(g, inputs, outputs, meas)
     og_ref = OpenGraph(
         nx.Graph([(1, 2), (100, 200)]),
         input_nodes=[1, 100],
         output_nodes=[2, 200],
-        measurements={1: Measurement(0, Plane.XY), 100: Measurement(0, Plane.XY)},
+        measurements={1: Measurement.X, 100: Measurement.X},
     )
 
     mapping = {1: 100, 2: 200}
@@ -623,13 +624,13 @@ def _compose_1() -> OpenGraphComposeTestCase:
     g: nx.Graph[int] = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og1 = OpenGraph(g, inputs, outputs, meas)
 
     g = nx.Graph([(6, 7), (6, 17), (17, 1), (7, 4), (17, 4), (4, 2)])
     inputs = [6, 7]
     outputs = [1, 2]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og2 = OpenGraph(g, inputs, outputs, meas)
 
     mapping = {6: 23, 7: 13, 1: 100, 2: 200, 17: 90}
@@ -639,7 +640,7 @@ def _compose_1() -> OpenGraphComposeTestCase:
     )
     inputs = [0, 3]
     outputs = [100, 200]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og_ref = OpenGraph(g, inputs, outputs, meas)
 
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
@@ -665,7 +666,7 @@ def _compose_2() -> OpenGraphComposeTestCase:
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og1 = OpenGraph(g, inputs, outputs, meas)
     og2 = OpenGraph(g, inputs, outputs, meas)
     og_ref = OpenGraph(g, inputs, outputs, meas)
@@ -698,13 +699,13 @@ def _compose_3() -> OpenGraphComposeTestCase:
     g: nx.Graph[int] = nx.Graph([(18, 17), (17, 3)])
     inputs = [17, 18]
     outputs = [3, 17]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og1 = OpenGraph(g, inputs, outputs, meas)
 
     g = nx.Graph([(1, 2), (2, 3)])
     inputs = [1]
     outputs = [3]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og2 = OpenGraph(g, inputs, outputs, meas)
 
     mapping = {1: 17, 3: 300}
@@ -712,7 +713,7 @@ def _compose_3() -> OpenGraphComposeTestCase:
     g = nx.Graph([(18, 17), (17, 3), (17, 301), (301, 300)])
     inputs = [17, 18]  # the input character of node 17 is kept because node 1 (in G2) is an input.
     outputs = [3, 300]  # the output character of node 17 is lost because node 1 (in G2) is not an output
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og_ref = OpenGraph(g, inputs, outputs, meas)
 
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
@@ -741,13 +742,13 @@ def _compose_4() -> OpenGraphComposeTestCase:
     g: nx.Graph[int] = nx.Graph([(1, 2), (1, 3)])
     inputs = [1, 3]
     outputs = [2]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og1 = OpenGraph(g, inputs, outputs, meas)
 
     g = nx.Graph([(3, 4)])
     inputs = [3]
     outputs = [4]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og2 = OpenGraph(g, inputs, outputs, meas)
 
     mapping = {4: 1, 3: 300}
@@ -755,7 +756,7 @@ def _compose_4() -> OpenGraphComposeTestCase:
     g = nx.Graph([(1, 2), (1, 3), (1, 300)])
     inputs = [3, 300]
     outputs = [2]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.X)
     og_ref = OpenGraph(g, inputs, outputs, meas)
 
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
@@ -829,7 +830,7 @@ class TestOpenGraph:
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_cflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
-        og = test_case.og
+        og = test_case.og.to_bloch()
 
         if test_case.has_cflow:
             cf = og.extract_causal_flow()
@@ -842,7 +843,7 @@ class TestOpenGraph:
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_gflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
-        og = test_case.og
+        og = test_case.og.to_bloch()
 
         if test_case.has_gflow:
             gf = og.extract_gflow()
@@ -858,7 +859,7 @@ class TestOpenGraph:
         og = test_case.og
 
         if test_case.has_pflow:
-            pf = og.extract_pauli_flow()
+            pf = og.infer_pauli_measurements().extract_pauli_flow()
             pf.check_well_formed()
             pattern = pf.to_corrections().to_pattern()
             assert check_determinism(pattern, fx_rng)
@@ -905,19 +906,19 @@ class TestOpenGraph:
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
-            measurements=dict.fromkeys(range(3), Measurement(0.1, Plane.XY)),
+            measurements=dict.fromkeys(range(3), Measurement.XY(0.1)),
         )
         og_2 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
-            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+            measurements=dict.fromkeys(range(3), Measurement.XY(0.15)),
         )
         og_3 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3), (0, 3)]),
             input_nodes=[0],
             output_nodes=[3],
-            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+            measurements=dict.fromkeys(range(3), Measurement.XY(0.15)),
         )
         assert og_1.isclose(og_2, abs_tol=0.1)
         assert not og_1.isclose(og_2)
@@ -963,13 +964,13 @@ class TestOpenGraph:
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
-            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+            measurements=dict.fromkeys(range(3), Measurement.XY(0.15)),
         )
         og_2 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
-            measurements=dict.fromkeys(range(3), Measurement(0.1, Plane.XY)),
+            measurements=dict.fromkeys(range(3), Measurement.XY(0.1)),
         )
         og_3 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
@@ -1008,13 +1009,13 @@ class TestOpenGraph:
         outputs = [1]
         mapping = {0: 0, 1: 1}
 
-        og1 = OpenGraph(g, inputs, outputs, measurements={0: Measurement(0, Plane.XY)})
-        og2 = OpenGraph(g, inputs, outputs, measurements={0: Measurement(0.5, Plane.XY)})
+        og1 = OpenGraph(g, inputs, outputs, measurements={0: Measurement.X})
+        og2 = OpenGraph(g, inputs, outputs, measurements={0: Measurement.Y})
 
         with pytest.raises(
             OpenGraphError,
             match=re.escape(
-                "Attempted to merge nodes with different measurements: (0, Measurement(angle=0.5, plane=Plane.XY)) -> (0, Measurement(angle=0, plane=Plane.XY))."
+                "Attempted to merge nodes with different measurements: (0, Measurement.Y) -> (0, Measurement.X)."
             ),
         ):
             og1.compose(og2, mapping)
@@ -1032,11 +1033,11 @@ class TestOpenGraph:
         alpha = Placeholder("alpha")
         value = 0.3
         og = OpenGraph(
-            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(alpha, Plane.XY)}
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.XY(alpha)}
         )
 
         og_ref = OpenGraph(
-            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(value, Plane.XY)}
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.XY(value)}
         )
         og_test = og.subs(alpha, value)
 
@@ -1050,14 +1051,14 @@ class TestOpenGraph:
             graph=nx.Graph([(0, 1)]),
             input_nodes=[0],
             output_nodes=[],
-            measurements={node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)},
+            measurements={node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)},
         )
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1)]),
             input_nodes=[0],
             output_nodes=[],
-            measurements={node: Measurement(value, Plane.XY) for node in range(2)},
+            measurements={node: Measurement.XY(value) for node in range(2)},
         )
         og_test = og.xreplace(dict.fromkeys(parametric_angles, value))
 
