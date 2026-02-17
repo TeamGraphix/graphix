@@ -142,7 +142,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
     if package.version_constraint and Version(session.python) not in package.version_constraint:
         session.skip(f"Skipping: {dirname} version mismatch.")
     # Install dev tools needed for the test run
-    session.install(".[dev]") 
+    session.install(".[dev]")
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
             branch_args = ["-b", package.branch] if package.branch else []
