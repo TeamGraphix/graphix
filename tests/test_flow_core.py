@@ -4,7 +4,6 @@ from dataclasses import fields
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
-import numpy as np
 import pytest
 
 from graphix.command import E, M, N, X, Z
@@ -412,8 +411,7 @@ class TestFlowPatternConversion:
 
                 for _ in range(n_shots):
                     state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
-                    result = np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten()))
-                    assert result == pytest.approx(1)
+                    assert state.isclose(state_ref)
 
 
 class TestFlow:
