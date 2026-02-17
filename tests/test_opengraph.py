@@ -871,14 +871,14 @@ class TestOpenGraph:
     def test_gflow_focused(self, test_case: OpenGraphFlowTestCase) -> None:
         """Test that the algebraic flow-finding algorithm generated focused gflows."""
         if test_case.has_gflow:
-            gf = test_case.og.extract_gflow()
+            gf = test_case.og.to_bloch().extract_gflow()
             assert gf.is_focused()
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_pflow_focused(self, test_case: OpenGraphFlowTestCase) -> None:
         """Test that the algebraic flow-finding algorithm generated focused Pauli flows."""
         if test_case.has_pflow:
-            pf = test_case.og.extract_pauli_flow()
+            pf = test_case.og.infer_pauli_measurements().extract_pauli_flow()
             assert pf.is_focused()
 
     def test_double_entanglement(self) -> None:

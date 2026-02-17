@@ -8,7 +8,7 @@ from itertools import combinations
 from typing import TYPE_CHECKING
 
 from graphix.fundamentals import Angle, Plane, Sign
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.measurements import Measurement
 from graphix.pretty_print import SUBSCRIPTS
 
 if TYPE_CHECKING:
@@ -130,8 +130,9 @@ class PauliString:
         negative_sign ^= bool(len(inter_c_odd_set) // 2 % 2)
 
         # One phase flip per node in the graph state stabilizer that is absorbed from a Pauli measurement with angle π.
+        # TODO: What happends here with parametric angles ?
         for n, meas in og.measurements.items():
-            if n in (c_set | odd_c_set) and (pm := PauliMeasurement.try_from(meas.plane, meas.angle)):
+            if n in (c_set | odd_c_set) and (pm := meas.try_to_pauli()):
                 negative_sign ^= pm.sign == Sign.MINUS
 
         # One phase flip if measured on the YZ plane.
@@ -198,7 +199,7 @@ class PauliExponential:
         pauli_string = flow.pauli_strings[node]
         meas = flow.og.measurements[node]
         # We don't extract any rotation from Pauli Measurements. This is equivalent to setting the angle to 0.
-        angle = 0 if PauliMeasurement.try_from(meas.plane, meas.angle) else meas.angle / 2
+        angle = 0 if meas.try_to_pauli() else meas.downcast_bloch().angle / 2
 
         return PauliExponential(angle, pauli_string)
 
@@ -417,7 +418,7 @@ def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], di
         new_input_nodes.append(fresh_node)
         fresh_node += 1
 
-    measurements = {**og.measurements, **dict.fromkeys(new_input_nodes, Measurement(0, Plane.XY))}
+    measurements = {**og.measurements, **dict.fromkeys(new_input_nodes, Measurement.XY(0))}
 
     # We reverse the inputs order to match the order of initial inputs.
     return replace(og, graph=graph, input_nodes=new_input_nodes[::-1], measurements=measurements), ancillary_inputs_map

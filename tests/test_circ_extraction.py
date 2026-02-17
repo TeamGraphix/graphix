@@ -9,7 +9,7 @@ import pytest
 from graphix.circ_ext.compilation import LadderPass
 from graphix.circ_ext.extraction import PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
-from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.fundamentals import ANGLE_PI
 from graphix.instruction import CNOT, RX, RY, RZ, H
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 class TestPauliString:
     def test_add_circuit(self, fx_rng: Generator) -> None:
-        angle = 0.3
-        angle_rz = -2 * angle * ANGLE_PI
+        angle = 0.3 * ANGLE_PI
+        angle_rz = -2 * angle
         x_nodes = {1}
         z_nodes = {4, 2}
         pauli_string = PauliString(x_nodes=x_nodes, z_nodes=z_nodes)
@@ -125,11 +125,11 @@ class TestPauliExponential:
             input_nodes=[0],
             output_nodes=[5, 6],
             measurements={
-                0: Measurement(0.1, Plane.XY),  # XY
-                1: Measurement(0.2, Plane.YZ),  # YZ
-                2: Measurement(0.3, Plane.XY),  # XY
-                3: Measurement(0.4, Plane.XY),  # XY
-                4: Measurement(0.5, Plane.YZ),  # Y
+                0: Measurement.XY(0.1),  # XY
+                1: Measurement.YZ(0.2),  # YZ
+                2: Measurement.XY(0.3),  # XY
+                3: Measurement.XY(0.4),  # XY
+                4: Measurement.Y,  # Y
             },
         )
 
@@ -175,10 +175,10 @@ def test_extend_input() -> None:
         input_nodes=[1, 2],
         output_nodes=[5, 6],
         measurements={
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.2, Plane.XY),
-            3: Measurement(0.3, Plane.XY),
-            4: Measurement(0.4, Plane.XY),
+            1: Measurement.XY(0.1),
+            2: Measurement.XY(0.2),
+            3: Measurement.XY(0.3),
+            4: Measurement.XY(0.4),
         },
     )
 
@@ -187,12 +187,12 @@ def test_extend_input() -> None:
         input_nodes=[8, 7],
         output_nodes=[5, 6],
         measurements={
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.2, Plane.XY),
-            3: Measurement(0.3, Plane.XY),
-            4: Measurement(0.4, Plane.XY),
-            7: Measurement(0, Plane.XY),
-            8: Measurement(0, Plane.XY),
+            1: Measurement.XY(0.1),
+            2: Measurement.XY(0.2),
+            3: Measurement.XY(0.3),
+            4: Measurement.XY(0.4),
+            7: Measurement.XY(0),
+            8: Measurement.XY(0),
         },
     )
 
