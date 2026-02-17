@@ -424,7 +424,7 @@ class Statevec(DenseState):
         # (Statevec usually maintains normalization, but good to be safe or just use raw calculation)
         # Fidelity formula for pure states matches |<psi|phi>|^2
         # flatten() returns 1D array
-        overlap = np.vdot(self.psi.flatten(), other.psi.flatten())  # type: ignore[arg-type]
+        overlap = np.vdot(self.flatten(), other.flatten())  # type: ignore[arg-type]
         return float(np.abs(overlap) ** 2)
 
     def isclose(self, other: Statevec, rel_tol: float = 1e-9, abs_tol: float = 0.0) -> bool:
