@@ -15,6 +15,7 @@ from packaging.version import Version
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+nox.options.default_venv_backend = "venv"
 PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
 
@@ -136,36 +137,21 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
     """Run the test suite of reverse dependencies."""
     url = urlparse(package.repository)
     dirname = Path(url.path).name
+    # Check version constraints
     assert isinstance(session.python, str)
-    if package.version_constraint is not None and Version(session.python) not in package.version_constraint:
-        session.skip(
-            f"{dirname} only supports Python versions {package.version_constraint}; current Python version: {session.python}"
-        )
-
-    install_pytest(session)
-    if package.doctest_modules:
-        session.install("nox")
+    if package.version_constraint and Version(session.python) not in package.version_constraint:
+        session.skip(f"Skipping: {dirname} version mismatch.")
+    # Install dev tools needed for the test run
+    session.install(".[dev]") 
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
-            if package.branch is None:
-                session.run("git", "clone", package.repository)
-            else:
-                session.run("git", "clone", "-b", package.branch, package.repository)
+            branch_args = ["-b", package.branch] if package.branch else []
+            session.run("git", "clone", *branch_args, package.repository)
             with session.cd(dirname):
                 session.install(".")
-        # Note that `session.cd` is used as a context manager above,
-        # so that the working directory is restored at this point.  We
-        # install now the graphix package from the working directory.
-        # This is done after having installed the reverse dependency,
-        # so that we run the test with the current graphix codebase,
-        # even if another graphix version has been pinned in the
-        # reverse dependendy.
+        # Re-install local graphix to ensure we test the current PR/branch code
         session.install(".")
-        # Use `session.cd` as a context manager again to ensure that the
-        # working directory is restored afterward. This is important
-        # because Windows cannot delete a temporary directory while it
-        # is the working directory.
         with session.cd(tmpdir), session.cd(dirname):
-            if package.initialization is not None:
+            if package.initialization:
                 package.initialization(session)
             run_pytest(session, doctest_modules=package.doctest_modules)

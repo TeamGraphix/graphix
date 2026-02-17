@@ -1,0 +1,168 @@
+name: "CI Benchmark: nox vs uv"
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_cache:
+        description: "Enable pip/uv caching (disable for clean benchmarks)"
+        type: boolean
+        default: false
+
+# Prevent concurrent benchmark runs from skewing results
+concurrency:
+  group: ci-benchmark
+  cancel-in-progress: true
+
+env:
+  NOX_SESSION: tests_all
+  # Matching noxfile's tests_all: session.install(".[dev,extra]")
+  INSTALL_SPEC: ".[dev,extra]"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        strategy: [nox-pip, nox-uv, pure-uv]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      # uv needed for nox-uv and pure-uv strategies
+      - uses: astral-sh/setup-uv@v4
+        if: matrix.strategy != 'nox-pip'
+
+      # Optional caching — disabled by default for clean benchmarks
+      - uses: actions/cache@v4
+        if: inputs.use_cache && matrix.strategy == 'nox-pip'
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+
+      - uses: actions/cache@v4
+        if: inputs.use_cache && matrix.strategy != 'nox-pip'
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+
+      # ── nox-pip: baseline ──────────────────────────────────────────
+      - name: "nox-pip: install nox"
+        if: matrix.strategy == 'nox-pip'
+        run: |
+          start=$(date +%s%N)
+          pip install nox packaging
+          echo "ORCHESTRATOR_INSTALL_NS=$(( $(date +%s%N) - start ))" >> "$GITHUB_ENV"
+
+      - name: "nox-pip: run tests_all"
+        if: matrix.strategy == 'nox-pip'
+        run: |
+          start=$(date +%s%N)
+          nox -s $NOX_SESSION -p ${{ matrix.python-version }} -- --benchmark-disable
+          echo "SESSION_TOTAL_NS=$(( $(date +%s%N) - start ))" >> "$GITHUB_ENV"
+
+      # ── nox-uv: nox with uv venv backend ──────────────────────────
+      - name: "nox-uv: install nox"
+        if: matrix.strategy == 'nox-uv'
+        run: |
+          start=$(date +%s%N)
+          pip install nox packaging
+          echo "ORCHESTRATOR_INSTALL_NS=$(( $(date +%s%N) - start ))" >> "$GITHUB_ENV"
+
+      - name: "nox-uv: run tests_all"
+        if: matrix.strategy == 'nox-uv'
+        run: |
+          start=$(date +%s%N)
+          nox -s $NOX_SESSION -p ${{ matrix.python-version }} --force-venv-backend uv -- --benchmark-disable
+          echo "SESSION_TOTAL_NS=$(( $(date +%s%N) - start ))" >> "$GITHUB_ENV"
+
+      # ── pure-uv: no nox, replicate tests_all logic directly ───────
+      # Replicates: session.install(".[dev,extra]") + pytest --doctest-modules --mpl
+      # NOTE: tests_all in the noxfile does NOT call install_pytest(), so
+      # pytest-mpl is only available if pulled transitively by [dev,extra].
+      # If --mpl fails, add: uv pip install pytest-mpl pytest-mock psutil
+      - name: "pure-uv: create venv + install"
+        if: matrix.strategy == 'pure-uv'
+        run: |
+          echo "ORCHESTRATOR_INSTALL_NS=0" >> "$GITHUB_ENV"
+          start=$(date +%s%N)
+          uv venv .venv --python ${{ matrix.python-version }}
+          source .venv/bin/activate
+          uv pip install "$INSTALL_SPEC"
+          echo "INSTALL_NS=$(( $(date +%s%N) - start ))" >> "$GITHUB_ENV"
+
+      - name: "pure-uv: run pytest"
+        if: matrix.strategy == 'pure-uv'
+        run: |
+          source .venv/bin/activate
+          start=$(date +%s%N)
+          pytest --doctest-modules --mpl --benchmark-disable
+          echo "TEST_NS=$(( $(date +%s%N) - start ))" >> "$GITHUB_ENV"
+
+      - name: "pure-uv: compute session total"
+        if: matrix.strategy == 'pure-uv'
+        run: |
+          echo "SESSION_TOTAL_NS=$(( INSTALL_NS + TEST_NS ))" >> "$GITHUB_ENV"
+
+      # ── Emit timing artifact ───────────────────────────────────────
+      - name: Save timing data
+        if: always()
+        run: |
+          mkdir -p timing
+          cat > timing/${{ matrix.strategy }}-${{ matrix.python-version }}.json <<EOF
+          {
+            "strategy": "${{ matrix.strategy }}",
+            "python": "${{ matrix.python-version }}",
+            "orchestrator_install_s": $(echo "scale=2; ${ORCHESTRATOR_INSTALL_NS:-0} / 1000000000" | bc),
+            "session_total_s": $(echo "scale=2; ${SESSION_TOTAL_NS:-0} / 1000000000" | bc),
+            "status": "${{ job.status }}"
+          }
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: timing-${{ matrix.strategy }}-${{ matrix.python-version }}
+          path: timing/
+
+  # ── Summary job: aggregate timings into a comparison table ─────────
+  summary:
+    needs: benchmark
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: timing-*
+          merge-multiple: true
+          path: timing/
+
+      - name: Generate comparison table
+        run: |
+          echo "## CI Benchmark: nox-pip vs nox-uv vs pure-uv" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Python | Strategy | Orchestrator Install (s) | Session Total (s) | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|----------|-------------------------:|------------------:|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for f in timing/*.json; do
+            py=$(jq -r '.python' "$f")
+            strat=$(jq -r '.strategy' "$f")
+            orch=$(jq -r '.orchestrator_install_s' "$f")
+            total=$(jq -r '.session_total_s' "$f")
+            status=$(jq -r '.status' "$f")
+            emoji=$( [ "$status" = "success" ] && echo "✅" || echo "❌" )
+            echo "| $py | $strat | $orch | $total | $emoji $status |" >> "$GITHUB_STEP_SUMMARY"
+          done | sort >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "_Cache: ${{ inputs.use_cache || false }}_" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Print table to log
+        run: cat "$GITHUB_STEP_SUMMARY"
