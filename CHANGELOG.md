@@ -87,6 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #157, #417: `Pattern.minimize_space` uses `Pattern.extract_causal_flow()` and preserves runnability
 
+- #441: Fixed `nqubits` property in `Statevec` objects.
+
 ### Changed
 
 - #396: Removed generic `BackendState` from `graphix.sim` modules and methods in `graphix.pattern` and `graphix.simulator` modules.
