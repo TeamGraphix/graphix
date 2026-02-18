@@ -73,10 +73,12 @@ class TestInteractiveGraphVisualizer:
 
         viz = InteractiveGraphVisualizer(pattern)
 
-        # Keys should match
+        # Keys should match the layout output
         assert viz.node_positions.keys() == expected_pos.keys()
-        # Values should be scaled by default node_distance (1, 1)
-        assert viz.node_positions[0] == (10, 10)
+        # Positions are normalized to [0, 1] range after layout
+        for x, y in viz.node_positions.values():
+            assert 0.0 <= x <= 1.0
+            assert 0.0 <= y <= 1.0
 
     def test_update_graph_state_simulation_enabled(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test graph state update with simulation enabled."""
@@ -121,9 +123,8 @@ class TestInteractiveGraphVisualizer:
         viz._update(len(pattern))
 
         # Check that drawing methods were called
-        # Measured nodes (0, 1) should generally be lightgray
-        # Active node (2) should be white/blue
-        assert viz.ax_graph.add_patch.call_count > 0
+        # Measured nodes (0, 1) and active node (2) are drawn with scatter
+        assert viz.ax_graph.scatter.call_count > 0
         assert viz.ax_graph.text.call_count > 0
 
     def test_update_graph_state_simulation_disabled(self, pattern: Pattern, mocker: MagicMock) -> None:
@@ -160,6 +161,41 @@ class TestInteractiveGraphVisualizer:
         # Ensure text is drawn (commands, node labels)
         assert viz.ax_commands.text.call_count > 0
         assert viz.ax_graph.text.call_count > 0
+
+    def test_measurement_result_label_format(self, pattern: Pattern, mocker: MagicMock) -> None:
+        """Test that measurement result labels use the 'm=' prefix to avoid ambiguity."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+        mock_backend = mocker.patch("graphix.visualization_interactive.StatevectorBackend")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+
+        backend_instance = mock_backend.return_value
+        backend_instance.measure.return_value = 1
+
+        viz = InteractiveGraphVisualizer(pattern, enable_simulation=True)
+        viz.ax_graph = MagicMock()
+        viz.ax_commands = MagicMock()
+        viz.slider = MagicMock()
+
+        # Execute all commands so that nodes 0 and 1 are measured
+        viz._update(len(pattern))
+
+        # Collect all text calls on ax_graph
+        text_calls = viz.ax_graph.text.call_args_list
+        label_strings = [str(call.args[2]) if len(call.args) >= 3 else "" for call in text_calls]
+
+        # At least one label should contain 'm=' (the measurement result prefix)
+        assert any("m=" in label for label in label_strings), (
+            f"Expected 'm=' in at least one node label, got: {label_strings}"
+        )
+        # None of the labels should use the old ambiguous '\n=' format
+        assert not any(label.endswith(("\n=1", "\n=0")) for label in label_strings), (
+            f"Found ambiguous '=<result>' label format in: {label_strings}"
+        )
 
     def test_navigation(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test step navigation methods."""
@@ -292,11 +328,12 @@ class TestInteractiveGraphVisualizer:
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
 
+        # Narrow layout: x=0 for all nodes, y varies -- aspect ratio < 0.3
         initial_pos = {i: (0, i) for i in range(6)}
         mock_vis_obj.get_layout.return_value = (initial_pos, {}, {})
 
-        # Spring layout returns something else
-        spring_pos = {i: (10, i) for i in range(6)}
+        # Spring layout returns different positions
+        spring_pos = {i: (float(10 + i), float(i)) for i in range(6)}
         mock_spring_layout.return_value = spring_pos
 
         big_pattern = Pattern(input_nodes=list(range(6)))
@@ -305,13 +342,13 @@ class TestInteractiveGraphVisualizer:
 
         viz = InteractiveGraphVisualizer(big_pattern)
 
-        # Check if spring layout was called
+        # Spring layout should have been called as fallback
         mock_spring_layout.assert_called_once()
 
-        # Check if positions were updated to spring layout positions
-        # Note: InteractiveGraphVisualizer applies scaling after layout
-        # default node_distance is (1, 1), so positions should match spring_pos
-        assert viz.node_positions == spring_pos
+        # Positions should be normalized to [0, 1] range
+        for x, y in viz.node_positions.values():
+            assert 0.0 <= x <= 1.0
+            assert 0.0 <= y <= 1.0
 
     def test_draw_edges_coverage(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test that edge drawing logic is executed (covers lines 312-314)."""

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from typing import TypeAlias, TypeVar
 
     import numpy.typing as npt
+    from matplotlib.axes import Axes
 
     from graphix.clifford import Clifford
     from graphix.flow.core import CausalFlow, PauliFlow
@@ -281,6 +282,89 @@ class GraphVisualizer:
         if max(self.og.graph.nodes(), default=0) >= 100:
             fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
         nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize)
+
+    def draw_node_labels(self, ax: Axes, pos: Mapping[int, _Point]) -> None:
+        """Draw node labels onto a given axes object.
+
+        This is an axis-aware counterpart of :meth:`_draw_labels` intended for
+        use in contexts where the caller manages the :class:`~matplotlib.axes.Axes`
+        directly (e.g. the interactive visualizer).
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib axes to draw onto.
+        pos : Mapping[int, tuple[float, float]]
+            Dictionary mapping each node to its ``(x, y)`` position.
+        """
+        fontsize = 12
+        if max(self.og.graph.nodes(), default=0) >= 100:
+            fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
+        for node, (x, y) in pos.items():
+            ax.text(x, y, str(node), ha="center", va="center", fontsize=fontsize, zorder=3)
+
+    def draw_edges(self, ax: Axes, pos: Mapping[int, _Point]) -> None:
+        """Draw graph edges as plain lines onto a given axes object.
+
+        This axis-aware method is intended for use in contexts where the caller
+        manages the :class:`~matplotlib.axes.Axes` directly (e.g. the
+        interactive visualizer). Only the edges present in :attr:`og.graph`
+        are drawn; no flow arrows are rendered.
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib axes to draw onto.
+        pos : Mapping[int, tuple[float, float]]
+            Dictionary mapping each node to its ``(x, y)`` position.
+        """
+        for u, v in self.og.graph.edges():
+            if u in pos and v in pos:
+                x1, y1 = pos[u]
+                x2, y2 = pos[v]
+                ax.plot([x1, x2], [y1, y2], color="black", alpha=0.7, zorder=1)
+
+    def draw_nodes_role(
+        self,
+        ax: Axes,
+        pos: Mapping[int, _Point],
+        show_pauli_measurement: bool = False,
+    ) -> None:
+        """Draw nodes onto a given axes object, coloured by their role.
+
+        This is an axis-aware counterpart of the private ``__draw_nodes_role``
+        method, intended for use in contexts where the caller manages the
+        :class:`~matplotlib.axes.Axes` directly (e.g. the interactive
+        visualizer). Nodes are styled as follows:
+
+        * Input nodes: red border, white fill.
+        * Output nodes: black border, light-gray fill.
+        * Pauli-measured nodes (when *show_pauli_measurement* is ``True``):
+          black border, light-blue fill.
+        * All other nodes: black border, white fill.
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib axes to draw onto.
+        pos : Mapping[int, tuple[float, float]]
+            Dictionary mapping each node to its ``(x, y)`` position.
+        show_pauli_measurement : bool, optional
+            If ``True``, nodes with Pauli measurement angles are coloured
+            light blue. Defaults to ``False``.
+        """
+        for node in self.og.graph.nodes():
+            if node not in pos:
+                continue
+            edgecolor = "black"
+            facecolor = "white"
+            if node in self.og.input_nodes:
+                edgecolor = "red"
+            if node in self.og.output_nodes:
+                facecolor = "lightgray"
+            elif show_pauli_measurement and isinstance(self.og.measurements[node], PauliMeasurement):
+                facecolor = "lightblue"
+            ax.scatter(*pos[node], edgecolors=edgecolor, facecolors=facecolor, s=350, zorder=2, linewidths=1.5)
 
     def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> None:
         """

@@ -1,7 +1,7 @@
 """
 Interactive Visualization Demo
 ==============================
-este
+
 This example demonstrates the interactive graph visualizer using a simple
 manually constructed pattern. It shows how to step through the visualization
 and observe state changes.

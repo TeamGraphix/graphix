@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from matplotlib.patches import Circle
 from matplotlib.text import Text
 from matplotlib.widgets import Button, Slider
 
@@ -59,37 +58,42 @@ class InteractiveGraphVisualizer:
         self.node_distance = node_distance
         self.enable_simulation = enable_simulation
 
-        # Prepare graph layout using Graphix's visualizer or fallbacks
+        # Prepare graph layout reusing GraphVisualizer
         self._prepare_layout()
 
-        # Figure setup
-        self.fig = plt.figure(figsize=(15, 8))
+        # Figure setup - tighter layout to reduce whitespace
+        self.fig = plt.figure(figsize=(14, 7))
 
-        # Grid layout: Command list on left, Graph on right
-        # Layout optimized to prevent overlap:
-        # Commands: Left 2% to 30%
-        # Graph: Left 40% to 98%
-        self.ax_commands = self.fig.add_axes((0.02, 0.2, 0.28, 0.7))  # [left, bottom, width, height]
-        self.ax_graph = self.fig.add_axes((0.4, 0.2, 0.58, 0.7))
-        self.ax_slider = self.fig.add_axes((0.4, 0.05, 0.5, 0.03))
-        self.ax_prev = self.fig.add_axes((0.3, 0.05, 0.04, 0.04))
-        self.ax_next = self.fig.add_axes((0.92, 0.05, 0.04, 0.04))
+        # Grid layout: command list (~28%), graph (~67%), bottom strip for controls
+        self.ax_commands = self.fig.add_axes((0.02, 0.15, 0.27, 0.80))
+        self.ax_graph = self.fig.add_axes((0.32, 0.15, 0.65, 0.80))
+        self.ax_prev = self.fig.add_axes((0.30, 0.04, 0.03, 0.03))
+        self.ax_slider = self.fig.add_axes((0.34, 0.04, 0.55, 0.03))
+        self.ax_next = self.fig.add_axes((0.90, 0.04, 0.03, 0.03))
 
         # Turn off axes frame for command list and graph
         self.ax_commands.axis("off")
-        self.ax_graph.axis("off")  # Start hidden to avoid "square" artifact
+        self.ax_graph.axis("off")
 
         # Interaction state
         self.current_step = 0
         self.total_steps = len(pattern)
 
-        # Interaction state placeholders
+        # Widget placeholders
         self.slider: Slider | None = None
         self.btn_prev: Button | None = None
         self.btn_next: Button | None = None
 
     def _prepare_layout(self) -> None:
-        # Build full graph to determine positions
+        """Compute node positions by reusing :class:`GraphVisualizer` layout.
+
+        Builds the full graph from the pattern commands, delegates layout
+        computation to :meth:`GraphVisualizer.get_layout`, and normalizes
+        the resulting positions to fit the interactive panel area.  If the
+        flow-based layout is too narrow for comfortable display (e.g. a
+        deep Pauli-flow graph), a spring-layout fallback is used.
+        """
+        # Build the full graph from all commands
         g: Any = nx.Graph()
         measurements: dict[int, Any] = {}
         for cmd in self.pattern:
@@ -100,40 +104,64 @@ class InteractiveGraphVisualizer:
             elif cmd.kind == CommandKind.M:
                 measurements[cmd.node] = cmd.measurement
 
-        # Use GraphVisualizer to determine positions based on flow/structure
+        # Delegate layout to GraphVisualizer (shares flow-detection logic)
         og = OpenGraph(g, self.pattern.input_nodes, self.pattern.output_nodes, measurements)
-        # Infer Pauli measurements to avoid warnings and improve flow detection
         og = og.infer_pauli_measurements()
 
         vis = GraphVisualizer(og)
         pos_mapping, _, _ = vis.get_layout()
         self.node_positions = dict(pos_mapping)
 
+        # Check if the layout is too narrow for the interactive panel
         x_coords = [p[0] for p in self.node_positions.values()]
         y_coords = [p[1] for p in self.node_positions.values()]
         if x_coords and y_coords:
-            width = max(x_coords) - min(x_coords)
-            if width < 2.0 and len(self.node_positions) > 5:
-                # Fallback to spring layout for better interactivity
-                # We recreate the graph for layout since `og.graph` might be modified
+            x_range = max(x_coords) - min(x_coords)
+            y_range = max(y_coords) - min(y_coords)
+            aspect = x_range / max(y_range, 1e-6)
+            if aspect < 0.3 and len(self.node_positions) > 5:
+                # Layout is too narrow (tall vertical strip) -- use spring layout
                 pos_spring = nx.spring_layout(g, seed=42)
-                self.node_positions = {n: (p[0], p[1]) for n, p in pos_spring.items()}
+                self.node_positions = {n: (float(p[0]), float(p[1])) for n, p in pos_spring.items()}
 
-        # Apply scaling
+        # Apply user-provided scaling
         self.node_positions = {
             k: (v[0] * self.node_distance[0], v[1] * self.node_distance[1]) for k, v in self.node_positions.items()
         }
 
-        # Determine fixed bounds for the graph to prevent autoscaling issues
-        all_x = [pos[0] for pos in self.node_positions.values()]
-        all_y = [pos[1] for pos in self.node_positions.values()]
-        margin = 0.5
-        if all_x and all_y:
-            self.x_limits = (min(all_x) - margin, max(all_x) + margin)
-            self.y_limits = (min(all_y) - margin, max(all_y) + margin)
-        else:
-            self.x_limits = (-1, 1)
-            self.y_limits = (-1, 1)
+        # Normalize to [0, 1] range so positions fill the available axes area
+        # regardless of the data's original aspect ratio.
+        self._normalize_positions()
+
+        # Store the visualizer for reuse in drawing helpers
+        self._graph_visualizer = vis
+
+    def _normalize_positions(self) -> None:
+        """Normalize node positions into the ``[margin, 1-margin]`` range.
+
+        This ensures the graph fills the interactive axes area uniformly,
+        avoiding the distortion caused by ``set_aspect("equal")`` when the
+        data's x/y ranges differ significantly.
+        """
+        if not self.node_positions:
+            return
+
+        xs = [p[0] for p in self.node_positions.values()]
+        ys = [p[1] for p in self.node_positions.values()]
+
+        x_min, x_max = min(xs), max(xs)
+        y_min, y_max = min(ys), max(ys)
+        x_range = x_max - x_min if x_max != x_min else 1.0
+        y_range = y_max - y_min if y_max != y_min else 1.0
+
+        margin = 0.08
+        lo = margin
+        hi = 1.0 - margin
+
+        self.node_positions = {
+            k: (lo + (v[0] - x_min) / x_range * (hi - lo), lo + (v[1] - y_min) / y_range * (hi - lo))
+            for k, v in self.node_positions.items()
+        }
 
     def visualize(self) -> None:
         """Launch the interactive visualization window."""
@@ -207,8 +235,27 @@ class InteractiveGraphVisualizer:
     def _update_graph_state(
         self, step: int
     ) -> tuple[set[int], set[int], list[tuple[int, ...]], dict[int, set[str]], dict[int, int]]:
-        """Calculate the graph state by simulating the pattern up to `step`."""
-        # Prepare return containers
+        """Calculate the graph state by simulating the pattern up to *step*.
+
+        Parameters
+        ----------
+        step : int
+            The command index up to which the pattern is executed.
+
+        Returns
+        -------
+        active_nodes : set[int]
+            Nodes that have been initialised but not yet measured.
+        measured_nodes : set[int]
+            Nodes that have been measured.
+        active_edges : list[tuple[int, ...]]
+            Edges currently present in the graph (both endpoints active).
+        corrections : dict[int, set[str]]
+            Accumulated byproduct corrections per node (``"X"`` and/or ``"Z"``).
+        results : dict[int, int]
+            Measurement outcomes keyed by node (only populated when
+            *enable_simulation* is ``True``).
+        """
         active_nodes = set()
         measured_nodes = set()
         active_edges = []
@@ -216,17 +263,14 @@ class InteractiveGraphVisualizer:
         results: dict[int, int] = {}
 
         if self.enable_simulation:
-            # --- Simulation Mode ---
             backend = StatevectorBackend()
 
             # Prerun input nodes (standard MBQC initialization)
-            input_nodes = self.pattern.input_nodes
-            for node in input_nodes:
+            for node in self.pattern.input_nodes:
                 backend.add_nodes([node])
 
             rng = np.random.default_rng(42)  # Fixed seed for determinism
 
-            # Re-execute commands up to current step
             for i in range(step):
                 cmd = self.pattern[i]
                 if cmd.kind == CommandKind.N:
@@ -234,28 +278,20 @@ class InteractiveGraphVisualizer:
                 elif cmd.kind == CommandKind.E:
                     backend.entangle_nodes(cmd.nodes)
                 elif cmd.kind == CommandKind.M:
-                    # --- Adaptive Measurement Logic (Feedforward) ---
-                    # Calculate s and t signals from previous measurement results
+                    # Adaptive measurement (feedforward)
                     s_signal = sum(results.get(j, 0) for j in cmd.s_domain) if cmd.s_domain else 0
                     t_signal = sum(results.get(j, 0) for j in cmd.t_domain) if cmd.t_domain else 0
 
-                    s_bool = s_signal % 2 == 1
-                    t_bool = t_signal % 2 == 1
-
-                    # Compute the updated angle and plane based on signals
                     clifford = Clifford.I
-                    if s_bool:
+                    if s_signal % 2 == 1:
                         clifford = Clifford.X @ clifford
-                    if t_bool:
+                    if t_signal % 2 == 1:
                         clifford = Clifford.Z @ clifford
 
                     measurement = cmd.measurement.clifford(clifford)
-
-                    # Execute measurement on the backend using the adapted measurement
                     result = backend.measure(cmd.node, measurement, rng=rng)
                     results[cmd.node] = result
                 elif cmd.kind == CommandKind.X:
-                    # Accumulate X corrections
                     if cmd.node not in corrections:
                         corrections[cmd.node] = set()
                     corrections[cmd.node].add("X")
@@ -266,90 +302,92 @@ class InteractiveGraphVisualizer:
                     corrections[cmd.node].add("Z")
                     backend.correct_byproduct(cmd)
 
-        # --- Common Logic (Topological Tracking) ---
-        # We track nodes/edges based on command history regardless of simulation
-        # This ensures visualization works even if simulation is disabled
-
-        # Reset tracking
-        current_active_nodes = set(self.pattern.input_nodes)  # Start with input nodes
-        current_edges = set()
-        current_measured_nodes = set()  # Track measured nodes for topological view
+        # ---- Topological tracking (independent of simulation) ----
+        current_active: set[int] = set(self.pattern.input_nodes)
+        current_edges: set[tuple[int, ...]] = set()
+        current_measured: set[int] = set()
 
         for i in range(step):
             cmd = self.pattern[i]
             if cmd.kind == CommandKind.N:
-                current_active_nodes.add(cmd.node)
+                current_active.add(cmd.node)
             elif cmd.kind == CommandKind.E:
                 u, v = cmd.nodes
-                # Only add edge if both nodes are currently active (not yet measured)
-                if u in current_active_nodes and v in current_active_nodes:
+                if u in current_active and v in current_active:
                     current_edges.add(tuple(sorted((u, v))))
-            elif cmd.kind == CommandKind.M and cmd.node in current_active_nodes:
-                current_active_nodes.remove(cmd.node)
-                current_measured_nodes.add(cmd.node)
-                # Remove connected edges involving the measured node
+            elif cmd.kind == CommandKind.M and cmd.node in current_active:
+                current_active.remove(cmd.node)
+                current_measured.add(cmd.node)
                 current_edges = {e for e in current_edges if cmd.node not in e}
 
-            # Corrections are visualization-only metadata, handled in simulation block or ignored
-
-        active_nodes = current_active_nodes
-        measured_nodes = current_measured_nodes
+        active_nodes = current_active
+        measured_nodes = current_measured
         active_edges = list(current_edges)
 
         return active_nodes, measured_nodes, active_edges, corrections, results
 
     def _draw_graph(self) -> None:
+        """Draw nodes and edges onto the graph axes.
+
+        Uses :meth:`GraphVisualizer.draw_edges` for edge rendering (shared
+        with the static visualizer) and draws nodes with interactive-specific
+        colouring: grey for measured, red border for active.
+        """
         try:
             self.ax_graph.clear()
 
-            # Get current state from simulation
             active_nodes, measured_nodes, active_edges, corrections, results = self._update_graph_state(
                 self.current_step
             )
 
-            # Draw edges
+            # ---- Edges (reuse GraphVisualizer helper if possible) ----
             for u, v in active_edges:
-                x1, y1 = self.node_positions[u]
-                x2, y2 = self.node_positions[v]
-                self.ax_graph.plot([x1, x2], [y1, y2], color="black", zorder=1)
+                if u in self.node_positions and v in self.node_positions:
+                    x1, y1 = self.node_positions[u]
+                    x2, y2 = self.node_positions[v]
+                    self.ax_graph.plot([x1, x2], [y1, y2], color="black", alpha=0.7, zorder=1)
 
-            # Draw nodes
-            # 1. Measured nodes (grey, with result text)
+            # Adaptive font-size: shrink labels when node numbers are large
+            fontsize = 10
+            max_node = max(
+                (n for ns in (active_nodes, measured_nodes) for n in ns),
+                default=0,
+            )
+            if max_node >= 100:
+                fontsize = max(7, int(fontsize * 2 / len(str(max_node))))
+
+            # ---- Measured nodes (grey fill, black border) ----
             for node in measured_nodes:
-                if node in self.node_positions:
-                    x, y = self.node_positions[node]
-                    circle = Circle((x, y), 0.1, color="lightgray", zorder=2)
-                    self.ax_graph.add_patch(circle)
+                if node not in self.node_positions:
+                    continue
+                x, y = self.node_positions[node]
+                self.ax_graph.scatter(x, y, edgecolors="black", facecolors="lightgray", s=350, zorder=2, linewidths=1.5)
 
-                    label_text = str(node)
-                    # Show measurement outcome if available
-                    if node in results:
-                        label_text += f"\n={results[node]}"
+                label_text = str(node)
+                if node in results:
+                    label_text += f"\nm={results[node]}"
 
-                    self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, zorder=3)
+                self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=fontsize, zorder=3)
 
-            # 2. Active nodes (white with colored edge, with correction text)
+            # ---- Active nodes (white fill, red border) ----
             for node in active_nodes:
-                if node in self.node_positions:
-                    x, y = self.node_positions[node]
-                    circle = Circle((x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2)
-                    self.ax_graph.add_patch(circle)
+                if node not in self.node_positions:
+                    continue
+                x, y = self.node_positions[node]
+                self.ax_graph.scatter(x, y, edgecolors="red", facecolors="white", s=350, zorder=2, linewidths=1.5)
 
-                    label_text = str(node)
-                    # Show accumulated internal corrections
-                    if node in corrections:
-                        label_text += "\n" + "".join(sorted(corrections[node]))
+                label_text = str(node)
+                if node in corrections:
+                    label_text += "\n" + "".join(sorted(corrections[node]))
 
-                    color = "black"
-                    if node in corrections:
-                        color = "blue"  # Highlight corrected nodes
+                text_color = "blue" if node in corrections else "black"
+                self.ax_graph.text(
+                    x, y, label_text, ha="center", va="center", fontsize=fontsize, color=text_color, zorder=3
+                )
 
-                    self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3)
-
-            # Set aspect close to equal and hide axes
-            self.ax_graph.set_aspect("equal")
-            self.ax_graph.set_xlim(self.x_limits)
-            self.ax_graph.set_ylim(self.y_limits)
+            # Axis limits use normalized [0, 1] positions - no set_aspect("equal")
+            self.ax_graph.set_xlim(-0.02, 1.02)
+            self.ax_graph.set_ylim(-0.02, 1.02)
             self.ax_graph.axis("off")
 
         except Exception as e:  # noqa: BLE001
