@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
-import numpy as np
 import pytest
 
 from graphix.circ_ext.compilation import LadderPass
@@ -41,7 +40,7 @@ class TestPauliString:
         state = qc.simulate_statevector(rng=fx_rng).statevec
         state_ref = qc_ref.simulate_statevector(rng=fx_rng).statevec
 
-        assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state.isclose(state_ref)
 
 
 class PauliExpTestCase(NamedTuple):
@@ -116,7 +115,7 @@ class TestPauliExponential:
         qc = LadderPass.add_to_circuit(test_case.p_exp)
         state = qc.simulate_statevector().statevec
         state_ref = test_case.qc.simulate_statevector().statevec
-        assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state.isclose(state_ref)
 
     def test_from_focused_flow(self) -> None:
         """Test example C.13. in Simmons, 2021."""
