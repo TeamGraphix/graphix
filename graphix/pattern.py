@@ -1437,8 +1437,7 @@ class Pattern:
         flow_from_pattern: bool = True,
         show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
-        show_measurement_planes: bool = False,
-        show_measurement_angles: bool = False,
+        show_measurements: bool = False,
         show_legend: bool = False,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
@@ -1458,10 +1457,8 @@ class Pattern:
             If True, Pauli-measured nodes are filled with blue instead of black.
         show_local_clifford : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, measurement planes are displayed adjacent to the nodes.
-        show_measurement_angles : bool
-            If True, measurement angles (in units of pi) are displayed adjacent to the nodes.
+        show_measurements : bool
+            If True, measurement labels are displayed adjacent to the nodes.
         show_legend : bool
             If True, a legend is displayed indicating node types and edge meanings.
         show_loop : bool
@@ -1484,8 +1481,7 @@ class Pattern:
                 pattern=self.copy(),
                 show_pauli_measurement=show_pauli_measurement,
                 show_local_clifford=show_local_clifford,
-                show_measurement_planes=show_measurement_planes,
-                show_measurement_angles=show_measurement_angles,
+                show_measurements=show_measurements,
                 show_legend=show_legend,
                 show_loop=show_loop,
                 node_distance=node_distance,
@@ -1496,8 +1492,7 @@ class Pattern:
             vis.visualize(
                 show_pauli_measurement=show_pauli_measurement,
                 show_local_clifford=show_local_clifford,
-                show_measurement_planes=show_measurement_planes,
-                show_measurement_angles=show_measurement_angles,
+                show_measurements=show_measurements,
                 show_legend=show_legend,
                 show_loop=show_loop,
                 node_distance=node_distance,
