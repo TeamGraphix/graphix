@@ -273,7 +273,7 @@ class GraphVisualizer:
         fontsize = 12
         if max(self.og.graph.nodes(), default=0) >= 100:
             fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
-        nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize, font_color=font_color)
+        nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize, font_color=font_color)  # type: ignore[arg-type]
 
     def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> dict[int, str]:
         """Draw the nodes with shapes and fills following MBQC literature conventions.
