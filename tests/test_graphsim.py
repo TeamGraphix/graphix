@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-import pytest
 
 from graphix.clifford import Clifford
 from graphix.fundamentals import ANGLE_PI, Plane, angle_to_rad
@@ -87,21 +86,21 @@ class TestGraphSim:
         gstate.normalize()
         gstate.remove_qubit(0)
         gstate2 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate2)
 
         g.measure_y(1, choice=0)
         gstate.evolve_single(meas_op(0.5 * ANGLE_PI), 0)  # y meas
         gstate.normalize()
         gstate.remove_qubit(0)
         gstate2 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate2)
 
         g.measure_z(3)
         gstate.evolve_single(meas_op(0.5 * ANGLE_PI, plane=Plane.YZ), 1)  # z meas
         gstate.normalize()
         gstate.remove_qubit(1)
         gstate2 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate2)
 
     def test_e2(self) -> None:
         nqubit = 6
@@ -112,23 +111,23 @@ class TestGraphSim:
 
         g.equivalent_graph_e2(3, 4)
         gstate2 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate2)
 
         g.equivalent_graph_e2(4, 0)
         gstate3 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate3)
 
         g.equivalent_graph_e2(4, 5)
         gstate4 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate4.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate4)
 
         g.equivalent_graph_e2(0, 3)
         gstate5 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate5.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate5)
 
         g.equivalent_graph_e2(0, 3)
         gstate6 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate6.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate6)
 
     def test_e1(self) -> None:
         nqubit = 6
@@ -139,15 +138,15 @@ class TestGraphSim:
         g.equivalent_graph_e1(3)
 
         gstate2 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate2)
         g.z(4)
         gstate = graph_state_to_statevec(g)
         g.equivalent_graph_e1(4)
         gstate2 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate2)
         g.equivalent_graph_e1(4)
         gstate3 = graph_state_to_statevec(g)
-        assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
+        assert gstate.isclose(gstate3)
 
     def test_local_complement(self) -> None:
         nqubit = 6

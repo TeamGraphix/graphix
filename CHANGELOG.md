@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #386, #433: Added `Statevec.fidelity` and `Statevec.isclose` methods for pure-state fidelity computation and equality check up to global phase.
+
 ### Fixed
 
 - #429
@@ -86,6 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #407: Fixed an unreported bug in `OpenGraph.is_equal_structurally` which failed to compare open graphs differing on the output nodes only.
 
 - #157, #417: `Pattern.minimize_space` uses `Pattern.extract_causal_flow()` and preserves runnability
+
+- #441: Fixed `nqubits` property in `Statevec` objects.
 
 ### Changed
 
