@@ -7,7 +7,6 @@ import traceback
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 from matplotlib.text import Text
 from matplotlib.widgets import Button, Slider
@@ -34,6 +33,18 @@ class InteractiveGraphVisualizer:
         Scale factors (x, y) for the node positions.
     enable_simulation : bool
         If True, simulates the state vector and measurement outcomes.
+    marker_fill_ratio : float
+        Fraction of the inter-node spacing used by each marker (0-1).
+    label_size_ratio : float
+        Label font size as a fraction of the marker diameter.
+    max_label_fontsize : int
+        Upper bound for label font size in points.
+    min_inches_per_node : float
+        Minimum vertical inches per node for adaptive figure height.
+    active_node_color : str
+        Border colour for active (current-step) nodes.
+    measured_node_color : str
+        Fill colour for already-measured nodes.
     """
 
     def __init__(
@@ -41,6 +52,13 @@ class InteractiveGraphVisualizer:
         pattern: Pattern,
         node_distance: tuple[float, float] = (1, 1),
         enable_simulation: bool = True,
+        *,
+        marker_fill_ratio: float = 0.80,
+        label_size_ratio: float = 0.55,
+        max_label_fontsize: int = 12,
+        min_inches_per_node: float = 0.3,
+        active_node_color: str = "#2060cc",
+        measured_node_color: str = "lightgray",
     ) -> None:
         """Construct an interactive visualizer.
 
@@ -52,21 +70,68 @@ class InteractiveGraphVisualizer:
             Scale factors (x, y) for node positions. Defaults to (1, 1).
         enable_simulation : bool, optional
             If True, enables state vector simulation. Defaults to True.
+        marker_fill_ratio : float, optional
+            Fraction of the inter-node spacing used by marker diameter.
+            Defaults to 0.80.
+        label_size_ratio : float, optional
+            Label font size as a fraction of the marker diameter in points.
+            Defaults to 0.55.
+        max_label_fontsize : int, optional
+            Upper bound for label font size.  Prevents text from overflowing
+            the marker in sparse graphs. Defaults to 12.
+        min_inches_per_node : float, optional
+            Minimum vertical inches allocated per node when computing the
+            adaptive figure height. Defaults to 0.3.
+        active_node_color : str, optional
+            Border colour for active nodes. Defaults to ``"#2060cc"``.
+        measured_node_color : str, optional
+            Fill colour for measured nodes. Defaults to ``"lightgray"``.
         """
         self.pattern = pattern
         self.node_positions: dict[int, tuple[float, float]] = {}
         self.node_distance = node_distance
         self.enable_simulation = enable_simulation
+        self.marker_fill_ratio = marker_fill_ratio
+        self.label_size_ratio = label_size_ratio
+        self.max_label_fontsize = max_label_fontsize
+        self.min_inches_per_node = min_inches_per_node
+        self.active_node_color = active_node_color
+        self.measured_node_color = measured_node_color
 
         # Prepare graph layout reusing GraphVisualizer
         self._prepare_layout()
 
-        # Figure setup - tighter layout to reduce whitespace
-        self.fig = plt.figure(figsize=(14, 7))
+        # Figure height adapts to graph density so circles and labels remain
+        # readable even for dense layouts like QAOA.
+        ax_h_frac = 0.80  # height fraction of ax_graph in figure
+        min_fig_height = 7
+        if self.node_positions:
+            ys = [p[1] for p in self.node_positions.values()]
+            y_data_span = max(ys) - min(ys) + 1
+            needed_height = y_data_span * self.min_inches_per_node / ax_h_frac
+            fig_height = max(min_fig_height, needed_height)
+        else:
+            fig_height = min_fig_height
+            y_data_span = 1
+
+        # Compute node marker size and label font size ONCE from the known
+        # figure geometry.  This avoids instability when the user resizes the
+        # window, because the values are fixed at construction time.
+        ax_height_inches = fig_height * ax_h_frac
+        y_margin = y_data_span * 0.08 + 0.5  # mirrors _draw_graph margin
+        y_range = y_data_span + 2 * y_margin
+        points_per_unit = (ax_height_inches / y_range) * 72  # 72 pt/inch
+        marker_diameter = self.marker_fill_ratio * points_per_unit
+        self.node_size: int = max(30, int(marker_diameter**2))
+        self.label_fontsize: int = min(
+            self.max_label_fontsize, max(6, int(marker_diameter * self.label_size_ratio))
+        )
+
+        self.fig = plt.figure(figsize=(14, fig_height))
 
         # Grid layout: command list (~28%), graph (~67%), bottom strip for controls
-        self.ax_commands = self.fig.add_axes((0.02, 0.15, 0.27, 0.80))
-        self.ax_graph = self.fig.add_axes((0.32, 0.15, 0.65, 0.80))
+        self.ax_commands = self.fig.add_axes((0.02, 0.15, 0.27, ax_h_frac))
+        self.ax_graph = self.fig.add_axes((0.32, 0.15, 0.65, ax_h_frac))
         self.ax_prev = self.fig.add_axes((0.30, 0.04, 0.03, 0.03))
         self.ax_slider = self.fig.add_axes((0.34, 0.04, 0.55, 0.03))
         self.ax_next = self.fig.add_axes((0.90, 0.04, 0.03, 0.03))
@@ -89,12 +154,11 @@ class InteractiveGraphVisualizer:
 
         Builds the full graph from the pattern commands, delegates layout
         computation to :meth:`GraphVisualizer.get_layout`, and normalizes
-        the resulting positions to fit the interactive panel area.  If the
-        flow-based layout is too narrow for comfortable display (e.g. a
-        deep Pauli-flow graph), a spring-layout fallback is used.
+        the resulting positions to fit the interactive panel area.
+        The flow-based layout is always preserved.
         """
         # Build the full graph from all commands
-        g: Any = nx.Graph()
+        g: Any = __import__("networkx").Graph()
         measurements: dict[int, Any] = {}
         for cmd in self.pattern:
             if cmd.kind == CommandKind.N:
@@ -112,56 +176,12 @@ class InteractiveGraphVisualizer:
         pos_mapping, _, _ = vis.get_layout()
         self.node_positions = dict(pos_mapping)
 
-        # Check if the layout is too narrow for the interactive panel
-        x_coords = [p[0] for p in self.node_positions.values()]
-        y_coords = [p[1] for p in self.node_positions.values()]
-        if x_coords and y_coords:
-            x_range = max(x_coords) - min(x_coords)
-            y_range = max(y_coords) - min(y_coords)
-            aspect = x_range / max(y_range, 1e-6)
-            if aspect < 0.3 and len(self.node_positions) > 5:
-                # Layout is too narrow (tall vertical strip) -- use spring layout
-                pos_spring = nx.spring_layout(g, seed=42)
-                self.node_positions = {n: (float(p[0]), float(p[1])) for n, p in pos_spring.items()}
-
         # Apply user-provided scaling
         self.node_positions = {
             k: (v[0] * self.node_distance[0], v[1] * self.node_distance[1]) for k, v in self.node_positions.items()
         }
-
-        # Normalize to [0, 1] range so positions fill the available axes area
-        # regardless of the data's original aspect ratio.
-        self._normalize_positions()
-
         # Store the visualizer for reuse in drawing helpers
         self._graph_visualizer = vis
-
-    def _normalize_positions(self) -> None:
-        """Normalize node positions into the ``[margin, 1-margin]`` range.
-
-        This ensures the graph fills the interactive axes area uniformly,
-        avoiding the distortion caused by ``set_aspect("equal")`` when the
-        data's x/y ranges differ significantly.
-        """
-        if not self.node_positions:
-            return
-
-        xs = [p[0] for p in self.node_positions.values()]
-        ys = [p[1] for p in self.node_positions.values()]
-
-        x_min, x_max = min(xs), max(xs)
-        y_min, y_max = min(ys), max(ys)
-        x_range = x_max - x_min if x_max != x_min else 1.0
-        y_range = y_max - y_min if y_max != y_min else 1.0
-
-        margin = 0.08
-        lo = margin
-        hi = 1.0 - margin
-
-        self.node_positions = {
-            k: (lo + (v[0] - x_min) / x_range * (hi - lo), lo + (v[1] - y_min) / y_range * (hi - lo))
-            for k, v in self.node_positions.items()
-        }
 
     def visualize(self) -> None:
         """Launch the interactive visualization window."""
@@ -329,9 +349,10 @@ class InteractiveGraphVisualizer:
     def _draw_graph(self) -> None:
         """Draw nodes and edges onto the graph axes.
 
-        Uses :meth:`GraphVisualizer.draw_edges` for edge rendering (shared
-        with the static visualizer) and draws nodes with interactive-specific
-        colouring: grey for measured, red border for active.
+        Delegates to :class:`GraphVisualizer` for edge and node rendering,
+        passing per-node colour overrides to distinguish measured (grey) from
+        active (blue border) nodes.  Labels are drawn locally because they
+        include dynamic content (measurement results, corrections).
         """
         try:
             self.ax_graph.clear()
@@ -340,54 +361,59 @@ class InteractiveGraphVisualizer:
                 self.current_step
             )
 
-            # ---- Edges (reuse GraphVisualizer helper if possible) ----
-            for u, v in active_edges:
-                if u in self.node_positions and v in self.node_positions:
-                    x1, y1 = self.node_positions[u]
-                    x2, y2 = self.node_positions[v]
-                    self.ax_graph.plot([x1, x2], [y1, y2], color="black", alpha=0.7, zorder=1)
+            # ---- Edges (delegate to GraphVisualizer) ----
+            self._graph_visualizer.draw_edges(self.ax_graph, self.node_positions, edge_subset=active_edges)
 
-            # Adaptive font-size: shrink labels when node numbers are large
-            fontsize = 10
-            max_node = max(
-                (n for ns in (active_nodes, measured_nodes) for n in ns),
-                default=0,
+            # ---- Axis limits (set before drawing nodes so geometry is known) ----
+            xs = [p[0] for p in self.node_positions.values()]
+            ys = [p[1] for p in self.node_positions.values()]
+            x_margin = (max(xs) - min(xs)) * 0.08 + 0.5
+            y_margin = (max(ys) - min(ys)) * 0.08 + 0.5
+            self.ax_graph.set_xlim(min(xs) - x_margin, max(xs) + x_margin)
+            self.ax_graph.set_ylim(min(ys) - y_margin, max(ys) + y_margin)
+
+            # ---- Nodes (delegate to GraphVisualizer with colour overrides) ----
+            node_facecolors: dict[int, str] = {}
+            node_edgecolors: dict[int, str] = {}
+            for node in measured_nodes:
+                node_facecolors[node] = self.measured_node_color
+                node_edgecolors[node] = "black"
+            for node in active_nodes:
+                node_facecolors[node] = "white"
+                node_edgecolors[node] = self.active_node_color
+
+            self._graph_visualizer.draw_nodes_role(
+                self.ax_graph,
+                self.node_positions,
+                node_facecolors=node_facecolors,
+                node_edgecolors=node_edgecolors,
+                node_size=self.node_size,
             )
-            if max_node >= 100:
-                fontsize = max(7, int(fontsize * 2 / len(str(max_node))))
 
-            # ---- Measured nodes (grey fill, black border) ----
+            # ---- Labels (drawn locally for dynamic content) ----
+            fontsize = self.label_fontsize
+
             for node in measured_nodes:
                 if node not in self.node_positions:
                     continue
                 x, y = self.node_positions[node]
-                self.ax_graph.scatter(x, y, edgecolors="black", facecolors="lightgray", s=350, zorder=2, linewidths=1.5)
-
                 label_text = str(node)
                 if node in results:
                     label_text += f"\nm={results[node]}"
-
                 self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=fontsize, zorder=3)
 
-            # ---- Active nodes (white fill, red border) ----
             for node in active_nodes:
                 if node not in self.node_positions:
                     continue
                 x, y = self.node_positions[node]
-                self.ax_graph.scatter(x, y, edgecolors="red", facecolors="white", s=350, zorder=2, linewidths=1.5)
-
                 label_text = str(node)
                 if node in corrections:
                     label_text += "\n" + "".join(sorted(corrections[node]))
-
                 text_color = "blue" if node in corrections else "black"
                 self.ax_graph.text(
                     x, y, label_text, ha="center", va="center", fontsize=fontsize, color=text_color, zorder=3
                 )
 
-            # Axis limits use normalized [0, 1] positions - no set_aspect("equal")
-            self.ax_graph.set_xlim(-0.02, 1.02)
-            self.ax_graph.set_ylim(-0.02, 1.02)
             self.ax_graph.axis("off")
 
         except Exception as e:  # noqa: BLE001

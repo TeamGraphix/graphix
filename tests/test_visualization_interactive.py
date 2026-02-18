@@ -10,6 +10,7 @@ from matplotlib.text import Text
 from graphix.command import E, M, N, X, Z
 from graphix.measurements import Measurement
 from graphix.pattern import Pattern
+from graphix.visualization import GraphVisualizer
 from graphix.visualization_interactive import InteractiveGraphVisualizer
 
 
@@ -75,10 +76,11 @@ class TestInteractiveGraphVisualizer:
 
         # Keys should match the layout output
         assert viz.node_positions.keys() == expected_pos.keys()
-        # Positions are normalized to [0, 1] range after layout
-        for x, y in viz.node_positions.values():
-            assert 0.0 <= x <= 1.0
-            assert 0.0 <= y <= 1.0
+        # Positions are the raw layout scaled by node_distance (default 1, 1)
+        for node, (ex, ey) in expected_pos.items():
+            ax, ay = viz.node_positions[node]
+            assert ax == pytest.approx(ex * viz.node_distance[0])
+            assert ay == pytest.approx(ey * viz.node_distance[1])
 
     def test_update_graph_state_simulation_enabled(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test graph state update with simulation enabled."""
@@ -122,9 +124,7 @@ class TestInteractiveGraphVisualizer:
         viz.slider.val = len(pattern)
         viz._update(len(pattern))
 
-        # Check that drawing methods were called
-        # Measured nodes (0, 1) and active node (2) are drawn with scatter
-        assert viz.ax_graph.scatter.call_count > 0
+        # Labels are drawn locally: check that text was called
         assert viz.ax_graph.text.call_count > 0
 
     def test_update_graph_state_simulation_disabled(self, pattern: Pattern, mocker: MagicMock) -> None:
@@ -318,63 +318,53 @@ class TestInteractiveGraphVisualizer:
         viz._on_pick(pick_event)
         viz.slider.set_val.assert_called_with(6)
 
-    def test_layout_fallback_triggered(self, mocker: MagicMock) -> None:
-        """Test that spring layout fallback is triggered for narrow graphs."""
-        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
-        mocker.patch("graphix.visualization_interactive.OpenGraph")
-        mocker.patch("matplotlib.pyplot.figure")
-        mock_spring_layout = mocker.patch("graphix.visualization_interactive.nx.spring_layout")
-
-        mock_vis_obj = MagicMock()
-        mock_visualizer.return_value = mock_vis_obj
-
-        # Narrow layout: x=0 for all nodes, y varies -- aspect ratio < 0.3
-        initial_pos = {i: (0, i) for i in range(6)}
-        mock_vis_obj.get_layout.return_value = (initial_pos, {}, {})
-
-        # Spring layout returns different positions
-        spring_pos = {i: (float(10 + i), float(i)) for i in range(6)}
-        mock_spring_layout.return_value = spring_pos
-
-        big_pattern = Pattern(input_nodes=list(range(6)))
-        for i in range(6):
-            big_pattern.add(N(node=i))
-
-        viz = InteractiveGraphVisualizer(big_pattern)
-
-        # Spring layout should have been called as fallback
-        mock_spring_layout.assert_called_once()
-
-        # Positions should be normalized to [0, 1] range
-        for x, y in viz.node_positions.values():
-            assert 0.0 <= x <= 1.0
-            assert 0.0 <= y <= 1.0
-
-    def test_draw_edges_coverage(self, pattern: Pattern, mocker: MagicMock) -> None:
-        """Test that edge drawing logic is executed (covers lines 312-314)."""
+    def test_draw_edges_delegates(self, pattern: Pattern, mocker: MagicMock) -> None:
+        """Test that _draw_graph delegates edge drawing to GraphVisualizer.draw_edges."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
         mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        # Provide positions for nodes 0, 1, 2
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
 
         viz = InteractiveGraphVisualizer(pattern)
         viz.ax_graph = MagicMock()
         viz.slider = MagicMock()
 
-        # Step 5 in our fixture pattern has entanglement E(0, 1) and E(1, 2)
-        # and no nodes have been measured yet.
+        # Step 5: entanglement E(0, 1) and E(1, 2), no measurements yet
         viz._update(5)
 
-        # Verify that plot (used for edges) was called
-        # There should be 2 edges: (0, 1) and (1, 2)
-        assert viz.ax_graph.plot.call_count == 2
+        # draw_edges should have been called with edge_subset
+        mock_vis_obj.draw_edges.assert_called()
+        call_kwargs = mock_vis_obj.draw_edges.call_args
+        assert "edge_subset" in call_kwargs.kwargs
+
+    def test_draw_nodes_delegates(self, pattern: Pattern, mocker: MagicMock) -> None:
+        """Test that _draw_graph delegates node drawing to GraphVisualizer.draw_nodes_role."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+
+        viz = InteractiveGraphVisualizer(pattern)
+        viz.ax_graph = MagicMock()
+        viz.slider = MagicMock()
+
+        # Step after all N + E commands (5 commands) + measurements
+        viz._update(len(pattern))
+
+        # draw_nodes_role should have been called with colour overrides
+        mock_vis_obj.draw_nodes_role.assert_called()
+        call_kwargs = mock_vis_obj.draw_nodes_role.call_args
+        assert "node_facecolors" in call_kwargs.kwargs
+        assert "node_edgecolors" in call_kwargs.kwargs
 
     def test_draw_graph_exception_coverage(self, pattern: Pattern, mocker: MagicMock) -> None:
-        """Test the exception handling in _draw_graph (covers lines 355-357)."""
+        """Test the exception handling in _draw_graph."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
         mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
@@ -393,3 +383,85 @@ class TestInteractiveGraphVisualizer:
 
         # This should not raise but log/print
         viz._draw_graph()
+
+
+class TestGraphVisualizerSharedAPI:
+    """Tests for the shared drawing API exposed by GraphVisualizer."""
+
+    def test_get_label_fontsize_small_nodes(self) -> None:
+        """Font size should equal base_size for small node numbers."""
+        assert GraphVisualizer.get_label_fontsize(0) == 12
+        assert GraphVisualizer.get_label_fontsize(99) == 12
+
+    def test_get_label_fontsize_large_nodes(self) -> None:
+        """Font size should shrink for large node numbers."""
+        result = GraphVisualizer.get_label_fontsize(100)
+        assert result < 12
+        assert result >= 7
+
+    def test_get_label_fontsize_custom_base(self) -> None:
+        """Font size should use the custom base_size."""
+        assert GraphVisualizer.get_label_fontsize(0, base_size=10) == 10
+        result = GraphVisualizer.get_label_fontsize(1000, base_size=10)
+        assert result >= 7
+        assert result < 10
+
+    def test_draw_nodes_role_with_overrides(self) -> None:
+        """Test draw_nodes_role applies per-node colour overrides."""
+        mock_og = MagicMock()
+        mock_og.graph.nodes.return_value = [0, 1, 2]
+        mock_og.input_nodes = [0]
+        mock_og.output_nodes = [2]
+        mock_og.measurements = {0: MagicMock(), 1: MagicMock(), 2: MagicMock()}
+
+        vis = GraphVisualizer(og=mock_og)
+
+        ax = MagicMock()
+        pos = {0: (0.0, 0.0), 1: (1.0, 0.0), 2: (2.0, 0.0)}
+
+        vis.draw_nodes_role(
+            ax,
+            pos,
+            node_facecolors={0: "yellow", 1: "pink"},
+            node_edgecolors={0: "green"},
+        )
+
+        assert ax.scatter.call_count == 3
+        # Check overrides were applied by inspecting scatter kwargs
+        scatter_calls = ax.scatter.call_args_list
+        # Node 0: facecolors=yellow (override), edgecolors=green (override)
+        assert scatter_calls[0].kwargs["facecolors"] == "yellow"
+        assert scatter_calls[0].kwargs["edgecolors"] == "green"
+        # Node 1: facecolors=pink (override), edgecolors=black (default)
+        assert scatter_calls[1].kwargs["facecolors"] == "pink"
+        assert scatter_calls[1].kwargs["edgecolors"] == "black"
+        # Node 2: facecolors=lightgray (output role), edgecolors=black (default)
+        assert scatter_calls[2].kwargs["facecolors"] == "lightgray"
+        assert scatter_calls[2].kwargs["edgecolors"] == "black"
+
+    def test_draw_edges_with_subset(self) -> None:
+        """Test draw_edges with edge_subset only draws specified edges."""
+        mock_og = MagicMock()
+        mock_og.graph.edges.return_value = [(0, 1), (1, 2), (2, 3)]
+
+        vis = GraphVisualizer(og=mock_og)
+
+        ax = MagicMock()
+        pos = {0: (0.0, 0.0), 1: (1.0, 0.0), 2: (2.0, 0.0), 3: (3.0, 0.0)}
+
+        # Draw only a subset
+        vis.draw_edges(ax, pos, edge_subset=[(0, 1), (2, 3)])
+        assert ax.plot.call_count == 2
+
+    def test_draw_edges_without_subset(self) -> None:
+        """Test draw_edges without edge_subset draws all edges."""
+        mock_og = MagicMock()
+        mock_og.graph.edges.return_value = [(0, 1), (1, 2), (2, 3)]
+
+        vis = GraphVisualizer(og=mock_og)
+
+        ax = MagicMock()
+        pos = {0: (0.0, 0.0), 1: (1.0, 0.0), 2: (2.0, 0.0), 3: (3.0, 0.0)}
+
+        vis.draw_edges(ax, pos)
+        assert ax.plot.call_count == 3

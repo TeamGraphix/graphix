@@ -278,9 +278,7 @@ class GraphVisualizer:
         return new_path
 
     def _draw_labels(self, pos: Mapping[int, _Point]) -> None:
-        fontsize = 12
-        if max(self.og.graph.nodes(), default=0) >= 100:
-            fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
+        fontsize = self.get_label_fontsize(max(self.og.graph.nodes(), default=0))
         nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize)
 
     def draw_node_labels(self, ax: Axes, pos: Mapping[int, _Point]) -> None:
@@ -297,19 +295,45 @@ class GraphVisualizer:
         pos : Mapping[int, tuple[float, float]]
             Dictionary mapping each node to its ``(x, y)`` position.
         """
-        fontsize = 12
-        if max(self.og.graph.nodes(), default=0) >= 100:
-            fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
+        fontsize = self.get_label_fontsize(max(self.og.graph.nodes(), default=0))
         for node, (x, y) in pos.items():
             ax.text(x, y, str(node), ha="center", va="center", fontsize=fontsize, zorder=3)
 
-    def draw_edges(self, ax: Axes, pos: Mapping[int, _Point]) -> None:
+    @staticmethod
+    def get_label_fontsize(max_node: int, base_size: int = 12) -> int:
+        """Compute the font size for node labels.
+
+        When the largest node number has many digits the font is reduced
+        so that labels still fit inside the scatter markers.
+
+        Parameters
+        ----------
+        max_node : int
+            The largest node number in the graph.
+        base_size : int, optional
+            The default font size used for small node numbers.
+            Defaults to ``12``.
+
+        Returns
+        -------
+        int
+            The computed font size, never smaller than ``7``.
+        """
+        if max_node >= 100:
+            return max(7, int(base_size * 2 / len(str(max_node))))
+        return base_size
+
+    def draw_edges(
+        self,
+        ax: Axes,
+        pos: Mapping[int, _Point],
+        edge_subset: Iterable[tuple[int, ...]] | None = None,
+    ) -> None:
         """Draw graph edges as plain lines onto a given axes object.
 
         This axis-aware method is intended for use in contexts where the caller
         manages the :class:`~matplotlib.axes.Axes` directly (e.g. the
-        interactive visualizer). Only the edges present in :attr:`og.graph`
-        are drawn; no flow arrows are rendered.
+        interactive visualizer).
 
         Parameters
         ----------
@@ -317,8 +341,12 @@ class GraphVisualizer:
             The matplotlib axes to draw onto.
         pos : Mapping[int, tuple[float, float]]
             Dictionary mapping each node to its ``(x, y)`` position.
+        edge_subset : Iterable[tuple[int, int]] or None, optional
+            If provided, only these edges are drawn.  When ``None``
+            (the default), all edges in :attr:`og.graph` are drawn.
         """
-        for u, v in self.og.graph.edges():
+        edges: Iterable[tuple[int, ...]] = self.og.graph.edges() if edge_subset is None else edge_subset
+        for u, v in edges:
             if u in pos and v in pos:
                 x1, y1 = pos[u]
                 x2, y2 = pos[v]
@@ -329,6 +357,9 @@ class GraphVisualizer:
         ax: Axes,
         pos: Mapping[int, _Point],
         show_pauli_measurement: bool = False,
+        node_facecolors: Mapping[int, str] | None = None,
+        node_edgecolors: Mapping[int, str] | None = None,
+        node_size: int = 350,
     ) -> None:
         """Draw nodes onto a given axes object, coloured by their role.
 
@@ -343,6 +374,9 @@ class GraphVisualizer:
           black border, light-blue fill.
         * All other nodes: black border, white fill.
 
+        When *node_facecolors* or *node_edgecolors* are provided, their values
+        override the role-based defaults for the corresponding nodes.
+
         Parameters
         ----------
         ax : Axes
@@ -352,6 +386,14 @@ class GraphVisualizer:
         show_pauli_measurement : bool, optional
             If ``True``, nodes with Pauli measurement angles are coloured
             light blue. Defaults to ``False``.
+        node_facecolors : Mapping[int, str] or None, optional
+            Per-node fill colour overrides.  When a node appears in this
+            mapping its value is used instead of the role-based default.
+        node_edgecolors : Mapping[int, str] or None, optional
+            Per-node border colour overrides.
+        node_size : int, optional
+            Marker size for :meth:`~matplotlib.axes.Axes.scatter`.
+            Defaults to ``350``.
         """
         for node in self.og.graph.nodes():
             if node not in pos:
@@ -364,7 +406,12 @@ class GraphVisualizer:
                 facecolor = "lightgray"
             elif show_pauli_measurement and isinstance(self.og.measurements[node], PauliMeasurement):
                 facecolor = "lightblue"
-            ax.scatter(*pos[node], edgecolors=edgecolor, facecolors=facecolor, s=350, zorder=2, linewidths=1.5)
+            # Apply per-node overrides if provided
+            if node_facecolors is not None and node in node_facecolors:
+                facecolor = node_facecolors[node]
+            if node_edgecolors is not None and node in node_edgecolors:
+                edgecolor = node_edgecolors[node]
+            ax.scatter(*pos[node], edgecolors=edgecolor, facecolors=facecolor, s=node_size, zorder=2, linewidths=1.5)
 
     def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> None:
         """
