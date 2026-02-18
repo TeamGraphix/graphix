@@ -390,10 +390,12 @@ class GraphVisualizer:
 
         for edge, path in edge_path.items():
             if len(path) == 2:
-                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="solid", edge_color="gray", alpha=0.5)
+                nx.draw_networkx_edges(
+                    self.og.graph, pos, edgelist=[edge], style="dashed", edge_color="gray", alpha=0.6
+                )
             else:
                 curve = self._bezier_curve_linspace(path)
-                plt.plot(curve[:, 0], curve[:, 1], color="gray", linewidth=1, alpha=0.5)
+                plt.plot(curve[:, 0], curve[:, 1], color="gray", linewidth=1, alpha=0.6, linestyle="dashed")
 
         if arrow_path is not None:
             for arrow, path in arrow_path.items():
@@ -446,7 +448,7 @@ class GraphVisualizer:
             self.__draw_legend(show_pauli_measurement, corrections, arrow_path is not None)
         elif corrections is not None:
             # backward-compatible minimal legend for correction arrows
-            plt.plot([], [], color="gray", alpha=0.5, label="graph edge")
+            plt.plot([], [], color="gray", alpha=0.6, linestyle="dashed", label="graph edge")
             plt.plot([], [], color="tab:red", label="xflow")
             plt.plot([], [], color="tab:green", label="zflow")
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
@@ -565,7 +567,7 @@ class GraphVisualizer:
                     markersize=10,
                     label="Output",
                 ),
-                Line2D([0], [0], color="gray", linewidth=1, alpha=0.5, label="Graph edge"),
+                Line2D([0], [0], color="gray", linewidth=1, alpha=0.6, linestyle="dashed", label="Graph edge"),
             ]
         )
 
@@ -597,8 +599,8 @@ class GraphVisualizer:
             if label is not None:
                 x, y = pos[node]
                 plt.text(
-                    x + 0.22,
-                    y - 0.25,
+                    x + 0.18,
+                    y - 0.2,
                     label,
                     fontsize=8,
                     zorder=3,
