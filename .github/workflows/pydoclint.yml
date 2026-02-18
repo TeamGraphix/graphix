@@ -25,7 +25,7 @@ jobs:
       - name: Run pydoclint and save raw output (allow violations)
         continue-on-error: true
         run: |
-          pydoclint . --style=numpy 2>&1 | tee pydoclint-report.txt || true
+          pydoclint . --style=numpy -v 2>&1 | tee pydoclint-report.txt || true
 
       - name: Produce JSON summary and fail only on parser crash
         run: |

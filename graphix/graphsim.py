@@ -469,8 +469,8 @@ class GraphState(Graph):
 
         Parameters
         ----------
-        fill_color : str
-            optional, fill color of nodes
+        fill_color : str (optional)
+            fill color of nodes
         """
         nqubit = len(self.nodes)
         nodes = list(self.nodes)
@@ -490,7 +490,13 @@ class GraphState(Graph):
         nx.draw(g, labels=labels, node_color=colors, edgecolors="k")
 
     def to_statevector(self) -> Statevec:
-        """Convert the graph state into a state vector."""
+        """Convert the graph state into a state vector.
+
+        Returns
+        -------
+        gstate : Statevec
+            state vector representation of the graph state
+        """
         node_list = list(self.nodes)
         nqubit = len(self.nodes)
         gstate = Statevec(nqubit=nqubit)
@@ -511,5 +517,11 @@ class GraphState(Graph):
         return gstate
 
     def isolated_nodes(self) -> list[int]:
-        """Return a list of isolated nodes (nodes with no edges)."""
+        """Return a list of isolated nodes (nodes with no edges).
+
+        Returns
+        -------
+        list[int]
+            list of isolated nodes
+        """
         return list(nx.isolates(self))
