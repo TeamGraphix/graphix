@@ -8,8 +8,7 @@ from itertools import combinations
 from typing import TYPE_CHECKING
 
 from graphix.fundamentals import Angle, Plane, Sign
-from graphix.measurements import Measurement
-from graphix.pretty_print import SUBSCRIPTS
+from graphix.measurements import Measurement, PauliMeasurement
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -92,7 +91,7 @@ class PauliString:
 
         Parameters
         ----------
-        flow : PauliFlow[AbstractMeasurement]
+        flow : PauliFlow[Measurement]
             A focused Pauli flow. The resulting Pauli string is extracted from its correction function.
         node : int
             A measured node whose associated Pauli string is computed.
@@ -130,23 +129,14 @@ class PauliString:
         negative_sign ^= bool(len(inter_c_odd_set) // 2 % 2)
 
         # One phase flip per node in the graph state stabilizer that is absorbed from a Pauli measurement with angle π.
-        # TODO: What happends here with parametric angles ?
         for n, meas in og.measurements.items():
-            if n in (c_set | odd_c_set) and (pm := meas.try_to_pauli()):
-                negative_sign ^= pm.sign == Sign.MINUS
+            if isinstance(meas, PauliMeasurement) and n in (c_set | odd_c_set):
+                negative_sign ^= meas.sign == Sign.MINUS
 
         # One phase flip if measured on the YZ plane.
         negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
 
         return PauliString(x_corrections, y_corrections, z_corrections, negative_sign)
-
-    def __str__(self) -> str:
-        """Return a string representation of the Pauli string."""
-        pauli_str: list[str] = ["-" if self.negative_sign else "+"]
-        for p, nodes in zip(["X", "Y", "Z"], [self.x_nodes, self.y_nodes, self.z_nodes], strict=True):
-            pauli_str.extend(f"{p}{str(node).translate(SUBSCRIPTS)}" for node in nodes)
-
-        return "".join(pauli_str)
 
 
 @dataclass(frozen=True)
@@ -178,7 +168,7 @@ class PauliExponential:
 
         Parameters
         ----------
-        flow : PauliFlow[AbstractMeasurement]
+        flow : PauliFlow[Measurement]
             A focused Pauli flow. The resulting Pauli string is extracted from its correction function.
         node : int
             A measured node whose associated Pauli string is computed.
@@ -199,7 +189,7 @@ class PauliExponential:
         pauli_string = flow.pauli_strings[node]
         meas = flow.og.measurements[node]
         # We don't extract any rotation from Pauli Measurements. This is equivalent to setting the angle to 0.
-        angle = 0 if meas.try_to_pauli() else meas.downcast_bloch().angle / 2
+        angle = 0 if isinstance(meas, PauliMeasurement) else meas.downcast_bloch().angle / 2
 
         return PauliExponential(angle, pauli_string)
 
@@ -238,7 +228,7 @@ class PauliExponentialDAG:
 
         Parameters
         ----------
-        flow : PauliFlow[AbstractMeasurement]
+        flow : PauliFlow[Measurement]
             A focused Pauli flow.
 
         Returns
@@ -297,7 +287,7 @@ class CliffordMap:
 
         Parameters
         ----------
-        flow : PauliFlow[AbstractMeasurement]
+        flow : PauliFlow[Measurement]
             A focused Pauli flow.
 
         Returns
@@ -312,77 +302,9 @@ class CliffordMap:
         ----------
         [1] Simmons, 2021 (arXiv:2109.05654).
         """
-        x_map = CliffordMap.x_map_from_focused_flow(flow)
-        z_map = CliffordMap.z_map_from_focused_flow(flow)
+        z_map = clifford_z_map_from_focused_flow(flow)
+        x_map = clifford_x_map_from_focused_flow(flow)
         return CliffordMap(x_map, z_map, flow.og.input_nodes, flow.og.output_nodes)
-
-    @staticmethod
-    def z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, PauliString]:
-        """Extract a map between Z over the input nodes and Pauli strings over the output nodes from a focused Pauli flow.
-
-        If the input node is a measured node, the resulting Pauli string is given by the correction set. If the input node is also an output node, the resulting Pauli string is Z (representing the identity map).
-
-        Parameters
-        ----------
-        flow : PauliFlow[AbstractMeasurement]
-            A focused Pauli flow.
-
-        Returns
-        -------
-        dict[int, PauliString]
-            Map between input nodes (``keys``) and Pauli strings over the output nodes (``values``).
-
-        Notes
-        -----
-        See Definition 3.3 and Example C.13 in Ref. [1].
-
-        References
-        ----------
-        [1] Simmons, 2021 (arXiv:2109.05654).
-        """
-        z_map: dict[int, PauliString] = {}
-        iset = set(flow.og.input_nodes)
-
-        for node in iset.intersection(flow.og.measurements.keys()):
-            z_map[node] = flow.pauli_strings[node]
-
-        for node in iset.intersection(flow.og.output_nodes):
-            z_map[node] = PauliString(z_nodes=frozenset({node}))
-
-        return z_map
-
-    @staticmethod
-    def x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> Mapping[int, PauliString]:
-        """Extract a map between X over the input nodes and Pauli strings over the output nodes from a focused Pauli flow.
-
-        The resulting Pauli string is given by the correction set of a focused flow of the extended open graph.
-
-        Parameters
-        ----------
-        flow : PauliFlow[AbstractMeasurement]
-            A focused Pauli flow.
-
-        Returns
-        -------
-        dict[int, PauliString]
-            Map between input nodes (``keys``) and Pauli strings over the output nodes (``values``).
-
-        Notes
-        -----
-        See Definition 3.3 and Example C.13 in Ref. [1].
-
-        References
-        ----------
-        [1] Simmons, 2021 (arXiv:2109.05654).
-        """
-        og = flow.og
-        og_extended, ancillary_inputs_map = extend_input(og)
-        flow_extended = og_extended.extract_pauli_flow()
-
-        # It's better to call the `PauliString` constructor instead of the cached property `flow_extended.pauli_strings` since the latter will compute a `PauliString` for _every_ node in the correction function and we just need it for the input nodes.
-        x_map_ancillas = {node: PauliString.from_measured_node(flow_extended, node) for node in og_extended.input_nodes}
-
-        return {input_node: x_map_ancillas[ancillary_inputs_map[input_node]] for input_node in og.input_nodes}
 
 
 def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], dict[int, int]]:
@@ -418,7 +340,81 @@ def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], di
         new_input_nodes.append(fresh_node)
         fresh_node += 1
 
-    measurements = {**og.measurements, **dict.fromkeys(new_input_nodes, Measurement.XY(0))}
+    measurements = {**og.measurements, **dict.fromkeys(new_input_nodes, Measurement.X)}
 
     # We reverse the inputs order to match the order of initial inputs.
     return replace(og, graph=graph, input_nodes=new_input_nodes[::-1], measurements=measurements), ancillary_inputs_map
+
+
+def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, PauliString]:
+    """Extract a map between Z over the input nodes and Pauli strings over the output nodes from a focused Pauli flow.
+
+    If the input node is a measured node, the resulting Pauli string is given by the correction set. If the input node is also an output node, the resulting Pauli string is Z (representing the identity map).
+
+    Parameters
+    ----------
+    flow : PauliFlow[Measurement]
+        A focused Pauli flow.
+
+    Returns
+    -------
+    dict[int, PauliString]
+        Map between input nodes (``keys``) and Pauli strings over the output nodes (``values``).
+
+    Notes
+    -----
+    See Definition 3.3 and Example C.13 in Ref. [1].
+
+    References
+    ----------
+    [1] Simmons, 2021 (arXiv:2109.05654).
+    """
+    z_map: dict[int, PauliString] = {}
+    iset = set(flow.og.input_nodes)
+
+    for node in iset.intersection(flow.og.measurements.keys()):
+        z_map[node] = flow.pauli_strings[node]
+
+    for node in iset.intersection(flow.og.output_nodes):
+        z_map[node] = PauliString(z_nodes=frozenset({node}))
+
+    return z_map
+
+
+def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> Mapping[int, PauliString]:
+    """Extract a map between X over the input nodes and Pauli strings over the output nodes from a focused Pauli flow.
+
+    The resulting Pauli string is given by the correction set of a focused flow of the extended open graph.
+
+    Parameters
+    ----------
+    flow : PauliFlow[Measurement]
+        A focused Pauli flow.
+
+    Returns
+    -------
+    dict[int, PauliString]
+        Map between input nodes (``keys``) and Pauli strings over the output nodes (``values``).
+
+    Notes
+    -----
+    See Definition 3.3 and Example C.13 in Ref. [1].
+
+    References
+    ----------
+    [1] Simmons, 2021 (arXiv:2109.05654).
+    """
+    og = flow.og
+    og_extended, ancillary_inputs_map = extend_input(og)
+
+    # Here it's crucial to not infer Pauli measurements to avoid converting measurements inadvertently.
+    flow_extended = og_extended.extract_pauli_flow()
+
+    # `flow_extended` is guaranteed to be focused if `flow` is focused.
+    # This function assumes that `flow` is focused and does not check it.
+    # In the context for `CliffordMap.from_focused_flow` the check is performed when accessing the cached property `flow.pauli_strings` in the function `clifford_z_map_from_focused_flow`.
+
+    # It's better to call the `PauliString` constructor instead of the cached property `flow_extended.pauli_strings` since the latter will compute a `PauliString` for _every_ node in the correction function and we just need it for the input nodes.
+    x_map_ancillas = {node: PauliString.from_measured_node(flow_extended, node) for node in og_extended.input_nodes}
+
+    return {input_node: x_map_ancillas[ancillary_inputs_map[input_node]] for input_node in og.input_nodes}

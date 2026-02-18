@@ -190,8 +190,8 @@ def test_extend_input() -> None:
             2: Measurement.XY(0.2),
             3: Measurement.XY(0.3),
             4: Measurement.XY(0.4),
-            7: Measurement.XY(0),
-            8: Measurement.XY(0),
+            7: Measurement.X,
+            8: Measurement.X,
         },
     )
 
@@ -200,5 +200,5 @@ def test_extend_input() -> None:
     assert og_ext.isclose(og_ref)
     assert ancillary_inputs_map == {1: 8, 2: 7}
 
-    flow = og_ext.extract_pauli_flow()
+    flow = og_ext.infer_pauli_measurements().extract_pauli_flow()
     assert flow.is_focused()
