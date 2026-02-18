@@ -184,7 +184,6 @@ class DensityMatrix(DenseState):
         assert i < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
-
         rho_tensor = self.rho.reshape((2,) * self.nqubit * 2)
         rho_tensor = tensordot(tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.nqubit, 0))
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.nqubit))
@@ -194,7 +193,8 @@ class DensityMatrix(DenseState):
     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
         """Multi-qubit operation.
 
-        Args:
+        Parameters
+        ----------
         op : Matrix
             2^n*2^n matrix
         qargs : list of ints
@@ -464,7 +464,7 @@ class DensityMatrix(DenseState):
         variable : Parameter
             The symbolic expression to be replaced within the measurement angles.
         substitute : ExpressionOrSupportsFloat
-            The value or symbolic expression to substitute in place of `variable`.
+            The value or symbolic expression to substitute in place of variable.
 
         Returns
         -------
