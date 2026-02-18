@@ -58,7 +58,7 @@ extend-ignore = [
   "FIX",     # Fixme
   "PLR091",  # Too many XXX
   "PLR0904", # Too many public methods
-  "PLR2004", # Magic value comparison
+  "PLR2004", # Magic vavlue comparison
   "S101",    # assert
   "T20",     # print
   "TD",      # Todo
