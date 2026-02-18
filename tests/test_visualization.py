@@ -316,6 +316,7 @@ def test_format_measurement_label_bloch_xz() -> None:
 def test_format_measurement_label_pauli() -> None:
     pauli_x = Measurement.X
     label = GraphVisualizer._format_measurement_label(pauli_x)
+    assert label is not None
     assert label == str(pauli_x)
     assert "X" in label
 
@@ -323,5 +324,6 @@ def test_format_measurement_label_pauli() -> None:
 def test_format_measurement_label_pauli_minus() -> None:
     pauli_minus_z = PauliMeasurement(Axis.Z, Sign.MINUS)
     label = GraphVisualizer._format_measurement_label(pauli_minus_z)
+    assert label is not None
     assert label == str(pauli_minus_z)
     assert "-Z" in label
