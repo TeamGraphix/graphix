@@ -4,88 +4,51 @@ on: [push, pull_request]
 
 jobs:
   pydoclint:
-    name: pydoclint (report only)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install pydoclint
+        run: pip install pydoclint
+
+      - name: Run pydoclint
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install pydoclint -c requirements-dev.txt
+          echo "## pydoclint report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Run pydoclint and save raw output (allow violations)
-        continue-on-error: true
-        run: |
-          pydoclint . --style=numpy -v 2>&1 | tee pydoclint-report.txt || true
+          exit_code=0
+          for f in $(find graphix -name '*.py' | sort); do
+            output=$(pydoclint "$f" --style=numpy 2>&1) || true
 
-      - name: Produce JSON summary and fail only on parser crash
-        run: |
-          python - <<'PY'
-          import re, json, sys, pathlib
-          p = pathlib.Path('pydoclint-report.txt')
-          text = p.read_text(encoding='utf-8') if p.exists() else ''
-          # detect parser crash
-          crash = False
-          crash_tail = []
-          if 'Traceback' in text or 'ValueError' in text or 'Exception' in text:
-              crash = True
-              crash_tail = text.strip().splitlines()[-200:]
-          # parse violations: map file -> {code: count}
-          violations = {}
-          totals = {}
-          current_file = None
-          file_line_re = re.compile(r'^(?:\./)?([^\s].*\.py)\s*$')
-          violation_re = re.compile(r'^\s*(\d+):\s*(DOC\d{3}):')
-          for line in text.splitlines():
-              mfile = file_line_re.match(line)
-              if mfile:
-                  current_file = mfile.group(1)
-                  continue
-              mv = violation_re.match(line)
-              if mv and current_file:
-                  code = mv.group(2)
-                  violations.setdefault(current_file, {})
-                  violations[current_file].setdefault(code, 0)
-                  violations[current_file][code] += 1
-                  totals.setdefault(code, 0)
-                  totals[code] += 1
-          summary = {
-              "crash": crash,
-              "crash_tail": crash_tail,
-              "violations": violations,
-              "totals": totals,
-          }
-          with open('pydoclint-summary.json', 'w', encoding='utf-8') as fh:
-              json.dump(summary, fh, indent=2)
-          print("pydoclint summary written to pydoclint-summary.json")
-          if crash:
-              print("pydoclint parser crash detected; failing job.")
-              for l in crash_tail[-50:]:
-                  print(l)
-              sys.exit(1)
-          else:
-              print("No parser crash detected; keeping job green for lint violations.")
-          PY
+            # Check for actual parser crash (traceback in output)
+            if echo "$output" | grep -q "^Traceback"; then
+              echo "### ❌ CRASH: \`$f\`" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              echo "$output" | tail -20 >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              exit_code=2
+              continue
+            fi
 
-      - name: Upload pydoclint raw output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pydoclint-raw
-          path: pydoclint-report.txt
+            # Check for violations (lines matching "  123: DOC456:")
+            violations=$(echo "$output" | grep -E '^\s+[0-9]+: DOC[0-9]{3}:' || true)
+            if [ -n "$violations" ]; then
+              count=$(echo "$violations" | wc -l)
+              echo "<details><summary><code>$f</code> — $count violation(s)</summary>" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              echo "$violations" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
 
-      - name: Upload pydoclint JSON summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pydoclint-summary
-          path: pydoclint-summary.json
+          if [ "$exit_code" -eq 2 ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**Job failed due to parser crash(es). Fix the docstring(s) above.**" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "_Violations are reported but do not fail the job._" >> "$GITHUB_STEP_SUMMARY"
