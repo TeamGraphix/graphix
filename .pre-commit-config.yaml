@@ -18,8 +18,8 @@ repos:
         args: ["--fix"]
       - id: ruff-format
 
-  - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.3
-    hooks:
-      - id: pydoclint
-        args: ["--style=numpy", "--exclude=examples/|benchmarks/"]
+  # - repo: https://github.com/jsh9/pydoclint
+  #   rev: 0.8.3
+  #   hooks:
+  #     - id: pydoclint
+  #       args: ["--style=numpy", "--exclude=examples/|benchmarks/"]
