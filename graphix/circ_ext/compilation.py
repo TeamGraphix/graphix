@@ -209,6 +209,7 @@ class LadderPass(PauliExponentialDAGCompilationPass):
             q1, q2 = outputs_mapping.index(n1), outputs_mapping.index(n2)
             circuit.cnot(control=q1, target=q2)
 
+        q2 = outputs_mapping.index(nodes[-1])  # To avoid pyright `reportPossiblyUnboundVariable`
         circuit.rz(q2, angle)
 
         for n2, n1 in pairwise(nodes[::-1]):
