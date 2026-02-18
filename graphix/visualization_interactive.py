@@ -123,17 +123,16 @@ class InteractiveGraphVisualizer:
         points_per_unit = (ax_height_inches / y_range) * 72  # 72 pt/inch
         marker_diameter = self.marker_fill_ratio * points_per_unit
         self.node_size: int = max(30, int(marker_diameter**2))
-        self.label_fontsize: int = min(
-            self.max_label_fontsize, max(6, int(marker_diameter * self.label_size_ratio))
-        )
+        self.label_fontsize: int = min(self.max_label_fontsize, max(6, int(marker_diameter * self.label_size_ratio)))
 
         self.fig = plt.figure(figsize=(14, fig_height))
 
-        # Grid layout: command list (~28%), graph (~67%), bottom strip for controls
+        # Grid layout: command list (~27%), graph (~65%), bottom strips for controls
         self.ax_commands = self.fig.add_axes((0.02, 0.15, 0.27, ax_h_frac))
+        self.ax_cmd_scroll = self.fig.add_axes((0.02, 0.08, 0.27, 0.03))
         self.ax_graph = self.fig.add_axes((0.32, 0.15, 0.65, ax_h_frac))
-        self.ax_prev = self.fig.add_axes((0.30, 0.04, 0.03, 0.03))
-        self.ax_slider = self.fig.add_axes((0.34, 0.04, 0.55, 0.03))
+        self.ax_prev = self.fig.add_axes((0.32, 0.04, 0.03, 0.03))
+        self.ax_slider = self.fig.add_axes((0.40, 0.04, 0.48, 0.03))
         self.ax_next = self.fig.add_axes((0.90, 0.04, 0.03, 0.03))
 
         # Turn off axes frame for command list and graph
@@ -143,9 +142,12 @@ class InteractiveGraphVisualizer:
         # Interaction state
         self.current_step = 0
         self.total_steps = len(pattern)
+        self.command_window_size = 30
+        self._cmd_scroll_offset: int = 0  # first visible command index
 
         # Widget placeholders
         self.slider: Slider | None = None
+        self.cmd_scroll_slider: Slider | None = None
         self.btn_prev: Button | None = None
         self.btn_next: Button | None = None
 
@@ -190,9 +192,22 @@ class InteractiveGraphVisualizer:
         self._draw_graph()
         self._update(0)
 
-        # Slider config
+        # Step slider (horizontal, bottom)
         self.slider = Slider(self.ax_slider, "Step", 0, self.total_steps, valinit=0, valstep=1, color="lightblue")
         self.slider.on_changed(self._update)
+
+        # Command list scroll slider (horizontal, below command panel)
+        max_scroll = max(0, self.total_steps - self.command_window_size)
+        self.cmd_scroll_slider = Slider(
+            self.ax_cmd_scroll,
+            "",
+            0,
+            max(1, max_scroll),
+            valinit=0,
+            valstep=1,
+            color="#cccccc",
+        )
+        self.cmd_scroll_slider.on_changed(self._on_cmd_scroll)
 
         # Buttons config
         self.btn_prev = Button(self.ax_prev, "<")
@@ -214,13 +229,9 @@ class InteractiveGraphVisualizer:
         self.ax_commands.axis("off")
         self.ax_commands.set_title(f"Commands ({self.total_steps})", loc="left")
 
-        # Windowing logic to show relevant commands
-        window_size = 30
-        start = max(0, int(self.current_step) - window_size // 2)
-        end = min(self.total_steps, start + window_size)
-
-        if end == self.total_steps:
-            start = max(0, end - window_size)
+        # Use scroll offset for visible window
+        start = max(0, min(self._cmd_scroll_offset, self.total_steps - self.command_window_size))
+        end = min(self.total_steps, start + self.command_window_size)
 
         cmds: Any = self.pattern[start:end]  # type: ignore[index]
 
@@ -237,7 +248,7 @@ class InteractiveGraphVisualizer:
                 weight = "bold"
 
             # Position text from top to bottom
-            y_pos = 1.0 - (i + 1) * (1.0 / (window_size + 2))
+            y_pos = 1.0 - (i + 1) * (1.0 / (self.command_window_size + 2))
 
             text_obj = self.ax_commands.text(
                 0.05,
@@ -424,8 +435,22 @@ class InteractiveGraphVisualizer:
         step = int(val)
         if step != self.current_step:
             self.current_step = step
+            # Auto-scroll command list to keep current step visible
+            if step < self._cmd_scroll_offset or step >= self._cmd_scroll_offset + self.command_window_size:
+                new_offset = max(0, step - self.command_window_size // 2)
+                self._cmd_scroll_offset = new_offset
+                if self.cmd_scroll_slider is not None:
+                    self.cmd_scroll_slider.set_val(new_offset)
             self._draw_command_list()
             self._draw_graph()
+            self.fig.canvas.draw_idle()
+
+    def _on_cmd_scroll(self, val: float) -> None:
+        """Handle vertical scroll slider changes."""
+        new_offset = int(val)
+        if new_offset != self._cmd_scroll_offset:
+            self._cmd_scroll_offset = new_offset
+            self._draw_command_list()
             self.fig.canvas.draw_idle()
 
     def _prev_step(self, _event: Any) -> None:
