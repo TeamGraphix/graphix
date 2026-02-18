@@ -158,7 +158,7 @@ def vdot(a: Matrix, b: Matrix) -> ExpressionOrComplex:
 
     Returns
     -------
-    ExpressionOrFloat
+    ExpressionOrComplex
         Dot product.
 
     Raises
