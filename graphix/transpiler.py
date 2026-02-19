@@ -994,17 +994,12 @@ class Circuit:
         """Apply `f` to all angles that occur in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
-            # Use == for mypy
-            if (
-                instr.kind == InstructionKind.RZZ  # noqa: PLR1714
-                or instr.kind == InstructionKind.RX
-                or instr.kind == InstructionKind.RY
-                or instr.kind == InstructionKind.RZ
-            ):
-                new_instr = dataclasses.replace(instr, angle=f(instr.angle))
-                result.instruction.append(new_instr)
-            else:
-                result.instruction.append(instr)
+            match instr.kind:
+                case InstructionKind.RZZ | InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
+                    new_instr = dataclasses.replace(instr, angle=f(instr.angle))
+                    result.instruction.append(new_instr)
+                case _:
+                    result.instruction.append(instr)
         return result
 
     def is_parameterized(self) -> bool:
@@ -1017,15 +1012,12 @@ class Circuit:
         choose `sympy` here).
 
         """
-        # Use of `==` here for mypy
-        return any(
-            not isinstance(instr.angle, SupportsFloat)
-            for instr in self.instruction
-            if instr.kind == InstructionKind.RZZ  # noqa: PLR1714
-            or instr.kind == InstructionKind.RX
-            or instr.kind == InstructionKind.RY
-            or instr.kind == InstructionKind.RZ
-        )
+        for instr in self.instruction:
+            match instr.kind:
+                case InstructionKind.RZZ | InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
+                    if not isinstance(instr.angle, SupportsFloat):
+                        return True
+        return False
 
     def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""
@@ -1040,14 +1032,17 @@ class Circuit:
         circuit = Circuit(width=self.width)
         for instr in self.instruction:
             if instr.kind == InstructionKind.M:
-                if instr.axis == Axis.X:
-                    circuit.h(instr.target)
-                    circuit.m(instr.target, Axis.Z)
-                elif instr.axis == Axis.Y:
-                    circuit.rx(instr.target, ANGLE_PI / 2)
-                    circuit.m(instr.target, Axis.Z)
-                else:
-                    circuit.add(instr)
+                match instr.axis:
+                    case Axis.X:
+                        circuit.h(instr.target)
+                        circuit.m(instr.target, Axis.Z)
+                    case Axis.Y:
+                        circuit.rx(instr.target, ANGLE_PI / 2)
+                        circuit.m(instr.target, Axis.Z)
+                    case Axis.Z:
+                        circuit.add(instr)
+                    case _:
+                        assert_never(instr.axis)
             else:
                 circuit.add(instr)
         return circuit

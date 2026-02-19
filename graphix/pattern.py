@@ -1224,8 +1224,12 @@ class Pattern:
     def correction_commands(self) -> list[command.X | command.Z]:
         """Return the list of byproduct correction commands."""
         assert self.is_standard()
-        # Use of `==` here for mypy
-        return [seqi for seqi in self.__seq if seqi.kind == CommandKind.X or seqi.kind == CommandKind.Z]  # noqa: PLR1714
+        cmds = []
+        for cmd in self:
+            match cmd.kind:
+                case CommandKind.X | CommandKind.Z:
+                    cmds.append(cmd)
+        return cmds
 
     def parallelize_pattern(self) -> None:
         """Optimize the pattern to reduce the depth of the computation by gathering measurement commands that can be performed simultaneously.

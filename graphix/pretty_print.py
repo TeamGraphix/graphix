@@ -186,14 +186,11 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
                     arguments.append(str(cmd.measurement))
         elif cmd.kind == command.CommandKind.C:
             arguments.append(str(cmd.clifford))
-        # Use of `==` here for mypy
-        command_domain = (
-            cmd.domain
-            if cmd.kind == command.CommandKind.X  # noqa: PLR1714
-            or cmd.kind == command.CommandKind.Z
-            or cmd.kind == command.CommandKind.S
-            else None
-        )
+        match cmd.kind:
+            case command.CommandKind.X | command.CommandKind.Z | command.CommandKind.S:
+                command_domain: set[int] | None = cmd.domain
+            case _:
+                command_domain = None
         if output == OutputFormat.LaTeX:
             out.append(f"_{{{cmd.node}}}")
             if arguments:
