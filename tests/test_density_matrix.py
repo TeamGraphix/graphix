@@ -302,7 +302,7 @@ class TestDensityMatrix:
         edge = (0, 1)
         dm.cnot(edge)
         psi = psi.reshape((2, 2))
-        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
+        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix2 = np.outer(psi, psi.conj())
         assert np.allclose(dm.rho, expected_matrix2)
@@ -320,7 +320,7 @@ class TestDensityMatrix:
         edge = (u, v)
         dm.cnot(edge)
         psi = psi.reshape((2,) * n)
-        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
+        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix3 = np.outer(psi, psi.conj())
         assert np.allclose(dm.rho, expected_matrix3)
@@ -354,7 +354,7 @@ class TestDensityMatrix:
         dm.swap(edge)
         rho = dm.rho
         psi = psi.reshape((2, 2))
-        psi = np.tensordot(SWAP_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
+        psi = np.tensordot(SWAP_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix2 = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix2)
@@ -392,7 +392,7 @@ class TestDensityMatrix:
         dm.entangle(edge)
         rho = dm.rho
         psi = psi.reshape((2, 2))
-        psi = np.tensordot(CZ_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
+        psi = np.tensordot(CZ_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix2 = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix2)
@@ -443,7 +443,7 @@ class TestDensityMatrix:
         rho = dm.rho
 
         psi = psi.reshape((2,) * nqubits)
-        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((2, 3), edge))  # type: ignore[assignment]
+        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix)
@@ -468,7 +468,7 @@ class TestDensityMatrix:
         rho = dm.rho
 
         psi = psi.reshape((2,) * nqubits)
-        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((3, 4, 5), targets))  # type: ignore[assignment]
+        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((3, 4, 5), targets))
         psi = np.moveaxis(psi, (0, 1, 2), targets)
         expected_matrix = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix)
