@@ -4,10 +4,6 @@ pre-commit # for language-agnostic hooks
 pyright
 ruff==0.15.0
 
-# numpy and numba versions are sensible
-numpy==2.4.2
-numba==0.64.0
-
 # Stubs
 types-networkx==3.6.1.20251220
 types-psutil
