@@ -68,31 +68,35 @@ class Pauli(metaclass=_PauliMeta):
         """Return the eigenstate of the Pauli."""
         if binary not in {0, 1}:
             raise ValueError("b must be 0 or 1.")
-        if self.symbol == Axis.X:
-            return BasicStates.PLUS if binary == 0 else BasicStates.MINUS
-        if self.symbol == Axis.Y:
-            return BasicStates.PLUS_I if binary == 0 else BasicStates.MINUS_I
-        if self.symbol == Axis.Z:
-            return BasicStates.ZERO if binary == 0 else BasicStates.ONE
-        # Any state is eigenstate of the identity
-        if self.symbol == I:
-            return BasicStates.PLUS
-        typing_extensions.assert_never(self.symbol)
+        match self.symbol:
+            case Axis.X:
+                return BasicStates.PLUS if binary == 0 else BasicStates.MINUS
+            case Axis.Y:
+                return BasicStates.PLUS_I if binary == 0 else BasicStates.MINUS_I
+            case Axis.Z:
+                return BasicStates.ZERO if binary == 0 else BasicStates.ONE
+            case _:
+                # Any state is eigenstate of the identity
+                if self.symbol == I:
+                    return BasicStates.PLUS
+                typing_extensions.assert_never(self.symbol)
 
     def _repr_impl(self, prefix: str | None) -> str:
         """Return ``repr`` string with an optional prefix."""
         sym = self.symbol.name
         if prefix is not None:
             sym = f"{prefix}.{sym}"
-        if self.unit == ComplexUnit.ONE:
-            return sym
-        if self.unit == ComplexUnit.MINUS_ONE:
-            return f"-{sym}"
-        if self.unit == ComplexUnit.J:
-            return f"1j * {sym}"
-        if self.unit == ComplexUnit.MINUS_J:
-            return f"-1j * {sym}"
-        typing_extensions.assert_never(self.unit)
+        match self.unit:
+            case ComplexUnit.ONE:
+                return sym
+            case ComplexUnit.MINUS_ONE:
+                return f"-{sym}"
+            case ComplexUnit.J:
+                return f"1j * {sym}"
+            case ComplexUnit.MINUS_J:
+                return f"-1j * {sym}"
+            case _:
+                typing_extensions.assert_never(self.unit)
 
     def __repr__(self) -> str:
         """Return a string representation of the Pauli."""
@@ -112,19 +116,21 @@ class Pauli(metaclass=_PauliMeta):
         if lhs == rhs:
             return Pauli()
         lr = (lhs, rhs)
-        if lr == (Axis.X, Axis.Y):
-            return Pauli(Axis.Z, ComplexUnit.J)
-        if lr == (Axis.Y, Axis.X):
-            return Pauli(Axis.Z, ComplexUnit.MINUS_J)
-        if lr == (Axis.Y, Axis.Z):
-            return Pauli(Axis.X, ComplexUnit.J)
-        if lr == (Axis.Z, Axis.Y):
-            return Pauli(Axis.X, ComplexUnit.MINUS_J)
-        if lr == (Axis.Z, Axis.X):
-            return Pauli(Axis.Y, ComplexUnit.J)
-        if lr == (Axis.X, Axis.Z):
-            return Pauli(Axis.Y, ComplexUnit.MINUS_J)
-        raise RuntimeError("Unreachable.")  # pragma: no cover
+        match lr:
+            case (Axis.X, Axis.Y):
+                return Pauli(Axis.Z, ComplexUnit.J)
+            case (Axis.Y, Axis.X):
+                return Pauli(Axis.Z, ComplexUnit.MINUS_J)
+            case (Axis.Y, Axis.Z):
+                return Pauli(Axis.X, ComplexUnit.J)
+            case (Axis.Z, Axis.Y):
+                return Pauli(Axis.X, ComplexUnit.MINUS_J)
+            case (Axis.Z, Axis.X):
+                return Pauli(Axis.Y, ComplexUnit.J)
+            case (Axis.X, Axis.Z):
+                return Pauli(Axis.Y, ComplexUnit.MINUS_J)
+            case _:
+                raise RuntimeError("Unreachable.")  # pragma: no cover
 
     def __matmul__(self, other: Pauli) -> Pauli:
         """Return the product of two Paulis."""

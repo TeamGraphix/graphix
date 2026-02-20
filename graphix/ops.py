@@ -218,13 +218,15 @@ class Ops:
     @staticmethod
     def from_axis(axis: Axis) -> npt.NDArray[np.complex128]:
         """Return the matrix representation of an AXIS."""
-        if axis == Axis.X:
-            return Ops.X
-        if axis == Axis.Y:
-            return Ops.Y
-        if axis == Axis.Z:
-            return Ops.Z
-        assert_never(axis)
+        match axis:
+            case Axis.X:
+                return Ops.X
+            case Axis.Y:
+                return Ops.Y
+            case Axis.Z:
+                return Ops.Z
+            case _:
+                assert_never(axis)
 
     @staticmethod
     def from_ixyz(ixyz: IXYZ) -> npt.NDArray[np.complex128]:

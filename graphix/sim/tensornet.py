@@ -110,26 +110,27 @@ class MBQCTensorNet(TensorNetwork):
         """
         ind = gen_str()
         tag = str(index)
-        if state == "plus":
-            vec = BasicStates.PLUS.to_statevector()
-        elif state == "minus":
-            vec = BasicStates.MINUS.to_statevector()
-        elif state == "zero":
-            vec = BasicStates.ZERO.to_statevector()
-        elif state == "one":
-            vec = BasicStates.ONE.to_statevector()
-        elif state == "iplus":
-            vec = BasicStates.PLUS_I.to_statevector()
-        elif state == "iminus":
-            vec = BasicStates.MINUS_I.to_statevector()
-        else:
-            if isinstance(state, str):
-                raise TypeError(f"Unknown state: {state}")
-            if state.shape != (2,):
-                raise ValueError("state must be 2-element np.ndarray")
-            if not np.isclose(np.linalg.norm(state), 1):
-                raise ValueError("state must be normalized")
-            vec = state
+        match state:
+            case "plus":
+                vec = BasicStates.PLUS.to_statevector()
+            case "minus":
+                vec = BasicStates.MINUS.to_statevector()
+            case "zero":
+                vec = BasicStates.ZERO.to_statevector()
+            case "one":
+                vec = BasicStates.ONE.to_statevector()
+            case "iplus":
+                vec = BasicStates.PLUS_I.to_statevector()
+            case "iminus":
+                vec = BasicStates.MINUS_I.to_statevector()
+            case _:
+                if isinstance(state, str):
+                    raise TypeError(f"Unknown state: {state}")
+                if state.shape != (2,):
+                    raise ValueError("state must be 2-element np.ndarray")
+                if not np.isclose(np.linalg.norm(state), 1):
+                    raise ValueError("state must be normalized")
+                vec = state
         tsr = Tensor(vec, [ind], [tag, "Open"])
         self.add_tensor(tsr)
         self._dangling[tag] = ind
@@ -621,20 +622,21 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             raise NotImplementedError(msg)
         if branch_selector is None:
             branch_selector = RandomBranchSelector()
-        if graph_prep in {"parallel", "sequential"}:
-            pass
-        elif graph_prep == "opt":
-            graph_prep = "parallel"
-            warnings.warn(
-                f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'",
-                stacklevel=1,
-            )
-        elif graph_prep == "auto":
-            max_degree = pattern.compute_max_degree()
-            # "parallel" does not support non standard pattern
-            graph_prep = "sequential" if max_degree > 5 or not pattern.is_standard() else "parallel"
-        else:
-            raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
+        match graph_prep:
+            case "parallel" | "sequential":
+                pass
+            case "opt":
+                graph_prep = "parallel"
+                warnings.warn(
+                    f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'",
+                    stacklevel=1,
+                )
+            case "auto":
+                max_degree = pattern.compute_max_degree()
+                # "parallel" does not support non standard pattern
+                graph_prep = "sequential" if max_degree > 5 or not pattern.is_standard() else "parallel"
+            case _:
+                raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
         results = deepcopy(pattern.results)
         if graph_prep == "parallel":
             if not pattern.is_standard():
@@ -690,10 +692,11 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             raise NotImplementedError(
                 "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167)."
             )
-        if self.graph_prep == "sequential":
-            self.state.add_qubits(nodes)
-        elif self.graph_prep == "opt":
-            pass
+        match self.graph_prep:
+            case "sequential":
+                self.state.add_qubits(nodes)
+            case "opt":
+                pass
 
     @override
     def entangle_nodes(self, edge: tuple[int, int]) -> None:
@@ -704,33 +707,34 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         edge : tuple of int
             edge specifies two target nodes of the CZ gate.
         """
-        if self.graph_prep == "sequential":
-            old_inds = [self.state._dangling[str(node)] for node in edge]
-            tids = self.state._get_tids_from_inds(old_inds, which="any")
-            tensors = [self.state.tensor_map[tid] for tid in tids]
-            new_inds = [gen_str() for _ in range(3)]
+        match self.graph_prep:
+            case "sequential":
+                old_inds = [self.state._dangling[str(node)] for node in edge]
+                tids = self.state._get_tids_from_inds(old_inds, which="any")
+                tensors = [self.state.tensor_map[tid] for tid in tids]
+                new_inds = [gen_str() for _ in range(3)]
 
-            # retag dummy indices
-            for i in range(2):
-                tensors[i].retag({"Open": "Close"}, inplace=True)
-                self.state._dangling[str(edge[i])] = new_inds[i]
-            cz_tn = TensorNetwork(
-                [
-                    qtn.Tensor(
-                        self._decomposed_cz[0],
-                        [new_inds[0], old_inds[0], new_inds[2]],
-                        [str(edge[0]), "CZ", "Open"],
-                    ),
-                    qtn.Tensor(
-                        self._decomposed_cz[1],
-                        [new_inds[2], new_inds[1], old_inds[1]],
-                        [str(edge[1]), "CZ", "Open"],
-                    ),
-                ]
-            )
-            self.state.add_tensor_network(cz_tn)
-        elif self.graph_prep == "opt":
-            pass
+                # retag dummy indices
+                for i in range(2):
+                    tensors[i].retag({"Open": "Close"}, inplace=True)
+                    self.state._dangling[str(edge[i])] = new_inds[i]
+                cz_tn = TensorNetwork(
+                    [
+                        qtn.Tensor(
+                            self._decomposed_cz[0],
+                            [new_inds[0], old_inds[0], new_inds[2]],
+                            [str(edge[0]), "CZ", "Open"],
+                        ),
+                        qtn.Tensor(
+                            self._decomposed_cz[1],
+                            [new_inds[2], new_inds[1], old_inds[1]],
+                            [str(edge[1]), "CZ", "Open"],
+                        ),
+                    ]
+                )
+                self.state.add_tensor_network(cz_tn)
+            case "opt":
+                pass
 
     @override
     def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:

@@ -335,46 +335,54 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
     @property
     def axes(self) -> tuple[Axis, Axis]:
         """Return the pair of axes that carry the plane."""
-        if self == Plane.XY:
-            return (Axis.X, Axis.Y)
-        if self == Plane.YZ:
-            return (Axis.Y, Axis.Z)
-        if self == Plane.XZ:
-            return (Axis.X, Axis.Z)
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return (Axis.X, Axis.Y)
+            case Plane.YZ:
+                return (Axis.Y, Axis.Z)
+            case Plane.XZ:
+                return (Axis.X, Axis.Z)
+            case _:
+                typing_extensions.assert_never(self)
 
     @property
     def orth(self) -> Axis:
         """Return the axis orthogonal to the plane."""
-        if self == Plane.XY:
-            return Axis.Z
-        if self == Plane.YZ:
-            return Axis.X
-        if self == Plane.XZ:
-            return Axis.Y
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return Axis.Z
+            case Plane.YZ:
+                return Axis.X
+            case Plane.XZ:
+                return Axis.Y
+            case _:
+                typing_extensions.assert_never(self)
 
     @property
     def cos(self) -> Axis:
         """Return the axis of the plane that conventionally carries the cos."""
-        if self == Plane.XY:
-            return Axis.X
-        if self == Plane.YZ:
-            return Axis.Z  # former convention was Y
-        if self == Plane.XZ:
-            return Axis.Z  # former convention was X
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return Axis.X
+            case Plane.YZ:
+                return Axis.Z  # former convention was Y
+            case Plane.XZ:
+                return Axis.Z  # former convention was X
+            case _:
+                typing_extensions.assert_never(self)
 
     @property
     def sin(self) -> Axis:
         """Return the axis of the plane that conventionally carries the sin."""
-        if self == Plane.XY:
-            return Axis.Y
-        if self == Plane.YZ:
-            return Axis.Y  # former convention was Z
-        if self == Plane.XZ:
-            return Axis.X  # former convention was Z
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return Axis.Y
+            case Plane.YZ:
+                return Axis.Y  # former convention was Z
+            case Plane.XZ:
+                return Axis.X  # former convention was Z
+            case _:
+                typing_extensions.assert_never(self)
 
     @overload
     def polar(self, angle: Angle) -> tuple[float, float, float]: ...
@@ -389,13 +397,15 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
         pp = (self.cos, self.sin)
         # Angles are in units of π whereas `cos_sin` expects radians.
         cos, sin = cos_sin(angle_to_rad(angle))
-        if pp == (Axis.X, Axis.Y):
-            return (cos, sin, 0)
-        if pp == (Axis.Z, Axis.Y):
-            return (0, sin, cos)
-        if pp == (Axis.Z, Axis.X):
-            return (sin, 0, cos)
-        raise RuntimeError("Unreachable.")  # pragma: no cover
+        match pp:
+            case (Axis.X, Axis.Y):
+                return (cos, sin, 0)
+            case (Axis.Z, Axis.Y):
+                return (0, sin, cos)
+            case (Axis.Z, Axis.X):
+                return (sin, 0, cos)
+            case _:
+                raise RuntimeError("Unreachable.")  # pragma: no cover
 
     @staticmethod
     def from_axes(a: Axis, b: Axis) -> Plane:
