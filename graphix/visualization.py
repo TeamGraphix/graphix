@@ -281,7 +281,13 @@ class GraphVisualizer:
         fontsize = self.get_label_fontsize(max(self.og.graph.nodes(), default=0))
         nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize)
 
-    def draw_node_labels(self, ax: Axes, pos: Mapping[int, _Point]) -> None:
+    def draw_node_labels(
+        self,
+        ax: Axes,
+        pos: Mapping[int, _Point],
+        extra_labels: Mapping[int, str] | None = None,
+        fontsize: int | None = None,
+    ) -> None:
         """Draw node labels onto a given axes object.
 
         This is an axis-aware counterpart of :meth:`_draw_labels` intended for
@@ -294,10 +300,18 @@ class GraphVisualizer:
             The matplotlib axes to draw onto.
         pos : Mapping[int, tuple[float, float]]
             Dictionary mapping each node to its ``(x, y)`` position.
+        extra_labels : Mapping[int, str] or None, optional
+            If provided, appends the corresponding string below the node number.
+        fontsize : int or None, optional
+            Font size for the labels. If ``None``, it is computed automatically.
         """
-        fontsize = self.get_label_fontsize(max(self.og.graph.nodes(), default=0))
+        if fontsize is None:
+            fontsize = self.get_label_fontsize(max(self.og.graph.nodes(), default=0))
         for node, (x, y) in pos.items():
-            ax.text(x, y, str(node), ha="center", va="center", fontsize=fontsize, zorder=3)
+            label_text = str(node)
+            if extra_labels is not None and node in extra_labels:
+                label_text += f"\n{extra_labels[node]}"
+            ax.text(x, y, label_text, ha="center", va="center", fontsize=fontsize, zorder=3)
 
     @staticmethod
     def get_label_fontsize(max_node: int, base_size: int = 12) -> int:
@@ -359,6 +373,8 @@ class GraphVisualizer:
         show_pauli_measurement: bool = False,
         node_facecolors: Mapping[int, str] | None = None,
         node_edgecolors: Mapping[int, str] | None = None,
+        node_alpha: Mapping[int, float] | None = None,
+        node_linewidths: Mapping[int, float] | None = None,
         node_size: int = 350,
     ) -> None:
         """Draw nodes onto a given axes object, coloured by their role.
@@ -374,8 +390,8 @@ class GraphVisualizer:
           black border, light-blue fill.
         * All other nodes: black border, white fill.
 
-        When *node_facecolors* or *node_edgecolors* are provided, their values
-        override the role-based defaults for the corresponding nodes.
+        When *node_facecolors*, *node_edgecolors*, or *node_alpha* are provided,
+        their values override the role-based defaults for the corresponding nodes.
 
         Parameters
         ----------
@@ -387,10 +403,13 @@ class GraphVisualizer:
             If ``True``, nodes with Pauli measurement angles are coloured
             light blue. Defaults to ``False``.
         node_facecolors : Mapping[int, str] or None, optional
-            Per-node fill colour overrides.  When a node appears in this
-            mapping its value is used instead of the role-based default.
+            Per-node fill colour overrides.
         node_edgecolors : Mapping[int, str] or None, optional
             Per-node border colour overrides.
+        node_alpha : Mapping[int, float] or None, optional
+            Per-node opacity overrides. (Default role alpha is 1.0).
+        node_linewidths : Mapping[int, float] or None, optional
+            Per-node line width overrides for the marker edge.
         node_size : int, optional
             Marker size for :meth:`~matplotlib.axes.Axes.scatter`.
             Defaults to ``350``.
@@ -400,6 +419,7 @@ class GraphVisualizer:
                 continue
             edgecolor = "black"
             facecolor = "white"
+            alpha = 1.0
             if node in self.og.input_nodes:
                 edgecolor = "red"
             if node in self.og.output_nodes:
@@ -411,7 +431,22 @@ class GraphVisualizer:
                 facecolor = node_facecolors[node]
             if node_edgecolors is not None and node in node_edgecolors:
                 edgecolor = node_edgecolors[node]
-            ax.scatter(*pos[node], edgecolors=edgecolor, facecolors=facecolor, s=node_size, zorder=2, linewidths=1.5)
+            if node_alpha is not None and node in node_alpha:
+                alpha = node_alpha[node]
+
+            lw = 1.5
+            if node_linewidths is not None and node in node_linewidths:
+                lw = node_linewidths[node]
+
+            ax.scatter(
+                *pos[node],
+                edgecolors=edgecolor,
+                facecolors=facecolor,
+                s=node_size,
+                zorder=2,
+                linewidths=lw,
+                alpha=alpha,
+            )
 
     def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> None:
         """
@@ -502,49 +537,13 @@ class GraphVisualizer:
 
         plt.figure(figsize=figsize)
 
-        for edge, path in edge_path.items():
-            if len(path) == 2:
-                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
-            else:
-                curve = self._bezier_curve_linspace(path)
-                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
+        ax = plt.gca()
 
         if arrow_path is not None:
-            for arrow, path in arrow_path.items():
-                if corrections is None:
-                    color = "k"
-                else:
-                    xflow, zflow = corrections
-                    if arrow[1] not in xflow.get(arrow[0], set()):
-                        color = "tab:green"
-                    elif arrow[1] not in zflow.get(arrow[0], set()):
-                        color = "tab:red"
-                    else:
-                        color = "tab:brown"
-                if arrow[0] == arrow[1]:  # self loop
-                    if show_loop:
-                        curve = self._bezier_curve_linspace(path)
-                        plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
-                        plt.annotate(
-                            "",
-                            xy=curve[-1],
-                            xytext=curve[-2],
-                            arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
-                        )
-                elif len(path) == 2:  # straight line
-                    nx.draw_networkx_edges(
-                        self.og.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
-                    )
-                else:
-                    new_path = GraphVisualizer._shorten_path(path)
-                    curve = self._bezier_curve_linspace(new_path)
-                    plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
-                    plt.annotate(
-                        "",
-                        xy=curve[-1],
-                        xytext=curve[-2],
-                        arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
-                    )
+            self.draw_edges_with_routing(ax, edge_path)
+            self.draw_flow_arrows(ax, pos, arrow_path, corrections, show_loop)
+        else:
+            self.draw_edges_with_routing(ax, edge_path)
 
         self.__draw_nodes_role(pos, show_pauli_measurement)
 
@@ -564,21 +563,13 @@ class GraphVisualizer:
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
             plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
 
-        x_min = min((pos[node][0] for node in self.og.graph.nodes()), default=0)  # Get the minimum x coordinate
-        x_max = max((pos[node][0] for node in self.og.graph.nodes()), default=0)  # Get the maximum x coordinate
-        y_min = min((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the minimum y coordinate
-        y_max = max((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the maximum y coordinate
+        x_min = min((pos[node][0] for node in self.og.graph.nodes()), default=0)
+        x_max = max((pos[node][0] for node in self.og.graph.nodes()), default=0)
+        y_min = min((pos[node][1] for node in self.og.graph.nodes()), default=0)
+        y_max = max((pos[node][1] for node in self.og.graph.nodes()), default=0)
 
-        if l_k is not None and l_k:
-            # Draw the vertical lines to separate different layers
-            for layer in range(min(l_k.values()), max(l_k.values())):
-                plt.axvline(
-                    x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
-                )  # Draw line between layers
-            for layer in range(min(l_k.values()), max(l_k.values()) + 1):
-                plt.text(
-                    layer * node_distance[0], y_min - 0.5, f"L: {max(l_k.values()) - layer}", ha="center", va="top"
-                )  # Add layer label at bottom
+        if l_k is not None:
+            self.draw_layer_separators(ax, pos, l_k, node_distance)
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
@@ -634,6 +625,162 @@ class GraphVisualizer:
             width = (max(l_k.values(), default=0) + 1) * 0.8
         height = len({pos[node][1] for node in self.og.graph.nodes()}) if pos is not None else len(self.og.output_nodes)
         return (width * node_distance[0], height * node_distance[1])
+
+    def draw_edges_with_routing(
+        self,
+        ax: Axes,
+        edge_path: Mapping[_Edge, Sequence[_Point]],
+        edge_subset: Iterable[_Edge] | None = None,
+        edge_colors: Mapping[_Edge, str] | None = None,
+        edge_linewidths: Mapping[_Edge, float] | None = None,
+    ) -> None:
+        """Draw graph edges along provided routed paths.
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib axes to draw onto.
+        edge_path : Mapping[_Edge, Sequence[_Point]]
+            Mapping from edge to its routed path (from ``get_layout``).
+        edge_subset : Iterable[tuple[int, int]] or None, optional
+            If provided, only these edges are drawn. When ``None``, all provided
+            edges in ``edge_path`` are drawn.
+        edge_colors : Mapping[tuple[int, int], str] or None, optional
+            Per-edge colour overrides. Default is black (k).
+        edge_linewidths : Mapping[tuple[int, int], float] or None, optional
+            Per-edge linewidth overrides. Default is 1.0.
+        """
+        allowed_edges = (
+            {(min(e), max(e)) for e in self.og.graph.edges()}
+            if edge_subset is None
+            else {(min(e), max(e)) for e in edge_subset}
+        )
+        for edge, path in edge_path.items():
+            if (min(edge), max(edge)) not in allowed_edges:
+                continue
+
+            e_sorted = (min(edge), max(edge))
+            color = "k"
+            lw = 1.0
+            if edge_colors is not None and e_sorted in edge_colors:
+                color = edge_colors[e_sorted]
+            if edge_linewidths is not None and e_sorted in edge_linewidths:
+                lw = edge_linewidths[e_sorted]
+
+            if len(path) == 2:
+                ax.plot(
+                    [path[0][0], path[1][0]],
+                    [path[0][1], path[1][1]],
+                    color=color,
+                    linewidth=lw,
+                    linestyle="--",
+                    alpha=0.7,
+                )
+            else:
+                curve = self._bezier_curve_linspace(path)
+                ax.plot(curve[:, 0], curve[:, 1], color=color, linewidth=lw, linestyle="--", alpha=0.7)
+
+    def draw_flow_arrows(
+        self,
+        ax: Axes,
+        pos: Mapping[int, _Point],
+        arrow_path: Mapping[_Edge, Sequence[_Point]],
+        corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None = None,
+        show_loop: bool = True,
+        arrow_subset: Iterable[_Edge] | None = None,
+    ) -> None:
+        """Draw flow/gflow arrows along routed paths.
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib axes to draw onto.
+        pos : Mapping[int, tuple[float, float]]
+            Dictionary mapping each node to its ``(x, y)`` position.
+        arrow_path : Mapping[_Edge, Sequence[_Point]]
+            Mapping from edge to its routed path (from ``get_layout``).
+        corrections : tuple or None
+            X and Z corrections, used to color the arrows.
+        show_loop : bool, optional
+            Whether to show loops for graphs with gflow. Defaults to True.
+        arrow_subset : Iterable[tuple[int, int]] or None, optional
+            If provided, only these arrows are drawn.
+        """
+        if arrow_subset is not None:
+            allowed = {(min(e), max(e)) for e in arrow_subset}
+            arrows_to_draw = [a for a in arrow_path if (min(a), max(a)) in allowed]
+        else:
+            arrows_to_draw = list(arrow_path.keys())
+
+        for arrow in arrows_to_draw:
+            if arrow not in arrow_path:
+                continue
+            path = arrow_path[arrow]
+            if corrections is None:
+                color = "k"
+            else:
+                xflow, zflow = corrections
+                if arrow[1] not in xflow.get(arrow[0], set()):
+                    color = "tab:green"
+                elif arrow[1] not in zflow.get(arrow[0], set()):
+                    color = "tab:red"
+                else:
+                    color = "tab:brown"
+            if arrow[0] == arrow[1]:  # self loop
+                if show_loop:
+                    curve = self._bezier_curve_linspace(path)
+                    ax.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
+                    ax.annotate(
+                        "",
+                        xy=curve[-1],
+                        xytext=curve[-2],
+                        arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
+                    )
+            elif len(path) == 2:  # straight line
+                # nx draws standard arrows
+                nx.draw_networkx_edges(
+                    self.og.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True, ax=ax
+                )
+            else:
+                new_path = GraphVisualizer._shorten_path(path)
+                curve = self._bezier_curve_linspace(new_path)
+                ax.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
+                ax.annotate(
+                    "",
+                    xy=curve[-1],
+                    xytext=curve[-2],
+                    arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
+                )
+
+    @staticmethod
+    def draw_layer_separators(
+        ax: Axes,
+        pos: Mapping[int, _Point],
+        l_k: Mapping[int, int],
+        node_distance: tuple[float, float] = (1, 1),
+    ) -> None:
+        """Draw vertical dashed lines and labels to separate graph layers.
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib axes to draw onto.
+        pos : Mapping[int, tuple[float, float]]
+            Dictionary mapping each node to its ``(x, y)`` position.
+        l_k : Mapping[int, int]
+            Mapping from node to its layer index.
+        node_distance : tuple[float, float], optional
+            Distance scaling for the positions.
+        """
+        if not l_k:
+            return
+        y_vals = [p[1] for p in pos.values()]
+        y_min = min(y_vals) if y_vals else 0
+        min_l, max_l = min(l_k.values()), max(l_k.values())
+        for layer in range(min_l, max_l):
+            ax.axvline(x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5)
+        for layer in range(min_l, max_l + 1):
+            ax.text(layer * node_distance[0], y_min - 0.5, f"L: {max_l - layer}", ha="center", va="top")
 
     def place_edge_paths(
         self, flow: Mapping[int, AbstractSet[int]], pos: Mapping[int, _Point]

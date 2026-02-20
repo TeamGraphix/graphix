@@ -45,7 +45,8 @@ class TestInteractiveGraphVisualizer:
         # Mock layout generation
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         viz = InteractiveGraphVisualizer(pattern)
 
@@ -91,7 +92,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         # Mock simulation backend
         backend_instance = mock_backend.return_value
@@ -124,8 +126,8 @@ class TestInteractiveGraphVisualizer:
         viz.slider.val = len(pattern)
         viz._update(len(pattern))
 
-        # Labels are drawn locally: check that text was called
-        assert viz.ax_graph.text.call_count > 0
+        # Labels are delegated: check that draw_node_labels was called
+        mock_vis_obj.draw_node_labels.assert_called()
 
     def test_update_graph_state_simulation_disabled(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test graph state update with simulation disabled."""
@@ -135,7 +137,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         viz = InteractiveGraphVisualizer(pattern, enable_simulation=False)
 
@@ -160,7 +163,7 @@ class TestInteractiveGraphVisualizer:
 
         # Ensure text is drawn (commands, node labels)
         assert viz.ax_commands.text.call_count > 0
-        assert viz.ax_graph.text.call_count > 0
+        mock_vis_obj.draw_node_labels.assert_called()
 
     def test_measurement_result_label_format(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test that measurement result labels use the 'm=' prefix to avoid ambiguity."""
@@ -171,7 +174,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         backend_instance = mock_backend.return_value
         backend_instance.measure.return_value = 1
@@ -184,9 +188,10 @@ class TestInteractiveGraphVisualizer:
         # Execute all commands so that nodes 0 and 1 are measured
         viz._update(len(pattern))
 
-        # Collect all text calls on ax_graph
-        text_calls = viz.ax_graph.text.call_args_list
-        label_strings = [str(call.args[2]) if len(call.args) >= 3 else "" for call in text_calls]
+        # Collect the call to draw_node_labels
+        kwargs = mock_vis_obj.draw_node_labels.call_args.kwargs
+        extra_labels = kwargs.get("extra_labels", {})
+        label_strings = list(extra_labels.values())
 
         # At least one label should contain 'm=' (the measurement result prefix)
         assert any("m=" in label for label in label_strings), (
@@ -205,7 +210,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         viz = InteractiveGraphVisualizer(pattern)
         # Mock slider
@@ -243,7 +249,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         viz = InteractiveGraphVisualizer(pattern)
         viz.visualize()
@@ -265,7 +272,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         viz = InteractiveGraphVisualizer(pattern)
         viz.slider = MagicMock()
@@ -326,7 +334,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         viz = InteractiveGraphVisualizer(pattern)
         viz.ax_graph = MagicMock()
@@ -348,7 +357,8 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
-        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+        mock_place_paths = MagicMock(return_value=({}, {}))
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
         viz = InteractiveGraphVisualizer(pattern)
         viz.ax_graph = MagicMock()

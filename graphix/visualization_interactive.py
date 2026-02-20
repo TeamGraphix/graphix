@@ -127,10 +127,9 @@ class InteractiveGraphVisualizer:
 
         self.fig = plt.figure(figsize=(14, fig_height))
 
-        # Grid layout: command list (~27%), graph (~65%), bottom strips for controls
-        self.ax_commands = self.fig.add_axes((0.02, 0.15, 0.27, ax_h_frac))
-        self.ax_cmd_scroll = self.fig.add_axes((0.02, 0.08, 0.27, 0.03))
-        self.ax_graph = self.fig.add_axes((0.32, 0.15, 0.65, ax_h_frac))
+        # Grid layout
+        self.ax_commands = self.fig.add_axes((0.02, 0.88, 0.96, 0.10))
+        self.ax_graph = self.fig.add_axes((0.02, 0.12, 0.96, 0.72))
         self.ax_prev = self.fig.add_axes((0.32, 0.04, 0.03, 0.03))
         self.ax_slider = self.fig.add_axes((0.40, 0.04, 0.48, 0.03))
         self.ax_next = self.fig.add_axes((0.90, 0.04, 0.03, 0.03))
@@ -142,12 +141,10 @@ class InteractiveGraphVisualizer:
         # Interaction state
         self.current_step = 0
         self.total_steps = len(pattern)
-        self.command_window_size = 30
-        self._cmd_scroll_offset: int = 0  # first visible command index
+        self.command_window_size = 3
 
         # Widget placeholders
         self.slider: Slider | None = None
-        self.cmd_scroll_slider: Slider | None = None
         self.btn_prev: Button | None = None
         self.btn_next: Button | None = None
 
@@ -175,7 +172,7 @@ class InteractiveGraphVisualizer:
         og = og.infer_pauli_measurements()
 
         vis = GraphVisualizer(og)
-        pos_mapping, _, _ = vis.get_layout()
+        pos_mapping, self._place_paths, self._l_k = vis.get_layout()
         self.node_positions = dict(pos_mapping)
 
         # Apply user-provided scaling
@@ -196,19 +193,6 @@ class InteractiveGraphVisualizer:
         self.slider = Slider(self.ax_slider, "Step", 0, self.total_steps, valinit=0, valstep=1, color="lightblue")
         self.slider.on_changed(self._update)
 
-        # Command list scroll slider (horizontal, below command panel)
-        max_scroll = max(0, self.total_steps - self.command_window_size)
-        self.cmd_scroll_slider = Slider(
-            self.ax_cmd_scroll,
-            "",
-            0,
-            max(1, max_scroll),
-            valinit=0,
-            valstep=1,
-            color="#cccccc",
-        )
-        self.cmd_scroll_slider.on_changed(self._on_cmd_scroll)
-
         # Buttons config
         self.btn_prev = Button(self.ax_prev, "<")
         self.btn_prev.on_clicked(self._prev_step)
@@ -227,11 +211,11 @@ class InteractiveGraphVisualizer:
     def _draw_command_list(self) -> None:
         self.ax_commands.clear()
         self.ax_commands.axis("off")
-        self.ax_commands.set_title(f"Commands ({self.total_steps})", loc="left")
 
-        # Use scroll offset for visible window
-        start = max(0, min(self._cmd_scroll_offset, self.total_steps - self.command_window_size))
-        end = min(self.total_steps, start + self.command_window_size)
+        # Use current step as center of the visible window
+        half_window = self.command_window_size // 2
+        start = max(0, self.current_step - half_window)
+        end = min(self.total_steps, self.current_step + half_window + 1)
 
         cmds: Any = self.pattern[start:end]  # type: ignore[index]
 
@@ -239,33 +223,36 @@ class InteractiveGraphVisualizer:
             abs_idx = start + i
             text_str = f"{abs_idx}: {command_to_str(cmd, OutputFormat.Unicode)}"
 
-            color = "black"
+            color = "gray"
             weight = "normal"
-            if abs_idx < self.current_step:
-                color = "green"
-            elif abs_idx == self.current_step:
-                color = "red"
+            fontsize = 10
+            if abs_idx == self.current_step:
+                color = "black"
                 weight = "bold"
+                fontsize = 12
 
-            # Position text from top to bottom
-            y_pos = 1.0 - (i + 1) * (1.0 / (self.command_window_size + 2))
+            # Vertical placement, relative to center (0.5)
+            offset = abs_idx - self.current_step
+            y_pos = 0.5 - offset * 0.40
 
-            text_obj = self.ax_commands.text(
-                0.05,
-                y_pos,
-                text_str,
-                color=color,
-                weight=weight,
-                fontsize=10,
-                transform=self.ax_commands.transAxes,
-                picker=True,
-            )
-            # Store index with artist for picking
-            text_obj.index = abs_idx  # type: ignore[attr-defined]
+            if -0.1 <= y_pos <= 1.1:
+                text_obj = self.ax_commands.text(
+                    0.5,
+                    y_pos,
+                    text_str,
+                    color=color,
+                    weight=weight,
+                    fontsize=fontsize,
+                    transform=self.ax_commands.transAxes,
+                    ha="center",
+                    va="center",
+                    picker=True,
+                )
+                text_obj.index = abs_idx  # type: ignore[attr-defined]
 
     def _update_graph_state(
         self, step: int
-    ) -> tuple[set[int], set[int], list[tuple[int, ...]], dict[int, set[str]], dict[int, int]]:
+    ) -> tuple[set[int], set[int], list[tuple[int, int]], dict[int, set[str]], dict[int, int]]:
         """Calculate the graph state by simulating the pattern up to *step*.
 
         Parameters
@@ -279,7 +266,7 @@ class InteractiveGraphVisualizer:
             Nodes that have been initialised but not yet measured.
         measured_nodes : set[int]
             Nodes that have been measured.
-        active_edges : list[tuple[int, ...]]
+        active_edges : list[tuple[int, int]]
             Edges currently present in the graph (both endpoints active).
         corrections : dict[int, set[str]]
             Accumulated byproduct corrections per node (``"X"`` and/or ``"Z"``).
@@ -335,7 +322,7 @@ class InteractiveGraphVisualizer:
 
         # ---- Topological tracking (independent of simulation) ----
         current_active: set[int] = set(self.pattern.input_nodes)
-        current_edges: set[tuple[int, ...]] = set()
+        current_edges: set[tuple[int, int]] = set()
         current_measured: set[int] = set()
 
         for i in range(step):
@@ -345,7 +332,7 @@ class InteractiveGraphVisualizer:
             elif cmd.kind == CommandKind.E:
                 u, v = cmd.nodes
                 if u in current_active and v in current_active:
-                    current_edges.add(tuple(sorted((u, v))))
+                    current_edges.add((min(u, v), max(u, v)))
             elif cmd.kind == CommandKind.M and cmd.node in current_active:
                 current_active.remove(cmd.node)
                 current_measured.add(cmd.node)
@@ -372,10 +359,21 @@ class InteractiveGraphVisualizer:
                 self.current_step
             )
 
-            # ---- Edges (delegate to GraphVisualizer) ----
+            # Highlight logic
+            highlight_nodes: set[int] = set()
+            highlight_edges: set[tuple[int, int]] = set()
+            if self.current_step > 0:
+                last_cmd = self.pattern[self.current_step - 1]
+                if last_cmd.kind in {CommandKind.N, CommandKind.M, CommandKind.C, CommandKind.X, CommandKind.Z}:
+                    highlight_nodes.add(last_cmd.node)  # type: ignore[union-attr]
+                elif last_cmd.kind == CommandKind.E:
+                    highlight_nodes.update(last_cmd.nodes)
+                    highlight_edges.add(last_cmd.nodes)
+
+            # Edges
             self._graph_visualizer.draw_edges(self.ax_graph, self.node_positions, edge_subset=active_edges)
 
-            # ---- Axis limits (set before drawing nodes so geometry is known) ----
+            # Axis limits (set before drawing nodes so geometry is known)
             xs = [p[0] for p in self.node_positions.values()]
             ys = [p[1] for p in self.node_positions.values()]
             x_margin = (max(xs) - min(xs)) * 0.08 + 0.5
@@ -383,47 +381,79 @@ class InteractiveGraphVisualizer:
             self.ax_graph.set_xlim(min(xs) - x_margin, max(xs) + x_margin)
             self.ax_graph.set_ylim(min(ys) - y_margin, max(ys) + y_margin)
 
-            # ---- Nodes (delegate to GraphVisualizer with colour overrides) ----
+            # Layer separators
+            if self._l_k is not None:
+                self._graph_visualizer.draw_layer_separators(
+                    self.ax_graph, self.node_positions, self._l_k, self.node_distance
+                )
+
+            # Edges and arrows
+            edge_path, arrow_path = self._place_paths(self.node_positions)
+
+            edge_colors: dict[tuple[int, int], str] = {}
+            edge_linewidths: dict[tuple[int, int], float] = {}
+            for edge in highlight_edges:
+                e_sorted = (min(edge), max(edge))
+                edge_colors[e_sorted] = "red"
+                edge_linewidths[e_sorted] = 2.5
+
+            if arrow_path is not None:
+                self._graph_visualizer.draw_edges_with_routing(
+                    self.ax_graph,
+                    edge_path,
+                    edge_subset=active_edges,
+                    edge_colors=edge_colors,
+                    edge_linewidths=edge_linewidths,
+                )
+                self._graph_visualizer.draw_flow_arrows(
+                    self.ax_graph, self.node_positions, arrow_path, arrow_subset=active_edges
+                )
+            else:
+                self._graph_visualizer.draw_edges_with_routing(
+                    self.ax_graph,
+                    edge_path,
+                    edge_subset=active_edges,
+                    edge_colors=edge_colors,
+                    edge_linewidths=edge_linewidths,
+                )
+
+            # Nodes
             node_facecolors: dict[int, str] = {}
             node_edgecolors: dict[int, str] = {}
+            node_alpha: dict[int, float] = {}
+            node_linewidths: dict[int, float] = {}
+
             for node in measured_nodes:
-                node_facecolors[node] = self.measured_node_color
-                node_edgecolors[node] = "black"
+                node_alpha[node] = 0.35  # fade out measured nodes
             for node in active_nodes:
-                node_facecolors[node] = "white"
                 node_edgecolors[node] = self.active_node_color
+
+            for node in highlight_nodes:
+                node_edgecolors[node] = "red"
+                node_linewidths[node] = 2.5
 
             self._graph_visualizer.draw_nodes_role(
                 self.ax_graph,
                 self.node_positions,
                 node_facecolors=node_facecolors,
                 node_edgecolors=node_edgecolors,
+                node_alpha=node_alpha,
+                node_linewidths=node_linewidths,
                 node_size=self.node_size,
             )
 
-            # ---- Labels (drawn locally for dynamic content) ----
-            fontsize = self.label_fontsize
-
+            # Labels
+            extra_labels: dict[int, str] = {}
             for node in measured_nodes:
-                if node not in self.node_positions:
-                    continue
-                x, y = self.node_positions[node]
-                label_text = str(node)
                 if node in results:
-                    label_text += f"\nm={results[node]}"
-                self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=fontsize, zorder=3)
-
+                    extra_labels[node] = f"m={results[node]}"
             for node in active_nodes:
-                if node not in self.node_positions:
-                    continue
-                x, y = self.node_positions[node]
-                label_text = str(node)
                 if node in corrections:
-                    label_text += "\n" + "".join(sorted(corrections[node]))
-                text_color = "blue" if node in corrections else "black"
-                self.ax_graph.text(
-                    x, y, label_text, ha="center", va="center", fontsize=fontsize, color=text_color, zorder=3
-                )
+                    extra_labels[node] = "".join(sorted(corrections[node]))
+
+            self._graph_visualizer.draw_node_labels(
+                self.ax_graph, self.node_positions, extra_labels=extra_labels, fontsize=self.label_fontsize
+            )
 
             self.ax_graph.axis("off")
 
@@ -435,22 +465,8 @@ class InteractiveGraphVisualizer:
         step = int(val)
         if step != self.current_step:
             self.current_step = step
-            # Auto-scroll command list to keep current step visible
-            if step < self._cmd_scroll_offset or step >= self._cmd_scroll_offset + self.command_window_size:
-                new_offset = max(0, step - self.command_window_size // 2)
-                self._cmd_scroll_offset = new_offset
-                if self.cmd_scroll_slider is not None:
-                    self.cmd_scroll_slider.set_val(new_offset)
             self._draw_command_list()
             self._draw_graph()
-            self.fig.canvas.draw_idle()
-
-    def _on_cmd_scroll(self, val: float) -> None:
-        """Handle vertical scroll slider changes."""
-        new_offset = int(val)
-        if new_offset != self._cmd_scroll_offset:
-            self._cmd_scroll_offset = new_offset
-            self._draw_command_list()
             self.fig.canvas.draw_idle()
 
     def _prev_step(self, _event: Any) -> None:
