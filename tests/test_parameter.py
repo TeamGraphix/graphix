@@ -25,7 +25,7 @@ def test_pattern_affine_operations() -> None:
     assert alpha + 1 + 1 == alpha + 2
     assert alpha + alpha == 2 * alpha
     assert alpha - alpha == 0
-    assert alpha / 2 == 0.5 * alpha
+    assert alpha / 2 == 0.5 * alpha  # noqa: RUF069
     assert -alpha + alpha == 0
     beta = Placeholder("beta")
     with pytest.raises(PlaceholderOperationError):
