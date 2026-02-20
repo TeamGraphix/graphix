@@ -7,6 +7,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
+from functools import cached_property
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
@@ -16,6 +17,7 @@ from typing_extensions import assert_never, override
 
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 import graphix.pattern
+from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponentialDAG, PauliString
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
@@ -731,6 +733,88 @@ class PauliFlow(Generic[_AM_co]):
         """
         new_og = self.og.xreplace(assignment)
         return dataclasses.replace(self, og=new_og)
+
+    def is_focused(self) -> bool:
+        """Verify if the input Pauli flow is focused.
+
+        Returns
+        -------
+        bool
+            ``True`` if the input Pauli flow is focused, ``False`` otherwise.
+
+        Notes
+        -----
+        This function verifies Definition 4.3 in Ref. [1].
+
+        References
+        ----------
+        [1] Simmons, 2021 (arXiv:2109.05654).
+        """
+        oc_set = self.og.measurements.keys()
+
+        for corrected_node, correction_set in self.correction_function.items():
+            odd_correction_set = self.og.odd_neighbors(correction_set)
+            symdiff_set = odd_correction_set.symmetric_difference(correction_set)
+            for node in oc_set - {corrected_node}:
+                meas_label = self.node_measurement_label(node)
+                if node in correction_set and meas_label not in {Plane.XY, Axis.X, Axis.Y}:
+                    return False
+                if node in odd_correction_set and meas_label not in {Plane.XZ, Plane.YZ, Axis.Y, Axis.Z}:
+                    return False
+                if meas_label == Axis.Y and node in symdiff_set:
+                    return False
+        return True
+
+    @cached_property
+    def pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
+        """Compute the Pauli strings associated with each node in the correction function.
+
+        This property requires the flow to be focused.
+
+        Returns
+        -------
+        dict[int, PauliString]
+            A dictionary where the keys are node indices (from the correction function) and the values are the computed `PauliString` objects.
+
+        Raises
+        ------
+        ValueError
+            If the flow is not focused (i.e., ``self.is_focused()`` is False).
+
+        Notes
+        -----
+        This property is cached; the dictionary is computed only once upon the first access and stored for subsequent calls.
+        See notes in `PauliString.from_measured_node` for additional information.
+        """
+        if not self.is_focused():
+            raise ValueError("Flow is not focused.")
+        return {node: PauliString.from_measured_node(self, node) for node in self.correction_function}
+
+    def extract_circuit(self: PauliFlow[Measurement]) -> ExtractionResult:
+        """Extract a circuit from a flow.
+
+        This routine assumes that the flow ``self`` is focused (see Notes).
+
+        Returns
+        -------
+        ExtractionResult
+            Wrapper over a Pauli-exponential DAG and a Clifford map encoding the linear transformation implemented by the input flow.
+
+        Notes
+        -----
+        - This method implements the algorithm in [1].
+
+        - Flows are guaranteed to be focused if obtained from :func:`OpenGraph.extract_pauli_flow` or :func:`OpenGraph.extract_gflow` (see [2]).
+
+        References
+        ----------
+        [1] Simmons, 2021 (arXiv:2109.05654).
+        [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        pexp_dag = PauliExponentialDAG.from_focused_flow(self)
+        clifford_map = CliffordMap.from_focused_flow(self)
+
+        return ExtractionResult(pexp_dag=pexp_dag, clifford_map=clifford_map)
 
 
 @dataclass(frozen=True)
