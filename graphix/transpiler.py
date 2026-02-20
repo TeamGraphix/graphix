@@ -101,38 +101,39 @@ class Circuit:
 
     def add(self, instr: Instruction) -> None:
         """Add an instruction to the circuit."""
-        if instr.kind == InstructionKind.CCX:
-            self.ccx(instr.controls[0], instr.controls[1], instr.target)
-        elif instr.kind == InstructionKind.RZZ:
-            self.rzz(instr.control, instr.target, instr.angle)
-        elif instr.kind == InstructionKind.CNOT:
-            self.cnot(instr.control, instr.target)
-        elif instr.kind == InstructionKind.SWAP:
-            self.swap(instr.targets[0], instr.targets[1])
-        elif instr.kind == InstructionKind.CZ:
-            self.cz(instr.targets[0], instr.targets[1])
-        elif instr.kind == InstructionKind.H:
-            self.h(instr.target)
-        elif instr.kind == InstructionKind.S:
-            self.s(instr.target)
-        elif instr.kind == InstructionKind.X:
-            self.x(instr.target)
-        elif instr.kind == InstructionKind.Y:
-            self.y(instr.target)
-        elif instr.kind == InstructionKind.Z:
-            self.z(instr.target)
-        elif instr.kind == InstructionKind.I:
-            self.i(instr.target)
-        elif instr.kind == InstructionKind.M:
-            self.m(instr.target, instr.axis)
-        elif instr.kind == InstructionKind.RX:
-            self.rx(instr.target, instr.angle)
-        elif instr.kind == InstructionKind.RY:
-            self.ry(instr.target, instr.angle)
-        elif instr.kind == InstructionKind.RZ:
-            self.rz(instr.target, instr.angle)
-        else:
-            assert_never(instr.kind)
+        match instr.kind:
+            case InstructionKind.CCX:
+                self.ccx(instr.controls[0], instr.controls[1], instr.target)
+            case InstructionKind.RZZ:
+                self.rzz(instr.control, instr.target, instr.angle)
+            case InstructionKind.CNOT:
+                self.cnot(instr.control, instr.target)
+            case InstructionKind.SWAP:
+                self.swap(instr.targets[0], instr.targets[1])
+            case InstructionKind.CZ:
+                self.cz(instr.targets[0], instr.targets[1])
+            case InstructionKind.H:
+                self.h(instr.target)
+            case InstructionKind.S:
+                self.s(instr.target)
+            case InstructionKind.X:
+                self.x(instr.target)
+            case InstructionKind.Y:
+                self.y(instr.target)
+            case InstructionKind.Z:
+                self.z(instr.target)
+            case InstructionKind.I:
+                self.i(instr.target)
+            case InstructionKind.M:
+                self.m(instr.target, instr.axis)
+            case InstructionKind.RX:
+                self.rx(instr.target, instr.angle)
+            case InstructionKind.RY:
+                self.ry(instr.target, instr.angle)
+            case InstructionKind.RZ:
+                self.rz(instr.target, instr.angle)
+            case _:
+                assert_never(instr.kind)
 
     def extend(self, instrs: Iterable[Instruction]) -> None:
         """Add instructions to the circuit."""
@@ -365,101 +366,102 @@ class Circuit:
         pattern = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
         for instr in _transpile_rzz(self.instruction):
-            if instr.kind == instruction.InstructionKind.CZ:
-                target0 = _check_target(out, instr.targets[0])
-                target1 = _check_target(out, instr.targets[1])
-                seq = self._cz_command(target0, target1)
-                pattern.extend(seq)
-            elif instr.kind == instruction.InstructionKind.CNOT:
-                ancilla = [n_node, n_node + 1]
-                control = _check_target(out, instr.control)
-                target = _check_target(out, instr.target)
-                out[instr.control], out[instr.target], seq = self._cnot_command(control, target, ancilla)
-                pattern.extend(seq)
-                n_node += 2
-            elif instr.kind == instruction.InstructionKind.SWAP:
-                target0 = _check_target(out, instr.targets[0])
-                target1 = _check_target(out, instr.targets[1])
-                out[instr.targets[0]], out[instr.targets[1]] = (
-                    target1,
-                    target0,
-                )
-            elif instr.kind == instruction.InstructionKind.I:
-                pass
-            elif instr.kind == instruction.InstructionKind.H:
-                single_ancilla = n_node
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._h_command(target, single_ancilla)
-                pattern.extend(seq)
-                n_node += 1
-            elif instr.kind == instruction.InstructionKind.S:
-                ancilla = [n_node, n_node + 1]
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._s_command(target, ancilla)
-                pattern.extend(seq)
-                n_node += 2
-            elif instr.kind == instruction.InstructionKind.X:
-                ancilla = [n_node, n_node + 1]
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._x_command(target, ancilla)
-                pattern.extend(seq)
-                n_node += 2
-            elif instr.kind == instruction.InstructionKind.Y:
-                ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._y_command(target, ancilla)
-                pattern.extend(seq)
-                n_node += 4
-            elif instr.kind == instruction.InstructionKind.Z:
-                ancilla = [n_node, n_node + 1]
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._z_command(target, ancilla)
-                pattern.extend(seq)
-                n_node += 2
-            elif instr.kind == instruction.InstructionKind.RX:
-                ancilla = [n_node, n_node + 1]
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._rx_command(target, ancilla, instr.angle)
-                pattern.extend(seq)
-                n_node += 2
-            elif instr.kind == instruction.InstructionKind.RY:
-                ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._ry_command(target, ancilla, instr.angle)
-                pattern.extend(seq)
-                n_node += 4
-            elif instr.kind == instruction.InstructionKind.RZ:
-                ancilla = [n_node, n_node + 1]
-                target = _check_target(out, instr.target)
-                out[instr.target], seq = self._rz_command(target, ancilla, instr.angle)
-                pattern.extend(seq)
-                n_node += 2
-            elif instr.kind == instruction.InstructionKind.CCX:
-                ancilla = [n_node + i for i in range(18)]
-                control0 = _check_target(out, instr.controls[0])
-                control1 = _check_target(out, instr.controls[1])
-                target = _check_target(out, instr.target)
-                (
-                    out[instr.controls[0]],
-                    out[instr.controls[1]],
-                    out[instr.target],
-                    seq,
-                ) = self._ccx_command(
-                    control0,
-                    control1,
-                    target,
-                    ancilla,
-                )
-                pattern.extend(seq)
-                n_node += 18
-            elif instr.kind == instruction.InstructionKind.M:
-                target = _check_target(out, instr.target)
-                seq = self._m_command(target, instr.axis)
-                pattern.extend(seq)
-                classical_outputs.append(target)
-                out[instr.target] = None
-            else:
-                raise ValueError("Unknown instruction, commands not added")
+            match instr.kind:
+                case instruction.InstructionKind.CZ:
+                    target0 = _check_target(out, instr.targets[0])
+                    target1 = _check_target(out, instr.targets[1])
+                    seq = self._cz_command(target0, target1)
+                    pattern.extend(seq)
+                case instruction.InstructionKind.CNOT:
+                    ancilla = [n_node, n_node + 1]
+                    control = _check_target(out, instr.control)
+                    target = _check_target(out, instr.target)
+                    out[instr.control], out[instr.target], seq = self._cnot_command(control, target, ancilla)
+                    pattern.extend(seq)
+                    n_node += 2
+                case instruction.InstructionKind.SWAP:
+                    target0 = _check_target(out, instr.targets[0])
+                    target1 = _check_target(out, instr.targets[1])
+                    out[instr.targets[0]], out[instr.targets[1]] = (
+                        target1,
+                        target0,
+                    )
+                case instruction.InstructionKind.I:
+                    pass
+                case instruction.InstructionKind.H:
+                    single_ancilla = n_node
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._h_command(target, single_ancilla)
+                    pattern.extend(seq)
+                    n_node += 1
+                case instruction.InstructionKind.S:
+                    ancilla = [n_node, n_node + 1]
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._s_command(target, ancilla)
+                    pattern.extend(seq)
+                    n_node += 2
+                case instruction.InstructionKind.X:
+                    ancilla = [n_node, n_node + 1]
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._x_command(target, ancilla)
+                    pattern.extend(seq)
+                    n_node += 2
+                case instruction.InstructionKind.Y:
+                    ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._y_command(target, ancilla)
+                    pattern.extend(seq)
+                    n_node += 4
+                case instruction.InstructionKind.Z:
+                    ancilla = [n_node, n_node + 1]
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._z_command(target, ancilla)
+                    pattern.extend(seq)
+                    n_node += 2
+                case instruction.InstructionKind.RX:
+                    ancilla = [n_node, n_node + 1]
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._rx_command(target, ancilla, instr.angle)
+                    pattern.extend(seq)
+                    n_node += 2
+                case instruction.InstructionKind.RY:
+                    ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._ry_command(target, ancilla, instr.angle)
+                    pattern.extend(seq)
+                    n_node += 4
+                case instruction.InstructionKind.RZ:
+                    ancilla = [n_node, n_node + 1]
+                    target = _check_target(out, instr.target)
+                    out[instr.target], seq = self._rz_command(target, ancilla, instr.angle)
+                    pattern.extend(seq)
+                    n_node += 2
+                case instruction.InstructionKind.CCX:
+                    ancilla = [n_node + i for i in range(18)]
+                    control0 = _check_target(out, instr.controls[0])
+                    control1 = _check_target(out, instr.controls[1])
+                    target = _check_target(out, instr.target)
+                    (
+                        out[instr.controls[0]],
+                        out[instr.controls[1]],
+                        out[instr.target],
+                        seq,
+                    ) = self._ccx_command(
+                        control0,
+                        control1,
+                        target,
+                        ancilla,
+                    )
+                    pattern.extend(seq)
+                    n_node += 18
+                case instruction.InstructionKind.M:
+                    target = _check_target(out, instr.target)
+                    seq = self._m_command(target, instr.axis)
+                    pattern.extend(seq)
+                    classical_outputs.append(target)
+                    out[instr.target] = None
+                case _:
+                    raise ValueError("Unknown instruction, commands not added")
         output_nodes = [node for node in out if node is not None]
         pattern.reorder_output_nodes(output_nodes)
         return TranspileResult(pattern, tuple(classical_outputs))
@@ -949,62 +951,60 @@ class Circuit:
             def evolve(op: Matrix, qargs: Iterable[int]) -> None:
                 backend.state.evolve(op, [backend.node_index.index(qarg) for qarg in qargs])
 
-            if instr.kind == instruction.InstructionKind.CNOT:
-                backend.state.cnot((backend.node_index.index(instr.control), backend.node_index.index(instr.target)))
-            elif instr.kind == instruction.InstructionKind.SWAP:
-                u, v = instr.targets
-                backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))
-            elif instr.kind == instruction.InstructionKind.CZ:
-                u, v = instr.targets
-                backend.state.entangle((backend.node_index.index(u), backend.node_index.index(v)))
-            elif instr.kind == instruction.InstructionKind.I:
-                pass
-            elif instr.kind == instruction.InstructionKind.S:
-                evolve_single(Ops.S, instr.target)
-            elif instr.kind == instruction.InstructionKind.H:
-                evolve_single(Ops.H, instr.target)
-            elif instr.kind == instruction.InstructionKind.X:
-                evolve_single(Ops.X, instr.target)
-            elif instr.kind == instruction.InstructionKind.Y:
-                evolve_single(Ops.Y, instr.target)
-            elif instr.kind == instruction.InstructionKind.Z:
-                evolve_single(Ops.Z, instr.target)
-            elif instr.kind == instruction.InstructionKind.RX:
-                evolve_single(Ops.rx(instr.angle), instr.target)
-            elif instr.kind == instruction.InstructionKind.RY:
-                evolve_single(Ops.ry(instr.angle), instr.target)
-            elif instr.kind == instruction.InstructionKind.RZ:
-                evolve_single(Ops.rz(instr.angle), instr.target)
-            elif instr.kind == instruction.InstructionKind.RZZ:
-                evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
-            elif instr.kind == instruction.InstructionKind.CCX:
-                evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
-            elif instr.kind == instruction.InstructionKind.M:
-                result = backend.measure(
-                    instr.target,
-                    PauliMeasurement(instr.axis),
-                    rng=rng,
-                )
-                classical_measures.append(result)
-            else:
-                raise ValueError(f"Unknown instruction: {instr}")
+            match instr.kind:
+                case instruction.InstructionKind.CNOT:
+                    backend.state.cnot(
+                        (backend.node_index.index(instr.control), backend.node_index.index(instr.target))
+                    )
+                case instruction.InstructionKind.SWAP:
+                    u, v = instr.targets
+                    backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))
+                case instruction.InstructionKind.CZ:
+                    u, v = instr.targets
+                    backend.state.entangle((backend.node_index.index(u), backend.node_index.index(v)))
+                case instruction.InstructionKind.I:
+                    pass
+                case instruction.InstructionKind.S:
+                    evolve_single(Ops.S, instr.target)
+                case instruction.InstructionKind.H:
+                    evolve_single(Ops.H, instr.target)
+                case instruction.InstructionKind.X:
+                    evolve_single(Ops.X, instr.target)
+                case instruction.InstructionKind.Y:
+                    evolve_single(Ops.Y, instr.target)
+                case instruction.InstructionKind.Z:
+                    evolve_single(Ops.Z, instr.target)
+                case instruction.InstructionKind.RX:
+                    evolve_single(Ops.rx(instr.angle), instr.target)
+                case instruction.InstructionKind.RY:
+                    evolve_single(Ops.ry(instr.angle), instr.target)
+                case instruction.InstructionKind.RZ:
+                    evolve_single(Ops.rz(instr.angle), instr.target)
+                case instruction.InstructionKind.RZZ:
+                    evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
+                case instruction.InstructionKind.CCX:
+                    evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
+                case instruction.InstructionKind.M:
+                    result = backend.measure(
+                        instr.target,
+                        PauliMeasurement(instr.axis),
+                        rng=rng,
+                    )
+                    classical_measures.append(result)
+                case _:
+                    raise ValueError(f"Unknown instruction: {instr}")
         return SimulateResult(backend.state, tuple(classical_measures))
 
     def map_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle]) -> Circuit:
         """Apply `f` to all angles that occur in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
-            # Use == for mypy
-            if (
-                instr.kind == InstructionKind.RZZ  # noqa: PLR1714
-                or instr.kind == InstructionKind.RX
-                or instr.kind == InstructionKind.RY
-                or instr.kind == InstructionKind.RZ
-            ):
-                new_instr = dataclasses.replace(instr, angle=f(instr.angle))
-                result.instruction.append(new_instr)
-            else:
-                result.instruction.append(instr)
+            match instr.kind:
+                case InstructionKind.RZZ | InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
+                    new_instr = dataclasses.replace(instr, angle=f(instr.angle))
+                    result.instruction.append(new_instr)
+                case _:
+                    result.instruction.append(instr)
         return result
 
     def is_parameterized(self) -> bool:
@@ -1017,15 +1017,12 @@ class Circuit:
         choose `sympy` here).
 
         """
-        # Use of `==` here for mypy
-        return any(
-            not isinstance(instr.angle, SupportsFloat)
-            for instr in self.instruction
-            if instr.kind == InstructionKind.RZZ  # noqa: PLR1714
-            or instr.kind == InstructionKind.RX
-            or instr.kind == InstructionKind.RY
-            or instr.kind == InstructionKind.RZ
-        )
+        for instr in self.instruction:
+            match instr.kind:
+                case InstructionKind.RZZ | InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
+                    if not isinstance(instr.angle, SupportsFloat):
+                        return True
+        return False
 
     def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""
@@ -1040,14 +1037,17 @@ class Circuit:
         circuit = Circuit(width=self.width)
         for instr in self.instruction:
             if instr.kind == InstructionKind.M:
-                if instr.axis == Axis.X:
-                    circuit.h(instr.target)
-                    circuit.m(instr.target, Axis.Z)
-                elif instr.axis == Axis.Y:
-                    circuit.rx(instr.target, ANGLE_PI / 2)
-                    circuit.m(instr.target, Axis.Z)
-                else:
-                    circuit.add(instr)
+                match instr.axis:
+                    case Axis.X:
+                        circuit.h(instr.target)
+                        circuit.m(instr.target, Axis.Z)
+                    case Axis.Y:
+                        circuit.rx(instr.target, ANGLE_PI / 2)
+                        circuit.m(instr.target, Axis.Z)
+                    case Axis.Z:
+                        circuit.add(instr)
+                    case _:
+                        assert_never(instr.axis)
             else:
                 circuit.add(instr)
         return circuit

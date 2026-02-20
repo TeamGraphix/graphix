@@ -385,31 +385,31 @@ class PatternSimulator(Generic[_StateT_co]):
 
         for cmd in pattern:
             logger.debug("Command: %s", cmd)
-            if cmd.kind == CommandKind.N:
-                self.__prepare_method.prepare(self.backend, cmd, rng=rng)
-            elif cmd.kind == CommandKind.E:
-                self.backend.entangle_nodes(edge=cmd.nodes)
-            elif cmd.kind == CommandKind.M:
-                self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                if self.__measure_method.check_domain(cmd.domain):
-                    self.backend.correct_byproduct(cmd)
-            elif cmd.kind == CommandKind.C:
-                self.backend.apply_clifford(cmd.node, cmd.clifford)
-            elif cmd.kind == CommandKind.T:
-                # The T command is a flag for one clock cycle in a simulated
-                # experiment, added via a hardware-agnostic
-                # pattern modifier. Noise models can perform special
-                # handling of ticks during noise transpilation.
-                pass
-            elif cmd.kind == CommandKind.ApplyNoise:
-                if cmd.domain is None or self.__measure_method.check_domain(cmd.domain):
-                    self.backend.apply_noise(cmd)
-            elif cmd.kind == CommandKind.S:
-                raise ValueError("S commands unexpected in simulated patterns.")
-            else:
-                assert_never(cmd.kind)
+            match cmd.kind:
+                case CommandKind.N:
+                    self.__prepare_method.prepare(self.backend, cmd, rng=rng)
+                case CommandKind.E:
+                    self.backend.entangle_nodes(edge=cmd.nodes)
+                case CommandKind.M:
+                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
+                case CommandKind.X | CommandKind.Z:
+                    if self.__measure_method.check_domain(cmd.domain):
+                        self.backend.correct_byproduct(cmd)
+                case CommandKind.C:
+                    self.backend.apply_clifford(cmd.node, cmd.clifford)
+                case CommandKind.T:
+                    # The T command is a flag for one clock cycle in a simulated
+                    # experiment, added via a hardware-agnostic
+                    # pattern modifier. Noise models can perform special
+                    # handling of ticks during noise transpilation.
+                    pass
+                case CommandKind.ApplyNoise:
+                    if cmd.domain is None or self.__measure_method.check_domain(cmd.domain):
+                        self.backend.apply_noise(cmd)
+                case CommandKind.S:
+                    raise ValueError("S commands unexpected in simulated patterns.")
+                case _:
+                    assert_never(cmd.kind)
             logger.debug("State: %s", self.backend.state)
         self.backend.finalize(output_nodes=self.pattern.output_nodes)
 
@@ -508,15 +508,17 @@ def _initialize_backend(
         return TensorNetworkBackend(pattern, branch_selector=branch_selector, graph_prep=graph_prep)
     if graph_prep is not None:
         raise ValueError("`graph_prep` can only be specified for tensor network backend.")
-    if backend == "statevector":
-        if noise_model is not None:
-            raise ValueError("`noise_model` cannot be specified for state vector backend.")
-        return StatevectorBackend(branch_selector=branch_selector, symbolic=symbolic)
-    if backend == "densitymatrix":
-        if noise_model is None:
-            warnings.warn(
-                "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
-                stacklevel=1,
-            )
-        return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
-    raise ValueError(f"Unknown backend {backend}.")
+    match backend:
+        case "statevector":
+            if noise_model is not None:
+                raise ValueError("`noise_model` cannot be specified for state vector backend.")
+            return StatevectorBackend(branch_selector=branch_selector, symbolic=symbolic)
+        case "densitymatrix":
+            if noise_model is None:
+                warnings.warn(
+                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
+                    stacklevel=1,
+                )
+            return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
+        case _:
+            raise ValueError(f"Unknown backend {backend}.")
