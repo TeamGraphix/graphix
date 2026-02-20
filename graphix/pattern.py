@@ -1692,7 +1692,7 @@ class Pattern:
 
     def perform_pauli_pushing(
         self,
-        leave_nodes: set[Node] | None = None,
+        leave_nodes: AbstractSet[Node] | None = None,
         copy: bool = False,
         standardize: bool = False,
         *,
@@ -1702,7 +1702,7 @@ class Pattern:
 
         Parameters
         ----------
-        leave_nodes : set[Node], optional
+        leave_nodes : AbstractSet[Node], optional
             Nodes that should not be moved. This constraint only
             applies to Pauli nodes and has no effect on non-Pauli nodes.
         copy : bool, optional

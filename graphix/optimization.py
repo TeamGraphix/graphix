@@ -245,12 +245,12 @@ class StandardizedPattern(_StandardizedPattern):
             graph.add_edge(u, v)
         return graph
 
-    def perform_pauli_pushing(self, leave_nodes: set[Node] | None = None, *, stacklevel: int = 1) -> Self:
+    def perform_pauli_pushing(self, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1) -> Self:
         """Move Pauli measurements before the other measurements.
 
         Parameters
         ----------
-        leave_nodes : set[Node], optional
+        leave_nodes : AbstractSet[Node], optional
             Nodes that should not be moved. This constraint only
             applies to Pauli nodes and has no effect on non-Pauli nodes.
         stacklevel : int, optional
