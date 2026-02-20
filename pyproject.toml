@@ -128,7 +128,9 @@ required-imports = ["from __future__ import annotations"]
 
 [tool.pydoclint]
 style = "numpy"
+exclude = '\.examples|tests\.py'
 check-arg-order = true
+check-arg-defaults = true
 check-return = true
 check-yield = true
 
