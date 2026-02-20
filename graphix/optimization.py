@@ -273,7 +273,7 @@ class StandardizedPattern(_StandardizedPattern):
             ]
             if leave_non_pauli_nodes:
                 warn(
-                    f"`leave_nodes` contains nodes that are not Pauli: {leave_non_pauli_nodes}.",
+                    f"`leave_nodes` contains nodes that are not Pauli: {leave_non_pauli_nodes}. The constraint has no effect on these nodes.",
                     stacklevel=stacklevel + 1,
                 )
 
