@@ -32,7 +32,7 @@ jobs:
 
       - run: |
           python -m pip install --upgrade pip
-          pip install -e .[dev,extra]
+          pip install -e .[dev,extra,typing]
           pip install --no-deps -e .[no-deps]
 
       - run: mypy

@@ -376,12 +376,10 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     if not isinstance(value, Expression):
         return value
     new_value = value.subs(variable, substitute)
-    # On Python<=3.10, complex is not a subtype of SupportsComplex
-    if isinstance(new_value, (complex, SupportsComplex)):
-        c = complex(new_value)
-        if c.imag == 0.0:
-            return c.real
-        return c
+    if isinstance(new_value, complex) and math.isclose(new_value.imag, 0.0):
+        # Conversion to float, to enable the simulator to call
+        # real trigonometric functions to the result.
+        return new_value.real
     return new_value
 
 
@@ -416,12 +414,10 @@ def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     if not isinstance(value, Expression):
         return value
     new_value = value.xreplace(assignment)
-    # On Python<=3.10, complex is not a subtype of SupportsComplex
-    if isinstance(new_value, (complex, SupportsComplex)):
-        c = complex(new_value)
-        if c.imag == 0.0:
-            return c.real
-        return c
+    if isinstance(new_value, complex) and math.isclose(new_value.imag, 0.0):
+        # Conversion to float, to enable the simulator to call
+        # real trigonometric functions to the result.
+        return new_value.real
     return new_value
 
 

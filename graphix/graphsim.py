@@ -90,15 +90,16 @@ class GraphState(Graph):
                 dst = self.nodes[u]
                 v = bool(v_)
                 # Need to use literal inside brackets
-                if k == "sign":
-                    dst["sign"] = v
-                elif k == "hollow":
-                    dst["hollow"] = v
-                elif k == "loop":
-                    dst["loop"] = v
-                else:
-                    msg = "Invalid node attribute."
-                    raise ValueError(msg)
+                match k:
+                    case "sign":
+                        dst["sign"] = v
+                    case "hollow":
+                        dst["hollow"] = v
+                    case "loop":
+                        dst["loop"] = v
+                    case _:
+                        msg = "Invalid node attribute."
+                        raise ValueError(msg)
 
     @typing_extensions.override
     def add_node(
@@ -130,14 +131,15 @@ class GraphState(Graph):
         """
         for node, vop in vops.items():
             for lc in reversed(vop.hsz):
-                if lc == Clifford.Z:
-                    self.z(node)
-                elif lc == Clifford.H:
-                    self.h(node)
-                elif lc == Clifford.S:
-                    self.s(node)
-                else:
-                    raise RuntimeError
+                match lc:
+                    case Clifford.Z:
+                        self.z(node)
+                    case Clifford.H:
+                        self.h(node)
+                    case Clifford.S:
+                        self.s(node)
+                    case _:
+                        raise RuntimeError
 
     def extract_vops(self) -> dict[int, Clifford]:
         """Apply local Clifford operators to the graph state from a dictionary.

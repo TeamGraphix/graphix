@@ -159,32 +159,25 @@ class FlowPropositionError(FlowError):
     def __str__(self) -> str:
         """Explain the error."""
         error_help = f"Error found at c({self.node}) = {self.correction_set}."
-
-        if self.reason == FlowPropositionErrorReason.C0:
-            return f"Correction set c({self.node}) = {self.correction_set} has more than one element."
-
-        if self.reason == FlowPropositionErrorReason.C1:
-            return f"{self.reason.name}: a node and its corrector must be neighbors. {error_help}"
-
-        if self.reason == FlowPropositionErrorReason.G3 or self.reason == FlowPropositionErrorReason.P4:  # noqa: PLR1714
-            return f"{self.reason.name}: nodes measured on plane XY cannot be in their own correcting set and must belong to the odd neighbourhood of their own correcting set.\n{error_help}"
-
-        if self.reason == FlowPropositionErrorReason.G4 or self.reason == FlowPropositionErrorReason.P5:  # noqa: PLR1714
-            return f"{self.reason.name}: nodes measured on plane XZ must belong to their own correcting set and its odd neighbourhood.\n{error_help}"
-
-        if self.reason == FlowPropositionErrorReason.G5 or self.reason == FlowPropositionErrorReason.P6:  # noqa: PLR1714
-            return f"{self.reason.name}: nodes measured on plane YZ must belong to their own correcting set and cannot be in the odd neighbourhood of their own correcting set.\n{error_help}"
-
-        if self.reason == FlowPropositionErrorReason.P7:
-            return f"{self.reason.name}: nodes measured along axis X must belong to the odd neighbourhood of their own correcting set.\n{error_help}"
-
-        if self.reason == FlowPropositionErrorReason.P8:
-            return f"{self.reason.name}: nodes measured along axis Z must belong to their own correcting set.\n{error_help}"
-
-        if self.reason == FlowPropositionErrorReason.P9:
-            return f"{self.reason.name}: nodes measured along axis Y must belong to the closed odd neighbourhood of their own correcting set.\n{error_help}"
-
-        assert_never(self.reason)
+        match self.reason:
+            case FlowPropositionErrorReason.C0:
+                return f"Correction set c({self.node}) = {self.correction_set} has more than one element."
+            case FlowPropositionErrorReason.C1:
+                return f"{self.reason.name}: a node and its corrector must be neighbors. {error_help}"
+            case FlowPropositionErrorReason.G3 | FlowPropositionErrorReason.P4:
+                return f"{self.reason.name}: nodes measured on plane XY cannot be in their own correcting set and must belong to the odd neighbourhood of their own correcting set.\n{error_help}"
+            case FlowPropositionErrorReason.G4 | FlowPropositionErrorReason.P5:
+                return f"{self.reason.name}: nodes measured on plane XZ must belong to their own correcting set and its odd neighbourhood.\n{error_help}"
+            case FlowPropositionErrorReason.G5 | FlowPropositionErrorReason.P6:
+                return f"{self.reason.name}: nodes measured on plane YZ must belong to their own correcting set and cannot be in the odd neighbourhood of their own correcting set.\n{error_help}"
+            case FlowPropositionErrorReason.P7:
+                return f"{self.reason.name}: nodes measured along axis X must belong to the odd neighbourhood of their own correcting set.\n{error_help}"
+            case FlowPropositionErrorReason.P8:
+                return f"{self.reason.name}: nodes measured along axis Z must belong to their own correcting set.\n{error_help}"
+            case FlowPropositionErrorReason.P9:
+                return f"{self.reason.name}: nodes measured along axis Y must belong to the closed odd neighbourhood of their own correcting set.\n{error_help}"
+            case _:
+                assert_never(self.reason)
 
 
 @dataclass
@@ -199,26 +192,21 @@ class FlowPropositionOrderError(FlowError):
     def __str__(self) -> str:
         """Explain the error."""
         error_help = f"The flow's partial order implies that {self.past_and_present_nodes - {self.node}} ≼ {self.node}. This is incompatible with the correction set c({self.node}) = {self.correction_set}."
-
-        if self.reason == FlowPropositionOrderErrorReason.C2 or self.reason == FlowPropositionOrderErrorReason.G1:  # noqa: PLR1714
-            return f"{self.reason.name}: nodes must be in the past of their correction set.\n{error_help}"
-
-        if self.reason == FlowPropositionOrderErrorReason.C3:
-            return f"{self.reason.name}: neighbors of the correcting nodes (except the corrected node) must be in the future of the corrected node.\n{error_help}"
-
-        if self.reason == FlowPropositionOrderErrorReason.G2:
-            return f"{self.reason.name}: the odd neighbourhood (except the corrected node) of the correcting nodes must be in the future of the corrected node.\n{error_help}"
-
-        if self.reason == FlowPropositionOrderErrorReason.P1:
-            return f"{self.reason.name}: nodes must be in the past of their correcting nodes unless these are measured along the X or the Y axes.\n{error_help}"
-
-        if self.reason == FlowPropositionOrderErrorReason.P2:
-            return f"{self.reason.name}: the odd neighbourhood (except the corrected node and nodes measured along axes Y or Z) of the correcting nodes must be in the future of the corrected node.\n{error_help}"
-
-        if self.reason == FlowPropositionOrderErrorReason.P3:
-            return f"{self.reason.name}: nodes that are measured along axis Y and that are not in the future of the corrected node (except the corrected node itself) cannot be in the closed odd neighbourhood of the correcting set.\n{error_help}"
-
-        assert_never(self.reason)
+        match self.reason:
+            case FlowPropositionOrderErrorReason.C2 | FlowPropositionOrderErrorReason.G1:
+                return f"{self.reason.name}: nodes must be in the past of their correction set.\n{error_help}"
+            case FlowPropositionOrderErrorReason.C3:
+                return f"{self.reason.name}: neighbors of the correcting nodes (except the corrected node) must be in the future of the corrected node.\n{error_help}"
+            case FlowPropositionOrderErrorReason.G2:
+                return f"{self.reason.name}: the odd neighbourhood (except the corrected node) of the correcting nodes must be in the future of the corrected node.\n{error_help}"
+            case FlowPropositionOrderErrorReason.P1:
+                return f"{self.reason.name}: nodes must be in the past of their correcting nodes unless these are measured along the X or the Y axes.\n{error_help}"
+            case FlowPropositionOrderErrorReason.P2:
+                return f"{self.reason.name}: the odd neighbourhood (except the corrected node and nodes measured along axes Y or Z) of the correcting nodes must be in the future of the corrected node.\n{error_help}"
+            case FlowPropositionOrderErrorReason.P3:
+                return f"{self.reason.name}: nodes that are measured along axis Y and that are not in the future of the corrected node (except the corrected node itself) cannot be in the closed odd neighbourhood of the correcting set.\n{error_help}"
+            case _:
+                assert_never(self.reason)
 
 
 @dataclass
@@ -229,16 +217,15 @@ class FlowGenericError(FlowError):
 
     def __str__(self) -> str:
         """Explain the error."""
-        if self.reason == FlowGenericErrorReason.IncorrectCorrectionFunctionDomain:
-            return "The domain of the correction function must be the set of non-output nodes (measured qubits) of the open graph."
-
-        if self.reason == FlowGenericErrorReason.IncorrectCorrectionFunctionImage:
-            return "The image of the correction function must be a subset of non-input nodes (prepared qubits) of the open graph."
-
-        if self.reason == FlowGenericErrorReason.XYPlane:
-            return "Causal flow is only defined on open graphs with XY measurements."
-
-        assert_never(self.reason)
+        match self.reason:
+            case FlowGenericErrorReason.IncorrectCorrectionFunctionDomain:
+                return "The domain of the correction function must be the set of non-output nodes (measured qubits) of the open graph."
+            case FlowGenericErrorReason.IncorrectCorrectionFunctionImage:
+                return "The image of the correction function must be a subset of non-input nodes (prepared qubits) of the open graph."
+            case FlowGenericErrorReason.XYPlane:
+                return "Causal flow is only defined on open graphs with XY measurements."
+            case _:
+                assert_never(self.reason)
 
 
 @dataclass
@@ -249,12 +236,13 @@ class PartialOrderError(FlowError, XZCorrectionsError):
 
     def __str__(self) -> str:
         """Explain the error."""
-        if self.reason == PartialOrderErrorReason.Empty:
-            return "The partial order cannot be empty."
-
-        if self.reason == PartialOrderErrorReason.IncorrectNodes:
-            return "The partial order does not contain all the nodes of the open graph or contains nodes that are not in the open graph."
-        assert_never(self.reason)
+        match self.reason:
+            case PartialOrderErrorReason.Empty:
+                return "The partial order cannot be empty."
+            case PartialOrderErrorReason.IncorrectNodes:
+                return "The partial order does not contain all the nodes of the open graph or contains nodes that are not in the open graph."
+            case _:
+                assert_never(self.reason)
 
 
 @dataclass
@@ -267,14 +255,13 @@ class PartialOrderLayerError(FlowError, XZCorrectionsError):
 
     def __str__(self) -> str:
         """Explain the error."""
-        if self.reason == PartialOrderLayerErrorReason.FirstLayer:
-            return f"The first layer of the partial order must contain all the output nodes of the open graph and cannot be empty. First layer: {self.layer}"
-
-        # Note: A flow defined on an open graph without outputs will trigger this error. This is not the case for an XZ-corrections object.
-
-        if self.reason == PartialOrderLayerErrorReason.NthLayer:
-            return f"Partial order layer {self.layer_index} = {self.layer} contains non-measured nodes of the open graph, is empty or contains nodes in previous layers."
-        assert_never(self.reason)
+        match self.reason:
+            case PartialOrderLayerErrorReason.FirstLayer:
+                return f"The first layer of the partial order must contain all the output nodes of the open graph and cannot be empty. First layer: {self.layer}"
+            case PartialOrderLayerErrorReason.NthLayer:
+                return f"Partial order layer {self.layer_index} = {self.layer} contains non-measured nodes of the open graph, is empty or contains nodes in previous layers."
+            case _:
+                assert_never(self.reason)
 
 
 @dataclass
@@ -288,13 +275,13 @@ class XZCorrectionsOrderError(XZCorrectionsError):
 
     def __str__(self) -> str:
         """Explain the error."""
-        if self.reason == XZCorrectionsOrderErrorReason.X:
-            return "The X-correction set {self.node} -> {self.correction_set} is incompatible with the partial order: {self.past_and_present_nodes - {self.node}} ≼ {self.node}."
-
-        if self.reason == XZCorrectionsOrderErrorReason.Z:
-            return "The Z-correction set {self.node} -> {self.correction_set} is incompatible with the partial order: {self.past_and_present_nodes - {self.node}} ≼ {self.node}."
-
-        assert_never(self.reason)
+        match self.reason:
+            case XZCorrectionsOrderErrorReason.X:
+                return "The X-correction set {self.node} -> {self.correction_set} is incompatible with the partial order: {self.past_and_present_nodes - {self.node}} ≼ {self.node}."
+            case XZCorrectionsOrderErrorReason.Z:
+                return "The Z-correction set {self.node} -> {self.correction_set} is incompatible with the partial order: {self.past_and_present_nodes - {self.node}} ≼ {self.node}."
+            case _:
+                assert_never(self.reason)
 
 
 @dataclass
@@ -305,13 +292,14 @@ class XZCorrectionsGenericError(XZCorrectionsError):
 
     def __str__(self) -> str:
         """Explain the error."""
-        if self.reason == XZCorrectionsGenericErrorReason.IncorrectKeys:
-            return "Keys of correction dictionaries must be a subset of the measured nodes."
-        if self.reason == XZCorrectionsGenericErrorReason.IncorrectValues:
-            return "Values of correction dictionaries must contain labels which are nodes of the open graph."
-        if self.reason == XZCorrectionsGenericErrorReason.ClosedLoop:
-            return "XZ-corrections are not runnable since the induced directed graph contains closed loops."
-        if self.reason == XZCorrectionsGenericErrorReason.IncompatibleOrder:
-            return "The input total measurement order is not compatible with the partial order induced by the XZ-corrections."
-
-        assert_never(self.reason)
+        match self.reason:
+            case XZCorrectionsGenericErrorReason.IncorrectKeys:
+                return "Keys of correction dictionaries must be a subset of the measured nodes."
+            case XZCorrectionsGenericErrorReason.IncorrectValues:
+                return "Values of correction dictionaries must contain labels which are nodes of the open graph."
+            case XZCorrectionsGenericErrorReason.ClosedLoop:
+                return "XZ-corrections are not runnable since the induced directed graph contains closed loops."
+            case XZCorrectionsGenericErrorReason.IncompatibleOrder:
+                return "The input total measurement order is not compatible with the partial order induced by the XZ-corrections."
+            case _:
+                assert_never(self.reason)

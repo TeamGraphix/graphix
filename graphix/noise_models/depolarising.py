@@ -108,25 +108,32 @@ class DepolarisingNoiseModel(NoiseModel):
     @typing_extensions.override
     def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to the command ``cmd``."""
-        if cmd.kind == CommandKind.N:
-            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
-        if cmd.kind == CommandKind.E:
-            return [
-                cmd,
-                ApplyNoise(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=list(cmd.nodes)),
-            ]
-        if cmd.kind == CommandKind.M:
-            return [ApplyNoise(noise=DepolarisingNoise(self.measure_channel_prob), nodes=[cmd.node]), cmd]
-        if cmd.kind == CommandKind.X:
-            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.x_error_prob), nodes=[cmd.node], domain=cmd.domain)]
-        if cmd.kind == CommandKind.Z:
-            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.z_error_prob), nodes=[cmd.node], domain=cmd.domain)]
-        # Use of `==` here for mypy
-        if cmd.kind == CommandKind.C or cmd.kind == CommandKind.T or cmd.kind == CommandKind.ApplyNoise:  # noqa: PLR1714
-            return [cmd]
-        if cmd.kind == CommandKind.S:
-            raise ValueError("Unexpected signal!")
-        typing_extensions.assert_never(cmd.kind)
+        match cmd.kind:
+            case CommandKind.N:
+                return [cmd, ApplyNoise(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
+            case CommandKind.E:
+                return [
+                    cmd,
+                    ApplyNoise(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=list(cmd.nodes)),
+                ]
+            case CommandKind.M:
+                return [ApplyNoise(noise=DepolarisingNoise(self.measure_channel_prob), nodes=[cmd.node]), cmd]
+            case CommandKind.X:
+                return [
+                    cmd,
+                    ApplyNoise(noise=DepolarisingNoise(self.x_error_prob), nodes=[cmd.node], domain=cmd.domain),
+                ]
+            case CommandKind.Z:
+                return [
+                    cmd,
+                    ApplyNoise(noise=DepolarisingNoise(self.z_error_prob), nodes=[cmd.node], domain=cmd.domain),
+                ]
+            case CommandKind.C | CommandKind.T | CommandKind.ApplyNoise:
+                return [cmd]
+            case CommandKind.S:
+                raise ValueError("Unexpected signal!")
+            case _:
+                typing_extensions.assert_never(cmd.kind)
 
     @typing_extensions.override
     def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:

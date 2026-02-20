@@ -1,0 +1,13 @@
+# Pinning for typing
+
+# Packages listed in this file should also appear in
+# `requirements.txt`, `requirements-dev.txt`, or
+# `requirements-extra.txt`. They may be pinned here to specific
+# versions while remaining unpinned in the other files.
+
+# These pins define the version used for typing and do not need to be
+# supported with all Python versions supported by Graphix.
+
+# numpy and numba versions are sensitive and may cause typing issues
+numpy==2.4.2
+numba==0.64.0
