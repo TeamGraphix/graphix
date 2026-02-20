@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #386, #433: Added `Statevec.fidelity` and `Statevec.isclose` methods for pure-state fidelity computation and equality check up to global phase.
 
+- #447: `Pattern.perform_pauli_pushing` which calls `StandardizedPattern.perform_pauli_pushing`.
+
 ### Fixed
 
 - #429
