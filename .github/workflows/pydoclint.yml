@@ -1,0 +1,54 @@
+name: pydoclint (report only)
+
+on: [push, pull_request]
+
+jobs:
+  pydoclint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pydoclint
+        run: pip install pydoclint
+
+      - name: Run pydoclint
+        run: |
+          echo "## pydoclint report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          exit_code=0
+          for f in $(find graphix -name '*.py' | sort); do
+            output=$(pydoclint "$f" --style=numpy 2>&1) || true
+
+            # Check for actual parser crash (traceback in output)
+            if echo "$output" | grep -q "^Traceback"; then
+              echo "### ❌ CRASH: \`$f\`" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              echo "$output" | tail -20 >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              exit_code=2
+              continue
+            fi
+
+            # Check for violations (lines matching "  123: DOC456:")
+            violations=$(echo "$output" | grep -E '^\s+[0-9]+: DOC[0-9]{3}:' || true)
+            if [ -n "$violations" ]; then
+              count=$(echo "$violations" | wc -l)
+              echo "<details><summary><code>$f</code> — $count violation(s)</summary>" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              echo "$violations" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          if [ "$exit_code" -eq 2 ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**Job failed due to parser crash(es). Fix the docstring(s) above.**" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "_Violations are reported but do not fail the job._" >> "$GITHUB_STEP_SUMMARY"
