@@ -60,6 +60,7 @@ class GraphVisualizer:
         show_local_clifford: bool = False,
         show_measurements: bool = False,
         show_legend: bool = False,
+        show_measurement_order: bool = True,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
@@ -82,6 +83,8 @@ class GraphVisualizer:
             If True, measurement labels are displayed adjacent to the nodes.
         show_legend : bool
             If True, a legend is displayed indicating node types and edge meanings.
+        show_measurement_order : bool
+            If True, layer labels and a measurement order arrow are displayed below the graph.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -144,6 +147,7 @@ class GraphVisualizer:
             show_local_clifford,
             show_measurements,
             show_legend,
+            show_measurement_order,
             show_loop,
             node_distance,
             figsize,
@@ -157,6 +161,7 @@ class GraphVisualizer:
         show_local_clifford: bool = False,
         show_measurements: bool = False,
         show_legend: bool = False,
+        show_measurement_order: bool = True,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
@@ -180,6 +185,8 @@ class GraphVisualizer:
             If True, measurement labels are displayed adjacent to the nodes.
         show_legend : bool
             If True, a legend is displayed indicating node types and edge meanings.
+        show_measurement_order : bool
+            If True, layer labels and a measurement order arrow are displayed below the graph.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -244,6 +251,7 @@ class GraphVisualizer:
             show_local_clifford,
             show_measurements,
             show_legend,
+            show_measurement_order,
             show_loop,
             node_distance,
             figsize,
@@ -261,7 +269,7 @@ class GraphVisualizer:
         return new_path
 
     def _draw_labels(self, pos: Mapping[int, _Point], font_color: Mapping[int, str] | str = "black") -> None:
-        """Draw node number labels with appropriate text color.
+        """Draw node number labels centered inside their nodes.
 
         Parameters
         ----------
@@ -273,7 +281,19 @@ class GraphVisualizer:
         fontsize = 12
         if max(self.og.graph.nodes(), default=0) >= 100:
             fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
-        nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize, font_color=font_color)  # type: ignore[arg-type]
+        for node in self.og.graph.nodes():
+            x, y = pos[node]
+            color = font_color[node] if isinstance(font_color, dict) else font_color
+            plt.text(
+                x,
+                y,
+                str(node),
+                fontsize=fontsize,
+                color=color,
+                ha="center",
+                va="center",
+                zorder=3,
+            )
 
     def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> dict[int, str]:
         """Draw the nodes with shapes and fills following MBQC literature conventions.
@@ -333,6 +353,7 @@ class GraphVisualizer:
         show_local_clifford: bool = False,
         show_measurements: bool = False,
         show_legend: bool = False,
+        show_measurement_order: bool = True,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: _Point | None = None,
@@ -342,8 +363,7 @@ class GraphVisualizer:
 
         Nodes are drawn following MBQC literature conventions: inputs as squares,
         measured nodes as filled circles, and outputs as empty circles. Graph edges
-        are solid lines and flow arrows indicate corrections. A horizontal arrow
-        below the graph indicates the measurement order.
+        are dashed lines and flow arrows indicate corrections.
 
         Parameters
         ----------
@@ -365,6 +385,8 @@ class GraphVisualizer:
             If True, measurement labels are displayed adjacent to the nodes.
         show_legend : bool
             If True, a legend is displayed indicating node types and edge meanings.
+        show_measurement_order : bool
+            If True, layer labels and a measurement order arrow are displayed below the graph.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -460,20 +482,30 @@ class GraphVisualizer:
         y_max = max((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the maximum y coordinate
 
         has_layers = l_k is not None and len(l_k) > 0
-        if has_layers and l_k is not None:
+        if show_measurement_order and has_layers and l_k is not None:
             l_min_val = min(l_k.values())
             l_max_val = max(l_k.values())
-            # Draw layer labels below nodes
+            # Draw layer numbers below nodes
             for layer in range(l_min_val, l_max_val + 1):
                 plt.text(
                     layer * node_distance[0],
                     y_min - 0.4,
-                    f"L{l_max_val - layer}",
+                    str(l_max_val - layer),
                     ha="center",
                     va="top",
                     fontsize=8,
                     color="gray",
                 )
+            # "Layer" label on the left
+            plt.text(
+                l_min_val * node_distance[0] - 0.4,
+                y_min - 0.4,
+                "Layer",
+                ha="right",
+                va="top",
+                fontsize=8,
+                color="gray",
+            )
             # Draw horizontal arrow indicating measurement order
             if l_max_val > l_min_val:
                 arrow_y = y_min - 0.7
@@ -483,8 +515,6 @@ class GraphVisualizer:
                     xytext=(l_min_val * node_distance[0] - 0.3, arrow_y),
                     arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
                 )
-                mid_x = (l_min_val + l_max_val) / 2 * node_distance[0]
-                plt.text(mid_x, arrow_y - 0.2, "Measurement order", ha="center", va="top", fontsize=8, color="gray")
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
@@ -585,9 +615,7 @@ class GraphVisualizer:
         plt.legend(handles=elements, loc="center left", fontsize=9, bbox_to_anchor=(1, 0.5))
 
     def __draw_measurement_labels(self, pos: Mapping[int, _Point]) -> None:
-        """Draw measurement labels next to measured nodes.
-
-        Labels are rendered with a white background to ensure legibility over graph edges.
+        """Draw measurement labels centered above measured nodes.
 
         Parameters
         ----------
@@ -599,12 +627,14 @@ class GraphVisualizer:
             if label is not None:
                 x, y = pos[node]
                 plt.text(
-                    x + 0.18,
-                    y - 0.2,
+                    x,
+                    y + 0.22,
                     label,
-                    fontsize=8,
+                    fontsize=7,
+                    fontweight="bold",
+                    ha="center",
+                    va="bottom",
                     zorder=3,
-                    bbox={"boxstyle": "round,pad=0.15", "facecolor": "white", "edgecolor": "none", "alpha": 0.85},
                 )
 
     @staticmethod
@@ -713,13 +743,12 @@ class GraphVisualizer:
                     return (pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle))
 
                 bezier_path = [
-                    _point_from_node(pos[arrow[0]], 0.2, 170),
-                    _point_from_node(pos[arrow[0]], 0.35, 170),
-                    _point_from_node(pos[arrow[0]], 0.4, 155),
-                    _point_from_node(pos[arrow[0]], 0.45, 140),
-                    _point_from_node(pos[arrow[0]], 0.35, 110),
-                    _point_from_node(pos[arrow[0]], 0.3, 110),
-                    _point_from_node(pos[arrow[0]], 0.17, 95),
+                    _point_from_node(pos[arrow[0]], 0.15, 160),
+                    _point_from_node(pos[arrow[0]], 0.25, 160),
+                    _point_from_node(pos[arrow[0]], 0.3, 140),
+                    _point_from_node(pos[arrow[0]], 0.3, 120),
+                    _point_from_node(pos[arrow[0]], 0.25, 100),
+                    _point_from_node(pos[arrow[0]], 0.15, 100),
                 ]
             else:
                 bezier_path = [pos[arrow[0]], pos[arrow[1]]]

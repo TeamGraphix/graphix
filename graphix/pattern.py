@@ -1452,6 +1452,7 @@ class Pattern:
         show_local_clifford: bool = False,
         show_measurements: bool = False,
         show_legend: bool = False,
+        show_measurement_order: bool = True,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
@@ -1474,6 +1475,8 @@ class Pattern:
             If True, measurement labels are displayed adjacent to the nodes.
         show_legend : bool
             If True, a legend is displayed indicating node types and edge meanings.
+        show_measurement_order : bool
+            If True, layer labels and a measurement order arrow are displayed below the graph.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -1496,6 +1499,7 @@ class Pattern:
                 show_local_clifford=show_local_clifford,
                 show_measurements=show_measurements,
                 show_legend=show_legend,
+                show_measurement_order=show_measurement_order,
                 show_loop=show_loop,
                 node_distance=node_distance,
                 figsize=figsize,
@@ -1507,6 +1511,7 @@ class Pattern:
                 show_local_clifford=show_local_clifford,
                 show_measurements=show_measurements,
                 show_legend=show_legend,
+                show_measurement_order=show_measurement_order,
                 show_loop=show_loop,
                 node_distance=node_distance,
                 figsize=figsize,
