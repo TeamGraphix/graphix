@@ -277,8 +277,6 @@ class StandardizedPattern(_StandardizedPattern):
                     stacklevel=stacklevel + 1,
                 )
 
-        if leave_nodes is None:
-            leave_nodes = set()
         shift_domains: dict[int, set[int]] = {}
 
         def expand_domain(domain: AbstractSet[int]) -> set[int]:
