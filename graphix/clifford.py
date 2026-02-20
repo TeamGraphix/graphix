@@ -137,14 +137,15 @@ class Clifford(Enum):
         if pauli.symbol == I:
             return copy.deepcopy(pauli)
         table = CLIFFORD_MEASURE[self.value]
-        if pauli.symbol == Axis.X:
-            symbol, sign = table.x
-        elif pauli.symbol == Axis.Y:
-            symbol, sign = table.y
-        elif pauli.symbol == Axis.Z:
-            symbol, sign = table.z
-        else:
-            typing_extensions.assert_never(pauli.symbol)
+        match pauli.symbol:
+            case Axis.X:
+                symbol, sign = table.x
+            case Axis.Y:
+                symbol, sign = table.y
+            case Axis.Z:
+                symbol, sign = table.z
+            case _:
+                typing_extensions.assert_never(pauli.symbol)
         return pauli.unit * Pauli(symbol, ComplexUnit.from_properties(sign=sign))
 
     def commute_domains(self, domains: Domains) -> Domains:
@@ -159,16 +160,17 @@ class Clifford(Enum):
         s_domain = domains.s_domain.copy()
         t_domain = domains.t_domain.copy()
         for gate in self.hsz:
-            if gate == Clifford.I:
-                pass
-            elif gate == Clifford.H:
-                t_domain, s_domain = s_domain, t_domain
-            elif gate == Clifford.S:
-                t_domain ^= s_domain
-            elif gate == Clifford.Z:
-                pass
-            else:  # pragma: no cover
-                raise RuntimeError(f"{gate} should be either I, H, S or Z.")
+            match gate:
+                case Clifford.I:
+                    pass
+                case Clifford.H:
+                    t_domain, s_domain = s_domain, t_domain
+                case Clifford.S:
+                    t_domain ^= s_domain
+                case Clifford.Z:
+                    pass
+                case _:  # pragma: no cover
+                    raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         return Domains(s_domain, t_domain)
 
 

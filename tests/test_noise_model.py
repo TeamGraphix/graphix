@@ -70,18 +70,19 @@ def test_compose_noise_model_transpile(fx_rng: Generator) -> None:
             check_noise_command(next(iterator), 0, False)
             check_noise_command(next(iterator), 0, False)
         assert next(iterator) == cmd
-        if cmd.kind == CommandKind.N:
-            check_noise_command(next(iterator), 0, False)
-            check_noise_command(next(iterator), 0, False)
-        elif cmd.kind == CommandKind.E:
-            check_noise_command(next(iterator), 0, True)
-            check_noise_command(next(iterator), 0, True)
-        elif cmd.kind == CommandKind.X:
-            check_noise_command(next(iterator), 0, False)
-            check_noise_command(next(iterator), 0.5, False)
-        elif cmd.kind == CommandKind.Z:
-            check_noise_command(next(iterator), 0.5, False)
-            check_noise_command(next(iterator), 0, False)
+        match cmd.kind:
+            case CommandKind.N:
+                check_noise_command(next(iterator), 0, False)
+                check_noise_command(next(iterator), 0, False)
+            case CommandKind.E:
+                check_noise_command(next(iterator), 0, True)
+                check_noise_command(next(iterator), 0, True)
+            case CommandKind.X:
+                check_noise_command(next(iterator), 0, False)
+                check_noise_command(next(iterator), 0.5, False)
+            case CommandKind.Z:
+                check_noise_command(next(iterator), 0.5, False)
+                check_noise_command(next(iterator), 0, False)
 
 
 def test_confuse_result(fx_rng: Generator) -> None:
