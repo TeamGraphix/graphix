@@ -117,10 +117,11 @@ def translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit: Circuit) -
     """
     paddle_quantum_circuit = PaddleCircuit(graphix_circuit.width)
     for instr in graphix_circuit.instruction:
-        if instr.name == "CNOT":
-            paddle_quantum_circuit.cnot(which_qubits=instr[1])
-        elif instr.name == "RZ":
-            paddle_quantum_circuit.rz(which_qubit=instr[1], theta=to_tensor(instr[2], dtype="float64"))
+        match instr.name:
+            case "CNOT":
+                paddle_quantum_circuit.cnot(which_qubits=instr[1])
+            case "RZ":
+                paddle_quantum_circuit.rz(which_qubit=instr[1], theta=to_tensor(instr[2], dtype="float64"))
     return paddle_quantum_circuit
 
 

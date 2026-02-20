@@ -258,7 +258,7 @@ class CorrectionMatrix(Generic[_AM_co]):
         correction_function: dict[int, frozenset[int]] = {}
         for node in col_tags:
             i = col_tags.index(node)
-            correction_set = {row_tags[j] for j in np.flatnonzero(self.c_matrix[:, i])}
+            correction_set = {row_tags[int(j)] for j in np.flatnonzero(self.c_matrix[:, i])}
             correction_function[node] = frozenset(correction_set)
         return correction_function
 

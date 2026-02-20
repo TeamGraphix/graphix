@@ -39,6 +39,7 @@ dependencies = { file = ["requirements.txt"] }
 dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 doc = { file = ["requirements-doc.txt"] }
+typing = { file = ["requirements-typing.txt"] }
 
 [tool.setuptools.packages.find]
 include = ["graphix", "stubs"]
