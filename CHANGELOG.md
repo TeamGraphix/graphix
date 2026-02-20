@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved the conditional logic to `graphix.simulator` to remove code duplication in the backends.
   - Solves [#428](https://github.com/TeamGraphix/graphix/issues/428).
 
+- #440, #441: `Statevec.nqubits` now returns the correct value.
+
 ### Changed
 
 - #181, #423: Structural separation of Pauli measurements
