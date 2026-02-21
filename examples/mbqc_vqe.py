@@ -37,8 +37,11 @@ from graphix.simulator import PatternSimulator
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from scipy.optimize import OptimizeResult
+
+    from graphix.fundamentals import ParameterizedAngle
     from graphix.pattern import Pattern
-    from graphix.transpiler import Angle
+    from graphix.sim.tensornet import MBQCTensorNet
 
 Z = np.array([[1, 0], [0, -1]])
 X = np.array([[0, 1], [1, 0]])
@@ -46,7 +49,7 @@ X = np.array([[0, 1], [1, 0]])
 
 # %%
 # Define the Hamiltonian for the VQE problem (Example: H = Z0Z1 + X0 + X1)
-def create_hamiltonian() -> npt.NDArray[np.complex128]:
+def create_hamiltonian() -> npt.NDArray[np.float64]:
     return np.kron(Z, Z) + np.kron(X, np.eye(2)) + np.kron(np.eye(2), X)
 
 
@@ -65,7 +68,7 @@ else:
 
 # %%
 # Function to build the VQE circuit
-def build_vqe_circuit(n_qubits: int, params: Iterable[Angle]) -> Circuit:
+def build_vqe_circuit(n_qubits: int, params: Iterable[ParameterizedAngle]) -> Circuit:
     circuit = Circuit(n_qubits)
     for i, (x, y, z) in enumerate(batched(params, n=3)):
         circuit.rx(i, x)
@@ -78,13 +81,13 @@ def build_vqe_circuit(n_qubits: int, params: Iterable[Angle]) -> Circuit:
 
 # %%
 class MBQCVQE:
-    def __init__(self, n_qubits: int, hamiltonian: npt.NDArray):
+    def __init__(self, n_qubits: int, hamiltonian: npt.NDArray[np.float64]):
         self.n_qubits = n_qubits
         self.hamiltonian = hamiltonian
 
     # %%
     # Function to build the MBQC pattern
-    def build_mbqc_pattern(self, params: Iterable[Angle]) -> Pattern:
+    def build_mbqc_pattern(self, params: Iterable[ParameterizedAngle]) -> Pattern:
         circuit = build_vqe_circuit(self.n_qubits, params)
         pattern = circuit.transpile().pattern
         pattern.standardize()
@@ -95,34 +98,36 @@ class MBQCVQE:
 
     # %%
     # Function to simulate the MBQC circuit
-    def simulate_mbqc(self, params: Iterable[float], backend="tensornetwork"):
+    def simulate_mbqc(
+        self,
+        params: Iterable[float],
+    ) -> MBQCTensorNet:
         pattern = self.build_mbqc_pattern(params)
-        simulator = PatternSimulator(pattern, backend=backend)
-        if backend == "tensornetwork":
-            simulator.run()  # Simulate the MBQC circuit using tensor network
-            tn = simulator.backend.state
-            tn.default_output_nodes = pattern.output_nodes  # Set the default_output_nodes attribute
-            if tn.default_output_nodes is None:
-                raise ValueError("Output nodes are not set for tensor network simulation.")
-            return tn
-        return simulator.run()  # Simulate the MBQC circuit using other backends
+        simulator = PatternSimulator(pattern, backend="tensornetwork")
+        state = simulator.backend.state
+        simulator.run()  # Simulate the MBQC circuit using tensor network
+        tn = simulator.backend.state
+        tn.default_output_nodes = pattern.output_nodes  # Set the default_output_nodes attribute
+        if tn.default_output_nodes is None:
+            raise ValueError("Output nodes are not set for tensor network simulation.")
+        return state
 
     # %%
     # Function to compute the energy
-    def compute_energy(self, params: Iterable[float]):
+    def compute_energy(self, params: Iterable[float]) -> float:
         # Simulate the MBQC circuit using tensor network backend
-        tn = self.simulate_mbqc(params, backend="tensornetwork")
+        tn = self.simulate_mbqc(params)
         # Compute the expectation value using MBQCTensornet.expectation_value
-        return tn.expectation_value(self.hamiltonian, qubit_indices=range(self.n_qubits))
+        return tn.expectation_value(self.hamiltonian.astype(np.complex128), qubit_indices=range(self.n_qubits))
 
 
 class MBQCVQEWithPlaceholders(MBQCVQE):
-    def __init__(self, n_qubits: int, hamiltonian) -> None:
+    def __init__(self, n_qubits: int, hamiltonian: npt.NDArray[np.float64]) -> None:
         super().__init__(n_qubits, hamiltonian)
         self.placeholders = tuple(Placeholder(f"{r}[{q}]") for q in range(n_qubits) for r in ("X", "Y", "Z"))
         self.pattern = super().build_mbqc_pattern(self.placeholders)
 
-    def build_mbqc_pattern(self, params):
+    def build_mbqc_pattern(self, params: Iterable[ParameterizedAngle]) -> Pattern:
         return self.pattern.xreplace(dict(zip(self.placeholders, params, strict=True)))
 
 
@@ -133,12 +138,12 @@ hamiltonian = create_hamiltonian()
 
 # %%
 # Instantiate the MBQCVQE class
-mbqc_vqe = MBQCVQEWithPlaceholders(n_qubits, hamiltonian)
+mbqc_vqe: MBQCVQE = MBQCVQEWithPlaceholders(n_qubits, hamiltonian)
 
 
 # %%
 # Define the cost function
-def cost_function(params):
+def cost_function(params: Iterable[float]) -> float:
     return mbqc_vqe.compute_energy(params)
 
 
@@ -150,7 +155,7 @@ initial_params = rng.random(n_qubits * 3)
 
 # %%
 # Perform the optimization using COBYLA
-def compute():
+def compute() -> OptimizeResult:
     return minimize(cost_function, initial_params, method="COBYLA", options={"maxiter": 100})
 
 
