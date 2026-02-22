@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #386, #433: Added `Statevec.fidelity` and `Statevec.isclose` methods for pure-state fidelity computation and equality check up to global phase.
 
+- #447: `Pattern.perform_pauli_pushing` which calls `StandardizedPattern.perform_pauli_pushing`.
+
 ### Fixed
 
 - #429
@@ -19,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Solves [#428](https://github.com/TeamGraphix/graphix/issues/428).
 
 - #438: `ComplexUnit.try_from` now uses `cmath.isclose` for float comparison and has optional parameters `rel_tol` and `abs_tol`.
+
+- #440, #441: `Statevec.nqubits` now returns the correct value.
 
 ### Changed
 
