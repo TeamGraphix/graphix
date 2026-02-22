@@ -21,7 +21,7 @@ from typing_extensions import assert_never
 
 from graphix import command, optimization
 from graphix.clifford import Clifford
-from graphix.command import Command, CommandKind
+from graphix.command import Command, CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
@@ -1703,6 +1703,53 @@ class Pattern:
         """
         return self.map(lambda m: m.to_bloch())
 
+    def perform_pauli_pushing(
+        self,
+        leave_nodes: AbstractSet[Node] | None = None,
+        copy: bool = False,
+        standardize: bool = False,
+        *,
+        stacklevel: int = 1,
+    ) -> Pattern:
+        """Move Pauli measurements before the other measurements.
+
+        Parameters
+        ----------
+        leave_nodes : AbstractSet[Node], optional
+            Nodes that should not be moved. This constraint only
+            applies to Pauli nodes and has no effect on non-Pauli nodes.
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+        standardize: bool, optional
+            If ``True``, the pattern is returned in standardized form.
+            The default is ``False``: the nodes are prepared on a
+            need-by-need basis, minimizing space usage.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        Pattern
+            The pattern in which Pauli measurements have been moved
+            before the other measurements. If ``copy`` is ``False``,
+            the result is ``self``.
+
+        Notes
+        -----
+        This function relies on :func:`StandardizedPattern.perform_pauli_pushing`.
+        """
+        standardized_pattern = optimization.StandardizedPattern.from_pattern(self).perform_pauli_pushing(
+            leave_nodes, stacklevel=stacklevel + 1
+        )
+        pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
+        if copy:
+            return pattern
+        self.__seq = pattern.__seq
+        return self
+
 
 class PatternError(Exception):
     """Exception subclass to handle pattern errors."""
@@ -1785,7 +1832,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
     pat = Pattern()
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
-        standardized_pattern = standardized_pattern.perform_pauli_pushing()
+        standardized_pattern = standardized_pattern.perform_pauli_pushing(stacklevel=stacklevel + 1)
     output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)

@@ -1138,6 +1138,23 @@ class TestPattern:
         assert xzc.z_corrections == xzc_ref.z_corrections
         assert xzc.partial_order_layers == xzc_ref.partial_order_layers
 
+    def test_perform_pauli_pushing(self) -> None:
+        original_pattern = Pattern(
+            input_nodes=[0], cmds=[N(1), E((1, 0)), N(2), E((1, 2)), M(1, Measurement.XY(0.1)), M(0)]
+        )
+        pattern = original_pattern.copy()
+        pauli_pushed_pattern = pattern.perform_pauli_pushing(copy=True)
+        assert pattern == original_pattern
+        assert list(pauli_pushed_pattern) == [N(1), E((0, 1)), M(0), N(2), E((1, 2)), M(1, Measurement.XY(0.1))]
+        pattern.perform_pauli_pushing()
+        assert pattern == pauli_pushed_pattern
+        assert original_pattern.perform_pauli_pushing(leave_nodes={0}, copy=True) == original_pattern
+        with pytest.warns(UserWarning, match="`leave_nodes` contains nodes that are not Pauli"):
+            original_pattern.perform_pauli_pushing(leave_nodes={1}, copy=True)
+        with pytest.warns(UserWarning, match="Pattern with non-inferred Pauli measurements."):
+            original_pattern.to_bloch().perform_pauli_pushing()
+        assert original_pattern.perform_pauli_pushing(copy=True, standardize=True).is_standard()
+
 
 def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
