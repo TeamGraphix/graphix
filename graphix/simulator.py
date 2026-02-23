@@ -9,7 +9,7 @@ from __future__ import annotations
 import abc
 import logging
 import warnings
-from typing import TYPE_CHECKING, Generic, Literal, overload
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -25,7 +25,6 @@ from graphix.sim import (
     StatevectorBackend,
     TensorNetworkBackend,
 )
-from graphix.sim.base_backend import _StateT_co
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -37,12 +36,21 @@ if TYPE_CHECKING:
     from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim import Data
+    from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevec
 
 logger = logging.getLogger(__name__)
 
 _BuiltinBackend = DensityMatrixBackend | StatevectorBackend | TensorNetworkBackend
 _BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"]
+
+if TYPE_CHECKING:
+    _BuiltinBackendState = DensityMatrix | MBQCTensorNet | Statevec
+
+    _StateT = TypeVar("_StateT")
+
+# This type variable should be defined outside TYPE_CHECKING block
+# because it appears in the parameters of `PatternSimulator`.
+_StateT_co = TypeVar("_StateT_co", covariant=True)
 
 
 class PrepareMethod(abc.ABC):
@@ -235,12 +243,64 @@ class PatternSimulator(Generic[_StateT_co]):
     """
 
     noise_model: NoiseModel | None
-    backend: Backend[_StateT_co] | _BuiltinBackend
+    backend: Backend[_StateT_co]
+
+    @overload
+    def __init__(
+        self: PatternSimulator[Statevec],
+        pattern: Pattern,
+        backend: Literal["statevector"] = ...,
+        prepare_method: PrepareMethod | None = None,
+        measure_method: MeasureMethod | None = None,
+        noise_model: NoiseModel | None = None,
+        branch_selector: BranchSelector | None = None,
+        graph_prep: str | None = None,
+        symbolic: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self: PatternSimulator[DensityMatrix],
+        pattern: Pattern,
+        backend: Literal["densitymatrix"] = ...,
+        prepare_method: PrepareMethod | None = None,
+        measure_method: MeasureMethod | None = None,
+        noise_model: NoiseModel | None = None,
+        branch_selector: BranchSelector | None = None,
+        graph_prep: str | None = None,
+        symbolic: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self: PatternSimulator[MBQCTensorNet],
+        pattern: Pattern,
+        backend: Literal["tensornetwork", "mps"] = ...,
+        prepare_method: PrepareMethod | None = None,
+        measure_method: MeasureMethod | None = None,
+        noise_model: NoiseModel | None = None,
+        branch_selector: BranchSelector | None = None,
+        graph_prep: str | None = None,
+        symbolic: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self: PatternSimulator[_StateT],
+        pattern: Pattern,
+        backend: Backend[_StateT] = ...,
+        prepare_method: PrepareMethod | None = None,
+        measure_method: MeasureMethod | None = None,
+        noise_model: NoiseModel | None = None,
+        branch_selector: BranchSelector | None = None,
+        graph_prep: str | None = None,
+        symbolic: bool = False,
+    ) -> None: ...
 
     def __init__(
-        self,
+        self: PatternSimulator[_StateT | _BuiltinBackendState],
         pattern: Pattern,
-        backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
+        backend: Backend[_StateT] | _BackendLiteral = "statevector",
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
