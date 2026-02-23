@@ -10,11 +10,16 @@ Firstly, let us import relevant modules and define the circuit:
 # %%
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from graphix import Circuit
 from graphix.fundamentals import ANGLE_PI
 
+if TYPE_CHECKING:
+    from graphix.fundamentals import Angle
 
-def cp(circuit, theta, control, target):
+
+def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
     circuit.rz(control, theta / 2)
     circuit.rz(target, theta / 2)
     circuit.cnot(control, target)
@@ -22,19 +27,18 @@ def cp(circuit, theta, control, target):
     circuit.cnot(control, target)
 
 
-def qft_rotations(circuit, n):
+def qft_rotations(circuit: Circuit, n: int) -> None:
     circuit.h(n)
     for qubit in range(n + 1, circuit.width):
         cp(circuit, ANGLE_PI / 2 ** (qubit - n), qubit, n)
 
 
-def swap_registers(circuit, n):
+def swap_registers(circuit: Circuit, n: int) -> None:
     for qubit in range(n // 2):
         circuit.swap(qubit, n - qubit - 1)
-    return circuit
 
 
-def qft(circuit, n):
+def qft(circuit: Circuit, n: int) -> None:
     for i in range(n):
         qft_rotations(circuit, i)
     swap_registers(circuit, n)

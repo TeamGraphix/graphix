@@ -602,38 +602,39 @@ class PauliFlow(Generic[_AM_co]):
                         past_and_present_nodes=past_and_present_nodes_y_meas,
                     )
 
-                if meas == Plane.XY:
-                    if not (node not in correction_set and node in odd_neighbors):
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.P4, node=node, correction_set=correction_set
-                        )
-                elif meas == Plane.XZ:
-                    if not (node in correction_set and node in odd_neighbors):
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.P5, node=node, correction_set=correction_set
-                        )
-                elif meas == Plane.YZ:
-                    if not (node in correction_set and node not in odd_neighbors):
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.P6, node=node, correction_set=correction_set
-                        )
-                elif meas == Axis.X:
-                    if node not in odd_neighbors:
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.P7, node=node, correction_set=correction_set
-                        )
-                elif meas == Axis.Z:
-                    if node not in correction_set:
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.P8, node=node, correction_set=correction_set
-                        )
-                elif meas == Axis.Y:
-                    if node not in closed_odd_neighbors:
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.P9, node=node, correction_set=correction_set
-                        )
-                else:
-                    assert_never(meas)
+                match meas:
+                    case Plane.XY:
+                        if not (node not in correction_set and node in odd_neighbors):
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.P4, node=node, correction_set=correction_set
+                            )
+                    case Plane.XZ:
+                        if not (node in correction_set and node in odd_neighbors):
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.P5, node=node, correction_set=correction_set
+                            )
+                    case Plane.YZ:
+                        if not (node in correction_set and node not in odd_neighbors):
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.P6, node=node, correction_set=correction_set
+                            )
+                    case Axis.X:
+                        if node not in odd_neighbors:
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.P7, node=node, correction_set=correction_set
+                            )
+                    case Axis.Z:
+                        if node not in correction_set:
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.P8, node=node, correction_set=correction_set
+                            )
+                    case Axis.Y:
+                        if node not in closed_odd_neighbors:
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.P9, node=node, correction_set=correction_set
+                            )
+                    case _:
+                        assert_never(meas)
 
             layer_idx -= 1
 
@@ -954,23 +955,24 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
                 plane = self.node_measurement_label(node)
 
-                if plane == Plane.XY:
-                    if not (node not in correction_set and node in odd_neighbors):
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.G3, node=node, correction_set=correction_set
-                        )
-                elif plane == Plane.XZ:
-                    if not (node in correction_set and node in odd_neighbors):
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.G4, node=node, correction_set=correction_set
-                        )
-                elif plane == Plane.YZ:
-                    if not (node in correction_set and node not in odd_neighbors):
-                        raise FlowPropositionError(
-                            FlowPropositionErrorReason.G5, node=node, correction_set=correction_set
-                        )
-                else:
-                    assert_never(plane)
+                match plane:
+                    case Plane.XY:
+                        if not (node not in correction_set and node in odd_neighbors):
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.G3, node=node, correction_set=correction_set
+                            )
+                    case Plane.XZ:
+                        if not (node in correction_set and node in odd_neighbors):
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.G4, node=node, correction_set=correction_set
+                            )
+                    case Plane.YZ:
+                        if not (node in correction_set and node not in odd_neighbors):
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.G5, node=node, correction_set=correction_set
+                            )
+                    case _:
+                        assert_never(plane)
 
             layer_idx -= 1
 

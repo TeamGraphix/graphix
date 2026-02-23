@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import cmath
 import enum
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
@@ -164,19 +165,36 @@ class ComplexUnit(EnumReprMixin, Enum):
     MINUS_J = 3
 
     @staticmethod
-    def try_from(value: ComplexUnit | SupportsComplexCtor) -> ComplexUnit | None:
-        """Return the ComplexUnit instance if the value is compatible, None otherwise."""
+    def try_from(
+        value: ComplexUnit | SupportsComplexCtor, rel_tol: float = 1e-09, abs_tol: float = 0.0
+    ) -> ComplexUnit | None:
+        """Return the ComplexUnit instance if the value is compatible, None otherwise.
+
+        Parameters
+        ----------
+        value : ComplexUnit | SupportsComplexCtor
+            Complex value to convert.
+        rel_tol : float, optional
+            Relative tolerance for comparing values, passed to :func:`math.isclose`. Default is ``1e-9``.
+        abs_tol : float, optional
+            Absolute tolerance for comparing values, passed to :func:`math.isclose`. Default is ``0.0``.
+
+        Returns
+        -------
+        ComplexUnit  | None
+        Complex unit close to value, or ``None`` otherwise.
+        """
         if isinstance(value, ComplexUnit):
             return value
         value = complex(value)
-        if value == 1:
-            return ComplexUnit.ONE
-        if value == -1:
-            return ComplexUnit.MINUS_ONE
-        if value == 1j:
-            return ComplexUnit.J
-        if value == -1j:
-            return ComplexUnit.MINUS_J
+        for reference, result in (
+            (1, ComplexUnit.ONE),
+            (-1, ComplexUnit.MINUS_ONE),
+            (1j, ComplexUnit.J),
+            (-1j, ComplexUnit.MINUS_J),
+        ):
+            if cmath.isclose(value, reference, rel_tol=rel_tol, abs_tol=abs_tol):
+                return result
         return None
 
     @staticmethod
@@ -335,46 +353,54 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
     @property
     def axes(self) -> tuple[Axis, Axis]:
         """Return the pair of axes that carry the plane."""
-        if self == Plane.XY:
-            return (Axis.X, Axis.Y)
-        if self == Plane.YZ:
-            return (Axis.Y, Axis.Z)
-        if self == Plane.XZ:
-            return (Axis.X, Axis.Z)
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return (Axis.X, Axis.Y)
+            case Plane.YZ:
+                return (Axis.Y, Axis.Z)
+            case Plane.XZ:
+                return (Axis.X, Axis.Z)
+            case _:
+                typing_extensions.assert_never(self)
 
     @property
     def orth(self) -> Axis:
         """Return the axis orthogonal to the plane."""
-        if self == Plane.XY:
-            return Axis.Z
-        if self == Plane.YZ:
-            return Axis.X
-        if self == Plane.XZ:
-            return Axis.Y
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return Axis.Z
+            case Plane.YZ:
+                return Axis.X
+            case Plane.XZ:
+                return Axis.Y
+            case _:
+                typing_extensions.assert_never(self)
 
     @property
     def cos(self) -> Axis:
         """Return the axis of the plane that conventionally carries the cos."""
-        if self == Plane.XY:
-            return Axis.X
-        if self == Plane.YZ:
-            return Axis.Z  # former convention was Y
-        if self == Plane.XZ:
-            return Axis.Z  # former convention was X
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return Axis.X
+            case Plane.YZ:
+                return Axis.Z  # former convention was Y
+            case Plane.XZ:
+                return Axis.Z  # former convention was X
+            case _:
+                typing_extensions.assert_never(self)
 
     @property
     def sin(self) -> Axis:
         """Return the axis of the plane that conventionally carries the sin."""
-        if self == Plane.XY:
-            return Axis.Y
-        if self == Plane.YZ:
-            return Axis.Y  # former convention was Z
-        if self == Plane.XZ:
-            return Axis.X  # former convention was Z
-        typing_extensions.assert_never(self)
+        match self:
+            case Plane.XY:
+                return Axis.Y
+            case Plane.YZ:
+                return Axis.Y  # former convention was Z
+            case Plane.XZ:
+                return Axis.X  # former convention was Z
+            case _:
+                typing_extensions.assert_never(self)
 
     @overload
     def polar(self, angle: Angle) -> tuple[float, float, float]: ...
@@ -389,13 +415,15 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
         pp = (self.cos, self.sin)
         # Angles are in units of π whereas `cos_sin` expects radians.
         cos, sin = cos_sin(angle_to_rad(angle))
-        if pp == (Axis.X, Axis.Y):
-            return (cos, sin, 0)
-        if pp == (Axis.Z, Axis.Y):
-            return (0, sin, cos)
-        if pp == (Axis.Z, Axis.X):
-            return (sin, 0, cos)
-        raise RuntimeError("Unreachable.")  # pragma: no cover
+        match pp:
+            case (Axis.X, Axis.Y):
+                return (cos, sin, 0)
+            case (Axis.Z, Axis.Y):
+                return (0, sin, cos)
+            case (Axis.Z, Axis.X):
+                return (sin, 0, cos)
+            case _:
+                raise RuntimeError("Unreachable.")  # pragma: no cover
 
     @staticmethod
     def from_axes(a: Axis, b: Axis) -> Plane:

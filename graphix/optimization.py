@@ -8,6 +8,7 @@ from copy import copy
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING
+from warnings import warn
 
 import networkx as nx
 
@@ -178,53 +179,53 @@ class StandardizedPattern(_StandardizedPattern):
         pattern.check_runnability()
 
         for cmd in pattern:
-            if cmd.kind == CommandKind.N:
-                n_list.append(cmd)
-            elif cmd.kind == CommandKind.E:
-                for side in (0, 1):
-                    i, j = cmd.nodes[side], cmd.nodes[1 - side]
-                    if clifford_gate := c_dict.get(i):
-                        _commute_clifford(clifford_gate, c_dict, i, j)
-                    if s_domain_opt := x_dict.get(i):
-                        _add_correction_domain(z_dict, j, s_domain_opt)
-                edge = frozenset(cmd.nodes)
-                e_set.symmetric_difference_update((edge,))
-            elif cmd.kind == CommandKind.M:
-                new_cmd = None
-                if clifford_gate := c_dict.pop(cmd.node, None):
-                    new_cmd = cmd.clifford(clifford_gate)
-                if t_domain_opt := z_dict.pop(cmd.node, None):
+            match cmd.kind:
+                case CommandKind.N:
+                    n_list.append(cmd)
+                case CommandKind.E:
+                    for side in (0, 1):
+                        i, j = cmd.nodes[side], cmd.nodes[1 - side]
+                        if clifford_gate := c_dict.get(i):
+                            _commute_clifford(clifford_gate, c_dict, i, j)
+                        if s_domain_opt := x_dict.get(i):
+                            _add_correction_domain(z_dict, j, s_domain_opt)
+                    edge = frozenset(cmd.nodes)
+                    e_set.symmetric_difference_update((edge,))
+                case CommandKind.M:
+                    new_cmd = None
+                    if clifford_gate := c_dict.pop(cmd.node, None):
+                        new_cmd = cmd.clifford(clifford_gate)
+                    if t_domain_opt := z_dict.pop(cmd.node, None):
+                        if new_cmd is None:
+                            new_cmd = copy(cmd)
+                        # The original domain should not be mutated
+                        new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
+                    if s_domain_opt := x_dict.pop(cmd.node, None):
+                        if new_cmd is None:
+                            new_cmd = copy(cmd)
+                        # The original domain should not be mutated
+                        new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
                     if new_cmd is None:
-                        new_cmd = copy(cmd)
-                    # The original domain should not be mutated
-                    new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
-                if s_domain_opt := x_dict.pop(cmd.node, None):
-                    if new_cmd is None:
-                        new_cmd = copy(cmd)
-                    # The original domain should not be mutated
-                    new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
-                if new_cmd is None:
-                    m_list.append(cmd)
-                else:
-                    m_list.append(new_cmd)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                if cmd.kind == CommandKind.X:
-                    s_domain = cmd.domain
-                    t_domain = set()
-                else:
-                    s_domain = set()
-                    t_domain = cmd.domain
-                domains = c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
-                if domains.t_domain:
-                    _add_correction_domain(z_dict, cmd.node, domains.t_domain)
-                if domains.s_domain:
-                    _add_correction_domain(x_dict, cmd.node, domains.s_domain)
-            elif cmd.kind == CommandKind.C:
-                # Each pattern command is applied by left multiplication: if a clifford `C`
-                # has been already applied to a node, applying a clifford `C'` to the same
-                # node is equivalent to apply `C'C` to a fresh node.
-                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
+                        m_list.append(cmd)
+                    else:
+                        m_list.append(new_cmd)
+                case CommandKind.X | CommandKind.Z:
+                    if cmd.kind == CommandKind.X:
+                        s_domain = cmd.domain
+                        t_domain = set()
+                    else:
+                        s_domain = set()
+                        t_domain = cmd.domain
+                    domains = c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
+                    if domains.t_domain:
+                        _add_correction_domain(z_dict, cmd.node, domains.t_domain)
+                    if domains.s_domain:
+                        _add_correction_domain(x_dict, cmd.node, domains.s_domain)
+                case CommandKind.C:
+                    # Each pattern command is applied by left multiplication: if a clifford `C`
+                    # has been already applied to a node, applying a clifford `C'` to the same
+                    # node is equivalent to apply `C'C` to a fresh node.
+                    c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
         return cls(
             pattern.input_nodes, pattern.output_nodes, pattern.results, n_list, e_set, m_list, c_dict, z_dict, x_dict
         )
@@ -244,10 +245,38 @@ class StandardizedPattern(_StandardizedPattern):
             graph.add_edge(u, v)
         return graph
 
-    def perform_pauli_pushing(self, leave_nodes: set[Node] | None = None) -> Self:
-        """Move all Pauli measurements before the other measurements (except nodes in `leave_nodes`)."""
-        if leave_nodes is None:
-            leave_nodes = set()
+    def perform_pauli_pushing(self, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1) -> Self:
+        """Move Pauli measurements before the other measurements.
+
+        Parameters
+        ----------
+        leave_nodes : AbstractSet[Node], optional
+            Nodes that should not be moved. This constraint only
+            applies to Pauli nodes and has no effect on non-Pauli nodes.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        Pattern
+            The pattern in which Pauli measurements have been moved
+            before the other measurements.
+        """
+        self._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
+
+        if leave_nodes:
+            leave_non_pauli_nodes = [
+                cmd.node
+                for cmd in self.m_list
+                if not isinstance(cmd.measurement, PauliMeasurement) and cmd.node in leave_nodes
+            ]
+            if leave_non_pauli_nodes:
+                warn(
+                    f"`leave_nodes` contains nodes that are not Pauli: {leave_non_pauli_nodes}. The constraint has no effect on these nodes.",
+                    stacklevel=stacklevel + 1,
+                )
+
         shift_domains: dict[int, set[int]] = {}
 
         def expand_domain(domain: AbstractSet[int]) -> set[int]:
@@ -268,42 +297,43 @@ class StandardizedPattern(_StandardizedPattern):
         for cmd in self.m_list:
             s_domain = expand_domain(cmd.s_domain)
             t_domain = expand_domain(cmd.t_domain)
-            if not isinstance(cmd.measurement, PauliMeasurement) or cmd.node in leave_nodes:
+            if not isinstance(cmd.measurement, PauliMeasurement) or (leave_nodes and cmd.node in leave_nodes):
                 non_pauli_list.append(
                     command.M(node=cmd.node, measurement=cmd.measurement, s_domain=s_domain, t_domain=t_domain)
                 )
             else:
-                if cmd.measurement.axis == Axis.X:
-                    # M^X X^s Z^t = M^{XY,0} X^s Z^t
-                    #             = M^{XY,(-1)^s·0+tπ}
-                    #             = S^t M^X
-                    # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
-                    #                = M^{XY,(-1)^s·π+tπ}
-                    #                = S^t M^{-X}
-                    shift_domains[cmd.node] = t_domain
-                elif cmd.measurement.axis == Axis.Y:
-                    # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
-                    #             = M^{XY,(-1)^s·π/2+tπ}
-                    #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
-                    #             = S^{s+t} M^Y
-                    # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
-                    #                = M^{XY,(-1)^s·(-π/2)+tπ}
-                    #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
-                    #                = S^{s+t} M^{-Y}
-                    shift_domains[cmd.node] = s_domain ^ t_domain
-                elif cmd.measurement.axis == Axis.Z:
-                    # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
-                    #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
-                    #             = M^{XZ,(-1)^t·sπ}
-                    #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
-                    #             = S^s M^Z
-                    # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
-                    #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
-                    #                = M^{XZ,(s+1)π}
-                    #                = S^s M^{-Z}
-                    shift_domains[cmd.node] = s_domain
-                else:
-                    assert_never(cmd.measurement.axis)
+                match cmd.measurement.axis:
+                    case Axis.X:
+                        # M^X X^s Z^t = M^{XY,0} X^s Z^t
+                        #             = M^{XY,(-1)^s·0+tπ}
+                        #             = S^t M^X
+                        # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
+                        #                = M^{XY,(-1)^s·π+tπ}
+                        #                = S^t M^{-X}
+                        shift_domains[cmd.node] = t_domain
+                    case Axis.Y:
+                        # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
+                        #             = M^{XY,(-1)^s·π/2+tπ}
+                        #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
+                        #             = S^{s+t} M^Y
+                        # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
+                        #                = M^{XY,(-1)^s·(-π/2)+tπ}
+                        #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
+                        #                = S^{s+t} M^{-Y}
+                        shift_domains[cmd.node] = s_domain ^ t_domain
+                    case Axis.Z:
+                        # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
+                        #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
+                        #             = M^{XZ,(-1)^t·sπ}
+                        #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
+                        #             = S^s M^Z
+                        # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
+                        #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
+                        #                = M^{XZ,(s+1)π}
+                        #                = S^s M^{-Z}
+                        shift_domains[cmd.node] = s_domain
+                    case _:
+                        assert_never(cmd.measurement.axis)
                 pauli_list.append(command.M(node=cmd.node, measurement=cmd.measurement))
         return self.__class__(
             self.input_nodes,
@@ -591,6 +621,12 @@ class StandardizedPattern(_StandardizedPattern):
             og, x_corr, z_corr
         )  # Raises a `XZCorrectionsError` if the input dictionaries are not well formed.
 
+    def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
+        for m in self.m_list:
+            if isinstance(m.measurement, BlochMeasurement) and m.measurement.try_to_pauli() is not None:
+                warn("Pattern with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
+                return
+
 
 def _add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:
     """Merge a correction domain into ``domain_dict`` for ``node``.
@@ -672,43 +708,43 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
     result = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     for cmd in pattern:
-        if cmd.kind == CommandKind.M:
-            s = _incorporate_pauli_results_in_domain(pattern.results, cmd.s_domain)
-            t = _incorporate_pauli_results_in_domain(pattern.results, cmd.t_domain)
-            if s or t:
-                if s:
-                    apply_x, new_s_domain = s
+        match cmd.kind:
+            case CommandKind.M:
+                s = _incorporate_pauli_results_in_domain(pattern.results, cmd.s_domain)
+                t = _incorporate_pauli_results_in_domain(pattern.results, cmd.t_domain)
+                if s or t:
+                    if s:
+                        apply_x, new_s_domain = s
+                    else:
+                        apply_x = False
+                        new_s_domain = cmd.s_domain
+                    if t:
+                        apply_z, new_t_domain = t
+                    else:
+                        apply_z = False
+                        new_t_domain = cmd.t_domain
+                    new_cmd = command.M(cmd.node, cmd.measurement, new_s_domain, new_t_domain)
+                    if apply_x:
+                        new_cmd = new_cmd.clifford(Clifford.X)
+                    if apply_z:
+                        new_cmd = new_cmd.clifford(Clifford.Z)
+                    result.add(new_cmd)
                 else:
-                    apply_x = False
-                    new_s_domain = cmd.s_domain
-                if t:
-                    apply_z, new_t_domain = t
+                    result.add(cmd)
+            case CommandKind.X | CommandKind.Z:
+                signal = _incorporate_pauli_results_in_domain(pattern.results, cmd.domain)
+                if signal:
+                    apply_c, new_domain = signal
+                    if new_domain:
+                        cmd_cstr = command.X if cmd.kind == CommandKind.X else command.Z
+                        result.add(cmd_cstr(cmd.node, new_domain))
+                    if apply_c:
+                        c = Clifford.X if cmd.kind == CommandKind.X else Clifford.Z
+                        result.add(command.C(cmd.node, c))
                 else:
-                    apply_z = False
-                    new_t_domain = cmd.t_domain
-                new_cmd = command.M(cmd.node, cmd.measurement, new_s_domain, new_t_domain)
-                if apply_x:
-                    new_cmd = new_cmd.clifford(Clifford.X)
-                if apply_z:
-                    new_cmd = new_cmd.clifford(Clifford.Z)
-                result.add(new_cmd)
-            else:
+                    result.add(cmd)
+            case _:
                 result.add(cmd)
-        # Use == for mypy
-        elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-            signal = _incorporate_pauli_results_in_domain(pattern.results, cmd.domain)
-            if signal:
-                apply_c, new_domain = signal
-                if new_domain:
-                    cmd_cstr = command.X if cmd.kind == CommandKind.X else command.Z
-                    result.add(cmd_cstr(cmd.node, new_domain))
-                if apply_c:
-                    c = Clifford.X if cmd.kind == CommandKind.X else Clifford.Z
-                    result.add(command.C(cmd.node, c))
-            else:
-                result.add(cmd)
-        else:
-            result.add(cmd)
     result.reorder_output_nodes(pattern.output_nodes)
     return result
 
@@ -746,21 +782,22 @@ def single_qubit_domains(pattern: Pattern) -> Pattern:
         return True
 
     for cmd in pattern:
-        if cmd.kind == CommandKind.M:
-            replaced_s_domain = decompose_domain(command.X, cmd.node, cmd.s_domain)
-            replaced_t_domain = decompose_domain(command.Z, cmd.node, cmd.t_domain)
-            if replaced_s_domain or replaced_t_domain:
-                new_s_domain = set() if replaced_s_domain else cmd.s_domain
-                new_t_domain = set() if replaced_t_domain else cmd.t_domain
-                new_cmd = dataclasses.replace(cmd, s_domain=new_s_domain, t_domain=new_t_domain)
-                new_pattern.add(new_cmd)
-                continue
-        elif cmd.kind == CommandKind.X:
-            if decompose_domain(command.X, cmd.node, cmd.domain):
-                continue
-        elif cmd.kind == CommandKind.Z:
-            if decompose_domain(command.Z, cmd.node, cmd.domain):
-                continue
+        match cmd.kind:
+            case CommandKind.M:
+                replaced_s_domain = decompose_domain(command.X, cmd.node, cmd.s_domain)
+                replaced_t_domain = decompose_domain(command.Z, cmd.node, cmd.t_domain)
+                if replaced_s_domain or replaced_t_domain:
+                    new_s_domain = set() if replaced_s_domain else cmd.s_domain
+                    new_t_domain = set() if replaced_t_domain else cmd.t_domain
+                    new_cmd = dataclasses.replace(cmd, s_domain=new_s_domain, t_domain=new_t_domain)
+                    new_pattern.add(new_cmd)
+                    continue
+            case CommandKind.X:
+                if decompose_domain(command.X, cmd.node, cmd.domain):
+                    continue
+            case CommandKind.Z:
+                if decompose_domain(command.Z, cmd.node, cmd.domain):
+                    continue
         new_pattern.add(cmd)
 
     new_pattern.reorder_output_nodes(pattern.output_nodes)
