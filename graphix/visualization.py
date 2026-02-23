@@ -608,25 +608,49 @@ class GraphVisualizer:
         plt.legend(handles=elements, loc="center left", fontsize=9, bbox_to_anchor=(1, 0.5))
 
     def __draw_measurement_labels(self, pos: Mapping[int, _Point]) -> None:
-        """Draw measurement labels centered above measured nodes.
+        """Draw measurement labels near measured nodes, adaptively placed to avoid overlap.
+
+        For each measured node the method picks the direction (above, upper-right,
+        or upper-left) whose candidate position is farthest from every other node,
+        so labels do not sit on top of neighbouring nodes in dense layouts.
 
         Parameters
         ----------
         pos : Mapping[int, tuple[float, float]]
             Dictionary of node positions.
         """
+        # Candidate offsets: (dx, dy, horizontal-alignment, vertical-alignment)
+        candidates: list[tuple[float, float, str, str]] = [
+            (0, 0.22, "center", "bottom"),  # above
+            (0.22, 0.15, "left", "bottom"),  # upper-right
+            (-0.22, 0.15, "right", "bottom"),  # upper-left
+        ]
+        all_positions = [pos[n] for n in self.og.graph.nodes()]
+
         for node, meas in self.og.measurements.items():
             label = self._format_measurement_label(meas)
             if label is not None:
                 x, y = pos[node]
+                # Pick the direction whose label anchor is farthest from any other node
+                best_dx, best_dy, best_ha, best_va = candidates[0]
+                best_min_dist = -1.0
+                for dx, dy, ha, va in candidates:
+                    lx, ly = x + dx, y + dy
+                    other_dists = [
+                        ((lx - ox) ** 2 + (ly - oy) ** 2) ** 0.5 for ox, oy in all_positions if (ox, oy) != (x, y)
+                    ]
+                    min_dist = min(other_dists) if other_dists else float("inf")
+                    if min_dist > best_min_dist:
+                        best_min_dist = min_dist
+                        best_dx, best_dy, best_ha, best_va = dx, dy, ha, va
                 plt.text(
-                    x,
-                    y + 0.22,
+                    x + best_dx,
+                    y + best_dy,
                     label,
                     fontsize=7,
                     fontweight="bold",
-                    ha="center",
-                    va="bottom",
+                    ha=best_ha,
+                    va=best_va,
                     zorder=3,
                     path_effects=[pe.withStroke(linewidth=2, foreground="white")],
                 )
