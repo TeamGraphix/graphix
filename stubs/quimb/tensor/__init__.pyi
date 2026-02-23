@@ -4,6 +4,7 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 from cotengra.oe import PathOptimizer
+from matplotlib.axes import Axes
 from quimb import oset
 from typing_extensions import Self
 
@@ -17,6 +18,8 @@ class Tensor:
         tags: Sequence[str] | None = None,
         left_inds: Sequence[str] | None = None,
     ) -> None: ...
+    def add_tag(self, tag: str) -> None: ...
+    def draw(self, legend: bool | str = "auto", title: str | None = None, ax: Axes | None = None) -> None: ...
     def reindex(self, retag_map: Mapping[str, str], inplace: bool = False) -> Tensor: ...
     def retag(self, retag_map: Mapping[str, str], inplace: bool = False) -> Tensor: ...
     def split(
@@ -63,6 +66,18 @@ class TensorNetwork:
         optimize: str | PathOptimizer | None = None,
     ) -> float: ...
     def copy(self, virtual: bool = False, deep: bool = False) -> TensorNetwork: ...
+    def draw(
+        self,
+        color: list[str] | None = None,
+        *,
+        show_inds: bool | None = None,
+        show_tags: bool | None = None,
+        legend: bool | str = "auto",
+        iterations: int | Literal["auto"] = "auto",
+        k: float | None = None,
+        title: str | None = None,
+        ax: Axes | None = None,
+    ) -> None: ...
     def full_simplify(
         self,
         seq: str = "ADCR",
@@ -83,3 +98,4 @@ class TensorNetwork:
     def tensors(self) -> tuple[Tensor, ...]: ...
 
 def rand_uuid(base: str = "") -> str: ...
+def rand_tensor(shape: Sequence[int], inds: Sequence[str] | str) -> Tensor: ...

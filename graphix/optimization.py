@@ -8,6 +8,7 @@ from copy import copy
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING
+from warnings import warn
 
 import networkx as nx
 
@@ -244,10 +245,38 @@ class StandardizedPattern(_StandardizedPattern):
             graph.add_edge(u, v)
         return graph
 
-    def perform_pauli_pushing(self, leave_nodes: set[Node] | None = None) -> Self:
-        """Move all Pauli measurements before the other measurements (except nodes in `leave_nodes`)."""
-        if leave_nodes is None:
-            leave_nodes = set()
+    def perform_pauli_pushing(self, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1) -> Self:
+        """Move Pauli measurements before the other measurements.
+
+        Parameters
+        ----------
+        leave_nodes : AbstractSet[Node], optional
+            Nodes that should not be moved. This constraint only
+            applies to Pauli nodes and has no effect on non-Pauli nodes.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        Pattern
+            The pattern in which Pauli measurements have been moved
+            before the other measurements.
+        """
+        self._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
+
+        if leave_nodes:
+            leave_non_pauli_nodes = [
+                cmd.node
+                for cmd in self.m_list
+                if not isinstance(cmd.measurement, PauliMeasurement) and cmd.node in leave_nodes
+            ]
+            if leave_non_pauli_nodes:
+                warn(
+                    f"`leave_nodes` contains nodes that are not Pauli: {leave_non_pauli_nodes}. The constraint has no effect on these nodes.",
+                    stacklevel=stacklevel + 1,
+                )
+
         shift_domains: dict[int, set[int]] = {}
 
         def expand_domain(domain: AbstractSet[int]) -> set[int]:
@@ -268,7 +297,7 @@ class StandardizedPattern(_StandardizedPattern):
         for cmd in self.m_list:
             s_domain = expand_domain(cmd.s_domain)
             t_domain = expand_domain(cmd.t_domain)
-            if not isinstance(cmd.measurement, PauliMeasurement) or cmd.node in leave_nodes:
+            if not isinstance(cmd.measurement, PauliMeasurement) or (leave_nodes and cmd.node in leave_nodes):
                 non_pauli_list.append(
                     command.M(node=cmd.node, measurement=cmd.measurement, s_domain=s_domain, t_domain=t_domain)
                 )
@@ -591,6 +620,12 @@ class StandardizedPattern(_StandardizedPattern):
         return XZCorrections.from_measured_nodes_mapping(
             og, x_corr, z_corr
         )  # Raises a `XZCorrectionsError` if the input dictionaries are not well formed.
+
+    def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
+        for m in self.m_list:
+            if isinstance(m.measurement, BlochMeasurement) and m.measurement.try_to_pauli() is not None:
+                warn("Pattern with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
+                return
 
 
 def _add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:
