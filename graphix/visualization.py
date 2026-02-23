@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
+from matplotlib import patheffects as pe
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -482,7 +483,8 @@ class GraphVisualizer:
         y_max = max((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the maximum y coordinate
 
         has_layers = l_k is not None and len(l_k) > 0
-        if show_measurement_order and has_layers and l_k is not None:
+        show_layers = show_measurement_order and has_layers
+        if show_layers and l_k is not None:
             l_min_val = min(l_k.values())
             l_max_val = max(l_k.values())
             # Draw layer numbers below nodes
@@ -496,17 +498,7 @@ class GraphVisualizer:
                     fontsize=8,
                     color="gray",
                 )
-            # "Layer" label on the left
-            plt.text(
-                l_min_val * node_distance[0] - 0.4,
-                y_min - 0.4,
-                "Layer",
-                ha="right",
-                va="top",
-                fontsize=8,
-                color="gray",
-            )
-            # Draw horizontal arrow indicating measurement order
+            # Draw horizontal arrow indicating measurement order with "Layer" label below
             if l_max_val > l_min_val:
                 arrow_y = y_min - 0.7
                 plt.annotate(
@@ -515,12 +507,13 @@ class GraphVisualizer:
                     xytext=(l_min_val * node_distance[0] - 0.3, arrow_y),
                     arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
                 )
+                mid_x = (l_min_val + l_max_val) / 2 * node_distance[0]
+                plt.text(mid_x, arrow_y - 0.15, "Layer", ha="center", va="top", fontsize=8, color="gray")
 
-        plt.xlim(
-            x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
-        )  # Add some padding to the left and right
-        bottom_margin = 1.3 if has_layers else 1
-        plt.ylim(y_min - bottom_margin, y_max + 0.5)
+        plt.xlim(x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0])
+        top_margin = 0.7 if show_measurements else 0.5
+        bottom_margin = 1.3 if show_layers else 0.5
+        plt.ylim(y_min - bottom_margin, y_max + top_margin)
 
         if filename is None:
             plt.show()
@@ -556,10 +549,10 @@ class GraphVisualizer:
                 [0],
                 marker="s",
                 color="w",
-                markerfacecolor="black",
+                markerfacecolor="white",
                 markeredgecolor="black",
                 markersize=10,
-                label="Input",
+                label="Input (shape)",
             ),
             Line2D(
                 [0],
@@ -635,6 +628,7 @@ class GraphVisualizer:
                     ha="center",
                     va="bottom",
                     zorder=3,
+                    path_effects=[pe.withStroke(linewidth=2, foreground="white")],
                 )
 
     @staticmethod
@@ -743,12 +737,13 @@ class GraphVisualizer:
                     return (pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle))
 
                 bezier_path = [
-                    _point_from_node(pos[arrow[0]], 0.15, 160),
-                    _point_from_node(pos[arrow[0]], 0.25, 160),
-                    _point_from_node(pos[arrow[0]], 0.3, 140),
-                    _point_from_node(pos[arrow[0]], 0.3, 120),
-                    _point_from_node(pos[arrow[0]], 0.25, 100),
-                    _point_from_node(pos[arrow[0]], 0.15, 100),
+                    _point_from_node(pos[arrow[0]], 0.2, 170),
+                    _point_from_node(pos[arrow[0]], 0.35, 170),
+                    _point_from_node(pos[arrow[0]], 0.4, 155),
+                    _point_from_node(pos[arrow[0]], 0.45, 140),
+                    _point_from_node(pos[arrow[0]], 0.35, 110),
+                    _point_from_node(pos[arrow[0]], 0.3, 110),
+                    _point_from_node(pos[arrow[0]], 0.17, 95),
                 ]
             else:
                 bezier_path = [pos[arrow[0]], pos[arrow[1]]]
