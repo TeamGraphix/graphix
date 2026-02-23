@@ -19,6 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Operating System :: OS Independent",
   "Topic :: Scientific/Engineering :: Physics",
 ]
@@ -134,16 +135,6 @@ filterwarnings = ["ignore:Couldn't import `kahypar`"]
 [tool.mypy]
 # Keep in sync with pyright
 files = ["*.py", "examples", "graphix", "tests"]
-exclude = [
-  '^examples/deutsch_jozsa\.py$',
-  '^examples/ghz_with_tn\.py$',
-  '^examples/mbqc_vqe\.py$',
-  '^examples/qaoa\.py$',
-  '^examples/qft_with_tn\.py$',
-  '^examples/qnn\.py$',
-  '^examples/rotation\.py$',
-  '^examples/tn_simulation\.py$',
-]
 follow_imports = "silent"
 follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
 strict = true
@@ -152,21 +143,13 @@ mypy_path = "./stubs"
 [tool.pyright]
 # Keep in sync with mypy
 include = ["*.py", "examples", "graphix", "tests"]
-exclude = [
-  "examples/deutsch_jozsa.py",
-  "examples/ghz_with_tn.py",
-  "examples/mbqc_vqe.py",
-  "examples/qaoa.py",
-  "examples/qft_with_tn.py",
-  "examples/qnn.py",
-  "examples/rotation.py",
-  "examples/tn_simulation.py",
-]
 reportUnknownArgumentType = "information"
 reportUnknownLambdaType = "information"
 reportUnknownMemberType = "information"
 reportUnknownParameterType = "information"
 reportUnknownVariableType = "information"
+# reportInvalidTypeVarUse is a warning by default
+reportInvalidTypeVarUse = "error"
 extraPaths = ["./stubs"]
 
 [tool.coverage.report]
