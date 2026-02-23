@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       # Non-fixable
       - id: check-case-conflict
@@ -10,3 +10,16 @@ repos:
       - id: fix-byte-order-marker
       - id: mixed-line-ending
       - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  # - repo: https://github.com/jsh9/pydoclint
+  #   rev: 0.8.3
+  #   hooks:
+  #     - id: pydoclint
+  #       args: ["--style=numpy", "--exclude=examples/|benchmarks/"]

@@ -127,6 +127,14 @@ ban-relative-imports = "all"
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
 
+[tool.pydoclint]
+style = "numpy"
+exclude = '\.examples|tests\.py'
+check-arg-order = true
+check-arg-defaults = true
+check-return = true
+check-yield = true
+
 [tool.pytest.ini_options]
 addopts = ["--ignore=examples", "--ignore=docs", "--ignore=benchmarks", "--benchmark-autosave"]
 # Silence cotengra warning

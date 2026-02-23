@@ -3,6 +3,7 @@ mypy==1.19.1
 pre-commit # for language-agnostic hooks
 pyright
 ruff==0.15.2
+pydoclint
 
 # Stubs
 types-networkx==3.6.1.20260210

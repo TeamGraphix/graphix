@@ -33,7 +33,18 @@ if TYPE_CHECKING:
 
 
 class DensityMatrix(DenseState):
-    """DensityMatrix object."""
+    """DensityMatrix object.
+
+    Attributes
+    ----------
+    rho : Matrix
+        density matrix
+
+    See Also
+    --------
+    graphix.statevec.Statevec
+
+    """
 
     rho: Matrix
 
@@ -106,7 +117,13 @@ class DensityMatrix(DenseState):
 
     @property
     def nqubit(self) -> int:
-        """Return the number of qubits."""
+        """Return the number of qubits.
+
+        Returns
+        -------
+        int
+            number of qubits
+        """
         # Circumvent typing bug with numpy>=2.3
         # `shape` field is typed `tuple[Any, ...]` instead of `tuple[int, ...]`
         # See https://github.com/numpy/numpy/issues/29830
@@ -114,7 +131,13 @@ class DensityMatrix(DenseState):
         return nqubit
 
     def __str__(self) -> str:
-        """Return a string description."""
+        """Return a string description.
+
+        Returns
+        -------
+        str
+            string description
+        """
         return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
 
     @override
@@ -127,7 +150,7 @@ class DensityMatrix(DenseState):
         nqubit : int
             The number of qubits to add to the density matrix.
 
-        data : Data, optional
+        data : Data
             The state in which to initialize the newly added nodes.
 
             - If a single basic state is provided, all new nodes are initialized in that state.
@@ -141,6 +164,7 @@ class DensityMatrix(DenseState):
         Notes
         -----
         Previously existing nodes remain unchanged.
+
         """
         dm_to_add = DensityMatrix(nqubit=nqubit, data=data)
         self.tensor(dm_to_add)
@@ -151,16 +175,15 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-            op : np.ndarray
-                2*2 matrix.
-            i : int
-                Index of qubit to apply operator.
+        op : Matrix
+            2*2 matrix.
+        i : int
+            Index of qubit to apply operator.
         """
         assert i >= 0
         assert i < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
-
         rho_tensor = self.rho.reshape((2,) * self.nqubit * 2)
         rho_tensor = tensordot(tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.nqubit, 0))
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.nqubit))
@@ -170,9 +193,12 @@ class DensityMatrix(DenseState):
     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
         """Multi-qubit operation.
 
-        Args:
-            op (np.array): 2^n*2^n matrix
-            qargs (list of ints): target qubits' indexes
+        Parameters
+        ----------
+        op : Matrix
+            2^n*2^n matrix
+        qargs : list of ints
+            target qubits' indexes
         """
         d = op.shape
         # check it is a matrix.
@@ -218,13 +244,17 @@ class DensityMatrix(DenseState):
     def expectation_single(self, op: Matrix, loc: int) -> complex:
         """Return the expectation value of single-qubit operator.
 
-        Args:
-            op (np.array): 2*2 Hermite operator
-            loc (int): Index of qubit on which to apply operator.
+        Parameters
+        ----------
+        op : Matrix
+            2*2 matrix.
+        loc : int
+            Index of qubit to apply operator.
 
         Returns
         -------
-            complex: expectation value (real for hermitian ops!).
+        complex
+            expectation value (real for hermitian ops).
         """
         if not (0 <= loc < self.nqubit):
             raise ValueError(f"Wrong target qubit {loc}. Must between 0 and {self.nqubit - 1}.")
@@ -244,7 +274,13 @@ class DensityMatrix(DenseState):
         return complex(np.trace(rho_tensor.reshape((2**nqubit, 2**nqubit))))
 
     def dims(self) -> tuple[int, ...]:
-        """Return the dimensions of the density matrix."""
+        """Return the dimensions of the density matrix.
+
+        Returns
+        -------
+        tuple[int, int]
+            dimensions of the density matrix
+        """
         return self.rho.shape
 
     def tensor(self, other: DensityMatrix) -> None:
@@ -254,8 +290,8 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-            other : :class: `DensityMatrix` object
-                DensityMatrix object to be tensored with self.
+        other : DensityMatrix
+            DensityMatrix object to be tensored with self.
         """
         if not isinstance(other, DensityMatrix):
             other = DensityMatrix(other)
@@ -266,8 +302,8 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-            edge : (int, int) or [int, int]
-                Edge to apply CNOT gate.
+        edge : tuple[int, int]
+            Edge to apply CNOT gate.
         """
         self.evolve(CNOT_TENSOR.reshape(4, 4), edge)
 
@@ -277,8 +313,8 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-            qubits : (int, int)
-                (control, target) qubits indices.
+        qubits : tuple[int, int]
+            (control, target) qubits indices.
         """
         self.evolve(SWAP_TENSOR.reshape(4, 4), qubits)
 
@@ -287,8 +323,8 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-            edge : (int, int) or [int, int]
-                (control, target) qubit indices.
+        edge : tuple[int, int]
+            (control, target) qubit indices.
         """
         self.evolve(CZ_TENSOR.reshape(4, 4), edge)
 
@@ -307,7 +343,14 @@ class DensityMatrix(DenseState):
 
     @override
     def remove_qubit(self, qarg: int) -> None:
-        """Remove a qubit."""
+        """Remove a qubit.
+
+        Parameters
+        ----------
+        qarg : int
+            Index of qubit to remove.
+
+        """
         self.ptrace(qarg)
         self.normalize()
 
@@ -316,8 +359,8 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-            qargs : list of ints or int
-                Indices of qubit to trace out.
+        qargs : list[int] or int
+            Indices of qubit to trace out.
         """
         n = int(np.log2(self.rho.shape[0]))
         if isinstance(qargs, int):
@@ -341,8 +384,13 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-            statevec : numpy array
-                statevector (flattened numpy array) to compare with
+        statevec : Statevec
+            statevector (flattened numpy array) to compare with
+
+        Returns
+        -------
+        ExpressionOrFloat
+            fidelity between the density matrix and the reference statevector
         """
         result = vdot(statevec.psi, matmul(self.rho, statevec.psi))
         if isinstance(result, Expression):
@@ -351,7 +399,13 @@ class DensityMatrix(DenseState):
         return result.real
 
     def flatten(self) -> Matrix:
-        """Return flattened density matrix."""
+        """Return flattened density matrix.
+
+        Returns
+        -------
+        Matrix
+            flattened density matrix
+        """
         return self.rho.flatten()
 
     def apply_channel(self, channel: KrausChannel, qargs: Sequence[int]) -> None:
@@ -359,21 +413,18 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-        :rho: density matrix.
-        channel: :class:`graphix.channel.KrausChannel` object
+        channel : KrausChannel
             KrausChannel to be applied to the density matrix
-        qargs: target qubit indices
-
-        Returns
-        -------
-        nothing
+        qargs : list[int]
+            target qubits' indices
 
         Raises
         ------
         ValueError
             If the final density matrix is not normalized after application of the channel.
             This shouldn't happen since :class:`graphix.channel.KrausChannel` objects are normalized by construction.
-        ....
+        TypeError
+            If the provided channel is not a :class:`graphix.channel.KrausChannel` object.
         """
         result_array = np.zeros((2**self.nqubit, 2**self.nqubit), dtype=np.complex128)
 
@@ -406,13 +457,37 @@ class DensityMatrix(DenseState):
         self.apply_channel(channel, qubits)
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> DensityMatrix:
-        """Return a copy of the density matrix where all occurrences of the given variable in measurement angles are substituted by the given value."""
+        """Return a copy of the density matrix where all occurrences of the given variable in measurement angles are substituted by the given value.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of variable.
+
+        Returns
+        -------
+        DensityMatrix
+            A new DensityMatrix instance with the specified substitutions applied to the measurement angles.
+        """
         result = copy.copy(self)
         result.rho = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.rho)
         return result
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> DensityMatrix:
-        """Return a copy of the density matrix where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
+        """Return a copy of the density matrix where all occurrences of the given keys in measurement angles are substituted by the given values in parallel.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        Returns
+        -------
+        DensityMatrix
+            A new DensityMatrix instance with the specified substitutions applied to the measurement angles.
+        """
         result = copy.copy(self)
         result.rho = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.rho)
         return result
@@ -420,6 +495,12 @@ class DensityMatrix(DenseState):
 
 @dataclass(frozen=True)
 class DensityMatrixBackend(DenseStateBackend[DensityMatrix]):
-    """MBQC simulator with density matrix method."""
+    """MBQC simulator with density matrix method.
+
+    Attributes
+    ----------
+    state : DensityMatrix
+        density matrix
+    """
 
     state: DensityMatrix = dataclasses.field(init=False, default_factory=lambda: DensityMatrix(nqubit=0))
