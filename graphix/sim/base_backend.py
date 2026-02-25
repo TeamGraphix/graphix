@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypeVar
 import numpy as np
 import numpy.typing as npt
 
-# TypeAlias introduced in Python 3.10
 # override introduced in Python 3.12
 from typing_extensions import override
 
