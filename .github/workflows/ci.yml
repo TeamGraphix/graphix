@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Fetch all, necessary to find tags and branches
+          fetch-depth: 0 # Fetch all, necessary to find tags and branches
           fetch-tags: true
 
       - name: Setup uv

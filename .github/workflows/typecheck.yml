@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Fetch all, necessary to find tags and branches
+          fetch-depth: 0 # Fetch all, necessary to find tags and branches
           fetch-tags: true
 
       - name: Setup uv
@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Fetch all, necessary to find tags and branches
+          fetch-depth: 0 # Fetch all, necessary to find tags and branches
           fetch-tags: true
 
       - name: Setup uv
@@ -67,4 +67,4 @@ jobs:
         run: |
           cd ${{ runner.temp }}
           echo "from graphix import Pattern" > test_graphix_type.py
-          uv run --project ${{ github.workspace }} mypy test_graphix_type.py
+          uv run --project ${{ github.workspace }} --no-sync mypy test_graphix_type.py
