@@ -30,7 +30,7 @@ except ImportError:
 try:
     from mqt.bench import BenchmarkLevel, get_benchmark
 except ImportError:
-    print("This script requires mqt-bench. Install with: pip install mqt-bench")
+    print("This script requires mqt.bench. Install with: pip install mqt.bench")
     sys.exit(1)
 
 try:
