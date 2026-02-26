@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from dataclasses import dataclass
 from itertools import chain, pairwise
 from typing import TYPE_CHECKING
@@ -14,8 +13,6 @@ from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponential, PauliExponentialDAG
     from graphix.command import Node
 
@@ -63,8 +60,11 @@ class CompilationPass:
             raise ValueError(
                 "The Pauli Exponential DAG and the Clifford Map in the Extraction Result are incompatible since they have different output nodes."
             )
-        circuit = self.cm_cp.add_to_circuit(er.clifford_map)
-        return self.pexp_cp.add_to_circuit(er.pexp_dag, circuit)
+        n_qubits = len(er.pexp_dag.output_nodes)
+        circuit = Circuit(n_qubits)
+        self.cm_cp.add_to_circuit(er.clifford_map, circuit)
+        self.pexp_cp.add_to_circuit(er.pexp_dag, circuit)
+        return circuit
 
 
 class PauliExponentialDAGCompilationPass(ABC):
@@ -72,27 +72,17 @@ class PauliExponentialDAGCompilationPass(ABC):
 
     @staticmethod
     @abstractmethod
-    def add_to_circuit(pexp_dag: PauliExponentialDAG, circuit: Circuit | None = None, copy: bool = False) -> Circuit:
+    def add_to_circuit(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
         r"""Add a Pauli exponential DAG to a circuit.
+
+        The input circuit is modified in-place.
 
         Parameters
         ----------
         pexp_dag: PauliExponentialDAG
             The Pauli exponential rotation to be added to the circuit.
-        circuit : Circuit or ``None``, optional
-            The circuit to which the operation is added. If ``None``, a new ``Circuit`` instance is created with a width matching the number of output nodes in ``pexp_dag``. Default is ``None``.
-        copy : bool, optional
-            If ``True``, the operation is applied to a deep copy of ``circuit`` and the modified copy is returned. Otherwise, the input circuit is modified in place. Default is ``False``.
-
-        Returns
-        -------
-        Circuit
-            The circuit with the operation applied.
-
-        Raises
-        ------
-        ValueError
-            If the input circuit is not compatible with ``pexp_dag.output_nodes``.
+        circuit : Circuit
+            The circuit to which the operation is added. The input circuit is assumed to be compatible with ``pexp_dag.output_nodes``.
         """
 
 
@@ -101,29 +91,20 @@ class CliffordMapCompilationPass(ABC):
 
     @staticmethod
     @abstractmethod
-    def add_to_circuit(clifford_map: CliffordMap, circuit: Circuit | None = None, copy: bool = False) -> Circuit:
+    def add_to_circuit(clifford_map: CliffordMap, circuit: Circuit) -> None:
         """Add the Clifford map to a quantum circuit.
+
+        The input circuit is modified in-place.
 
         Parameters
         ----------
         clifford_map: CliffordMap
             The Clifford map to be added to the circuit.
         circuit : Circuit
-            The quantum circuit to which the Clifford map is added.
-        copy : bool, optional
-            If ``True``, operate on a deep copy of ``circuit`` and return it.
-            Otherwise, the input circuit is modified in place. Default is
-            ``False``.
-
-        Returns
-        -------
-        Circuit
-            The circuit with the operation applied.
+            The quantum circuit to which the Clifford map is added. The input circuit is assumed to be compatible with ``clifford_map.output_nodes``.
 
         Raises
         ------
-        ValueError
-            If the input circuit is not compatible with ``clifford_map.output_nodes``.
         NotImplementedError
             If the Clifford map represents an isometry, i.e., ``len(clifford_map.input_nodes) != len(clifford_map.output_nodes)``.
         """
@@ -148,20 +129,17 @@ class LadderPass(PauliExponentialDAGCompilationPass):
     """
 
     @staticmethod
-    def add_to_circuit(pexp_dag: PauliExponentialDAG, circuit: Circuit | None = None, copy: bool = False) -> Circuit:
+    def add_to_circuit(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
         """Add a Pauli exponential DAG to a circuit.
 
         See documentation in :meth:`PauliExponentialDAGCompilationPass.add_to_circuit` for additional information.
         """
-        circuit = initialize_circuit(pexp_dag.output_nodes, circuit, copy)  # May raise value error
         outputs_mapping = NodeIndex()
         outputs_mapping.extend(pexp_dag.output_nodes)
 
         for node in chain(*reversed(pexp_dag.partial_order_layers[1:])):
             pexp = pexp_dag.pauli_exponentials[node]
             LadderPass.add_pexp(pexp, outputs_mapping, circuit)
-
-        return circuit
 
     @staticmethod
     def add_pexp(pexp: PauliExponential, outputs_mapping: NodeIndex, circuit: Circuit) -> None:
@@ -251,38 +229,3 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         circuit.rz(qubit, ANGLE_PI / 2)
         circuit.ry(qubit, ANGLE_PI / 2)
         circuit.rz(qubit, ANGLE_PI / 2)
-
-
-def initialize_circuit(output_nodes: Sequence[int], circuit: Circuit | None = None, copy: bool = False) -> Circuit:
-    """Initialize or validate a quantum circuit based on the provided output nodes.
-
-    If no circuit is provided, a new one is created with a width matching the number of output nodes. If a circuit is provided, its width is validated against the number of output nodes.
-
-    Parameters
-    ----------
-    output_nodes : Sequence[int]
-        A sequence of integers representing the output nodes of the original MBQC pattern or open graph. The length of this sequence determines the required circuit width.
-    circuit : Circuit, optional
-        An existing circuit to initialize. If ``None`` (default), a new `Circuit` object is instantiated.
-    copy : bool, optional
-        If ``True`` and an existing `circuit` is provided, a deep copy of the circuit is returned to avoid mutating the original object. Defaults to ``False``.
-
-    Returns
-    -------
-    Circuit
-        The initialized quantum circuit.
-
-    Raises
-    ------
-    ValueError
-        If the provided ``circuit`` width does not match the length of ``output_nodes``.
-    """
-    n_qubits = len(output_nodes)
-    if circuit is None:
-        circuit = Circuit(n_qubits)
-    else:
-        if circuit.width != n_qubits:
-            raise ValueError(f"Circuit width ({circuit.width}) differs from number of outputs ({n_qubits}).")
-        if copy:
-            circuit = deepcopy(circuit)
-    return circuit

@@ -112,7 +112,8 @@ class TestPauliExponential:
         ],
     )
     def test_to_circuit(self, test_case: PauliExpTestCase) -> None:
-        qc = LadderPass.add_to_circuit(test_case.p_exp)
+        qc = Circuit(len(test_case.p_exp.output_nodes))
+        LadderPass.add_to_circuit(test_case.p_exp, qc)
         state = qc.simulate_statevector().statevec
         state_ref = test_case.qc.simulate_statevector().statevec
         assert state.isclose(state_ref)
