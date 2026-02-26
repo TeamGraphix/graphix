@@ -181,10 +181,11 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         if pexp.angle == 0:  # No rotation
             return
 
-        nodes = sorted(
-            pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes,
-            key=outputs_mapping.index,
-        )
+        nodes = [
+            node
+            for node in outputs_mapping
+            if node in pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes
+        ]
         angle = -2 * pexp.angle * pexp.pauli_string.sign
 
         if len(nodes) == 0:  # Identity
