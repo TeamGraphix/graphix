@@ -38,4 +38,4 @@ jobs:
         run: uv python install ${{ matrix.python }}
 
       - name: Run nox
-        run: uvx nox --venv-backend uv --python ${{ matrix.python }}
+        run: uvx nox -db uv --python ${{ matrix.python }}

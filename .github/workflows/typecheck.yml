@@ -61,7 +61,7 @@ jobs:
           python-version: ${{ env.python-version }}
 
       - name: Install graphix and mypy
-        run: uv sync --extra dev
+        run: uv sync --extra dev --no-editable
 
       - name: Test type-checking
         run: |
