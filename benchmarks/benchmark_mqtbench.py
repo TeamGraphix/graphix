@@ -56,14 +56,14 @@ def run_benchmarks():
             try:
                 qc = get_benchmark(algo, BenchmarkLevel.ALG, n_qubits)
                 qasm_string = qiskit.qasm3.dumps(qc)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Skipping {algo} n={n_qubits}: get_benchmark/qasm export failed: {e}")
                 continue
 
             try:
                 parser = OpenQASMParser()
                 circuit = parser.parse_str(qasm_string)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Skipping {algo} n={n_qubits}: parse failed: {e}")
                 continue
 
@@ -76,14 +76,14 @@ def run_benchmarks():
                 pattern = transpile_result.pattern
                 pattern.standardize()
                 pattern.minimize_space()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Skipping {algo} n={n_qubits}: transpile failed: {e}")
                 continue
 
             start = perf_counter()
             try:
                 pattern.simulate_pattern(backend="statevector")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Skipping {algo} n={n_qubits}: simulate failed: {e}")
                 continue
             end = perf_counter()
