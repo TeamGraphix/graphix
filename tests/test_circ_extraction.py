@@ -33,7 +33,7 @@ class TestPauliString:
         outputs_mapping = NodeIndex()
         outputs_mapping.extend([2, 1, 3, 4])
 
-        LadderPass.add_pexp(pexp, outputs_mapping, qc)  # `qc` is modified in place
+        LadderPass.add_pexp(pexp.remap(outputs_mapping), qc)  # `qc` is modified in place
 
         qc_ref = Circuit(width=4, instr=[H(1), CNOT(3, 1), CNOT(0, 3), RZ(0, angle_rz), CNOT(0, 3), CNOT(3, 1), H(1)])
 

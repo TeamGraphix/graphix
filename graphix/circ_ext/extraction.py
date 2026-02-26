@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from graphix.fundamentals import ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
+from graphix.sim.base_backend import NodeIndex
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -136,6 +137,13 @@ class PauliString:
 
         return PauliString(x_corrections, y_corrections, z_corrections, Sign.minus_if(negative_sign))
 
+    def remap(self, outputs_mapping: NodeIndex) -> PauliString:
+        """Remap nodes."""
+        x_nodes = {outputs_mapping.index(n) for n in self.x_nodes}
+        y_nodes = {outputs_mapping.index(n) for n in self.y_nodes}
+        z_nodes = {outputs_mapping.index(n) for n in self.z_nodes}
+        return PauliString(frozenset(x_nodes), frozenset(y_nodes), frozenset(z_nodes), self.sign)
+
 
 @dataclass(frozen=True)
 class PauliExponential:
@@ -191,6 +199,10 @@ class PauliExponential:
 
         return PauliExponential(angle, pauli_string)
 
+    def remap(self, outputs_mapping: NodeIndex) -> PauliExponential:
+        """Remap nodes."""
+        return PauliExponential(self.angle, self.pauli_string.remap(outputs_mapping))
+
 
 @dataclass(frozen=True)
 class PauliExponentialDAG:
@@ -241,7 +253,13 @@ class PauliExponentialDAG:
         ----------
         [1] Simmons, 2021 (arXiv:2109.05654).
         """
-        pauli_strings = {node: PauliExponential.from_measured_node(flow, node) for node in flow.correction_function}
+        outputs_mapping = NodeIndex()
+        outputs_mapping.extend(flow.og.output_nodes)
+
+        pauli_strings = {
+            node: PauliExponential.from_measured_node(flow, node).remap(outputs_mapping)
+            for node in flow.correction_function
+        }
 
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 

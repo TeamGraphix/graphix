@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from graphix.circ_ext.extraction import PauliExponentialDAG
 from graphix.fundamentals import ANGLE_PI
-from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -134,15 +133,12 @@ class LadderPass(PauliExponentialDAGCompilationPass):
 
         See documentation in :meth:`PauliExponentialDAGCompilationPass.add_to_circuit` for additional information.
         """
-        outputs_mapping = NodeIndex()
-        outputs_mapping.extend(pexp_dag.output_nodes)
-
         for node in chain(*reversed(pexp_dag.partial_order_layers[1:])):
             pexp = pexp_dag.pauli_exponentials[node]
-            LadderPass.add_pexp(pexp, outputs_mapping, circuit)
+            LadderPass.add_pexp(pexp, circuit)
 
     @staticmethod
-    def add_pexp(pexp: PauliExponential, outputs_mapping: NodeIndex, circuit: Circuit) -> None:
+    def add_pexp(pexp: PauliExponential, circuit: Circuit) -> None:
         r"""Add the Pauli exponential unitary to a quantum circuit.
 
         This method modifies the input circuit in-place.
@@ -159,11 +155,7 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         if pexp.angle == 0:  # No rotation
             return
 
-        nodes = [
-            node
-            for node in outputs_mapping
-            if node in pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes
-        ]
+        nodes = list(pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes)
         angle = -2 * pexp.angle * pexp.pauli_string.sign
 
         if len(nodes) == 0:  # Identity
@@ -171,34 +163,30 @@ class LadderPass(PauliExponentialDAGCompilationPass):
 
         if len(nodes) == 1:
             n0 = nodes[0]
-            q0 = outputs_mapping.index(n0)
             if n0 in pexp.pauli_string.x_nodes:
-                circuit.rx(q0, angle)
+                circuit.rx(n0, angle)
             elif n0 in pexp.pauli_string.y_nodes:
-                circuit.ry(q0, angle)
+                circuit.ry(n0, angle)
             else:
-                circuit.rz(q0, angle)
+                circuit.rz(n0, angle)
             return
 
-        LadderPass.add_basis_change(pexp, outputs_mapping, nodes[0], circuit)
+        LadderPass.add_basis_change(pexp, nodes[0], circuit)
 
         for n1, n2 in pairwise(nodes):
-            LadderPass.add_basis_change(pexp, outputs_mapping, n2, circuit)
-            q1, q2 = outputs_mapping.index(n1), outputs_mapping.index(n2)
-            circuit.cnot(control=q1, target=q2)
+            LadderPass.add_basis_change(pexp, n2, circuit)
+            circuit.cnot(control=n1, target=n2)
 
-        q2 = outputs_mapping.index(nodes[-1])  # To avoid pyright `reportPossiblyUnboundVariable`
-        circuit.rz(q2, angle)
+        circuit.rz(nodes[-1], angle)
 
         for n2, n1 in pairwise(nodes[::-1]):
-            q1, q2 = outputs_mapping.index(n1), outputs_mapping.index(n2)
-            circuit.cnot(control=q1, target=q2)
-            LadderPass.add_basis_change(pexp, outputs_mapping, n2, circuit)
+            circuit.cnot(control=n1, target=n2)
+            LadderPass.add_basis_change(pexp, n2, circuit)
 
-        LadderPass.add_basis_change(pexp, outputs_mapping, nodes[0], circuit)
+        LadderPass.add_basis_change(pexp, nodes[0], circuit)
 
     @staticmethod
-    def add_basis_change(pexp: PauliExponential, outputs_mapping: NodeIndex, node: Node, circuit: Circuit) -> None:
+    def add_basis_change(pexp: PauliExponential, node: Node, circuit: Circuit) -> None:
         """Apply an X or a Y basis change to a given node if required by the Pauli string.
 
         This method modifies the input circuit in-place.
@@ -214,11 +202,10 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         circuit : Circuit
             The quantum circuit to which the basis change is added.
         """
-        qubit = outputs_mapping.index(node)
         if node in pexp.pauli_string.x_nodes:
-            circuit.h(qubit)
+            circuit.h(node)
         elif node in pexp.pauli_string.y_nodes:
-            LadderPass.add_hy(qubit, circuit)
+            LadderPass.add_hy(node, circuit)
 
     @staticmethod
     def add_hy(qubit: int, circuit: Circuit) -> None:
