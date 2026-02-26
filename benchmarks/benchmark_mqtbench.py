@@ -10,7 +10,7 @@ The script:
     3. Transpiles to MBQC patterns, standardizes and minimizes space.
     4. Measures execution time of :meth:`graphix.pattern.Pattern.simulate_pattern`
        with backend="statevector".
-    5. Plots Time vs. Number of Qubits per algorithm and saves to mqtbench_results.png.
+    5. Plots Time vs. Number of Qubits per algorithm and saves to results/mqtbench_results.png.
 """
 
 from __future__ import annotations
@@ -97,7 +97,7 @@ def run_benchmarks():
 
 
 def plot_and_save(results, qubit_counts_by_algo):
-    """Plot Time vs. Qubits per algorithm and save to benchmarks/mqtbench_results.png."""
+    """Plot Time vs. Qubits per algorithm and save to benchmarks/results/mqtbench_results.png."""
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
@@ -115,7 +115,8 @@ def plot_and_save(results, qubit_counts_by_algo):
     )
     fig.legend(bbox_to_anchor=(0.85, 0.9))
 
-    out_path = Path(__file__).resolve().parent / "mqtbench_results.png"
+    out_path = Path(__file__).resolve().parent / "results" / "mqtbench_results.png"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path)
     print(f"Plot saved to {out_path}")
 
