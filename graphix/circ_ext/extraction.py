@@ -263,6 +263,11 @@ class PauliExponentialDAG:
 
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 
+    def remap(self, outputs_mapping: NodeIndex) -> PauliExponentialDAG:
+        """Remap nodes."""
+        pauli_exponentials = {node: pexp.remap(outputs_mapping) for node, pexp in self.pauli_exponentials.items()}
+        return PauliExponentialDAG(pauli_exponentials, self.partial_order_layers, self.output_nodes)
+
 
 @dataclass(frozen=True)
 class CliffordMap:

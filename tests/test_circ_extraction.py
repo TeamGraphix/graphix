@@ -113,7 +113,9 @@ class TestPauliExponential:
     )
     def test_to_circuit(self, test_case: PauliExpTestCase) -> None:
         qc = Circuit(len(test_case.p_exp.output_nodes))
-        LadderPass.add_to_circuit(test_case.p_exp, qc)
+        outputs_mapping = NodeIndex()
+        outputs_mapping.extend(test_case.p_exp.output_nodes)
+        LadderPass.add_to_circuit(test_case.p_exp.remap(outputs_mapping), qc)
         state = qc.simulate_statevector().statevec
         state_ref = test_case.qc.simulate_statevector().statevec
         assert state.isclose(state_ref)
@@ -166,7 +168,9 @@ class TestPauliExponential:
             output_nodes=flow.og.output_nodes,
         )
 
-        assert pexp_dag == pexp_dag_ref
+        outputs_mapping = NodeIndex()
+        outputs_mapping.extend(pexp_dag_ref.output_nodes)
+        assert pexp_dag == pexp_dag_ref.remap(outputs_mapping)
 
 
 def test_extend_input() -> None:
