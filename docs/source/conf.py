@@ -14,7 +14,7 @@ import sys
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "graphix"
-copyright = "2022, Team Graphix"
+copyright = "2026, Team Graphix"
 author = "Shinichi Sunami"
 
 # -- General configuration ---------------------------------------------------

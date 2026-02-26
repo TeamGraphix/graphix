@@ -124,7 +124,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     a qubit is measured, it will add two nodes behind it so that no output
     nodes are measured to satisfy the requirements of an open graph.
         .. warning::
-            works with `pyzx==0.8.0` (see `requirements-dev.txt`). Other versions may not be compatible due to breaking changes in `pyzx`
+            works with `pyzx==0.8.0` (see `pyproject.toml`). Other versions may not be compatible due to breaking changes in `pyzx`
     Example
     -------
     >>> import pyzx as zx

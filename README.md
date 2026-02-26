@@ -28,12 +28,13 @@ Install `graphix` with `pip`:
 pip install graphix
 ```
 
-Install together with [extra packages](https://github.com/TeamGraphix/graphix/blob/master/requirements-extra.txt):
+Install with [extra dependencies](https://github.com/TeamGraphix/graphix/blob/master/pyproject.toml) (e.g. pyzx):
 
 ```bash
 pip install graphix[extra]
 ```
 
+Graphix also supports using `uv`.
 
 ## Using graphix
 
