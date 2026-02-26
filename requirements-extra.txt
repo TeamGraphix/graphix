@@ -1,3 +1,6 @@
 #graphix-ibmq
 #graphix-perceval
+# MQTBench benchmarking (benchmarks/benchmark_mqtbench.py)
+graphix-qasm-parser
+mqt-bench
 pyzx==0.9.0
