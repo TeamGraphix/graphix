@@ -185,8 +185,7 @@ class LadderPass(PauliExponentialDAGCompilationPass):
             pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes,
             key=outputs_mapping.index,
         )
-        sign = -1 if pexp.pauli_string.negative_sign else 1
-        angle = -2 * pexp.angle * sign
+        angle = -2 * pexp.angle * pexp.pauli_string.sign
 
         if len(nodes) == 0:  # Identity
             return

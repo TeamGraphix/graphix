@@ -8,7 +8,7 @@ import pytest
 from graphix.circ_ext.compilation import LadderPass
 from graphix.circ_ext.extraction import PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
-from graphix.fundamentals import ANGLE_PI
+from graphix.fundamentals import ANGLE_PI, Sign
 from graphix.instruction import CNOT, RX, RY, RZ, H
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
@@ -58,7 +58,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString(z_nodes={1}, negative_sign=True)),
+                        0: PauliExponential(alpha / 2, PauliString(z_nodes={1}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -68,7 +68,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString(x_nodes={1}, negative_sign=True)),
+                        0: PauliExponential(alpha / 2, PauliString(x_nodes={1}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -78,7 +78,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString(y_nodes={1}, negative_sign=True)),
+                        0: PauliExponential(alpha / 2, PauliString(y_nodes={1}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -88,9 +88,9 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={3}, negative_sign=True)),
-                        1: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3}, negative_sign=True)),
-                        2: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={3}, negative_sign=True)),
+                        0: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={3}, sign=Sign.MINUS)),
+                        1: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3}, sign=Sign.MINUS)),
+                        2: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={3}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                     output_nodes=[3],
@@ -102,7 +102,7 @@ class TestPauliExponential:
                     pauli_exponentials={
                         0: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3})),
                         1: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={5})),
-                        2: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3}, z_nodes={5}, negative_sign=True)),
+                        2: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3}, z_nodes={5}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{5, 3}, {2}, {0, 1}],
                     output_nodes=[5, 3],  # Node 5 -> qubit 0 (control), node 3 -> qubit 1 (target)
@@ -154,7 +154,7 @@ class TestPauliExponential:
                 0: PauliExponential(ANGLE_PI * 0.1 / 2, PauliString(x_nodes=frozenset({6}))),
                 1: PauliExponential(ANGLE_PI * 0.2 / 2, PauliString(y_nodes=frozenset({6}), z_nodes=frozenset({5}))),
                 2: PauliExponential(
-                    ANGLE_PI * 0.3 / 2, PauliString(y_nodes=frozenset({5}), z_nodes=frozenset({6}), negative_sign=True)
+                    ANGLE_PI * 0.3 / 2, PauliString(y_nodes=frozenset({5}), z_nodes=frozenset({6}), sign=Sign.MINUS)
                 ),
                 3: PauliExponential(ANGLE_PI * 0.4 / 2, PauliString(x_nodes=frozenset({5}))),
                 4: PauliExponential(

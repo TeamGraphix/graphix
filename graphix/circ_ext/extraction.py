@@ -74,14 +74,14 @@ class PauliString:
         Nodes on which a Pauli Y operator is applied.
     z_nodes : AbstractSet[int]
         Nodes on which a Pauli Z operator is applied.
-    negative_sign : bool
-        Boolean flag indicating a -1 phase in the Pauli string if ``True``.
+    sign : Sign
+        Phase of the Pauli string.
     """
 
     x_nodes: AbstractSet[int] = dataclasses.field(default_factory=frozenset)
     y_nodes: AbstractSet[int] = dataclasses.field(default_factory=frozenset)
     z_nodes: AbstractSet[int] = dataclasses.field(default_factory=frozenset)
-    negative_sign: bool = dataclasses.field(default_factory=lambda: False)
+    sign: Sign = dataclasses.field(default_factory=lambda: Sign.PLUS)
 
     @staticmethod
     def from_measured_node(flow: PauliFlow[Measurement], node: Node) -> PauliString:
@@ -134,7 +134,7 @@ class PauliString:
         # One phase flip if measured on the YZ plane.
         negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
 
-        return PauliString(x_corrections, y_corrections, z_corrections, negative_sign)
+        return PauliString(x_corrections, y_corrections, z_corrections, Sign.minus_if(negative_sign))
 
 
 @dataclass(frozen=True)
