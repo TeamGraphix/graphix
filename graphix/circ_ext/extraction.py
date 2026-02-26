@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass, replace
-from itertools import combinations
 from typing import TYPE_CHECKING
 
-from graphix.fundamentals import Angle, Plane, Sign
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.fundamentals import ParameterizedAngle, Plane, Sign
+from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -18,7 +17,6 @@ if TYPE_CHECKING:
     from graphix.command import Node
     from graphix.flow.core import PauliFlow
     from graphix.opengraph import OpenGraph
-    from graphix.parameter import Expression
     from graphix.transpiler import Circuit
 
 
@@ -122,15 +120,15 @@ class PauliString:
         negative_sign = False
 
         # One phase flip per edge between adjacent vertices in the correction set.
-        for edge in combinations(c_set, 2):
-            negative_sign ^= edge in og.graph.edges()
+        negative_sign ^= og.graph.subgraph(c_set).number_of_edges() % 2 == 1
 
         # One phase flip per two Ys in the graph state stabilizer.
         negative_sign ^= bool(len(inter_c_odd_set) // 2 % 2)
 
         # One phase flip per node in the graph state stabilizer that is absorbed from a Pauli measurement with angle π.
-        for n, meas in og.measurements.items():
-            if isinstance(meas, PauliMeasurement) and n in (c_set | odd_c_set):
+        for n in c_set | odd_c_set:
+            meas = og.measurements.get(n, None)
+            if isinstance(meas, PauliMeasurement):
                 negative_sign ^= meas.sign == Sign.MINUS
 
         # One phase flip if measured on the YZ plane.
@@ -153,13 +151,13 @@ class PauliExponential:
 
     Attributes
     ----------
-    angle : Angle | Expression
+    angle : ParameterizedAngle
         The Pauli exponential angle :math:`\alpha` in units of :math:`\pi`. When extracted from a corrected node, it corresponds to the node's measurement divided by two.
     pauli_string : PauliString
         The signed Pauli string :math:`P` specifying the tensor product of Pauli operators acting on the corresponding MBQC nodes.
     """
 
-    angle: Angle | Expression
+    angle: ParameterizedAngle
     pauli_string: PauliString
 
     @staticmethod
@@ -189,7 +187,7 @@ class PauliExponential:
         pauli_string = flow.pauli_strings[node]
         meas = flow.og.measurements[node]
         # We don't extract any rotation from Pauli Measurements. This is equivalent to setting the angle to 0.
-        angle = 0 if isinstance(meas, PauliMeasurement) else meas.downcast_bloch().angle / 2
+        angle = meas.angle / 2 if isinstance(meas, BlochMeasurement) else 0
 
         return PauliExponential(angle, pauli_string)
 
@@ -369,16 +367,11 @@ def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, 
     ----------
     [1] Simmons, 2021 (arXiv:2109.05654).
     """
-    z_map: dict[int, PauliString] = {}
-    iset = set(flow.og.input_nodes)
-
-    for node in iset.intersection(flow.og.measurements.keys()):
-        z_map[node] = flow.pauli_strings[node]
-
-    for node in iset.intersection(flow.og.output_nodes):
-        z_map[node] = PauliString(z_nodes=frozenset({node}))
-
-    return z_map
+    # Nodes are either measured or outputs.
+    return {
+        node: flow.pauli_strings[node] if node in flow.og.measurements else PauliString(z_nodes=frozenset({node}))
+        for node in flow.og.input_nodes
+    }
 
 
 def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> Mapping[int, PauliString]:

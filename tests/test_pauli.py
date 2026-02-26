@@ -71,21 +71,21 @@ class TestPauli:
         cmp = list(Pauli.iterate(symbol_only=False))
         assert len(cmp) == 16
         assert cmp[0] == Pauli.I
-        assert cmp[1] == 1j * Pauli.I  # noqa: RUF069
+        assert cmp[1] == 1j * Pauli.I
         assert cmp[2] == -1 * Pauli.I
-        assert cmp[3] == -1j * Pauli.I  # noqa: RUF069
+        assert cmp[3] == -1j * Pauli.I
         assert cmp[4] == Pauli.X
-        assert cmp[5] == 1j * Pauli.X  # noqa: RUF069
+        assert cmp[5] == 1j * Pauli.X
         assert cmp[6] == -1 * Pauli.X
-        assert cmp[7] == -1j * Pauli.X  # noqa: RUF069
+        assert cmp[7] == -1j * Pauli.X
         assert cmp[8] == Pauli.Y
-        assert cmp[9] == 1j * Pauli.Y  # noqa: RUF069
+        assert cmp[9] == 1j * Pauli.Y
         assert cmp[10] == -1 * Pauli.Y
-        assert cmp[11] == -1j * Pauli.Y  # noqa: RUF069
+        assert cmp[11] == -1j * Pauli.Y
         assert cmp[12] == Pauli.Z
-        assert cmp[13] == 1j * Pauli.Z  # noqa: RUF069
+        assert cmp[13] == 1j * Pauli.Z
         assert cmp[14] == -1 * Pauli.Z
-        assert cmp[15] == -1j * Pauli.Z  # noqa: RUF069
+        assert cmp[15] == -1j * Pauli.Z
 
     def test_iter_meta(self) -> None:
         it = Pauli.iterate(symbol_only=False)
