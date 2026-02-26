@@ -72,7 +72,8 @@ def run_benchmarks():
                 continue
 
             try:
-                pattern = circuit.transpile()
+                transpile_result = circuit.transpile()
+                pattern = transpile_result.pattern
                 pattern.standardize()
                 pattern.minimize_space()
             except Exception as e:
@@ -117,7 +118,6 @@ def plot_and_save(results, qubit_counts_by_algo):
     out_path = Path(__file__).resolve().parent / "mqtbench_results.png"
     fig.savefig(out_path)
     print(f"Plot saved to {out_path}")
-    plt.show()
 
 
 def main():
