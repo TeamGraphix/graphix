@@ -682,6 +682,9 @@ class GraphVisualizer:
         if isinstance(meas, PauliMeasurement):
             return str(meas)
         if isinstance(meas, BlochMeasurement):
+            if isinstance(meas.angle, (int, float)) and meas.angle == 0:
+                # Omit trivial zero angle — show plane name only (e.g. "XY")
+                return meas.plane.name
             if isinstance(meas.angle, (int, float)):
                 angle_str = angle_to_str(meas.angle, OutputFormat.Unicode)
                 # Fall back to compact notation for non-rational angles

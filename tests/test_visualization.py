@@ -355,9 +355,7 @@ def test_format_measurement_label_bloch() -> None:
 def test_format_measurement_label_bloch_zero() -> None:
     bloch_zero = Measurement.XY(0)
     label = GraphVisualizer._format_measurement_label(bloch_zero)
-    assert label is not None
-    assert "XY" in label
-    assert "0" in label
+    assert label == "XY"
 
 
 def test_format_measurement_label_bloch_xz() -> None:
