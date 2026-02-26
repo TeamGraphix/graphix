@@ -319,11 +319,14 @@ class GraphVisualizer:
 
         for node in self.og.graph.nodes():
             marker = "s" if node in self.og.input_nodes else "o"
-            is_pauli = node in self.og.measurements and isinstance(self.og.measurements[node], PauliMeasurement)
 
             if node in self.og.output_nodes:
                 facecolor = "white"
-            elif show_pauli_measurement and is_pauli:
+            elif (
+                show_pauli_measurement
+                and node in self.og.measurements
+                and isinstance(self.og.measurements[node], PauliMeasurement)
+            ):
                 facecolor = "#4292c6"
             else:
                 facecolor = "black"
@@ -413,12 +416,10 @@ class GraphVisualizer:
 
         for edge, path in edge_path.items():
             if len(path) == 2:
-                nx.draw_networkx_edges(
-                    self.og.graph, pos, edgelist=[edge], style="dashed", edge_color="gray", alpha=0.6
-                )
+                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="dashed", alpha=0.6)
             else:
                 curve = self._bezier_curve_linspace(path)
-                plt.plot(curve[:, 0], curve[:, 1], color="gray", linewidth=1, alpha=0.6, linestyle="dashed")
+                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.6)
 
         if arrow_path is not None:
             for arrow, path in arrow_path.items():
@@ -471,7 +472,7 @@ class GraphVisualizer:
             self.__draw_legend(show_pauli_measurement, corrections, arrow_path is not None)
         elif corrections is not None:
             # backward-compatible minimal legend for correction arrows
-            plt.plot([], [], color="gray", alpha=0.6, linestyle="dashed", label="graph edge")
+            plt.plot([], [], "k--", alpha=0.6, label="graph edge")
             plt.plot([], [], color="tab:red", label="xflow")
             plt.plot([], [], color="tab:green", label="zflow")
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
@@ -484,9 +485,19 @@ class GraphVisualizer:
 
         has_layers = l_k is not None and len(l_k) > 0
         show_layers = show_measurement_order and has_layers
-        if show_layers and l_k is not None:
+        if show_layers:
+            assert l_k is not None
             l_min_val = min(l_k.values())
             l_max_val = max(l_k.values())
+            # Dotted vertical lines to separate layers (distinct from dashed graph edges)
+            for layer in range(l_min_val, l_max_val):
+                plt.axvline(
+                    x=(layer + 0.5) * node_distance[0],
+                    color="lightgray",
+                    linestyle=":",
+                    alpha=0.7,
+                    linewidth=0.8,
+                )
             # Draw layer numbers below nodes
             for layer in range(l_min_val, l_max_val + 1):
                 plt.text(
@@ -511,7 +522,7 @@ class GraphVisualizer:
                 plt.text(mid_x, arrow_y - 0.15, "Layer", ha="center", va="top", fontsize=8, color="gray")
 
         plt.xlim(x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0])
-        top_margin = 0.7 if show_measurements else 0.5
+        top_margin = 0.5
         bottom_margin = 1.3 if show_layers else 0.5
         plt.ylim(y_min - bottom_margin, y_max + top_margin)
 
@@ -552,7 +563,7 @@ class GraphVisualizer:
                 markerfacecolor="white",
                 markeredgecolor="black",
                 markersize=10,
-                label="Input (shape)",
+                label="Input",
             ),
             Line2D(
                 [0],
@@ -590,7 +601,7 @@ class GraphVisualizer:
                     markersize=10,
                     label="Output",
                 ),
-                Line2D([0], [0], color="gray", linewidth=1, alpha=0.6, linestyle="dashed", label="Graph edge"),
+                Line2D([0], [0], color="black", linewidth=1, alpha=0.6, linestyle="dashed", label="Graph edge"),
             ]
         )
 
@@ -621,9 +632,9 @@ class GraphVisualizer:
         """
         # Candidate offsets: (dx, dy, horizontal-alignment, vertical-alignment)
         candidates: list[tuple[float, float, str, str]] = [
-            (0, 0.22, "center", "bottom"),  # above
-            (0.22, 0.15, "left", "bottom"),  # upper-right
-            (-0.22, 0.15, "right", "bottom"),  # upper-left
+            (0.22, -0.15, "left", "top"),  # lower-right (preferred, like original)
+            (-0.22, -0.15, "right", "top"),  # lower-left
+            (0, 0.22, "center", "bottom"),  # above (fallback)
         ]
         all_positions = [pos[n] for n in self.og.graph.nodes()]
 
@@ -648,11 +659,10 @@ class GraphVisualizer:
                     y + best_dy,
                     label,
                     fontsize=7,
-                    fontweight="bold",
                     ha=best_ha,
                     va=best_va,
                     zorder=3,
-                    path_effects=[pe.withStroke(linewidth=2, foreground="white")],
+                    path_effects=[pe.withStroke(linewidth=1.0, foreground="white")],
                 )
 
     @staticmethod
@@ -674,6 +684,9 @@ class GraphVisualizer:
         if isinstance(meas, BlochMeasurement):
             if isinstance(meas.angle, (int, float)):
                 angle_str = angle_to_str(meas.angle, OutputFormat.Unicode)
+                # Fall back to compact notation for non-rational angles
+                if len(angle_str) > 8:
+                    angle_str = f"{meas.angle:.2f}\u03c0"
             else:
                 angle_str = str(meas.angle)
             return f"{meas.plane.name}({angle_str})"
