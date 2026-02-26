@@ -28,13 +28,14 @@ jobs:
           fetch-depth: 0  # Fetch all, necessary to find tags and branches
           fetch-tags: true
 
-      - uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
 
-      - run: python -m pip install --upgrade pip
+      - name: "Set up Python ${{ matrix.python }}"
+        run: uv python install ${{ matrix.python }}
 
-      - name: Setup nox
-        run: pip install -c requirements-dev.txt nox
-
-      - run: nox --python ${{ matrix.python }}
+      - name: Run nox
+        run: uv run nox --venv-backend uv --python ${{ matrix.python }}

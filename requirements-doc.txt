@@ -1,5 +1,0 @@
-furo
-joblib  # For parallel builds
-matplotlib
-sphinx
-sphinx-gallery
