@@ -23,7 +23,7 @@ from graphix import command, optimization
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind, Node
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Axis, Plane, Sign
+from graphix.fundamentals import Axis, Plane, Sign, ParameterizedAngle
 from graphix.graphsim import GraphState
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
@@ -921,7 +921,7 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
 
-    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
+    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement[ParameterizedAngle]]:
         r"""Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
@@ -949,7 +949,7 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
 
-    def extract_gflow(self) -> GFlow[BlochMeasurement]:
+    def extract_gflow(self) -> GFlow[BlochMeasurement[ParameterizedAngle]]:
         r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
@@ -973,7 +973,7 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
-    def extract_xzcorrections(self) -> XZCorrections[Measurement]:
+    def extract_xzcorrections(self) -> XZCorrections[Measurement[ParameterizedAngle]]:
         """Extract the XZ-corrections from the current measurement pattern.
 
         Returns
@@ -1139,7 +1139,7 @@ class Pattern:
         graph = self.extract_graph()
         return {node for node, d in graph.degree if d == 0}
 
-    def extract_opengraph(self) -> OpenGraph[Measurement]:
+    def extract_opengraph(self) -> OpenGraph[Measurement[ParameterizedAngle]]:
         r"""Extract the underlying resource-state open graph from the pattern.
 
         Returns
@@ -1157,7 +1157,7 @@ class Pattern:
         """
         nodes = set(self.input_nodes)
         edges: set[tuple[int, int]] = set()
-        measurements: dict[int, Measurement] = {}
+        measurements: dict[int, Measurement[ParameterizedAngle]] = {}
 
         for cmd in self.__seq:
             match cmd.kind:
@@ -1617,7 +1617,7 @@ class Pattern:
                 case CommandKind.C:
                     check_active(cmd, cmd.node)
 
-    def map(self, f: Callable[[Measurement], Measurement]) -> Pattern:
+    def map(self, f: Callable[[Measurement[ParameterizedAngle]], Measurement[ParameterizedAngle]]) -> Pattern:
         """Return a pattern where the function ``f`` has been applied to each measurement.
 
         Parameters

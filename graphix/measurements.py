@@ -8,11 +8,13 @@ from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     ClassVar,
+    Generic,
     Literal,
+    TypeVar,
 )
 
 # override introduced in Python 3.12
-from typing_extensions import override
+from typing_extensions import override, overload
 
 from graphix import parameter
 from graphix.fundamentals import (
@@ -29,12 +31,16 @@ from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
-    from typing import Self, TypeAlias
+    from typing import Generic, Self, TypeAlias
 
     from graphix.clifford import Clifford
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 Outcome: TypeAlias = Literal[0, 1]
+
+AngleT = TypeVar("AngleT", ParameterizedAngle, Angle)
+
+AngleT_co = TypeVar("AngleT_co", ParameterizedAngle, Angle, covariant=True)
 
 
 def outcome(b: bool) -> Outcome:
@@ -48,7 +54,7 @@ def toggle_outcome(outcome: Outcome) -> Outcome:
 
 
 @dataclass(frozen=True)
-class Measurement(AbstractMeasurement):
+class Measurement(AbstractMeasurement, Generic[AngleT_co]):
     r"""An MBQC measurement.
 
     Base class for :class:`BlochMeasurement` and :class:`PauliMeasurement`.
@@ -74,17 +80,17 @@ class Measurement(AbstractMeasurement):
     Z: ClassVar[PauliMeasurement]
 
     @staticmethod
-    def XY(angle: ParameterizedAngle) -> BlochMeasurement:  # noqa: N802
+    def XY(angle: AngleT) -> BlochMeasurement[AngleT]:  # noqa: N802
         """Return a Bloch measurement on the XY plane."""
         return BlochMeasurement(angle, Plane.XY)
 
     @staticmethod
-    def YZ(angle: ParameterizedAngle) -> BlochMeasurement:  # noqa: N802
+    def YZ(angle: AngleT) -> BlochMeasurement[AngleT]:  # noqa: N802
         """Return a Bloch measurement on the YZ plane."""
         return BlochMeasurement(angle, Plane.YZ)
 
     @staticmethod
-    def XZ(angle: ParameterizedAngle) -> BlochMeasurement:  # noqa: N802
+    def XZ(angle: AngleT) -> BlochMeasurement[AngleT]:  # noqa: N802
         """Return a Bloch measurement on the XZ plane."""
         return BlochMeasurement(angle, Plane.XZ)
 
@@ -132,7 +138,7 @@ class Measurement(AbstractMeasurement):
         """
 
     @abstractmethod
-    def to_bloch(self) -> BlochMeasurement:
+    def to_bloch(self) -> BlochMeasurement[AngleT_co]:
         """Return the measurement description as an angle and a plane on the Bloch sphere.
 
         There is no unique Bloch representation for each Pauli measurement.
@@ -157,7 +163,7 @@ class Measurement(AbstractMeasurement):
         """
 
     @abstractmethod
-    def downcast_bloch(self) -> BlochMeasurement:
+    def downcast_bloch(self) -> BlochMeasurement[AngleT_co]:
         """Return the measurement description if it is already given as an angle and a plane on the Bloch sphere; raise :class:`TypeError` otherwise.
 
         Examples
@@ -216,7 +222,7 @@ class Measurement(AbstractMeasurement):
         """
 
     @abstractmethod
-    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | BlochMeasurement:
+    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | BlochMeasurement[AngleT_co]:
         """Return the measurement description as a Pauli measurement if possible, a Bloch measurement otherwise.
 
         Parameters
@@ -256,7 +262,7 @@ class Measurement(AbstractMeasurement):
 
 
 @dataclass(frozen=True)
-class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
+class BlochMeasurement(AbstractPlanarMeasurement, Measurement[AngleT_co], Generic[AngleT_co]):
     r"""An MBQC measurement described by an angle and a plane.
 
     Attributes
@@ -267,7 +273,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         The measurement plane.
     """
 
-    angle: ParameterizedAngle
+    angle: AngleT_co
     plane: Plane
 
     @override
@@ -283,12 +289,12 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         return f"Measurement.{self.plane.name}({self.angle})"
 
     @override
-    def to_bloch(self) -> BlochMeasurement:
+    def to_bloch(self) -> BlochMeasurement[AngleT_co]:
         """Return ``self`` (overridden from :class:`Measurement`)."""
         return self
 
     @override
-    def downcast_bloch(self) -> BlochMeasurement:
+    def downcast_bloch(self) -> BlochMeasurement[AngleT_co]:
         """Return ``self`` (overridden from :class:`Measurement`)."""
         return self
 
@@ -306,7 +312,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         return PauliMeasurement(axis, sign)
 
     @override
-    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | BlochMeasurement:
+    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | BlochMeasurement[AngleT_co]:
         pm = self.try_to_pauli(rel_tol=rel_tol, abs_tol=abs_tol)
         return self if pm is None else pm
 
@@ -361,7 +367,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         return self.plane
 
     @override
-    def clifford(self, clifford_gate: Clifford) -> BlochMeasurement:
+    def clifford(self, clifford_gate: Clifford) -> BlochMeasurement[AngleT_co]:
         new_plane = Plane.from_axes(*(PauliMeasurement(axis).clifford(clifford_gate).axis for axis in self.plane.axes))
         cos_pauli = PauliMeasurement(self.plane.cos).clifford(clifford_gate)
         sin_pauli = PauliMeasurement(self.plane.sin).clifford(clifford_gate)
@@ -380,11 +386,15 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         return BlochMeasurement(angle, new_plane)
 
     @override
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> BlochMeasurement:
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> BlochMeasurement[AngleT_co]:
+        if isinstance(self.angle, (int, float)):
+            return self
         return BlochMeasurement(parameter.subs(self.angle, variable, substitute), self.plane)
 
     @override
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> BlochMeasurement:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> BlochMeasurement[AngleT_co]:
+        if isinstance(self.angle, (int, float)):
+            return self
         return BlochMeasurement(parameter.xreplace(self.angle, assignment), self.plane)
 
 
@@ -397,7 +407,7 @@ class PauliMeasurementMeta(ABCMeta):
 
 
 @dataclass(frozen=True)
-class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
+class PauliMeasurement(Measurement[Angle], metaclass=PauliMeasurementMeta):
     """Pauli measurement."""
 
     axis: Axis
@@ -475,7 +485,7 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
         return self.sign * Pauli.from_axis(self.axis)
 
     @override
-    def to_bloch(self) -> BlochMeasurement:
+    def to_bloch(self) -> BlochMeasurement[Angle]:
         match self.axis:
             case Axis.X:
                 if self.sign == Sign.PLUS:
@@ -491,7 +501,7 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
                 return Measurement.YZ(1)
 
     @override
-    def downcast_bloch(self) -> BlochMeasurement:
+    def downcast_bloch(self) -> BlochMeasurement[Angle]:
         """Raise :class:`TypeError` (overridden from :class:`Measurement`)."""
         raise TypeError("Bloch measurement expected, but Pauli measurement was found.")
 
