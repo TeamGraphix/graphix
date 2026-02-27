@@ -104,35 +104,40 @@ class InteractiveGraphVisualizer:
         # Figure height and width adapts to graph density like GraphVisualizer
         ax_h_frac = 0.80  # height fraction of ax_graph in figure
         fig_width, needed_height = self._graph_visualizer.determine_figsize(self._l_k, pos=self.node_positions)
-        fig_height = max(7, needed_height / ax_h_frac)
+        fig_height = max(7.0, needed_height / ax_h_frac)
 
-        # Compute node marker size and label font size ONCE from the known
-        # figure geometry.  This avoids instability when the user resizes the
-        # window, because the values are fixed at construction time.
-        ax_height_inches = fig_height * ax_h_frac
-        if self.node_positions:
-            ys = [p[1] for p in self.node_positions.values()]
-            y_data_span = max(ys) - min(ys) + 1
-        else:
-            y_data_span = 1
-
-        y_margin = y_data_span * 0.08 + 0.5  # mirrors _draw_graph margin
-        y_range = y_data_span + 2 * y_margin
-        points_per_unit = (ax_height_inches / y_range) * 72  # 72 pt/inch
-        marker_diameter = self.marker_fill_ratio * points_per_unit
-        self.node_size: int = min(400, max(30, int(marker_diameter**2)))
-        self.label_fontsize: int = min(self.max_label_fontsize, max(6, int(marker_diameter * self.label_size_ratio)))
+        # A single command with a phase angle (e.g. "M(pi/4)") needs ~1.8 inches of width to not overlap
+        # If the window is too narrow, just show the *current* command (size 1).
+        # We also enforce a hard absolute minimum window width of 4.0 so controls remain clickable.
+        fig_width = max(4.0, fig_width)
 
         self.fig = plt.figure(figsize=(fig_width, fig_height))
 
+        # Dynamically scale command strip capacity down on narrow graphs
+        self.command_window_size = max(1, min(7, int(fig_width / 1.8)))
+
+        # Ensure command_window_size is always an odd number so the current command is perfectly centered.
+        if self.command_window_size % 2 == 0:
+            self.command_window_size -= 1
+
+        # Use exact absolute dimensions from the static GraphVisualizer
+        # We rely on Matplotlib's native Zoom/Pan tools to solve overlaps gracefully.
+        self.node_size = 350
+        self.label_fontsize = 10
+
         # Grid layout (Bottom-heavy for controls, max space for graph)
+        # Instead of fixed absolute bottoms (e.g. 0.03), pin controls relative to each other
+        # so they hover near the graph bottom regardless of the window's total aspect ratio.
         self.ax_graph = self.fig.add_axes((0.02, 0.20, 0.96, 0.78))
         self.ax_commands = self.fig.add_axes((0.10, 0.10, 0.80, 0.08))
 
-        # Slider and buttons Centred at the very bottom
-        self.ax_prev = self.fig.add_axes((0.35, 0.03, 0.04, 0.04))
-        self.ax_slider = self.fig.add_axes((0.40, 0.03, 0.20, 0.04))
-        self.ax_next = self.fig.add_axes((0.61, 0.03, 0.04, 0.04))
+        # Slider and buttons Centred below the command list.
+        # Strict padding guarantees they will never overlap the text strip above.
+        # Buttons are pushed further out from the slider (0.32 and 0.64) to prevent their boxes
+        # from overlapping the slider track on extremely narrow windows.
+        self.ax_prev = self.fig.add_axes((0.32, 0.02, 0.04, 0.05))
+        self.ax_slider = self.fig.add_axes((0.40, 0.02, 0.20, 0.05))
+        self.ax_next = self.fig.add_axes((0.64, 0.02, 0.04, 0.05))
 
         # Turn off axes frame for command list and graph
         self.ax_commands.axis("off")
@@ -230,6 +235,14 @@ class InteractiveGraphVisualizer:
         for i, cmd in enumerate(cmds):
             abs_idx = start + i
             text_str = command_to_str(cmd, OutputFormat.Unicode)
+
+            # If the screen is completely starved for space and the string is long (like M(pi/4)),
+            # we truncate it to keep the UI clean, or else the chars physically overlap in matplotlib.
+            if self.command_window_size <= 3 and len(text_str) > 5:
+                # e.g. "M1(pi/4)" -> "M1(..)"
+                paren_idx = text_str.find("(")
+                if paren_idx != -1:
+                    text_str = text_str[:paren_idx] + "(..)"
 
             color = "gray"
             weight = "normal"
@@ -347,7 +360,7 @@ class InteractiveGraphVisualizer:
             elif cmd.kind == CommandKind.M and cmd.node in current_active:
                 current_active.remove(cmd.node)
                 current_measured.add(cmd.node)
-                current_edges = {e for e in current_edges if cmd.node not in e}
+                # Keep edges around so they draw in the background just like the static plot
 
         active_nodes = current_active
         measured_nodes = current_measured
@@ -381,13 +394,12 @@ class InteractiveGraphVisualizer:
                     highlight_nodes.update(last_cmd.nodes)
                     highlight_edges.add(last_cmd.nodes)
 
-            # Axis limits (set before drawing nodes so geometry is known)
+            # Axis limits (match static layout mathematically exactly to prevent horizontal stretching)
             xs = [p[0] for p in self.node_positions.values()]
             ys = [p[1] for p in self.node_positions.values()]
-            x_margin = (max(xs) - min(xs)) * 0.08 + 0.5
-            y_margin = (max(ys) - min(ys)) * 0.08 + 0.5
-            self.ax_graph.set_xlim(min(xs) - x_margin, max(xs) + x_margin)
-            self.ax_graph.set_ylim(min(ys) - y_margin, max(ys) + y_margin)
+            if xs and ys:
+                self.ax_graph.set_xlim(min(xs) - 0.5 * self.node_distance[0], max(xs) + 0.5 * self.node_distance[0])
+                self.ax_graph.set_ylim(min(ys) - 1.0, max(ys) + 0.5)
 
             # Layer separators
             if self._l_k is not None:
@@ -409,7 +421,7 @@ class InteractiveGraphVisualizer:
                 self._graph_visualizer.draw_edges_with_routing(
                     self.ax_graph,
                     edge_path,
-                    edge_subset=None,
+                    edge_subset=active_edges,
                     edge_colors=edge_colors,
                     edge_linewidths=edge_linewidths,
                 )
@@ -420,7 +432,7 @@ class InteractiveGraphVisualizer:
                 self._graph_visualizer.draw_edges_with_routing(
                     self.ax_graph,
                     edge_path,
-                    edge_subset=None,
+                    edge_subset=active_edges,
                     edge_colors=edge_colors,
                     edge_linewidths=edge_linewidths,
                 )
@@ -448,29 +460,52 @@ class InteractiveGraphVisualizer:
             )
 
             # Labels
+            # Use `annotate` with textcoords="offset points" so the label distance from the
+            # circle is fixed in *screen pixels*, not data units.  That way the label stays
+            # the same visual distance from the node regardless of the window size or zoom level.
+            label_offset_pts = (14, -10)  # (dx_pt, dy_pt) from the node centre
 
-            # Show "XY", "XZ" etc for non-measured output via the underlying graph logic
-            # Offset values logic matches static visualization.py exactly
+            # Show "XY", "XZ" etc for non-measured nodes
             for node in self.node_positions:
                 if node not in measured_nodes and node in self._graph_visualizer.og.measurements:
                     meas = self._graph_visualizer.og.measurements[node]
                     plane = meas.to_plane_or_axis().name
                     if isinstance(plane, str):
-                        x, y = self.node_positions[node]
-                        self.ax_graph.text(x + 0.22, y - 0.2, plane, fontsize=self.label_fontsize - 2, zorder=3)
+                        xy = self.node_positions[node]
+                        self.ax_graph.annotate(
+                            plane,
+                            xy=xy,
+                            xytext=label_offset_pts,
+                            textcoords="offset points",
+                            fontsize=9,
+                            zorder=3,
+                        )
 
             for node in measured_nodes:
                 if node in results:
-                    x, y = self.node_positions[node]
-                    self.ax_graph.text(
-                        x + 0.22, y - 0.2, f"m={results[node]}", fontsize=self.label_fontsize - 2, zorder=3
+                    xy = self.node_positions[node]
+                    self.ax_graph.annotate(
+                        f"m={results[node]}",
+                        xy=xy,
+                        xytext=label_offset_pts,
+                        textcoords="offset points",
+                        fontsize=9,
+                        zorder=3,
                     )
+
             for node in active_nodes:
                 if node in corrections:
                     lbl = "".join(sorted(corrections[node]))
                     if lbl:
-                        x, y = self.node_positions[node]
-                        self.ax_graph.text(x + 0.22, y - 0.2, lbl, fontsize=self.label_fontsize - 2, zorder=3)
+                        xy = self.node_positions[node]
+                        self.ax_graph.annotate(
+                            lbl,
+                            xy=xy,
+                            xytext=label_offset_pts,
+                            textcoords="offset points",
+                            fontsize=9,
+                            zorder=3,
+                        )
 
             self._graph_visualizer.draw_node_labels(
                 self.ax_graph, self.node_positions, extra_labels=None, fontsize=self.label_fontsize

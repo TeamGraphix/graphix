@@ -193,9 +193,10 @@ class TestInteractiveGraphVisualizer:
         # Execute all commands so that nodes 0 and 1 are measured
         viz._update(len(pattern))
 
-        # Collect the calls to ax_graph.text
-        text_calls = viz.ax_graph.text.call_args_list
-        label_strings = [call.args[2] for call in text_calls if len(call.args) > 2]
+        # Collect the calls to ax_graph.annotate (we switched from ax.text to ax.annotate
+        # so that labels use pixel-space offset points rather than data-space offsets)
+        annotate_calls = viz.ax_graph.annotate.call_args_list
+        label_strings = [call.args[0] for call in annotate_calls if call.args]
 
         # At least one label should contain 'm=' (the measurement result prefix)
         assert any("m=" in str(label) for label in label_strings), (

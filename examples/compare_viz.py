@@ -2,7 +2,7 @@
 Visualization Comparison Demo
 ==============================
 This script opens both the static and the new interactive visualizers
-side-by-side (or one after another) using the exact same pattern 
+side-by-side (or one after another) using the exact same pattern
 so you can compare them visually as requested by the reviewers.
 """
 
@@ -13,6 +13,7 @@ from graphix.command import E, M, N, X, Z
 from graphix.measurements import Measurement
 from graphix.pattern import Pattern
 from graphix.visualization_interactive import InteractiveGraphVisualizer
+
 
 def main() -> None:
     # Create the same simple pattern used in the interactive demo
@@ -27,14 +28,15 @@ def main() -> None:
 
     print("Pattern created with", len(p), "commands.")
     print("Close the static plot window to open the interactive one.")
-    
+
     # 1. Show the static visualizer plot
     p.draw_graph(flow_from_pattern=False, show_measurement_planes=True)
     plt.show()  # Blocks until closed
-    
+
     # 2. Show the interactive visualizer plot
     viz = InteractiveGraphVisualizer(p)
     viz.visualize()
+
 
 if __name__ == "__main__":
     main()
