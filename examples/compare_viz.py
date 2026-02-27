@@ -7,6 +7,7 @@ so you can compare them visually as requested by the reviewers.
 """
 
 from __future__ import annotations
+
 import matplotlib.pyplot as plt
 
 from graphix.command import E, M, N, X, Z
