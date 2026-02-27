@@ -17,7 +17,6 @@ cd graphix
 uv sync --extra dev --extra extra
 ```
 
-
 This creates a virtual environment and installs all development dependencies (linting, testing, type-checking, etc.) from the lockfile.
 
 ## Local checks
