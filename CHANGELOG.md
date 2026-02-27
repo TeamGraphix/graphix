@@ -13,12 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #447: `Pattern.perform_pauli_pushing` which calls `StandardizedPattern.perform_pauli_pushing`.
 
+- #450: `transpile_swaps` eliminates all the `SWAP` instructions from a circuit.
+
+- #450: `Circuit.visit` and `BaseInstruction.visit` performs simple replacements on circuits and instructions, given an `InstructionVisitor`.
+
 ### Fixed
 
 - #429
   - Modify `graphix.noise_models.noise_model.ApplyNoise` to handle conditionality based on a `domain` attribute (like `command.X` and `command.Z`).
   - Moved the conditional logic to `graphix.simulator` to remove code duplication in the backends.
   - Solves [#428](https://github.com/TeamGraphix/graphix/issues/428).
+
+- #430: The type of state in `PatternSimulator` is now deduced from the back-end.
 
 - #438: `ComplexUnit.try_from` now uses `cmath.isclose` for float comparison and has optional parameters `rel_tol` and `abs_tol`.
 
@@ -30,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The class `Measurement` is now abstract and has two concrete subclasses: `PauliMeasurement` and `BlochMeasurement`.
   - `M` commands are now parameterized by an instance `Measurement` (instead of carrying a plane and an angle).
   - Conversions are explicit with `Measurement.to_bloch()` and `Measurement.infer_pauli_measurements()`. Pauli measurement inference uses `math.isclose` and has optional parameters `rel_tol` and `abs_tol`.
+
+- #430: The whole code base is now type-checked with `mypy` and `pyright`, including examples.
 
 ## [0.3.4] - 2026-02-05
 
