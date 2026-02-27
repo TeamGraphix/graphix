@@ -75,6 +75,7 @@ uv sync --no-editable
 ```
 
 Or with pip:
+
 ```bash
 pip install . --config-settings editable_mode=strict
 ```
