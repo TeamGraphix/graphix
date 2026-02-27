@@ -225,9 +225,6 @@ class InteractiveGraphVisualizer:
         half_window = self.command_window_size // 2
         start = max(0, self.current_step - half_window)
         end = min(self.total_steps, self.current_step + half_window + 1)
-        # Remove heuristic spacing and string truncation.
-        # Instead, build a connected chain: Center item -> left chain -> right chain.
-        # This guarantees 0 overlap as they are anchored to the physical bounding boxes.
 
         def _get_props(abs_idx: int, cmd: Any) -> tuple[str, str, str, int, float]:
             text_str = command_to_str(cmd, OutputFormat.Unicode)
@@ -255,13 +252,11 @@ class InteractiveGraphVisualizer:
 
         artists: dict[int, Any] = {}
 
-        # The focus index is the active command, unless we are past the end of the pattern.
-        # If we are at the very end, anchor on the very last available command.
+        # Handle out-of-bounds slider focus
         focus_idx = min(self.current_step, end - 1)
         if focus_idx < start:
             return
 
-        # 1. Draw the focus command precisely in the center
         cmd = self.pattern[focus_idx]
         txt, color, weight, fsize, alpha = _get_props(focus_idx, cmd)
         artists[focus_idx] = self.ax_commands.text(
@@ -273,13 +268,12 @@ class InteractiveGraphVisualizer:
         )
         artists[focus_idx].index = focus_idx  # type: ignore[attr-defined]
 
-        # 2. Iterate backwards for past commands, anchoring to the left of the previous artist
+        # Draw past commands
         prev_idx = focus_idx
         for abs_idx in range(focus_idx - 1, start - 1, -1):
             cmd = self.pattern[abs_idx]
             txt, color, weight, fsize, alpha = _get_props(abs_idx, cmd)
 
-            # xy=(0, 0.5) targets the left-middle of the `prev_idx` artist's bounding box
             artists[abs_idx] = self.ax_commands.annotate(
                 txt,
                 xy=(0, 0.5), xycoords=artists[prev_idx],
@@ -291,13 +285,12 @@ class InteractiveGraphVisualizer:
             artists[abs_idx].index = abs_idx  # type: ignore[attr-defined]
             prev_idx = abs_idx
 
-        # 3. Iterate forwards for future commands, anchoring to the right of the previous artist
+        # Draw future commands
         prev_idx = focus_idx
         for abs_idx in range(focus_idx + 1, end):
             cmd = self.pattern[abs_idx]
             txt, color, weight, fsize, alpha = _get_props(abs_idx, cmd)
 
-            # xy=(1, 0.5) targets the right-middle of the `prev_idx` artist's bounding box
             artists[abs_idx] = self.ax_commands.annotate(
                 txt,
                 xy=(1, 0.5), xycoords=artists[prev_idx],
@@ -348,7 +341,6 @@ class InteractiveGraphVisualizer:
 
             rng = np.random.default_rng(42)  # Fixed seed for determinism
 
-            # Run simulation up to AND INCLUDING the active command
             for i in range(min(step + 1, len(self.pattern))):
                 cmd = self.pattern[i]
                 if cmd.kind == CommandKind.N:
@@ -385,7 +377,6 @@ class InteractiveGraphVisualizer:
         current_edges: set[tuple[int, int]] = set()
         current_measured: set[int] = set()
 
-        # Track topology up to AND INCLUDING the active command
         for i in range(min(step + 1, len(self.pattern))):
             cmd = self.pattern[i]
             if cmd.kind == CommandKind.N:
