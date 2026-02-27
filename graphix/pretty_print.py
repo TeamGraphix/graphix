@@ -15,7 +15,7 @@ from typing_extensions import assert_never
 
 from graphix import command
 from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad, rad_to_angle
-from graphix.measurements import BlochMeasurement, PauliMeasurement
+from graphix.measurements import AngleT, BlochMeasurement, PauliMeasurement
 from graphix.parameter import AffineExpression
 
 if TYPE_CHECKING:
@@ -137,7 +137,7 @@ def affine_expression_to_str(expr: AffineExpression, output: OutputFormat) -> st
     return result
 
 
-def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
+def command_to_str(cmd: command.Command[AngleT], output: OutputFormat) -> str:
     """Return the string representation of a command according to the given format.
 
     Parameters
@@ -239,7 +239,7 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
 
 
 def pattern_to_str(
-    pattern: Pattern,
+    pattern: Pattern[AngleT],
     output: OutputFormat,
     left_to_right: bool = False,
     limit: int = 40,

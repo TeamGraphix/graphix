@@ -17,6 +17,7 @@ from typing_extensions import override
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
+from graphix.measurements import AngleT, AngleT_co
 from graphix.ops import Ops
 from graphix.parameter import check_expression_or_complex
 from graphix.states import BasicStates
@@ -663,7 +664,7 @@ class Backend(Generic[_StateT_co]):
         """To be run at the end of pattern simulation to convey the order of output nodes."""
 
     @abstractmethod
-    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
+    def measure(self, node: int, measurement: Measurement[AngleT_co], rng: Generator | None = None) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
@@ -751,7 +752,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         self.state.entangle((target, control))
 
     @override
-    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
+    def measure(self, node: int, measurement: Measurement[AngleT], rng: Generator | None = None) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
