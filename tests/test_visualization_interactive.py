@@ -398,13 +398,14 @@ class TestInteractiveGraphVisualizer:
         viz = InteractiveGraphVisualizer(pattern)
         viz.ax_graph = MagicMock()
 
-        # Force an exception during state update
-        mocker.patch.object(viz, "_update_graph_state", side_effect=ValueError("Test Exception"))
+        # Force an exception during drawing to test the except block
+        viz.ax_graph.clear.side_effect = ValueError("Test Exception")
         # Mock traceback to avoid cluttering test output
         mocker.patch("traceback.print_exc")
 
         # This should not raise but log/print
-        viz._draw_graph()
+        mock_state = (set(), set(), [], {}, {})
+        viz._draw_graph(mock_state)
 
 
 class TestGraphVisualizerSharedAPI:
