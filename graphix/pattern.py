@@ -14,7 +14,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
+from typing import TYPE_CHECKING, Literal, Self, SupportsFloat, TypeVar, overload
 
 import networkx as nx
 from typing_extensions import assert_never
@@ -23,7 +23,7 @@ from graphix import command, optimization
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind, Node
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Axis, Plane, Sign, ParameterizedAngle
+from graphix.fundamentals import Angle, Axis, ParameterizedAngle, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
@@ -37,7 +37,7 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from collections.abc import Callable, Container, Iterator, Mapping
     from collections.abc import Set as AbstractSet
-    from typing import Any
+    from typing import Any, Generic
 
     from numpy.random import Generator
 
@@ -51,14 +51,18 @@ if TYPE_CHECKING:
 
 _BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
 
+AngleT = TypeVar("AngleT", ParameterizedAngle, Angle)
 
-class Pattern:
+AngleT_co = TypeVar("AngleT_co", ParameterizedAngle, Angle, covariant=True)
+
+
+class Pattern(Generic[AngleT]):
     """
     MBQC pattern class.
 
     Pattern holds a sequence of commands to operate the MBQC (Pattern.seq),
     and provide modification strategies to improve the structure and simulation
-    efficiency of the pattern accoring to measurement calculus.
+    efficiency of the pattern according to measurement calculus.
 
     ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
@@ -82,12 +86,12 @@ class Pattern:
     """
 
     results: dict[int, Outcome]
-    __seq: list[Command[ParameterizedAngle]]
+    __seq: list[Command[AngleT]]
 
     def __init__(
         self,
         input_nodes: Iterable[int] | None = None,
-        cmds: Iterable[Command[ParameterizedAngle]] | None = None,
+        cmds: Iterable[Command[AngleT]] | None = None,
         output_nodes: Iterable[int] | None = None,
     ) -> None:
         """
@@ -119,7 +123,7 @@ class Pattern:
         if output_nodes is not None:
             self.reorder_output_nodes(output_nodes)
 
-    def add(self, cmd: Command[ParameterizedAngle]) -> None:
+    def add(self, cmd: Command[AngleT]) -> None:
         """Add command to the end of the pattern.
 
         An MBQC command is an instance of :class:`graphix.command.Command`.
@@ -138,7 +142,7 @@ class Pattern:
                     self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, *cmds: Command[ParameterizedAngle] | Iterable[Command[ParameterizedAngle]]) -> None:
+    def extend(self, *cmds: Command[AngleT] | Iterable[Command[AngleT]]) -> None:
         """Add sequences of commands.
 
         :param cmds: sequences of commands
@@ -156,7 +160,7 @@ class Pattern:
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds: list[Command[ParameterizedAngle]], input_nodes: list[int] | None = None) -> None:
+    def replace(self, cmds: list[Command[AngleT]], input_nodes: list[int] | None = None) -> None:
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands
@@ -169,8 +173,8 @@ class Pattern:
         self.extend(cmds)
 
     def compose(
-        self, other: Pattern, mapping: Mapping[int, int], preserve_mapping: bool = False
-    ) -> tuple[Pattern, dict[int, int]]:
+        self, other: Pattern[AngleT], mapping: Mapping[int, int], preserve_mapping: bool = False
+    ) -> tuple[Pattern[AngleT], dict[int, int]]:
         r"""Compose two patterns by merging subsets of outputs from ``self`` and a subset of inputs of ``other``, and relabeling the nodes of ``other`` that were not merged.
 
         Parameters
@@ -270,7 +274,7 @@ class Pattern:
         else:
             outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
-        def update_command(cmd: Command[ParameterizedAngle]) -> Command[ParameterizedAngle]:
+        def update_command(cmd: Command[AngleT]) -> Command[AngleT]:
             # Shallow copy is enough since the mutable attributes of cmd_new susceptible to change are reassigned
             cmd_new = copy.copy(cmd)
 
@@ -310,11 +314,11 @@ class Pattern:
         """Return the length of command sequence."""
         return len(self.__seq)
 
-    def __iter__(self) -> Iterator[Command[ParameterizedAngle]]:
+    def __iter__(self) -> Iterator[Command[AngleT]]:
         """Iterate over commands."""
         return iter(self.__seq)
 
-    def __getitem__(self, index: int) -> Command[ParameterizedAngle]:
+    def __getitem__(self, index: int) -> Command[AngleT]:
         """Get the command at a given index."""
         return self.__seq[index]
 
@@ -921,7 +925,7 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
 
-    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement[ParameterizedAngle]]:
+    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement[AngleT]]:
         r"""Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
@@ -949,7 +953,7 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
 
-    def extract_gflow(self) -> GFlow[BlochMeasurement[ParameterizedAngle]]:
+    def extract_gflow(self) -> GFlow[BlochMeasurement[AngleT]]:
         r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
@@ -973,7 +977,7 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
-    def extract_xzcorrections(self) -> XZCorrections[Measurement[ParameterizedAngle]]:
+    def extract_xzcorrections(self) -> XZCorrections[Measurement[AngleT]]:
         """Extract the XZ-corrections from the current measurement pattern.
 
         Returns
@@ -1057,7 +1061,7 @@ class Pattern:
             edges -= removable_edges
         return meas_order
 
-    def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M[ParameterizedAngle]]:
+    def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M[AngleT]]:
         """Convert measurement order to sequence of measurement commands.
 
         Parameters
@@ -1073,7 +1077,7 @@ class Pattern:
         meas_dict = self.extract_measurement_commands()
         return [meas_dict[i] for i in meas_order]
 
-    def extract_measurement_commands(self) -> dict[int, command.M[ParameterizedAngle]]:
+    def extract_measurement_commands(self) -> dict[int, command.M[AngleT]]:
         """Return a dictionary mapping nodes to measurement commands.
 
         Returns
@@ -1139,7 +1143,7 @@ class Pattern:
         graph = self.extract_graph()
         return {node for node, d in graph.degree if d == 0}
 
-    def extract_opengraph(self) -> OpenGraph[Measurement[ParameterizedAngle]]:
+    def extract_opengraph(self) -> OpenGraph[Measurement[AngleT]]:
         r"""Extract the underlying resource-state open graph from the pattern.
 
         Returns
@@ -1157,7 +1161,7 @@ class Pattern:
         """
         nodes = set(self.input_nodes)
         edges: set[tuple[int, int]] = set()
-        measurements: dict[int, Measurement[ParameterizedAngle]] = {}
+        measurements: dict[int, Measurement[AngleT]] = {}
 
         for cmd in self.__seq:
             match cmd.kind:
@@ -1269,7 +1273,7 @@ class Pattern:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
-    def _reorder_pattern(self, meas_commands: list[command.M[ParameterizedAngle]]) -> None:
+    def _reorder_pattern(self, meas_commands: list[command.M[AngleT]]) -> None:
         """Reorder the command sequence.
 
         Parameters
@@ -1537,15 +1541,15 @@ class Pattern:
             if cmd.kind == command.CommandKind.M and isinstance(cmd.measurement, BlochMeasurement)
         )
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern[AngleT]:
         """Return a copy of the pattern where all occurrences of the given variable in measurement angles are substituted by the given value."""
         return self.map(lambda m: m.subs(variable, substitute))
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern[AngleT]:
         """Return a copy of the pattern where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         return self.map(lambda m: m.xreplace(assignment))
 
-    def copy(self) -> Pattern:
+    def copy(self) -> Self:
         """Return a copy of the pattern."""
         result = self.__new__(self.__class__)
         result.__seq = [copy.copy(cmd) for cmd in self.__seq]
@@ -1572,13 +1576,13 @@ class Pattern:
         active = set(self.input_nodes)
         measured = set(self.results)
 
-        def check_active(cmd: Command[ParameterizedAngle], node: int) -> None:
+        def check_active(cmd: Command[AngleT], node: int) -> None:
             if node in measured:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.AlreadyMeasured)
             if node not in active:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetActive)
 
-        def check_measured(cmd: Command[ParameterizedAngle], node: int) -> None:
+        def check_measured(cmd: Command[AngleT], node: int) -> None:
             if node not in measured:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetMeasured)
 
@@ -1617,17 +1621,17 @@ class Pattern:
                 case CommandKind.C:
                     check_active(cmd, cmd.node)
 
-    def map(self, f: Callable[[Measurement[ParameterizedAngle]], Measurement[ParameterizedAngle]]) -> Pattern:
+    def map(self, f: Callable[[Measurement[AngleT]], Measurement[AngleT]]) -> Pattern[AngleT]:
         """Return a pattern where the function ``f`` has been applied to each measurement.
 
         Parameters
         ----------
-        f: Callable[[Measurement], Measurement]
+        f: Callable[[Measurement[AngleT]], Measurement[AngleT]]
             Function applied to each measurement.
 
         Returns
         -------
-        Pattern
+        Pattern[AngleT]
             The resulting pattern.
 
         Example
@@ -1638,7 +1642,7 @@ class Pattern:
         >>> pattern.map(lambda m: BlochMeasurement(m.angle + 1, m.plane))
         Pattern(input_nodes=[0], cmds=[M(0, Measurement.XZ(1.25))])
         """
-        new_pattern = Pattern(input_nodes=self.input_nodes)
+        new_pattern: Pattern[AngleT] = Pattern(input_nodes=self.input_nodes)
         new_pattern.results = self.results
 
         for cmd in self:
@@ -1650,7 +1654,7 @@ class Pattern:
         new_pattern.reorder_output_nodes(self.output_nodes)
         return new_pattern
 
-    def infer_pauli_measurements(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> Pattern:
+    def infer_pauli_measurements(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> Pattern[AngleT]:
         """Return an equivalent pattern in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
 
         Parameters
@@ -1677,7 +1681,7 @@ class Pattern:
         """
         return self.map(lambda m: m.to_pauli_or_bloch(rel_tol, abs_tol))
 
-    def to_bloch(self) -> Pattern:
+    def to_bloch(self) -> Pattern[AngleT]:
         """Return an equivalent pattern in which all measurements are represented as Bloch measurements.
 
         Example
@@ -1697,7 +1701,7 @@ class Pattern:
         standardize: bool = False,
         *,
         stacklevel: int = 1,
-    ) -> Pattern:
+    ) -> Pattern[AngleT]:
         """Move Pauli measurements before the other measurements.
 
         Parameters
@@ -1786,7 +1790,7 @@ class RunnabilityError(PatternError):
                 assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, stacklevel: int = 1) -> Pattern:
+def measure_pauli(pattern: Pattern[AngleT], *, ignore_pauli_with_deps: bool = False, stacklevel: int = 1) -> Pattern[AngleT]:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1816,7 +1820,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
     pattern._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
-    pat = Pattern()
+    pat: Pattern[AngleT] = Pattern()
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing(stacklevel=stacklevel + 1)
@@ -1876,7 +1880,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
 
     # update command sequence
     vops = graph_state.extract_vops()
-    new_seq: list[Command[ParameterizedAngle]] = []
+    new_seq: list[Command[AngleT]] = []
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
@@ -1896,7 +1900,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
     return pat
 
 
-def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M[ParameterizedAngle], PauliMeasurement]], set[int]]:
+def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M[AngleT], PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
@@ -1909,7 +1913,7 @@ def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[c
         list of measures
     non_pauli_nodes : set[int]
     """
-    pauli_node: list[tuple[command.M[ParameterizedAngle], PauliMeasurement]] = []
+    pauli_node: list[tuple[command.M[AngleT], PauliMeasurement]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
