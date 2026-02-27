@@ -82,12 +82,12 @@ class Pattern:
     """
 
     results: dict[int, Outcome]
-    __seq: list[Command]
+    __seq: list[Command[ParameterizedAngle]]
 
     def __init__(
         self,
         input_nodes: Iterable[int] | None = None,
-        cmds: Iterable[Command] | None = None,
+        cmds: Iterable[Command[ParameterizedAngle]] | None = None,
         output_nodes: Iterable[int] | None = None,
     ) -> None:
         """
@@ -119,7 +119,7 @@ class Pattern:
         if output_nodes is not None:
             self.reorder_output_nodes(output_nodes)
 
-    def add(self, cmd: Command) -> None:
+    def add(self, cmd: Command[ParameterizedAngle]) -> None:
         """Add command to the end of the pattern.
 
         An MBQC command is an instance of :class:`graphix.command.Command`.
@@ -138,7 +138,7 @@ class Pattern:
                     self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, *cmds: Command | Iterable[Command]) -> None:
+    def extend(self, *cmds: Command[ParameterizedAngle] | Iterable[Command[ParameterizedAngle]]) -> None:
         """Add sequences of commands.
 
         :param cmds: sequences of commands
@@ -156,7 +156,7 @@ class Pattern:
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds: list[Command], input_nodes: list[int] | None = None) -> None:
+    def replace(self, cmds: list[Command[ParameterizedAngle]], input_nodes: list[int] | None = None) -> None:
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands
@@ -270,7 +270,7 @@ class Pattern:
         else:
             outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
-        def update_command(cmd: Command) -> Command:
+        def update_command(cmd: Command[ParameterizedAngle]) -> Command[ParameterizedAngle]:
             # Shallow copy is enough since the mutable attributes of cmd_new susceptible to change are reassigned
             cmd_new = copy.copy(cmd)
 
@@ -310,11 +310,11 @@ class Pattern:
         """Return the length of command sequence."""
         return len(self.__seq)
 
-    def __iter__(self) -> Iterator[Command]:
+    def __iter__(self) -> Iterator[Command[ParameterizedAngle]]:
         """Iterate over commands."""
         return iter(self.__seq)
 
-    def __getitem__(self, index: int) -> Command:
+    def __getitem__(self, index: int) -> Command[ParameterizedAngle]:
         """Get the command at a given index."""
         return self.__seq[index]
 
@@ -1057,7 +1057,7 @@ class Pattern:
             edges -= removable_edges
         return meas_order
 
-    def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M]:
+    def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M[ParameterizedAngle]]:
         """Convert measurement order to sequence of measurement commands.
 
         Parameters
@@ -1073,7 +1073,7 @@ class Pattern:
         meas_dict = self.extract_measurement_commands()
         return [meas_dict[i] for i in meas_order]
 
-    def extract_measurement_commands(self) -> dict[int, command.M]:
+    def extract_measurement_commands(self) -> dict[int, command.M[ParameterizedAngle]]:
         """Return a dictionary mapping nodes to measurement commands.
 
         Returns
@@ -1269,7 +1269,7 @@ class Pattern:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
-    def _reorder_pattern(self, meas_commands: list[command.M]) -> None:
+    def _reorder_pattern(self, meas_commands: list[command.M[ParameterizedAngle]]) -> None:
         """Reorder the command sequence.
 
         Parameters
@@ -1572,13 +1572,13 @@ class Pattern:
         active = set(self.input_nodes)
         measured = set(self.results)
 
-        def check_active(cmd: Command, node: int) -> None:
+        def check_active(cmd: Command[ParameterizedAngle], node: int) -> None:
             if node in measured:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.AlreadyMeasured)
             if node not in active:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetActive)
 
-        def check_measured(cmd: Command, node: int) -> None:
+        def check_measured(cmd: Command[ParameterizedAngle], node: int) -> None:
             if node not in measured:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetMeasured)
 
@@ -1765,7 +1765,7 @@ class RunnabilityErrorReason(Enum):
 class RunnabilityError(PatternError):
     """Error raised by :method:`Pattern.check_runnability`."""
 
-    cmd: Command
+    cmd: Command[ParameterizedAngle]
     node: int
     reason: RunnabilityErrorReason
 
@@ -1876,7 +1876,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
 
     # update command sequence
     vops = graph_state.extract_vops()
-    new_seq: list[Command] = []
+    new_seq: list[Command[ParameterizedAngle]] = []
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
@@ -1896,7 +1896,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
     return pat
 
 
-def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M[ParameterizedAngle], PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
@@ -1909,7 +1909,7 @@ def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[c
         list of measures
     non_pauli_nodes : set[int]
     """
-    pauli_node: list[tuple[command.M, PauliMeasurement]] = []
+    pauli_node: list[tuple[command.M[ParameterizedAngle], PauliMeasurement]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
