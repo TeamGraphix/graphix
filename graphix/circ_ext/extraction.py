@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 from graphix.fundamentals import ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
-from graphix.sim.base_backend import NodeIndex
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -18,6 +17,7 @@ if TYPE_CHECKING:
     from graphix.command import Node
     from graphix.flow.core import PauliFlow
     from graphix.opengraph import OpenGraph
+    from graphix.sim.base_backend import NodeIndex
     from graphix.transpiler import Circuit
 
 
@@ -253,13 +253,7 @@ class PauliExponentialDAG:
         ----------
         [1] Simmons, 2021 (arXiv:2109.05654).
         """
-        outputs_mapping = NodeIndex()
-        outputs_mapping.extend(flow.og.output_nodes)
-
-        pauli_strings = {
-            node: PauliExponential.from_measured_node(flow, node).remap(outputs_mapping)
-            for node in flow.correction_function
-        }
+        pauli_strings = {node: PauliExponential.from_measured_node(flow, node) for node in flow.correction_function}
 
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 

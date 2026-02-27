@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from graphix.circ_ext.extraction import PauliExponentialDAG
 from graphix.fundamentals import ANGLE_PI
+from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -61,8 +62,11 @@ class CompilationPass:
             )
         n_qubits = len(er.pexp_dag.output_nodes)
         circuit = Circuit(n_qubits)
+        outputs_mapping = NodeIndex()
+        outputs_mapping.extend(er.pexp_dag.output_nodes)
+
         self.cm_cp.add_to_circuit(er.clifford_map, circuit)
-        self.pexp_cp.add_to_circuit(er.pexp_dag, circuit)
+        self.pexp_cp.add_to_circuit(er.pexp_dag.remap(outputs_mapping), circuit)
         return circuit
 
 
@@ -155,7 +159,7 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         if pexp.angle == 0:  # No rotation
             return
 
-        nodes = list(pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes)
+        nodes = sorted(pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes)
         angle = -2 * pexp.angle * pexp.pauli_string.sign
 
         if len(nodes) == 0:  # Identity

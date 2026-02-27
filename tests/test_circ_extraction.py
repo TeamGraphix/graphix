@@ -168,9 +168,7 @@ class TestPauliExponential:
             output_nodes=flow.og.output_nodes,
         )
 
-        outputs_mapping = NodeIndex()
-        outputs_mapping.extend(pexp_dag_ref.output_nodes)
-        assert pexp_dag == pexp_dag_ref.remap(outputs_mapping)
+        assert pexp_dag == pexp_dag_ref
 
 
 def test_extend_input() -> None:
