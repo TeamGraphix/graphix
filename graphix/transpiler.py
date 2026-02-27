@@ -17,7 +17,7 @@ from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.instruction import Instruction, InstructionKind, InstructionVisitor
+from graphix.instruction import Instruction, InstructionKind, InstructionVisitor, InstructionWithoutRZZ
 from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
 from graphix.pattern import Pattern
@@ -472,7 +472,7 @@ class Circuit:
                     classical_outputs.append(target)
                     out[instr.target] = None
                 case _:
-                    raise ValueError("Unknown instruction, commands not added")
+                    assert_never(instr.kind)
         output_nodes = [node for node in out if node is not None]
         pattern.reorder_output_nodes(output_nodes)
         return TranspileResult(pattern, tuple(classical_outputs))
@@ -1063,7 +1063,7 @@ class Circuit:
         return circuit
 
 
-def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]:
+def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[InstructionWithoutRZZ]:
     for instr in instructions:
         if instr.kind == InstructionKind.RZZ:
             yield instruction.CNOT(control=instr.control, target=instr.target)

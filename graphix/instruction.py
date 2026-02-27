@@ -290,4 +290,5 @@ class RZ(_KindChecker, BaseInstruction):
         return RZ(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
 
 
-Instruction = CCX | RZZ | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
+InstructionWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
+Instruction = InstructionWithoutRZZ | RZZ
