@@ -226,10 +226,11 @@ class InteractiveGraphVisualizer:
         start = max(0, self.current_step - half_window)
         end = min(self.total_steps, self.current_step + half_window + 1)
 
-        def _get_props(abs_idx: int, cmd: Any) -> tuple[str, str, str, int, float]:
+        def _get_props(abs_idx: int, cmd: Any) -> tuple[str, str, str, str, int, float]:
             text_str = command_to_str(cmd, OutputFormat.Unicode)
+            meas_str = ""
             if cmd.kind == CommandKind.M and abs_idx <= self.current_step and cmd.node in results:
-                text_str += f" m={results[cmd.node]}"
+                meas_str = f"m={results[cmd.node]}"
 
             color = "gray"
             weight = "normal"
@@ -248,7 +249,7 @@ class InteractiveGraphVisualizer:
                 color = "lightgray"
                 alpha = 0.7
 
-            return text_str, color, weight, fontsize, alpha
+            return text_str, meas_str, color, weight, fontsize, alpha
 
         artists: dict[int, Any] = {}
 
@@ -258,7 +259,7 @@ class InteractiveGraphVisualizer:
             return
 
         cmd = self.pattern[focus_idx]
-        txt, color, weight, fsize, alpha = _get_props(focus_idx, cmd)
+        txt, meas_str, color, weight, fsize, alpha = _get_props(focus_idx, cmd)
         artists[focus_idx] = self.ax_commands.text(
             0.5, 0.5, txt,
             color=color, weight=weight, fontsize=fsize, alpha=alpha,
@@ -268,38 +269,70 @@ class InteractiveGraphVisualizer:
         )
         artists[focus_idx].index = focus_idx  # type: ignore[attr-defined]
 
+        if meas_str:
+            self.ax_commands.annotate(
+                meas_str,
+                xy=(0.5, 1.0), xycoords=artists[focus_idx],
+                xytext=(0, 2), textcoords="offset points",
+                color=color, fontsize=10, alpha=alpha,
+                ha="center", va="bottom",
+                annotation_clip=True, clip_on=True,
+            )
+
         # Draw past commands
         prev_idx = focus_idx
         for abs_idx in range(focus_idx - 1, start - 1, -1):
             cmd = self.pattern[abs_idx]
-            txt, color, weight, fsize, alpha = _get_props(abs_idx, cmd)
+            txt, meas_str, color, weight, fsize, alpha = _get_props(abs_idx, cmd)
 
             artists[abs_idx] = self.ax_commands.annotate(
                 txt,
                 xy=(0, 0.5), xycoords=artists[prev_idx],
-                xytext=(-15, 0), textcoords="offset points",
+                xytext=(-4, 0), textcoords="offset points",
                 color=color, weight=weight, fontsize=fsize, alpha=alpha,
                 ha="right", va="center", picker=True,
                 annotation_clip=True, clip_on=True,
             )
             artists[abs_idx].index = abs_idx  # type: ignore[attr-defined]
+
+            if meas_str:
+                self.ax_commands.annotate(
+                    meas_str,
+                    xy=(0.5, 1.0), xycoords=artists[abs_idx],
+                    xytext=(0, 2), textcoords="offset points",
+                    color=color, fontsize=9, alpha=alpha,
+                    ha="center", va="bottom",
+                    annotation_clip=True, clip_on=True,
+                )
+
             prev_idx = abs_idx
 
         # Draw future commands
         prev_idx = focus_idx
         for abs_idx in range(focus_idx + 1, end):
             cmd = self.pattern[abs_idx]
-            txt, color, weight, fsize, alpha = _get_props(abs_idx, cmd)
+            txt, meas_str, color, weight, fsize, alpha = _get_props(abs_idx, cmd)
 
             artists[abs_idx] = self.ax_commands.annotate(
                 txt,
                 xy=(1, 0.5), xycoords=artists[prev_idx],
-                xytext=(15, 0), textcoords="offset points",
+                xytext=(4, 0), textcoords="offset points",
                 color=color, weight=weight, fontsize=fsize, alpha=alpha,
                 ha="left", va="center", picker=True,
                 annotation_clip=True, clip_on=True,
             )
             artists[abs_idx].index = abs_idx  # type: ignore[attr-defined]
+
+            if meas_str:
+                self.ax_commands.annotate(
+                    meas_str,
+                    xy=(0.5, 1.0), xycoords=artists[abs_idx],
+                    xytext=(0, 2), textcoords="offset points",
+                    color=color, fontsize=9, alpha=alpha,
+                    ha="center", va="bottom",
+                    annotation_clip=True, clip_on=True,
+                )
+
             prev_idx = abs_idx
 
     def _update_graph_state(
