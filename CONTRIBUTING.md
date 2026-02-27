@@ -22,6 +22,7 @@ This creates a virtual environment and installs all development dependencies (li
 ## Local checks
 
 To run individual checks:
+
 ```bash
 uv run ruff check .
 uv run ruff format --check .
