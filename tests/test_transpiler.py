@@ -9,10 +9,10 @@ from numpy.random import PCG64, Generator
 from graphix import instruction
 from graphix.branch_selector import ConstBranchSelector
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
-from graphix.instruction import InstructionKind
+from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.states import BasicStates
-from graphix.transpiler import Circuit
+from graphix.transpiler import Circuit, transpile_swaps
 from tests.test_branch_selector import CheckedBranchSelector
 
 if TYPE_CHECKING:
@@ -162,6 +162,7 @@ class TestTranspilerUnitGates:
     def test_measure(self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         circuit = Circuit(2)
+        circuit.cnot(0, 1)
         circuit.m(0, axis)
         input_state = rand_state_vector(2, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
@@ -257,3 +258,47 @@ class TestTranspilerUnitGates:
         state = circuit.simulate_statevector(input_state=input_state).statevec
         state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 4
+    depth = 6
+    circuit = rand_circuit(nqubits, depth, rng, use_ccx=True, use_rzz=True)
+    assert any(instr.kind == InstructionKind.SWAP for instr in circuit.instruction)
+    transpiled_swaps = transpile_swaps(circuit)
+    circuit2 = transpiled_swaps.circuit
+    assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
+    state = circuit.simulate_statevector(rng=rng).statevec
+    state2 = circuit2.simulate_statevector(rng=rng).statevec
+    qubits: list[int] = []
+    for qubit in transpiled_swaps.qubits:
+        assert qubit is not None
+        qubits.append(qubit)
+    state2.psi = np.transpose(state2.psi, qubits)
+    assert state.isclose(state2)
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+@pytest.mark.parametrize("outcome", [0, 1])
+def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    circuit = Circuit(3)
+    circuit.swap(0, 1)
+    circuit.swap(0, 2)
+    circuit.cnot(1, 2)
+    circuit.m(1, axis)
+    circuit.i(0)
+    transpiled_swaps = transpile_swaps(circuit)
+    circuit2 = transpiled_swaps.circuit
+    assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
+    assert I(2) in circuit2.instruction
+    input_state = rand_state_vector(3, rng=rng)
+    branch_selector = ConstBranchSelector(outcome)
+    state = circuit.simulate_statevector(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+    state2 = circuit2.simulate_statevector(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+    assert transpiled_swaps.qubits == (2, None, 1)
+    state2.swap((0, 1))
+    assert state.isclose(state2)
