@@ -21,7 +21,7 @@ from typing_extensions import assert_never
 
 from graphix import command, optimization
 from graphix.clifford import Clifford
-from graphix.command import Command, CommandKind
+from graphix.command import Command, CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
@@ -129,12 +129,13 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
-        if cmd.kind == CommandKind.N:
-            self.__n_node += 1
-            self.__output_nodes.append(cmd.node)
-        elif cmd.kind == CommandKind.M:
-            if cmd.node in self.__output_nodes:
-                self.__output_nodes.remove(cmd.node)
+        match cmd.kind:
+            case CommandKind.N:
+                self.__n_node += 1
+                self.__output_nodes.append(cmd.node)
+            case CommandKind.M:
+                if cmd.node in self.__output_nodes:
+                    self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
     def extend(self, *cmds: Command | Iterable[Command]) -> None:
@@ -278,12 +279,12 @@ class Pattern:
                 cmd_new.nodes = (mapping_complete[i], mapping_complete[j])
             elif cmd_new.kind is not CommandKind.T:
                 cmd_new.node = mapping_complete[cmd_new.node]
-                if cmd_new.kind is CommandKind.M:
-                    cmd_new.s_domain = {mapping_complete[i] for i in cmd_new.s_domain}
-                    cmd_new.t_domain = {mapping_complete[i] for i in cmd_new.t_domain}
-                # Use of `==` here for mypy
-                elif cmd_new.kind == CommandKind.X or cmd_new.kind == CommandKind.Z or cmd_new.kind == CommandKind.S:  # noqa: PLR1714
-                    cmd_new.domain = {mapping_complete[i] for i in cmd_new.domain}
+                match cmd_new.kind:
+                    case CommandKind.M:
+                        cmd_new.s_domain = {mapping_complete[i] for i in cmd_new.s_domain}
+                        cmd_new.t_domain = {mapping_complete[i] for i in cmd_new.t_domain}
+                    case CommandKind.X | CommandKind.Z | CommandKind.S:
+                        cmd_new.domain = {mapping_complete[i] for i in cmd_new.domain}
 
             return cmd_new
 
@@ -483,32 +484,34 @@ class Pattern:
         # For example, the non-runnable pattern {1}[M(0)] N(0) would
         # become M(0) N(0), which is runnable.
         self.check_runnability()
-
-        if method == "direct":
-            return self.shift_signals_direct()
-        if method == "mc":
-            signal_dict = self.extract_signals()
-            target = self._find_op_to_be_moved(CommandKind.S, rev=True)
-            while target is not None:
-                if target == len(self.__seq) - 1:
-                    self.__seq.pop(target)
-                    target = self._find_op_to_be_moved(CommandKind.S, rev=True)
-                    continue
-                cmd = self.__seq[target + 1]
-                kind = cmd.kind
-                if kind == CommandKind.X:
-                    self._commute_xs(target)
-                elif kind == CommandKind.Z:
-                    self._commute_zs(target)
-                elif kind == CommandKind.M:
-                    self._commute_ms(target)
-                elif kind == CommandKind.S:
-                    self._commute_ss(target)
-                else:
-                    self._commute_with_following(target)
-                target += 1
-            return signal_dict
-        raise PatternError("Invalid method")
+        match method:
+            case "direct":
+                return self.shift_signals_direct()
+            case "mc":
+                signal_dict = self.extract_signals()
+                target = self._find_op_to_be_moved(CommandKind.S, rev=True)
+                while target is not None:
+                    if target == len(self.__seq) - 1:
+                        self.__seq.pop(target)
+                        target = self._find_op_to_be_moved(CommandKind.S, rev=True)
+                        continue
+                    cmd = self.__seq[target + 1]
+                    kind = cmd.kind
+                    match kind:
+                        case CommandKind.X:
+                            self._commute_xs(target)
+                        case CommandKind.Z:
+                            self._commute_zs(target)
+                        case CommandKind.M:
+                            self._commute_ms(target)
+                        case CommandKind.S:
+                            self._commute_ss(target)
+                        case _:
+                            self._commute_with_following(target)
+                    target += 1
+                return signal_dict
+            case _:
+                raise PatternError("Invalid method")
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
         """Perform signal shifting procedure."""
@@ -527,43 +530,44 @@ class Pattern:
                 domain ^= signal_dict[node]
 
         for i, cmd in enumerate(self):
-            if cmd.kind == CommandKind.M:
-                s_domain = set(cmd.s_domain)
-                t_domain = set(cmd.t_domain)
-                expand_domain(s_domain)
-                expand_domain(t_domain)
-                plane = cmd.measurement.to_bloch().plane
-                if plane == Plane.XY:
-                    # M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
-                    #                  = S^t M^{XY,(-1)^s·α}
-                    #                  = S^t M^{XY,α} X^s
-                    if t_domain:
-                        signal_dict[cmd.node] = t_domain
-                        t_domain = set()
-                elif plane == Plane.XZ:
-                    # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
-                    #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
-                    #                  = M^{XZ,(-1)^{s+t}·α+sπ}         (since (-1)^t·π ≡ π (mod 2π))
-                    #                  = S^s M^{XZ,(-1)^{s+t}·α}
-                    #                  = S^s M^{XZ,α} Z^{s+t}
-                    if s_domain:
-                        signal_dict[cmd.node] = s_domain
-                        t_domain ^= s_domain
-                        s_domain = set()
-                elif plane == Plane.YZ and s_domain:
-                    # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
-                    #                  = S^s M^{YZ,(-1)^t·α}
-                    #                  = S^s M^{YZ,α} Z^t
-                    signal_dict[cmd.node] = s_domain
-                    s_domain = set()
-                if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
-                    self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                domain = set(cmd.domain)
-                expand_domain(domain)
-                if domain != cmd.domain:
-                    self.__seq[i] = dataclasses.replace(cmd, domain=domain)
+            match cmd.kind:
+                case CommandKind.M:
+                    s_domain = set(cmd.s_domain)
+                    t_domain = set(cmd.t_domain)
+                    expand_domain(s_domain)
+                    expand_domain(t_domain)
+                    plane = cmd.measurement.to_bloch().plane
+                    match plane:
+                        case Plane.XY:
+                            # M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
+                            #                  = S^t M^{XY,(-1)^s·α}
+                            #                  = S^t M^{XY,α} X^s
+                            if t_domain:
+                                signal_dict[cmd.node] = t_domain
+                                t_domain = set()
+                        case Plane.XZ:
+                            # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
+                            #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
+                            #                  = M^{XZ,(-1)^{s+t}·α+sπ}         (since (-1)^t·π ≡ π (mod 2π))
+                            #                  = S^s M^{XZ,(-1)^{s+t}·α}
+                            #                  = S^s M^{XZ,α} Z^{s+t}
+                            if s_domain:
+                                signal_dict[cmd.node] = s_domain
+                                t_domain ^= s_domain
+                                s_domain = set()
+                        case Plane.YZ if s_domain:
+                            # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
+                            #                  = S^s M^{YZ,(-1)^t·α}
+                            #                  = S^s M^{YZ,α} Z^t
+                            signal_dict[cmd.node] = s_domain
+                            s_domain = set()
+                    if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
+                        self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
+                case CommandKind.X | CommandKind.Z:
+                    domain = set(cmd.domain)
+                    expand_domain(domain)
+                    if domain != cmd.domain:
+                        self.__seq[i] = dataclasses.replace(cmd, domain=domain)
         return signal_dict
 
     def _find_op_to_be_moved(self, op: CommandKind, rev: bool = False, skipnum: int = 0) -> int | None:
@@ -786,18 +790,19 @@ class Pattern:
                 while index_x < x_limit:
                     cmd = self.__seq[index_x + 1]
                     kind = cmd.kind
-                    if kind == CommandKind.E:
-                        move = self._commute_ex(index_x)
-                        if move:
-                            x_limit += 1  # addition of extra Z means target must be increased
-                            index_x += 1
-                    elif kind == CommandKind.M:
-                        search = self._commute_mx(index_x)
-                        if search:
-                            x_limit -= 1  # XM commutation rule removes X command
-                            break
-                    else:
-                        self._commute_with_following(index_x)
+                    match kind:
+                        case CommandKind.E:
+                            move = self._commute_ex(index_x)
+                            if move:
+                                x_limit += 1  # addition of extra Z means target must be increased
+                                index_x += 1
+                        case CommandKind.M:
+                            search = self._commute_mx(index_x)
+                            if search:
+                                x_limit -= 1  # XM commutation rule removes X command
+                                break
+                        case _:
+                            self._commute_with_following(index_x)
                     index_x += 1
                 else:
                     x_limit -= 1
@@ -867,11 +872,11 @@ class Pattern:
         nodes = self.extract_nodes()
         dependency: dict[int, set[int]] = {i: set() for i in nodes}
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                dependency[cmd.node] |= cmd.domain
+            match cmd.kind:
+                case CommandKind.M:
+                    dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
+                case CommandKind.X | CommandKind.Z:
+                    dependency[cmd.node] |= cmd.domain
         return dependency
 
     @staticmethod
@@ -1104,14 +1109,15 @@ class Pattern:
         graph: nx.Graph[int] = nx.Graph()
         graph.add_nodes_from(self.input_nodes)
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                graph.add_node(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                u, v = cmd.nodes
-                if graph.has_edge(u, v):
-                    graph.remove_edge(u, v)
-                else:
-                    graph.add_edge(u, v)
+            match cmd.kind:
+                case CommandKind.N:
+                    graph.add_node(cmd.node)
+                case CommandKind.E:
+                    u, v = cmd.nodes
+                    if graph.has_edge(u, v):
+                        graph.remove_edge(u, v)
+                    else:
+                        graph.add_edge(u, v)
         return graph
 
     def extract_nodes(self) -> set[int]:
@@ -1154,19 +1160,20 @@ class Pattern:
         measurements: dict[int, Measurement] = {}
 
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                if cmd.state != BasicStates.PLUS:
-                    raise PatternError(
-                        f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
-                    )
-                nodes.add(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                u, v = cmd.nodes
-                if u > v:
-                    u, v = v, u
-                edges.symmetric_difference_update({(u, v)})
-            elif cmd.kind == CommandKind.M:
-                measurements[cmd.node] = cmd.measurement
+            match cmd.kind:
+                case CommandKind.N:
+                    if cmd.state != BasicStates.PLUS:
+                        raise PatternError(
+                            f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
+                        )
+                    nodes.add(cmd.node)
+                case CommandKind.E:
+                    u, v = cmd.nodes
+                    if u > v:
+                        u, v = v, u
+                    edges.symmetric_difference_update({(u, v)})
+                case CommandKind.M:
+                    measurements[cmd.node] = cmd.measurement
 
         graph = nx.Graph(edges)
         graph.add_nodes_from(nodes)
@@ -1224,8 +1231,12 @@ class Pattern:
     def correction_commands(self) -> list[command.X | command.Z]:
         """Return the list of byproduct correction commands."""
         assert self.is_standard()
-        # Use of `==` here for mypy
-        return [seqi for seqi in self.__seq if seqi.kind == CommandKind.X or seqi.kind == CommandKind.Z]  # noqa: PLR1714
+        cmds = []
+        for cmd in self:
+            match cmd.kind:
+                case CommandKind.X | CommandKind.Z:
+                    cmds.append(cmd)
+        return cmds
 
     def parallelize_pattern(self) -> None:
         """Optimize the pattern to reduce the depth of the computation by gathering measurement commands that can be performed simultaneously.
@@ -1285,10 +1296,11 @@ class Pattern:
         nodes = len(self.input_nodes)
         max_nodes = nodes
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                nodes += 1
-            elif cmd.kind == CommandKind.M:
-                nodes -= 1
+            match cmd.kind:
+                case CommandKind.N:
+                    nodes += 1
+                case CommandKind.M:
+                    nodes -= 1
             max_nodes = max(nodes, max_nodes)
         return max_nodes
 
@@ -1303,12 +1315,13 @@ class Pattern:
         nodes = 0
         n_list = []
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                nodes += 1
-                n_list.append(nodes)
-            elif cmd.kind == CommandKind.M:
-                nodes -= 1
-                n_list.append(nodes)
+            match cmd.kind:
+                case CommandKind.N:
+                    nodes += 1
+                    n_list.append(nodes)
+                case CommandKind.M:
+                    nodes -= 1
+                    n_list.append(nodes)
         return n_list
 
     @overload
@@ -1386,7 +1399,7 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-        sim: PatternSimulator[_StateT_co] = PatternSimulator(self, backend=backend, **kwargs)
+        sim = PatternSimulator(self, backend=backend, **kwargs)
         sim.run(input_state, rng=rng)
         return sim.backend.state
 
@@ -1570,39 +1583,39 @@ class Pattern:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetMeasured)
 
         for cmd in self:
-            if cmd.kind == CommandKind.N:
-                if cmd.node in active:
-                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
-                if cmd.node in measured:
-                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
-                active.add(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                n0, n1 = cmd.nodes
-                check_active(cmd, n0)
-                check_active(cmd, n1)
-            elif cmd.kind == CommandKind.M:
-                check_active(cmd, cmd.node)
-                if isinstance(cmd, command.M):
-                    # `cmd.s_domain` and `cmd.t_domain` are only
-                    # defined if the command is an actual `M` command,
-                    # which may not be the case if the method is
-                    # called with a pattern constructed with another
-                    # implementation of `BaseM` (for instance, a blind
-                    # pattern from Veriphix).
-                    for domain in cmd.s_domain, cmd.t_domain:
-                        if cmd.node in domain:
-                            raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
-                        for node in domain:
-                            check_measured(cmd, node)
-                active.remove(cmd.node)
-                measured.add(cmd.node)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                check_active(cmd, cmd.node)
-                for node in cmd.domain:
-                    check_measured(cmd, node)
-            elif cmd.kind == CommandKind.C:
-                check_active(cmd, cmd.node)
+            match cmd.kind:
+                case CommandKind.N:
+                    if cmd.node in active:
+                        raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
+                    if cmd.node in measured:
+                        raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
+                    active.add(cmd.node)
+                case CommandKind.E:
+                    n0, n1 = cmd.nodes
+                    check_active(cmd, n0)
+                    check_active(cmd, n1)
+                case CommandKind.M:
+                    check_active(cmd, cmd.node)
+                    if isinstance(cmd, command.M):
+                        # `cmd.s_domain` and `cmd.t_domain` are only
+                        # defined if the command is an actual `M` command,
+                        # which may not be the case if the method is
+                        # called with a pattern constructed with another
+                        # implementation of `BaseM` (for instance, a blind
+                        # pattern from Veriphix).
+                        for domain in cmd.s_domain, cmd.t_domain:
+                            if cmd.node in domain:
+                                raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
+                            for node in domain:
+                                check_measured(cmd, node)
+                    active.remove(cmd.node)
+                    measured.add(cmd.node)
+                case CommandKind.X | CommandKind.Z:
+                    check_active(cmd, cmd.node)
+                    for node in cmd.domain:
+                        check_measured(cmd, node)
+                case CommandKind.C:
+                    check_active(cmd, cmd.node)
 
     def map(self, f: Callable[[Measurement], Measurement]) -> Pattern:
         """Return a pattern where the function ``f`` has been applied to each measurement.
@@ -1677,6 +1690,53 @@ class Pattern:
         """
         return self.map(lambda m: m.to_bloch())
 
+    def perform_pauli_pushing(
+        self,
+        leave_nodes: AbstractSet[Node] | None = None,
+        copy: bool = False,
+        standardize: bool = False,
+        *,
+        stacklevel: int = 1,
+    ) -> Pattern:
+        """Move Pauli measurements before the other measurements.
+
+        Parameters
+        ----------
+        leave_nodes : AbstractSet[Node], optional
+            Nodes that should not be moved. This constraint only
+            applies to Pauli nodes and has no effect on non-Pauli nodes.
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+        standardize: bool, optional
+            If ``True``, the pattern is returned in standardized form.
+            The default is ``False``: the nodes are prepared on a
+            need-by-need basis, minimizing space usage.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        Pattern
+            The pattern in which Pauli measurements have been moved
+            before the other measurements. If ``copy`` is ``False``,
+            the result is ``self``.
+
+        Notes
+        -----
+        This function relies on :func:`StandardizedPattern.perform_pauli_pushing`.
+        """
+        standardized_pattern = optimization.StandardizedPattern.from_pattern(self).perform_pauli_pushing(
+            leave_nodes, stacklevel=stacklevel + 1
+        )
+        pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
+        if copy:
+            return pattern
+        self.__seq = pattern.__seq
+        return self
+
 
 class PatternError(Exception):
     """Exception subclass to handle pattern errors."""
@@ -1711,17 +1771,19 @@ class RunnabilityError(PatternError):
 
     def __str__(self) -> str:
         """Explain the error."""
-        if self.reason == RunnabilityErrorReason.AlreadyActive:
-            return f"{self.cmd}: node {self.node} is already active."
-        if self.reason == RunnabilityErrorReason.AlreadyMeasured:
-            return f"{self.cmd}: node {self.node} is already measured."
-        if self.reason == RunnabilityErrorReason.NotYetActive:
-            return f"{self.cmd}: node {self.node} is not yet active."
-        if self.reason == RunnabilityErrorReason.NotYetMeasured:
-            return f"{self.cmd}: node {self.node} is not yet measured."
-        if self.reason == RunnabilityErrorReason.DomainSelfLoop:
-            return f"{self.cmd}: node {self.node} appears in the domain of its own measurement command."
-        assert_never(self.reason)
+        match self.reason:
+            case RunnabilityErrorReason.AlreadyActive:
+                return f"{self.cmd}: node {self.node} is already active."
+            case RunnabilityErrorReason.AlreadyMeasured:
+                return f"{self.cmd}: node {self.node} is already measured."
+            case RunnabilityErrorReason.NotYetActive:
+                return f"{self.cmd}: node {self.node} is not yet active."
+            case RunnabilityErrorReason.NotYetMeasured:
+                return f"{self.cmd}: node {self.node} is not yet measured."
+            case RunnabilityErrorReason.DomainSelfLoop:
+                return f"{self.cmd}: node {self.node} appears in the domain of its own measurement command."
+            case _:
+                assert_never(self.reason)
 
 
 def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, stacklevel: int = 1) -> Pattern:
@@ -1757,7 +1819,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
     pat = Pattern()
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
-        standardized_pattern = standardized_pattern.perform_pauli_pushing()
+        standardized_pattern = standardized_pattern.perform_pauli_pushing(stacklevel=stacklevel + 1)
     output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
@@ -1771,15 +1833,16 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
         # extract signals for adaptive angle.
         s_signal = 0
         t_signal = 0
-        if measurement_basis.axis == Axis.X:  # X measurement is not affected by s_signal
-            t_signal = sum(results[j] for j in pattern_cmd.t_domain)
-        elif measurement_basis.axis == Axis.Y:
-            s_signal = sum(results[j] for j in pattern_cmd.s_domain)
-            t_signal = sum(results[j] for j in pattern_cmd.t_domain)
-        elif measurement_basis.axis == Axis.Z:  # Z measurement is not affected by t_signal
-            s_signal = sum(results[j] for j in pattern_cmd.s_domain)
-        else:
-            assert_never(measurement_basis.axis)
+        match measurement_basis.axis:
+            case Axis.X:  # X measurement is not affected by s_signal
+                t_signal = sum(results[j] for j in pattern_cmd.t_domain)
+            case Axis.Y:
+                s_signal = sum(results[j] for j in pattern_cmd.s_domain)
+                t_signal = sum(results[j] for j in pattern_cmd.t_domain)
+            case Axis.Z:  # Z measurement is not affected by t_signal
+                s_signal = sum(results[j] for j in pattern_cmd.s_domain)
+            case _:
+                assert_never(measurement_basis.axis)
 
         if int(s_signal % 2) == 1:  # equivalent to X byproduct
             graph_state.h(pattern_cmd.node)
@@ -1788,14 +1851,15 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
         if int(t_signal % 2) == 1:  # equivalent to Z byproduct
             graph_state.z(pattern_cmd.node)
         basis = measurement_basis
-        if basis.axis == Axis.X:
-            measure = graph_state.measure_x
-        elif basis.axis == Axis.Y:
-            measure = graph_state.measure_y
-        elif basis.axis == Axis.Z:
-            measure = graph_state.measure_z
-        else:
-            assert_never(basis.axis)
+        match basis.axis:
+            case Axis.X:
+                measure = graph_state.measure_x
+            case Axis.Y:
+                measure = graph_state.measure_y
+            case Axis.Z:
+                measure = graph_state.measure_z
+            case _:
+                assert_never(basis.axis)
         if basis.sign == Sign.PLUS:
             results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
         else:
@@ -1851,23 +1915,24 @@ def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[c
     for cmd in pattern.m_list:
         if isinstance(cmd.measurement, PauliMeasurement):
             # Pauli measurement to be removed
-            if cmd.measurement.axis == Axis.X:
-                if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.add(cmd.node)
-                else:
-                    pauli_node.append((cmd, cmd.measurement))
-            elif cmd.measurement.axis == Axis.Y:
-                if (cmd.s_domain | cmd.t_domain) & non_pauli_node:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.add(cmd.node)
-                else:
-                    pauli_node.append((cmd, cmd.measurement))
-            elif cmd.measurement.axis == Axis.Z:
-                if cmd.s_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.add(cmd.node)
-                else:
-                    pauli_node.append((cmd, cmd.measurement))
-            else:
-                raise PatternError("Unknown Pauli measurement basis")
+            match cmd.measurement.axis:
+                case Axis.X:
+                    if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
+                        non_pauli_node.add(cmd.node)
+                    else:
+                        pauli_node.append((cmd, cmd.measurement))
+                case Axis.Y:
+                    if (cmd.s_domain | cmd.t_domain) & non_pauli_node:  # cmd depend on non-Pauli measurement
+                        non_pauli_node.add(cmd.node)
+                    else:
+                        pauli_node.append((cmd, cmd.measurement))
+                case Axis.Z:
+                    if cmd.s_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
+                        non_pauli_node.add(cmd.node)
+                    else:
+                        pauli_node.append((cmd, cmd.measurement))
+                case _:
+                    raise PatternError("Unknown Pauli measurement basis")
         else:
             non_pauli_node.add(cmd.node)
     return pauli_node, non_pauli_node
@@ -1901,13 +1966,15 @@ class ExtractedSignal:
 
 def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> ExtractedSignal:
     """Extract signal from domains."""
-    if plane == Plane.XY:
-        return ExtractedSignal(s_domain=s_domain, t_domain=set(), signal=t_domain)
-    if plane == Plane.XZ:
-        return ExtractedSignal(s_domain=set(), t_domain=s_domain ^ t_domain, signal=s_domain)
-    if plane == Plane.YZ:
-        return ExtractedSignal(s_domain=set(), t_domain=t_domain, signal=s_domain)
-    assert_never(plane)
+    match plane:
+        case Plane.XY:
+            return ExtractedSignal(s_domain=s_domain, t_domain=set(), signal=t_domain)
+        case Plane.XZ:
+            return ExtractedSignal(s_domain=set(), t_domain=s_domain ^ t_domain, signal=s_domain)
+        case Plane.YZ:
+            return ExtractedSignal(s_domain=set(), t_domain=t_domain, signal=s_domain)
+        case _:
+            assert_never(plane)
 
 
 def shift_outcomes(outcomes: dict[int, Outcome], signal_dict: dict[int, set[int]]) -> dict[int, Outcome]:
