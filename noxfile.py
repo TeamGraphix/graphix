@@ -15,11 +15,13 @@ from packaging.version import Version
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+nox.options.default_venv_backend = "uv"
+
 PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
 
 def install_pytest(session: Session) -> None:
-    """Install pytest when requirements-dev.txt is not installed."""
+    """Install pytest when the dev extra is not installed."""
     session.install("pytest", "pytest-mock", "pytest-benchmark", "pytest-mpl", "psutil")
 
 

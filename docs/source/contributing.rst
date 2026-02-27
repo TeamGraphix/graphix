@@ -3,24 +3,33 @@ Contributing to Graphix
 
 This page summarises useful tips for developing the project locally.
 
+Setup
+-----
+
+Clone the repository and install all development dependencies::
+
+    git clone https://github.com/TeamGraphix/graphix.git
+    cd graphix
+    uv sync --extra dev --extra extra
+
 Local checks
 ------------
 
-* Run ``nox -s tests`` to execute the test suite.  This mirrors what the
-  continuous integration service runs.
-* Format the code with :command:`ruff` before committing::
+Run the full CI suite locally::
 
-    ruff check --select I --fix .
-    ruff format .
+    uv run nox
 
-Additional commands from the CI configuration are useful for replicating
-the testing environment locally::
+Or run individual checks::
 
-    pip install -c requirements-dev.txt nox
-    nox --python 3.12
+    uv run ruff check .
+    uv run ruff format --check .
+    uv run mypy
+    uv run pytest
 
-    pip install .[dev]
-    pytest --cov=./graphix --cov-report=xml --cov-report=term
+Format code before committing::
+
+    uv run ruff check --select I --fix .
+    uv run ruff format .
 
 VS Code configuration
 ---------------------
@@ -29,10 +38,12 @@ Using `VS Code <https://code.visualstudio.com/>`_ helps catch issues early.  A
 minimal ``.vscode/settings.json`` may look like::
 
     {
-        "python.formatting.provider": "ruff",
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": true,
-            "source.fixAll": true
+        "[python]": {
+            "editor.defaultFormatter": "charliermarsh.ruff",
+            "editor.codeActionsOnSave": {
+                "source.organizeImports.ruff": "explicit",
+                "source.fixAll.ruff": "explicit"
+            }
         },
         "python.analysis.typeCheckingMode": "basic"
     }
