@@ -199,8 +199,6 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         ----------
         pexp : PauliExponential
             The Pauli exponential under consideration.
-        outputs_mapping : NodeIndex
-            Mapping between node numbers of the original MBQC pattern or open graph and qubit indices of the circuit.
         node : Node
             The node on which the basis-change operation is performed.
         circuit : Circuit

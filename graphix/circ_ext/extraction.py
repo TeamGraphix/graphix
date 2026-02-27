@@ -138,7 +138,18 @@ class PauliString:
         return PauliString(x_corrections, y_corrections, z_corrections, Sign.minus_if(negative_sign))
 
     def remap(self, outputs_mapping: NodeIndex) -> PauliString:
-        """Remap nodes."""
+        """Remap nodes to qubit indices.
+
+        Parameters
+        ----------
+        outputs_mapping: NodeIndex
+            Mapping between node numbers of the original MBQC pattern or open graph and qubit indices of the circuit.
+
+        Returns
+        -------
+        PauliString
+            Pauli string defined on qubit indices.
+        """
         x_nodes = {outputs_mapping.index(n) for n in self.x_nodes}
         y_nodes = {outputs_mapping.index(n) for n in self.y_nodes}
         z_nodes = {outputs_mapping.index(n) for n in self.z_nodes}
@@ -200,7 +211,10 @@ class PauliExponential:
         return PauliExponential(angle, pauli_string)
 
     def remap(self, outputs_mapping: NodeIndex) -> PauliExponential:
-        """Remap nodes."""
+        """Remap nodes to qubit indices.
+
+        See documentation in :meth:`PauliString.remap` for additional information.
+        """
         return PauliExponential(self.angle, self.pauli_string.remap(outputs_mapping))
 
 
@@ -258,7 +272,10 @@ class PauliExponentialDAG:
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 
     def remap(self, outputs_mapping: NodeIndex) -> PauliExponentialDAG:
-        """Remap nodes."""
+        """Remap nodes to qubit indices.
+
+        See documentation in :meth:`PauliString.remap` for additional information.
+        """
         pauli_exponentials = {node: pexp.remap(outputs_mapping) for node, pexp in self.pauli_exponentials.items()}
         return PauliExponentialDAG(pauli_exponentials, self.partial_order_layers, self.output_nodes)
 
