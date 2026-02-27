@@ -69,6 +69,7 @@ error: Skipping analyzing "graphix": module is installed, but missing library st
 ```
 
 To work around this, install `graphix` non-editable:
+
 ```bash
 uv sync --no-editable
 ```
