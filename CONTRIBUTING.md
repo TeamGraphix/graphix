@@ -36,6 +36,7 @@ uv run nox
 ```
 
 Before committing, format the code:
+
 ```bash
 uv run ruff check --select I --fix .
 uv run ruff format .
