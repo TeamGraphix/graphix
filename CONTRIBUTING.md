@@ -62,7 +62,7 @@ enable the linter and basic type checking on save:
 
 ## Type-checking other Python projects that import `graphix` when installed as an editable package
 
-If `graphix` is installed with `uv sync` or `pip install -e`,  `mypy` may fail to type-check other Python projects that import `graphix`, showing the following error:
+If `graphix` is installed with `uv sync` or `pip install -e`, `mypy` may fail to type-check other Python projects that import `graphix`, showing the following error:
 
 ```
 error: Skipping analyzing "graphix": module is installed, but missing library stubs or py.typed marker  [import-untyped]
