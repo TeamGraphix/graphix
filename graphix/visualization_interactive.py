@@ -101,38 +101,38 @@ class InteractiveGraphVisualizer:
         # Prepare graph layout reusing GraphVisualizer
         self._prepare_layout()
 
-        # Figure height adapts to graph density so circles and labels remain
-        # readable even for dense layouts like QAOA.
+        # Figure height and width adapts to graph density like GraphVisualizer
         ax_h_frac = 0.80  # height fraction of ax_graph in figure
-        min_fig_height = 7
-        if self.node_positions:
-            ys = [p[1] for p in self.node_positions.values()]
-            y_data_span = max(ys) - min(ys) + 1
-            needed_height = y_data_span * self.min_inches_per_node / ax_h_frac
-            fig_height = max(min_fig_height, needed_height)
-        else:
-            fig_height = min_fig_height
-            y_data_span = 1
+        fig_width, needed_height = self._graph_visualizer.determine_figsize(self._l_k, pos=self.node_positions)
+        fig_height = max(7, needed_height / ax_h_frac)
 
         # Compute node marker size and label font size ONCE from the known
         # figure geometry.  This avoids instability when the user resizes the
         # window, because the values are fixed at construction time.
         ax_height_inches = fig_height * ax_h_frac
+        if self.node_positions:
+            ys = [p[1] for p in self.node_positions.values()]
+            y_data_span = max(ys) - min(ys) + 1
+        else:
+            y_data_span = 1
+
         y_margin = y_data_span * 0.08 + 0.5  # mirrors _draw_graph margin
         y_range = y_data_span + 2 * y_margin
         points_per_unit = (ax_height_inches / y_range) * 72  # 72 pt/inch
         marker_diameter = self.marker_fill_ratio * points_per_unit
-        self.node_size: int = max(30, int(marker_diameter**2))
+        self.node_size: int = min(400, max(30, int(marker_diameter**2)))
         self.label_fontsize: int = min(self.max_label_fontsize, max(6, int(marker_diameter * self.label_size_ratio)))
 
-        self.fig = plt.figure(figsize=(14, fig_height))
+        self.fig = plt.figure(figsize=(fig_width, fig_height))
 
-        # Grid layout
-        self.ax_commands = self.fig.add_axes((0.02, 0.88, 0.96, 0.10))
-        self.ax_graph = self.fig.add_axes((0.02, 0.12, 0.96, 0.72))
-        self.ax_prev = self.fig.add_axes((0.32, 0.04, 0.03, 0.03))
-        self.ax_slider = self.fig.add_axes((0.40, 0.04, 0.48, 0.03))
-        self.ax_next = self.fig.add_axes((0.90, 0.04, 0.03, 0.03))
+        # Grid layout (Bottom-heavy for controls, max space for graph)
+        self.ax_graph = self.fig.add_axes((0.02, 0.20, 0.96, 0.78))
+        self.ax_commands = self.fig.add_axes((0.10, 0.10, 0.80, 0.08))
+
+        # Slider and buttons Centred at the very bottom
+        self.ax_prev = self.fig.add_axes((0.35, 0.03, 0.04, 0.04))
+        self.ax_slider = self.fig.add_axes((0.40, 0.03, 0.20, 0.04))
+        self.ax_next = self.fig.add_axes((0.61, 0.03, 0.04, 0.04))
 
         # Turn off axes frame for command list and graph
         self.ax_commands.axis("off")
@@ -141,7 +141,7 @@ class InteractiveGraphVisualizer:
         # Interaction state
         self.current_step = 0
         self.total_steps = len(pattern)
-        self.command_window_size = 3
+        self.command_window_size = 7  # Increased for horizontal viewing
 
         # Widget placeholders
         self.slider: Slider | None = None
@@ -189,8 +189,9 @@ class InteractiveGraphVisualizer:
         self._draw_graph()
         self._update(0)
 
-        # Step slider (horizontal, bottom)
-        self.slider = Slider(self.ax_slider, "Step", 0, self.total_steps, valinit=0, valstep=1, color="lightblue")
+        # Step slider (horizontal, bottom centered, without label text)
+        self.slider = Slider(self.ax_slider, "", 0, self.total_steps, valinit=0, valstep=1, color="lightblue")
+        self.slider.valtext.set_visible(False)
         self.slider.on_changed(self._update)
 
         # Buttons config
@@ -219,26 +220,36 @@ class InteractiveGraphVisualizer:
 
         cmds: Any = self.pattern[start:end]  # type: ignore[index]
 
+        # Horizontal layout calculation
+        num_visible = len(cmds)
+        if num_visible == 0:
+            return
+
+        spacing = 1.0 / self.command_window_size
+
         for i, cmd in enumerate(cmds):
             abs_idx = start + i
-            text_str = f"{abs_idx}: {command_to_str(cmd, OutputFormat.Unicode)}"
+            text_str = command_to_str(cmd, OutputFormat.Unicode)
 
             color = "gray"
             weight = "normal"
-            fontsize = 10
+            fontsize = 11
+
             if abs_idx == self.current_step:
                 color = "black"
                 weight = "bold"
-                fontsize = 12
+                fontsize = 13
+            elif abs_idx > self.current_step:
+                color = "lightgray"
 
-            # Vertical placement, relative to center (0.5)
+            # Horizontal placement, relative to center (0.5)
             offset = abs_idx - self.current_step
-            y_pos = 0.5 - offset * 0.40
+            x_pos = 0.5 + offset * spacing
 
-            if -0.1 <= y_pos <= 1.1:
+            if 0.0 <= x_pos <= 1.0:
                 text_obj = self.ax_commands.text(
+                    x_pos,
                     0.5,
-                    y_pos,
                     text_str,
                     color=color,
                     weight=weight,
@@ -370,9 +381,6 @@ class InteractiveGraphVisualizer:
                     highlight_nodes.update(last_cmd.nodes)
                     highlight_edges.add(last_cmd.nodes)
 
-            # Edges
-            self._graph_visualizer.draw_edges(self.ax_graph, self.node_positions, edge_subset=active_edges)
-
             # Axis limits (set before drawing nodes so geometry is known)
             xs = [p[0] for p in self.node_positions.values()]
             ys = [p[1] for p in self.node_positions.values()]
@@ -394,14 +402,14 @@ class InteractiveGraphVisualizer:
             edge_linewidths: dict[tuple[int, int], float] = {}
             for edge in highlight_edges:
                 e_sorted = (min(edge), max(edge))
-                edge_colors[e_sorted] = "red"
-                edge_linewidths[e_sorted] = 2.5
+                edge_colors[e_sorted] = "black"
+                edge_linewidths[e_sorted] = 2.0
 
             if arrow_path is not None:
                 self._graph_visualizer.draw_edges_with_routing(
                     self.ax_graph,
                     edge_path,
-                    edge_subset=active_edges,
+                    edge_subset=None,
                     edge_colors=edge_colors,
                     edge_linewidths=edge_linewidths,
                 )
@@ -412,7 +420,7 @@ class InteractiveGraphVisualizer:
                 self._graph_visualizer.draw_edges_with_routing(
                     self.ax_graph,
                     edge_path,
-                    edge_subset=active_edges,
+                    edge_subset=None,
                     edge_colors=edge_colors,
                     edge_linewidths=edge_linewidths,
                 )
@@ -423,14 +431,11 @@ class InteractiveGraphVisualizer:
             node_alpha: dict[int, float] = {}
             node_linewidths: dict[int, float] = {}
 
-            for node in measured_nodes:
-                node_alpha[node] = 0.35  # fade out measured nodes
-            for node in active_nodes:
-                node_edgecolors[node] = self.active_node_color
-
+            # Don't fade out or override colors to keep exact GraphVisualizer look
             for node in highlight_nodes:
-                node_edgecolors[node] = "red"
-                node_linewidths[node] = 2.5
+                if node not in self._graph_visualizer.og.input_nodes:
+                    node_edgecolors[node] = "black"
+                node_linewidths[node] = 2.0
 
             self._graph_visualizer.draw_nodes_role(
                 self.ax_graph,
@@ -443,16 +448,32 @@ class InteractiveGraphVisualizer:
             )
 
             # Labels
-            extra_labels: dict[int, str] = {}
+
+            # Show "XY", "XZ" etc for non-measured output via the underlying graph logic
+            # Offset values logic matches static visualization.py exactly
+            for node in self.node_positions:
+                if node not in measured_nodes and node in self._graph_visualizer.og.measurements:
+                    meas = self._graph_visualizer.og.measurements[node]
+                    plane = meas.to_plane_or_axis().name
+                    if isinstance(plane, str):
+                        x, y = self.node_positions[node]
+                        self.ax_graph.text(x + 0.22, y - 0.2, plane, fontsize=self.label_fontsize - 2, zorder=3)
+
             for node in measured_nodes:
                 if node in results:
-                    extra_labels[node] = f"m={results[node]}"
+                    x, y = self.node_positions[node]
+                    self.ax_graph.text(
+                        x + 0.22, y - 0.2, f"m={results[node]}", fontsize=self.label_fontsize - 2, zorder=3
+                    )
             for node in active_nodes:
                 if node in corrections:
-                    extra_labels[node] = "".join(sorted(corrections[node]))
+                    lbl = "".join(sorted(corrections[node]))
+                    if lbl:
+                        x, y = self.node_positions[node]
+                        self.ax_graph.text(x + 0.22, y - 0.2, lbl, fontsize=self.label_fontsize - 2, zorder=3)
 
             self._graph_visualizer.draw_node_labels(
-                self.ax_graph, self.node_positions, extra_labels=extra_labels, fontsize=self.label_fontsize
+                self.ax_graph, self.node_positions, extra_labels=None, fontsize=self.label_fontsize
             )
 
             self.ax_graph.axis("off")

@@ -45,6 +45,7 @@ class TestInteractiveGraphVisualizer:
         # Mock layout generation
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -69,6 +70,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         # Return specific positions to verify they are used
         expected_pos = {0: (10, 10), 1: (20, 20), 2: (30, 30)}
         mock_vis_obj.get_layout.return_value = (expected_pos, {}, {})
@@ -92,6 +94,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -137,6 +140,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -174,6 +178,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -188,17 +193,16 @@ class TestInteractiveGraphVisualizer:
         # Execute all commands so that nodes 0 and 1 are measured
         viz._update(len(pattern))
 
-        # Collect the call to draw_node_labels
-        kwargs = mock_vis_obj.draw_node_labels.call_args.kwargs
-        extra_labels = kwargs.get("extra_labels", {})
-        label_strings = list(extra_labels.values())
+        # Collect the calls to ax_graph.text
+        text_calls = viz.ax_graph.text.call_args_list
+        label_strings = [call.args[2] for call in text_calls if len(call.args) > 2]
 
         # At least one label should contain 'm=' (the measurement result prefix)
-        assert any("m=" in label for label in label_strings), (
+        assert any("m=" in str(label) for label in label_strings), (
             f"Expected 'm=' in at least one node label, got: {label_strings}"
         )
         # None of the labels should use the old ambiguous '\n=' format
-        assert not any(label.endswith(("\n=1", "\n=0")) for label in label_strings), (
+        assert not any(str(label).endswith(("\n=1", "\n=0")) for label in label_strings), (
             f"Found ambiguous '=<result>' label format in: {label_strings}"
         )
 
@@ -210,6 +214,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -249,6 +254,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -272,6 +278,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -304,6 +311,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_vis_obj.get_layout.return_value = ({0: (0, 0)}, {}, {})
 
         viz = InteractiveGraphVisualizer(pattern, enable_simulation=False)
@@ -334,6 +342,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -344,10 +353,10 @@ class TestInteractiveGraphVisualizer:
         # Step 5: entanglement E(0, 1) and E(1, 2), no measurements yet
         viz._update(5)
 
-        # draw_edges should have been called with edge_subset
-        mock_vis_obj.draw_edges.assert_called()
-        call_kwargs = mock_vis_obj.draw_edges.call_args
-        assert "edge_subset" in call_kwargs.kwargs
+        # draw_edges_with_routing should have been called
+        mock_vis_obj.draw_edges_with_routing.assert_called()
+        call_kwargs = mock_vis_obj.draw_edges_with_routing.call_args
+        assert "edge_colors" in call_kwargs.kwargs
 
     def test_draw_nodes_delegates(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test that _draw_graph delegates node drawing to GraphVisualizer.draw_nodes_role."""
@@ -357,6 +366,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_place_paths = MagicMock(return_value=({}, {}))
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, mock_place_paths, {})
 
@@ -381,6 +391,7 @@ class TestInteractiveGraphVisualizer:
 
         mock_vis_obj = MagicMock()
         mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
         mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
 
         viz = InteractiveGraphVisualizer(pattern)
