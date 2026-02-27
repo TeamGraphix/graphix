@@ -49,14 +49,14 @@ enable the linter and basic type checking on save:
 
 ```json
 {
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        "editor.codeActionsOnSave": {
-            "source.organizeImports.ruff": "explicit",
-            "source.fixAll.ruff": "explicit"
-        }
-    },
-    "python.analysis.typeCheckingMode": "basic"
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit",
+      "source.fixAll.ruff": "explicit"
+    }
+  },
+  "python.analysis.typeCheckingMode": "basic"
 }
 ```
 
