@@ -102,13 +102,11 @@ class InteractiveGraphVisualizer:
         self._prepare_layout()
 
         # Figure height and width adapts to graph density like GraphVisualizer
-        ax_h_frac = 0.80  # height fraction of ax_graph in figure
+        ax_h_frac = 0.80
         fig_width, needed_height = self._graph_visualizer.determine_figsize(self._l_k, pos=self.node_positions)
         fig_height = max(7.0, needed_height / ax_h_frac)
 
-        # A single command with a phase angle (e.g. "M(pi/4)") needs ~1.8 inches of width to not overlap
-        # If the window is too narrow, just show the *current* command (size 1).
-        # We also enforce a hard absolute minimum window width of 4.0 so controls remain clickable.
+        # Enforce minimum window width for controls
         fig_width = max(4.0, fig_width)
 
         self.fig = plt.figure(figsize=(fig_width, fig_height))
@@ -120,24 +118,16 @@ class InteractiveGraphVisualizer:
         if self.command_window_size % 2 == 0:
             self.command_window_size -= 1
 
-        # Use exact absolute dimensions from the static GraphVisualizer
-        # We rely on Matplotlib's native Zoom/Pan tools to solve overlaps gracefully.
         self.node_size = 350
         self.label_fontsize = 10
 
-        # Grid layout (Bottom-heavy for controls, max space for graph)
-        # Instead of fixed absolute bottoms (e.g. 0.03), pin controls relative to each other
-        # so they hover near the graph bottom regardless of the window's total aspect ratio.
-        self.ax_graph = self.fig.add_axes((0.02, 0.20, 0.96, 0.78))
-        self.ax_commands = self.fig.add_axes((0.10, 0.10, 0.80, 0.08))
+        # Axes layout fractions [left, bottom, width, height]
+        self.ax_graph = self.fig.add_axes((0.00, 0.15, 1.0, 0.85))
+        self.ax_commands = self.fig.add_axes((0.10, 0.05, 0.80, 0.08))
 
-        # Slider and buttons Centred below the command list.
-        # Strict padding guarantees they will never overlap the text strip above.
-        # Buttons are pushed further out from the slider (0.32 and 0.64) to prevent their boxes
-        # from overlapping the slider track on extremely narrow windows.
-        self.ax_prev = self.fig.add_axes((0.32, 0.02, 0.04, 0.05))
-        self.ax_slider = self.fig.add_axes((0.40, 0.02, 0.20, 0.05))
-        self.ax_next = self.fig.add_axes((0.64, 0.02, 0.04, 0.05))
+        self.ax_prev = self.fig.add_axes((0.32, 0.015, 0.04, 0.04))
+        self.ax_slider = self.fig.add_axes((0.40, 0.015, 0.20, 0.04))
+        self.ax_next = self.fig.add_axes((0.64, 0.015, 0.04, 0.04))
 
         # Turn off axes frame for command list and graph
         self.ax_commands.axis("off")
@@ -421,7 +411,6 @@ class InteractiveGraphVisualizer:
             elif cmd.kind == CommandKind.M and cmd.node in current_active:
                 current_active.remove(cmd.node)
                 current_measured.add(cmd.node)
-                # Keep edges around so they draw in the background just like the static plot
 
         active_nodes = current_active
         measured_nodes = current_measured
@@ -455,12 +444,12 @@ class InteractiveGraphVisualizer:
                     highlight_nodes.update(last_cmd.nodes)
                     highlight_edges.add(last_cmd.nodes)
 
-            # Axis limits (match static layout mathematically exactly to prevent horizontal stretching)
+            # Axis limits
             xs = [p[0] for p in self.node_positions.values()]
             ys = [p[1] for p in self.node_positions.values()]
             if xs and ys:
-                self.ax_graph.set_xlim(min(xs) - 0.5 * self.node_distance[0], max(xs) + 0.5 * self.node_distance[0])
-                self.ax_graph.set_ylim(min(ys) - 1.0, max(ys) + 0.5)
+                self.ax_graph.set_xlim(min(xs) - 0.1 * self.node_distance[0], max(xs) + 0.1 * self.node_distance[0])
+                self.ax_graph.set_ylim(min(ys) - 0.4, max(ys) + 0.4)
 
             # Layer separators
             if self._l_k is not None:
@@ -503,8 +492,6 @@ class InteractiveGraphVisualizer:
             node_edgecolors: dict[int, str] = {}
             node_alpha: dict[int, float] = {}
             node_linewidths: dict[int, float] = {}
-
-            # Don't fade out or override colors to keep exact GraphVisualizer look
             for node in highlight_nodes:
                 if node not in self._graph_visualizer.og.input_nodes:
                     node_edgecolors[node] = "black"
@@ -521,10 +508,7 @@ class InteractiveGraphVisualizer:
             )
 
             # Labels
-            # Use `annotate` with textcoords="offset points" so the label distance from the
-            # circle is fixed in *screen pixels*, not data units.  That way the label stays
-            # the same visual distance from the node regardless of the window size or zoom level.
-            label_offset_pts = (14, -10)  # (dx_pt, dy_pt) from the node centre
+            label_offset_pts = (14, -10)
 
             # Show "XY", "XZ" etc for non-measured nodes
             for node in self.node_positions:
