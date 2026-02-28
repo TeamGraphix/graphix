@@ -251,10 +251,17 @@ class InteractiveGraphVisualizer:
         cmd = self.pattern[focus_idx]
         txt, meas_str, color, weight, fsize, alpha = _get_props(focus_idx, cmd)
         artists[focus_idx] = self.ax_commands.text(
-            0.5, 0.5, txt,
-            color=color, weight=weight, fontsize=fsize, alpha=alpha,
+            0.5,
+            0.5,
+            txt,
+            color=color,
+            weight=weight,
+            fontsize=fsize,
+            alpha=alpha,
             transform=self.ax_commands.transAxes,
-            ha="center", va="center", picker=True,
+            ha="center",
+            va="center",
+            picker=True,
             clip_on=True,
         )
         artists[focus_idx].index = focus_idx  # type: ignore[attr-defined]
@@ -262,11 +269,17 @@ class InteractiveGraphVisualizer:
         if meas_str:
             self.ax_commands.annotate(
                 meas_str,
-                xy=(0.5, 1.0), xycoords=artists[focus_idx],
-                xytext=(0, 2), textcoords="offset points",
-                color=color, fontsize=10, alpha=alpha,
-                ha="center", va="bottom",
-                annotation_clip=True, clip_on=True,
+                xy=(0.5, 1.0),
+                xycoords=artists[focus_idx],
+                xytext=(0, 2),
+                textcoords="offset points",
+                color=color,
+                fontsize=10,
+                alpha=alpha,
+                ha="center",
+                va="bottom",
+                annotation_clip=True,
+                clip_on=True,
             )
 
         # Draw past commands
@@ -277,22 +290,36 @@ class InteractiveGraphVisualizer:
 
             artists[abs_idx] = self.ax_commands.annotate(
                 txt,
-                xy=(0, 0.5), xycoords=artists[prev_idx],
-                xytext=(-4, 0), textcoords="offset points",
-                color=color, weight=weight, fontsize=fsize, alpha=alpha,
-                ha="right", va="center", picker=True,
-                annotation_clip=True, clip_on=True,
+                xy=(0, 0.5),
+                xycoords=artists[prev_idx],
+                xytext=(-4, 0),
+                textcoords="offset points",
+                color=color,
+                weight=weight,
+                fontsize=fsize,
+                alpha=alpha,
+                ha="right",
+                va="center",
+                picker=True,
+                annotation_clip=True,
+                clip_on=True,
             )
             artists[abs_idx].index = abs_idx  # type: ignore[attr-defined]
 
             if meas_str:
                 self.ax_commands.annotate(
                     meas_str,
-                    xy=(0.5, 1.0), xycoords=artists[abs_idx],
-                    xytext=(0, 2), textcoords="offset points",
-                    color=color, fontsize=9, alpha=alpha,
-                    ha="center", va="bottom",
-                    annotation_clip=True, clip_on=True,
+                    xy=(0.5, 1.0),
+                    xycoords=artists[abs_idx],
+                    xytext=(0, 2),
+                    textcoords="offset points",
+                    color=color,
+                    fontsize=9,
+                    alpha=alpha,
+                    ha="center",
+                    va="bottom",
+                    annotation_clip=True,
+                    clip_on=True,
                 )
 
             prev_idx = abs_idx
@@ -305,22 +332,36 @@ class InteractiveGraphVisualizer:
 
             artists[abs_idx] = self.ax_commands.annotate(
                 txt,
-                xy=(1, 0.5), xycoords=artists[prev_idx],
-                xytext=(4, 0), textcoords="offset points",
-                color=color, weight=weight, fontsize=fsize, alpha=alpha,
-                ha="left", va="center", picker=True,
-                annotation_clip=True, clip_on=True,
+                xy=(1, 0.5),
+                xycoords=artists[prev_idx],
+                xytext=(4, 0),
+                textcoords="offset points",
+                color=color,
+                weight=weight,
+                fontsize=fsize,
+                alpha=alpha,
+                ha="left",
+                va="center",
+                picker=True,
+                annotation_clip=True,
+                clip_on=True,
             )
             artists[abs_idx].index = abs_idx  # type: ignore[attr-defined]
 
             if meas_str:
                 self.ax_commands.annotate(
                     meas_str,
-                    xy=(0.5, 1.0), xycoords=artists[abs_idx],
-                    xytext=(0, 2), textcoords="offset points",
-                    color=color, fontsize=9, alpha=alpha,
-                    ha="center", va="bottom",
-                    annotation_clip=True, clip_on=True,
+                    xy=(0.5, 1.0),
+                    xycoords=artists[abs_idx],
+                    xytext=(0, 2),
+                    textcoords="offset points",
+                    color=color,
+                    fontsize=9,
+                    alpha=alpha,
+                    ha="center",
+                    va="bottom",
+                    annotation_clip=True,
+                    clip_on=True,
                 )
 
             prev_idx = abs_idx
