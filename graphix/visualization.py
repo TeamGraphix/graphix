@@ -292,7 +292,8 @@ class GraphVisualizer:
                 fontsize=fontsize,
                 color=color,
                 ha="center",
-                va="center",
+                va="center_baseline",
+                fontfamily="sans-serif",
                 zorder=3,
             )
 
@@ -445,7 +446,13 @@ class GraphVisualizer:
                         )
                 elif len(path) == 2:  # straight line
                     nx.draw_networkx_edges(
-                        self.og.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
+                        self.og.graph,
+                        pos,
+                        edgelist=[arrow],
+                        edge_color=color,
+                        arrowstyle="->",
+                        arrows=True,
+                        node_size=350,
                     )
                 else:
                     new_path = GraphVisualizer._shorten_path(path)
@@ -632,8 +639,8 @@ class GraphVisualizer:
         """
         # Candidate offsets: (dx, dy, horizontal-alignment, vertical-alignment)
         candidates: list[tuple[float, float, str, str]] = [
-            (0.22, -0.15, "left", "top"),  # lower-right (preferred, like original)
-            (-0.22, -0.15, "right", "top"),  # lower-left
+            (0.15, -0.15, "left", "top"),  # lower-right (preferred, like original)
+            (-0.15, -0.15, "right", "top"),  # lower-left
             (0, 0.22, "center", "bottom"),  # above (fallback)
         ]
         all_positions = [pos[n] for n in self.og.graph.nodes()]
@@ -658,7 +665,7 @@ class GraphVisualizer:
                     x + best_dx,
                     y + best_dy,
                     label,
-                    fontsize=7,
+                    fontsize=8,
                     ha=best_ha,
                     va=best_va,
                     zorder=3,
@@ -682,16 +689,14 @@ class GraphVisualizer:
         if isinstance(meas, PauliMeasurement):
             return str(meas)
         if isinstance(meas, BlochMeasurement):
-            if isinstance(meas.angle, (int, float)) and meas.angle == 0:
-                # Omit trivial zero angle — show plane name only (e.g. "XY")
-                return meas.plane.name
             if isinstance(meas.angle, (int, float)):
-                angle_str = angle_to_str(meas.angle, OutputFormat.Unicode)
+                angle_str = angle_to_str(meas.angle, OutputFormat.LaTeX)
                 # Fall back to compact notation for non-rational angles
-                if len(angle_str) > 8:
-                    angle_str = f"{meas.angle:.2f}\u03c0"
-            else:
-                angle_str = str(meas.angle)
+                if len(angle_str) > 30:
+                    angle_str = f"{meas.angle:.2f}" + r"\pi"
+                # Wrap in mathtext for vertical fractions
+                return f"{meas.plane.name}(${angle_str}$)"
+            angle_str = str(meas.angle)
             return f"{meas.plane.name}({angle_str})"
         return None
 
@@ -721,9 +726,9 @@ class GraphVisualizer:
         if l_k is None:
             if pos is None:
                 raise ValueError("Figure size can only be computed given a layer mapping (l_k) or node positions (pos)")
-            width = len({pos[node][0] for node in self.og.graph.nodes()}) * 0.8
+            width = len({pos[node][0] for node in self.og.graph.nodes()}) * 0.7
         else:
-            width = (max(l_k.values(), default=0) + 1) * 0.8
+            width = (max(l_k.values(), default=0) + 1) * 0.7
         height = len({pos[node][1] for node in self.og.graph.nodes()}) if pos is not None else len(self.og.output_nodes)
         return (width * node_distance[0], height * node_distance[1])
 
