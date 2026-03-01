@@ -644,23 +644,25 @@ class GraphVisualizer:
             (0, 0.22, "center", "bottom"),  # above (fallback)
         ]
         all_positions = [pos[n] for n in self.og.graph.nodes()]
+        placed_labels: list[tuple[float, float]] = []
 
         for node, meas in self.og.measurements.items():
             label = self._format_measurement_label(meas)
             if label is not None:
                 x, y = pos[node]
-                # Pick the direction whose label anchor is farthest from any other node
+                # Pick the direction farthest from other nodes AND already-placed labels
                 best_dx, best_dy, best_ha, best_va = candidates[0]
                 best_min_dist = -1.0
                 for dx, dy, ha, va in candidates:
                     lx, ly = x + dx, y + dy
-                    other_dists = [
-                        ((lx - ox) ** 2 + (ly - oy) ** 2) ** 0.5 for ox, oy in all_positions if (ox, oy) != (x, y)
-                    ]
+                    obstacles = [(ox, oy) for ox, oy in all_positions if (ox, oy) != (x, y)]
+                    obstacles.extend(placed_labels)
+                    other_dists = [((lx - ox) ** 2 + (ly - oy) ** 2) ** 0.5 for ox, oy in obstacles]
                     min_dist = min(other_dists) if other_dists else float("inf")
                     if min_dist > best_min_dist:
                         best_min_dist = min_dist
                         best_dx, best_dy, best_ha, best_va = dx, dy, ha, va
+                placed_labels.append((x + best_dx, y + best_dy))
                 plt.text(
                     x + best_dx,
                     y + best_dy,
