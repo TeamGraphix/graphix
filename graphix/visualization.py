@@ -10,6 +10,7 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.transforms import offset_copy
 
 from graphix.flow.exceptions import FlowError
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
@@ -278,8 +279,6 @@ class GraphVisualizer:
         font_color : Mapping[int, str] | str
             Font color for node labels. Can be a single color string or a mapping from node to color.
         """
-        from matplotlib.transforms import offset_copy
-
         fontsize = 12
         if max(self.og.graph.nodes(), default=0) >= 100:
             fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
@@ -655,7 +654,6 @@ class GraphVisualizer:
 
         # Compute graph extent so labels don't get placed outside the plot boundary
         all_x = [p[0] for p in all_positions]
-        all_y = [p[1] for p in all_positions]
         x_lo = min(all_x) if all_x else 0.0
         x_hi = max(all_x) if all_x else 0.0
 
