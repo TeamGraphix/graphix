@@ -339,6 +339,10 @@ class DenseState(ABC):
     simulation backends that operate using standard linear algebra on the full
     state, such as :class:`StatevecBackend` and :class:`DensityMatrixBackend`.
 
+    See Also
+    --------
+    :class:`Statevec`, :class:`DensityMatrix`
+
     Notes
     -----
     This class is abstract and cannot be instantiated directly.
@@ -346,10 +350,6 @@ class DenseState(ABC):
     Not all internal states are dense. For example, :class:`MBQCTensorNet` is a
     `BackendState` that represents the quantum state using a tensor network, rather than
     a single dense array.
-
-    See Also
-    --------
-    :class:`Statevec`, :class:`DensityMatrix`
     """
 
     # Note that `@property` must appear before `@abstractmethod` for pyright
@@ -530,6 +530,10 @@ class Backend(Generic[_StateT_co]):
     state : BackendState
         internal state of the backend: instance of :class:`Statevec`, :class:`DensityMatrix`, or :class:`MBQCTensorNet`.
 
+    See Also
+    --------
+    :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
+
     Notes
     -----
     This class is abstract and should not be instantiated directly.
@@ -567,10 +571,6 @@ class Backend(Generic[_StateT_co]):
     - `finalize`: called at the end of pattern simulation to convey
       the order of output nodes.
     - `measure`: executes `M` commands.
-
-    See Also
-    --------
-    :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
     """
 
     # `init=False` is required because `state` cannot appear in a contravariant position

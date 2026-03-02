@@ -33,6 +33,10 @@ _B = TypeVar("_B", bound=AbstractMeasurement)
 class OpenGraph(Generic[_AM_co]):
     """An unmutable dataclass providing a representation of open graph states.
 
+    Notes
+    -----
+    The inputs and outputs of `OpenGraph` instances in Graphix are defined as ordered sequences of node labels. This contrasts the usual definition of open graphs in the literature, where inputs and outputs are unordered sets of nodes labels. This restriction facilitates the interplay with `Pattern` objects, where the order of input and output nodes represents a choice of Hilbert space basis.
+
     Attributes
     ----------
     graph : networkx.Graph[int]
@@ -43,10 +47,6 @@ class OpenGraph(Generic[_AM_co]):
         An ordered sequence of node labels corresponding to the open graph outputs.
     measurements : Mapping[int, _AM_co]
         A mapping between the non-output nodes of the open graph (``key``) and their corresponding measurement label (``value``). Measurement labels can be specified as `Measurement`, `Plane` or `Axis` instances.
-
-    Notes
-    -----
-    The inputs and outputs of `OpenGraph` instances in Graphix are defined as ordered sequences of node labels. This contrasts the usual definition of open graphs in the literature, where inputs and outputs are unordered sets of nodes labels. This restriction facilitates the interplay with `Pattern` objects, where the order of input and output nodes represents a choice of Hilbert space basis.
 
     Example
     -------
