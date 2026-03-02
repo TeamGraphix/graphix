@@ -422,7 +422,7 @@ class GraphVisualizer:
 
         for edge, path in edge_path.items():
             if len(path) == 2:
-                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="dashed", alpha=0.6)
+                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="dashed", alpha=0.6)  # type: ignore[no-untyped-call]
             else:
                 curve = self._bezier_curve_linspace(path)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.6)
@@ -458,7 +458,7 @@ class GraphVisualizer:
                         arrowstyle="->",
                         arrows=True,
                         node_size=350,
-                    )
+                    )  # type: ignore[no-untyped-call]
                 else:
                     new_path = GraphVisualizer._shorten_path(path)
                     curve = self._bezier_curve_linspace(new_path)
@@ -497,7 +497,7 @@ class GraphVisualizer:
 
         has_layers = l_k is not None and len(l_k) > 0
         show_layers = show_measurement_order and has_layers
-        if show_layers:
+        if show_layers and l_k is not None:
             l_min_val = min(l_k.values())
             l_max_val = max(l_k.values())
             # Dotted vertical lines to separate layers (distinct from dashed graph edges)
@@ -944,7 +944,7 @@ class GraphVisualizer:
 
         l_reverse = {node: l_max - layer_idx for layer_idx, layer in enumerate(layers) for node in layer}
         _set_node_attributes(g_prime, l_reverse, "subset")
-        pos = nx.multipartite_layout(g_prime)
+        pos = nx.multipartite_layout(g_prime)  # type: ignore[no-untyped-call]
 
         vert = list({pos[node][1] for node in self.og.graph.nodes()})
         vert.sort()
@@ -1046,7 +1046,7 @@ class GraphVisualizer:
         l_max = max(layers.values())
         l_reverse = {v: l_max - l for v, l in layers.items()}
         _set_node_attributes(g_prime, l_reverse, "subset")
-        pos = nx.multipartite_layout(g_prime)
+        pos = nx.multipartite_layout(g_prime)  # type: ignore[no-untyped-call]
         vert = list({pos[node][1] for node in self.og.graph.nodes()})
         vert.sort()
         index = {y: i for i, y in enumerate(vert)}
@@ -1070,7 +1070,7 @@ class GraphVisualizer:
         g_prime.add_nodes_from(self.og.graph.nodes())
         g_prime.add_edges_from(self.og.graph.edges())
         _set_node_attributes(g_prime, layers, "subset")
-        layout = nx.multipartite_layout(g_prime)
+        layout = nx.multipartite_layout(g_prime)  # type: ignore[no-untyped-call]
         vert = list({layout[node][1] for node in self.og.graph.nodes()})
         vert.sort()
         index = {y: i for i, y in enumerate(vert)}
@@ -1174,4 +1174,4 @@ class GraphVisualizer:
 
 
 def _set_node_attributes(graph: nx.Graph[_HashableT], attrs: Mapping[_HashableT, object], name: str) -> None:
-    nx.set_node_attributes(graph, attrs, name=name)  # type: ignore[arg-type]
+    nx.set_node_attributes(graph, attrs, name=name)
