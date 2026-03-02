@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
+
+from typing_extensions import Self  # Self introduced in 3.11
 
 from graphix.fundamentals import ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
