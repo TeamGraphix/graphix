@@ -60,14 +60,14 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     curr_layer: set[int]
 
     while True:
+        if corrected_nodes == set(og.graph.nodes):
+            return CausalFlow(og, cf, tuple(layers))
+
         corrected_nodes_new = set()
         corrector_nodes_new = set()
         curr_layer = set()
 
         non_corrected_nodes = og.graph.nodes - corrected_nodes
-
-        if corrected_nodes == set(og.graph.nodes):
-            return CausalFlow(og, cf, tuple(layers))
 
         for p in corrector_candidates:
             non_corrected_neighbors = og.neighbors({p}) & non_corrected_nodes
