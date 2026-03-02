@@ -10,14 +10,13 @@ from graphix.fundamentals import ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
 
     from graphix.circ_ext.compilation import CompilationPass
     from graphix.command import Node
     from graphix.flow.core import PauliFlow
     from graphix.opengraph import OpenGraph
-    from graphix.sim.base_backend import NodeIndex
     from graphix.transpiler import Circuit
 
 
@@ -137,7 +136,7 @@ class PauliString:
 
         return PauliString(x_corrections, y_corrections, z_corrections, Sign.minus_if(negative_sign))
 
-    def remap(self, outputs_mapping: NodeIndex) -> PauliString:
+    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliString:
         """Remap nodes to qubit indices.
 
         Parameters
@@ -150,9 +149,9 @@ class PauliString:
         PauliString
             Pauli string defined on qubit indices.
         """
-        x_nodes = {outputs_mapping.index(n) for n in self.x_nodes}
-        y_nodes = {outputs_mapping.index(n) for n in self.y_nodes}
-        z_nodes = {outputs_mapping.index(n) for n in self.z_nodes}
+        x_nodes = {outputs_mapping(n) for n in self.x_nodes}
+        y_nodes = {outputs_mapping(n) for n in self.y_nodes}
+        z_nodes = {outputs_mapping(n) for n in self.z_nodes}
         return PauliString(frozenset(x_nodes), frozenset(y_nodes), frozenset(z_nodes), self.sign)
 
 
@@ -210,7 +209,7 @@ class PauliExponential:
 
         return PauliExponential(angle, pauli_string)
 
-    def remap(self, outputs_mapping: NodeIndex) -> PauliExponential:
+    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliExponential:
         """Remap nodes to qubit indices.
 
         See documentation in :meth:`PauliString.remap` for additional information.
@@ -271,7 +270,7 @@ class PauliExponentialDAG:
 
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 
-    def remap(self, outputs_mapping: NodeIndex) -> PauliExponentialDAG:
+    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliExponentialDAG:
         """Remap nodes to qubit indices.
 
         See documentation in :meth:`PauliString.remap` for additional information.

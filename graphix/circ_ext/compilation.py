@@ -14,7 +14,6 @@ from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponential, PauliExponentialDAG
-    from graphix.command import Node
 
 
 @dataclass(frozen=True)
@@ -66,12 +65,15 @@ class CompilationPass:
         outputs_mapping.extend(er.pexp_dag.output_nodes)
 
         self.cm_cp.add_to_circuit(er.clifford_map, circuit)
-        self.pexp_cp.add_to_circuit(er.pexp_dag.remap(outputs_mapping), circuit)
+        self.pexp_cp.add_to_circuit(er.pexp_dag.remap(outputs_mapping.index), circuit)
         return circuit
 
 
 class PauliExponentialDAGCompilationPass(ABC):
-    """Abstract base class to implement a compilation procedure for a Pauli Exponential DAG."""
+    """Abstract base class to implement a compilation procedure for a Pauli Exponential DAG.
+
+    Methods defined in this class must assume that the Pauli Exponential DAG has been remap, i.e., its Pauli strings are defined on qubit indices and not on node values. See :meth:`PauliString.remap` for additional information.
+    """
 
     @staticmethod
     @abstractmethod
@@ -159,39 +161,41 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         if pexp.angle == 0:  # No rotation
             return
 
-        nodes = sorted(pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes)
+        # We assume that nodes in the Pauli strings have been mapped to qubits.
+        modified_qubits = [qubit for qubit in range(circuit.width) if qubit in pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes]
         angle = -2 * pexp.angle * pexp.pauli_string.sign
 
-        if len(nodes) == 0:  # Identity
+        if len(modified_qubits) == 0:  # Identity
             return
 
-        if len(nodes) == 1:
-            n0 = nodes[0]
-            if n0 in pexp.pauli_string.x_nodes:
-                circuit.rx(n0, angle)
-            elif n0 in pexp.pauli_string.y_nodes:
-                circuit.ry(n0, angle)
+        q0 = modified_qubits[0]
+
+        if len(modified_qubits) == 1:
+            if q0 in pexp.pauli_string.x_nodes:
+                circuit.rx(q0, angle)
+            elif q0 in pexp.pauli_string.y_nodes:
+                circuit.ry(q0, angle)
             else:
-                circuit.rz(n0, angle)
+                circuit.rz(q0, angle)
             return
 
-        LadderPass.add_basis_change(pexp, nodes[0], circuit)
+        LadderPass.add_basis_change(pexp, q0, circuit)
 
-        for n1, n2 in pairwise(nodes):
-            LadderPass.add_basis_change(pexp, n2, circuit)
-            circuit.cnot(control=n1, target=n2)
+        for q1, q2 in pairwise(modified_qubits):
+            LadderPass.add_basis_change(pexp, q2, circuit)
+            circuit.cnot(control=q1, target=q2)
 
-        circuit.rz(nodes[-1], angle)
+        circuit.rz(modified_qubits[-1], angle)
 
-        for n2, n1 in pairwise(nodes[::-1]):
-            circuit.cnot(control=n1, target=n2)
-            LadderPass.add_basis_change(pexp, n2, circuit)
+        for q2, q1 in pairwise(modified_qubits[::-1]):
+            circuit.cnot(control=q1, target=q2)
+            LadderPass.add_basis_change(pexp, q2, circuit)
 
-        LadderPass.add_basis_change(pexp, nodes[0], circuit)
+        LadderPass.add_basis_change(pexp, modified_qubits[0], circuit)
 
     @staticmethod
-    def add_basis_change(pexp: PauliExponential, node: Node, circuit: Circuit) -> None:
-        """Apply an X or a Y basis change to a given node if required by the Pauli string.
+    def add_basis_change(pexp: PauliExponential, qubit: int, circuit: Circuit) -> None:
+        """Apply an X or a Y basis change to a given qubit if required by the Pauli string.
 
         This method modifies the input circuit in-place.
 
@@ -199,15 +203,15 @@ class LadderPass(PauliExponentialDAGCompilationPass):
         ----------
         pexp : PauliExponential
             The Pauli exponential under consideration.
-        node : Node
-            The node on which the basis-change operation is performed.
+        qubit : int
+            The qubit on which the basis-change operation is performed.
         circuit : Circuit
             The quantum circuit to which the basis change is added.
         """
-        if node in pexp.pauli_string.x_nodes:
-            circuit.h(node)
-        elif node in pexp.pauli_string.y_nodes:
-            LadderPass.add_hy(node, circuit)
+        if qubit in pexp.pauli_string.x_nodes:
+            circuit.h(qubit)
+        elif qubit in pexp.pauli_string.y_nodes:
+            LadderPass.add_hy(qubit, circuit)
 
     @staticmethod
     def add_hy(qubit: int, circuit: Circuit) -> None:

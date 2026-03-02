@@ -33,7 +33,7 @@ class TestPauliString:
         outputs_mapping = NodeIndex()
         outputs_mapping.extend([2, 1, 3, 4])
 
-        LadderPass.add_pexp(pexp.remap(outputs_mapping), qc)  # `qc` is modified in place
+        LadderPass.add_pexp(pexp.remap(outputs_mapping.index), qc)  # `qc` is modified in place
 
         qc_ref = Circuit(width=4, instr=[H(1), CNOT(3, 1), CNOT(0, 3), RZ(0, angle_rz), CNOT(0, 3), CNOT(3, 1), H(1)])
 
@@ -115,7 +115,7 @@ class TestPauliExponential:
         qc = Circuit(len(test_case.p_exp.output_nodes))
         outputs_mapping = NodeIndex()
         outputs_mapping.extend(test_case.p_exp.output_nodes)
-        LadderPass.add_to_circuit(test_case.p_exp.remap(outputs_mapping), qc)
+        LadderPass.add_to_circuit(test_case.p_exp.remap(outputs_mapping.index), qc)
         state = qc.simulate_statevector().statevec
         state_ref = test_case.qc.simulate_statevector().statevec
         assert state.isclose(state_ref)
