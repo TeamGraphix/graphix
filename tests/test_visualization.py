@@ -9,8 +9,8 @@ import networkx as nx
 import pytest
 
 from graphix import Circuit, Pattern, command, visualization
-from graphix.fundamentals import ANGLE_PI
-from graphix.measurements import Measurement
+from graphix.fundamentals import ANGLE_PI, Axis, Sign
+from graphix.measurements import Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
 
@@ -144,10 +144,10 @@ def test_draw_graph_show_local_clifford() -> None:
 
 
 @pytest.mark.usefixtures("mock_plot")
-def test_draw_graph_show_measurement_planes(fx_rng: Generator) -> None:
+def test_draw_graph_show_measurements_basic(fx_rng: Generator) -> None:
     pattern = example_pflow(fx_rng)
     pattern.draw_graph(
-        show_measurement_planes=True,
+        show_measurements=True,
         node_distance=(0.7, 0.6),
     )
 
@@ -247,6 +247,137 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         pattern.perform_pauli_measurements()
     pattern.standardize()
     pattern.draw_graph(
-        flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6), show_measurement_planes=True
+        flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6), show_measurements=True
     )
     return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_measurements(fx_rng: Generator) -> None:
+    pattern = example_flow(fx_rng)
+    pattern.draw_graph(
+        show_measurements=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_measurements_pflow(fx_rng: Generator) -> None:
+    pattern = example_pflow(fx_rng)
+    pattern.draw_graph(
+        show_measurements=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_legend(fx_rng: Generator) -> None:
+    pattern = example_flow(fx_rng)
+    pattern.draw_graph(
+        show_legend=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_legend_with_corrections(fx_rng: Generator) -> None:
+    pattern = example_flow(fx_rng)
+    pattern.draw_graph(
+        flow_from_pattern=True,
+        show_legend=True,
+        show_pauli_measurement=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_hide_measurement_order(fx_rng: Generator) -> None:
+    pattern = example_flow(fx_rng)
+    pattern.draw_graph(
+        show_measurement_order=False,
+        node_distance=(0.7, 0.6),
+    )
+
+
+# Compare with baseline/test_draw_graph_with_labels.png
+# Update baseline by running: pytest --mpl-generate-path=tests/baseline
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_draw_graph_with_labels() -> Figure:
+    circuit = Circuit(3)
+    circuit.cnot(0, 1)
+    circuit.cnot(2, 1)
+    circuit.rx(0, ANGLE_PI / 3)
+    circuit.x(2)
+    circuit.cnot(2, 1)
+    pattern = circuit.transpile().pattern
+    pattern.standardize()
+    pattern.draw_graph(
+        flow_from_pattern=True,
+        show_measurements=True,
+        show_legend=True,
+        node_distance=(0.7, 0.6),
+    )
+    return plt.gcf()
+
+
+# Compare with baseline/test_draw_graph_without_labels.png
+# Update baseline by running: pytest --mpl-generate-path=tests/baseline
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_draw_graph_without_labels() -> Figure:
+    circuit = Circuit(3)
+    circuit.cnot(0, 1)
+    circuit.cnot(2, 1)
+    circuit.rx(0, ANGLE_PI / 3)
+    circuit.x(2)
+    circuit.cnot(2, 1)
+    pattern = circuit.transpile().pattern
+    pattern.standardize()
+    pattern.draw_graph(
+        flow_from_pattern=True,
+        show_measurements=False,
+        show_legend=False,
+        show_measurement_order=False,
+        node_distance=(0.7, 0.6),
+    )
+    return plt.gcf()
+
+
+def test_format_measurement_label_bloch() -> None:
+    bloch_xy = Measurement.XY(0.25)
+    label = GraphVisualizer._format_measurement_label(bloch_xy)
+    assert label is not None
+    assert "XY" in label
+    assert "π" in label  # Unicode fraction format e.g. XY(π/4)
+
+
+def test_format_measurement_label_bloch_zero() -> None:
+    bloch_zero = Measurement.XY(0)
+    label = GraphVisualizer._format_measurement_label(bloch_zero)
+    assert label is not None
+    assert "XY" in label
+    assert "0" in label
+
+
+def test_format_measurement_label_bloch_xz() -> None:
+    bloch_xz = Measurement.XZ(0.5)
+    label = GraphVisualizer._format_measurement_label(bloch_xz)
+    assert label is not None
+    assert "XZ" in label
+
+
+def test_format_measurement_label_pauli() -> None:
+    pauli_x = Measurement.X
+    label = GraphVisualizer._format_measurement_label(pauli_x)
+    assert label is not None
+    assert label == str(pauli_x)
+    assert "X" in label
+
+
+def test_format_measurement_label_pauli_minus() -> None:
+    pauli_minus_z = PauliMeasurement(Axis.Z, Sign.MINUS)
+    label = GraphVisualizer._format_measurement_label(pauli_minus_z)
+    assert label is not None
+    assert label == str(pauli_minus_z)
+    assert "-Z" in label
