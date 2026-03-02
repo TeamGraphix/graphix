@@ -120,6 +120,34 @@ class TestPauliExponential:
         state_ref = test_case.qc.simulate_statevector().statevec
         assert state.isclose(state_ref)
 
+    def test_to_circuit_outputs_order(self) -> None:
+        pexp_map = {2: PauliExponential(0.1, PauliString(x_nodes=frozenset({1}), z_nodes=frozenset({0})))}
+        pol = [{0, 1}, {2}]
+
+        outputs_1 = [0, 1]
+        outputs_2 = [1, 0]
+
+        pexp_dag_1 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_1)
+        qc_1 = Circuit(2)
+        outputs_mapping_1 = NodeIndex()
+        outputs_mapping_1.extend(pexp_dag_1.output_nodes)
+        LadderPass.add_to_circuit(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
+        s_1 = qc_1.simulate_statevector().statevec
+
+        pexp_dag_2 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_2)
+        qc_2 = Circuit(2)
+        outputs_mapping_2 = NodeIndex()
+        outputs_mapping_2.extend(pexp_dag_2.output_nodes)
+        LadderPass.add_to_circuit(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
+
+        s_2 = qc_2.simulate_statevector().statevec
+        assert not s_1.isclose(s_2)
+
+        qc_2.swap(0, 1)
+        s_2 = qc_2.simulate_statevector().statevec
+
+        assert s_1.isclose(s_2)
+
     def test_from_focused_flow(self) -> None:
         """Test example C.13. in Simmons, 2021."""
         og = OpenGraph(

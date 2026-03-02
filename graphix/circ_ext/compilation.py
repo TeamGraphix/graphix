@@ -34,7 +34,7 @@ class CompilationPass:
     def er_to_circuit(self, er: ExtractionResult) -> Circuit:
         """Convert a circuit extraction result into a quantum circuit representation.
 
-        This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) extraction result. It performs a validation check to ensure that the output nodes of both components are identical.
+        This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) in the extraction result. It performs a validation check to ensure that the output nodes of both components are identical and it maps the output node numbers to qubit indices.
 
         Parameters
         ----------
@@ -64,7 +64,7 @@ class CompilationPass:
         outputs_mapping = NodeIndex()
         outputs_mapping.extend(er.pexp_dag.output_nodes)
 
-        self.cm_cp.add_to_circuit(er.clifford_map, circuit)
+        self.cm_cp.add_to_circuit(er.clifford_map.remap(outputs_mapping.index), circuit)
         self.pexp_cp.add_to_circuit(er.pexp_dag.remap(outputs_mapping.index), circuit)
         return circuit
 
@@ -72,7 +72,7 @@ class CompilationPass:
 class PauliExponentialDAGCompilationPass(ABC):
     """Abstract base class to implement a compilation procedure for a Pauli Exponential DAG.
 
-    Methods defined in this class must assume that the Pauli Exponential DAG has been remap, i.e., its Pauli strings are defined on qubit indices and not on node values. See :meth:`PauliString.remap` for additional information.
+    Methods defined in this class must assume that the Pauli Exponential DAG has been remap, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
     """
 
     @staticmethod
@@ -85,14 +85,17 @@ class PauliExponentialDAGCompilationPass(ABC):
         Parameters
         ----------
         pexp_dag: PauliExponentialDAG
-            The Pauli exponential rotation to be added to the circuit.
+            The Pauli exponential rotation to be added to the circuit. Its Pauli strings are assumed to be defined on qubit indices.
         circuit : Circuit
             The circuit to which the operation is added. The input circuit is assumed to be compatible with ``pexp_dag.output_nodes``.
         """
 
 
 class CliffordMapCompilationPass(ABC):
-    """Abstract base class to implement a compilation procedure for a Clifford Map."""
+    """Abstract base class to implement a compilation procedure for a Clifford Map.
+
+    Methods defined in this class must assume that the Clifford Map has been remap, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
+    """
 
     @staticmethod
     @abstractmethod
@@ -104,7 +107,7 @@ class CliffordMapCompilationPass(ABC):
         Parameters
         ----------
         clifford_map: CliffordMap
-            The Clifford map to be added to the circuit.
+            The Clifford map to be added to the circuit. Its Pauli strings are assumed to be defined on qubit indices.
         circuit : Circuit
             The quantum circuit to which the Clifford map is added. The input circuit is assumed to be compatible with ``clifford_map.output_nodes``.
 
@@ -156,13 +159,17 @@ class LadderPass(PauliExponentialDAGCompilationPass):
 
         Notes
         -----
-        It is assumed that the ``x``, ``y``, and ``z`` node sets of the Pauli string in the exponential are well-formed, i.e., contain only output nodes and are pairwise disjoint.
+        It is assumed that the ``x``, ``y``, and ``z`` node sets of the Pauli string in the exponential are well-formed, i.e., contain valid qubit indices and are pairwise disjoint.
         """
         if pexp.angle == 0:  # No rotation
             return
 
         # We assume that nodes in the Pauli strings have been mapped to qubits.
-        modified_qubits = [qubit for qubit in range(circuit.width) if qubit in pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes]
+        modified_qubits = [
+            qubit
+            for qubit in range(circuit.width)
+            if qubit in pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes
+        ]
         angle = -2 * pexp.angle * pexp.pauli_string.sign
 
         if len(modified_qubits) == 0:  # Identity

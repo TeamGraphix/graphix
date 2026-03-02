@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from graphix.fundamentals import ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
@@ -136,13 +136,13 @@ class PauliString:
 
         return PauliString(x_corrections, y_corrections, z_corrections, Sign.minus_if(negative_sign))
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliString:
+    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
         """Remap nodes to qubit indices.
 
         Parameters
         ----------
-        outputs_mapping: NodeIndex
-            Mapping between node numbers of the original MBQC pattern or open graph and qubit indices of the circuit.
+        outputs_mapping: Callable[[int], int]
+            Mapping between node numbers of the original MBQC pattern or open graph and qubit indices of a quantum circuit.
 
         Returns
         -------
@@ -152,7 +152,7 @@ class PauliString:
         x_nodes = {outputs_mapping(n) for n in self.x_nodes}
         y_nodes = {outputs_mapping(n) for n in self.y_nodes}
         z_nodes = {outputs_mapping(n) for n in self.z_nodes}
-        return PauliString(frozenset(x_nodes), frozenset(y_nodes), frozenset(z_nodes), self.sign)
+        return replace(self, x_nodes=frozenset(x_nodes), y_nodes=frozenset(y_nodes), z_nodes=frozenset(z_nodes))
 
 
 @dataclass(frozen=True)
@@ -209,12 +209,12 @@ class PauliExponential:
 
         return PauliExponential(angle, pauli_string)
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliExponential:
+    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
         """Remap nodes to qubit indices.
 
         See documentation in :meth:`PauliString.remap` for additional information.
         """
-        return PauliExponential(self.angle, self.pauli_string.remap(outputs_mapping))
+        return replace(self, pauli_string=self.pauli_string.remap(outputs_mapping))
 
 
 @dataclass(frozen=True)
@@ -270,13 +270,13 @@ class PauliExponentialDAG:
 
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliExponentialDAG:
+    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
         """Remap nodes to qubit indices.
 
         See documentation in :meth:`PauliString.remap` for additional information.
         """
         pauli_exponentials = {node: pexp.remap(outputs_mapping) for node, pexp in self.pauli_exponentials.items()}
-        return PauliExponentialDAG(pauli_exponentials, self.partial_order_layers, self.output_nodes)
+        return replace(self, pauli_exponentials=pauli_exponentials)
 
 
 @dataclass(frozen=True)
@@ -336,6 +336,15 @@ class CliffordMap:
         z_map = clifford_z_map_from_focused_flow(flow)
         x_map = clifford_x_map_from_focused_flow(flow)
         return CliffordMap(x_map, z_map, flow.og.input_nodes, flow.og.output_nodes)
+
+    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
+        """Remap nodes to qubit indices.
+
+        See documentation in :meth:`PauliString.remap` for additional information.
+        """
+        x_map = {node: ps.remap(outputs_mapping) for node, ps in self.x_map.items()}
+        z_map = {node: ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
+        return replace(self, x_map=x_map, z_map=z_map)
 
 
 def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], dict[int, int]]:
