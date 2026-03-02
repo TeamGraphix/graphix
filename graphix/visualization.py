@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
-from matplotlib import patheffects as pe
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -279,12 +278,19 @@ class GraphVisualizer:
         font_color : Mapping[int, str] | str
             Font color for node labels. Can be a single color string or a mapping from node to color.
         """
+        from matplotlib.transforms import offset_copy
+
         fontsize = 12
         if max(self.og.graph.nodes(), default=0) >= 100:
             fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
+        ax = plt.gca()
+        # Shift text down by 4 points to compensate for matplotlib centering
+        # the full glyph bounding box (including descender space) rather than
+        # the visible digit area.
+        label_transform = offset_copy(ax.transData, fig=plt.gcf(), y=-4.0, units="points")
         for node in self.og.graph.nodes():
             x, y = pos[node]
-            color = font_color[node] if isinstance(font_color, dict) else font_color
+            color = font_color.get(node, "black") if isinstance(font_color, dict) else font_color
             plt.text(
                 x,
                 y,
@@ -292,9 +298,9 @@ class GraphVisualizer:
                 fontsize=fontsize,
                 color=color,
                 ha="center",
-                va="center_baseline",
-                fontfamily="sans-serif",
+                va="center",
                 zorder=3,
+                transform=label_transform,
             )
 
     def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> dict[int, str]:
@@ -493,7 +499,6 @@ class GraphVisualizer:
         has_layers = l_k is not None and len(l_k) > 0
         show_layers = show_measurement_order and has_layers
         if show_layers:
-            assert l_k is not None
             l_min_val = min(l_k.values())
             l_max_val = max(l_k.values())
             # Dotted vertical lines to separate layers (distinct from dashed graph edges)
@@ -528,8 +533,10 @@ class GraphVisualizer:
                 mid_x = (l_min_val + l_max_val) / 2 * node_distance[0]
                 plt.text(mid_x, arrow_y - 0.15, "Layer", ha="center", va="top", fontsize=8, color="gray")
 
-        plt.xlim(x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0])
-        top_margin = 0.5
+        plt.gca().set_axis_off()
+        x_margin = 0.7 * node_distance[0] if show_measurements else 0.5 * node_distance[0]
+        plt.xlim(x_min - x_margin, x_max + x_margin)
+        top_margin = 0.7 if show_measurements else 0.5
         bottom_margin = 1.3 if show_layers else 0.5
         plt.ylim(y_min - bottom_margin, y_max + top_margin)
 
@@ -646,14 +653,29 @@ class GraphVisualizer:
         all_positions = [pos[n] for n in self.og.graph.nodes()]
         placed_labels: list[tuple[float, float]] = []
 
+        # Compute graph extent so labels don't get placed outside the plot boundary
+        all_x = [p[0] for p in all_positions]
+        all_y = [p[1] for p in all_positions]
+        x_lo = min(all_x) if all_x else 0.0
+        x_hi = max(all_x) if all_x else 0.0
+
         for node, meas in self.og.measurements.items():
             label = self._format_measurement_label(meas)
             if label is not None:
                 x, y = pos[node]
+                # Exclude candidates that push the label past the leftmost/rightmost
+                # node column — text would overflow the plot boundary there.
+                valid = [
+                    c for c in candidates
+                    if not (c[0] < 0 and x <= x_lo + 1e-9)
+                    and not (c[0] > 0 and x >= x_hi - 1e-9)
+                ]
+                if not valid:
+                    valid = candidates  # fallback: use all if none pass the filter
                 # Pick the direction farthest from other nodes AND already-placed labels
-                best_dx, best_dy, best_ha, best_va = candidates[0]
+                best_dx, best_dy, best_ha, best_va = valid[0]
                 best_min_dist = -1.0
-                for dx, dy, ha, va in candidates:
+                for dx, dy, ha, va in valid:
                     lx, ly = x + dx, y + dy
                     obstacles = [(ox, oy) for ox, oy in all_positions if (ox, oy) != (x, y)]
                     obstacles.extend(placed_labels)
@@ -671,7 +693,7 @@ class GraphVisualizer:
                     ha=best_ha,
                     va=best_va,
                     zorder=3,
-                    path_effects=[pe.withStroke(linewidth=1.0, foreground="white")],
+                    bbox={"boxstyle": "round,pad=0.1", "facecolor": "white", "edgecolor": "none", "alpha": 0.7},
                 )
 
     @staticmethod
@@ -692,12 +714,11 @@ class GraphVisualizer:
             return str(meas)
         if isinstance(meas, BlochMeasurement):
             if isinstance(meas.angle, (int, float)):
-                angle_str = angle_to_str(meas.angle, OutputFormat.LaTeX)
+                angle_str = angle_to_str(meas.angle, OutputFormat.Unicode)
                 # Fall back to compact notation for non-rational angles
                 if len(angle_str) > 30:
-                    angle_str = f"{meas.angle:.2f}" + r"\pi"
-                # Wrap in mathtext for vertical fractions
-                return f"{meas.plane.name}(${angle_str}$)"
+                    angle_str = f"{meas.angle:.2f}π"
+                return f"{meas.plane.name}({angle_str})"
             angle_str = str(meas.angle)
             return f"{meas.plane.name}({angle_str})"
         return None
@@ -728,9 +749,9 @@ class GraphVisualizer:
         if l_k is None:
             if pos is None:
                 raise ValueError("Figure size can only be computed given a layer mapping (l_k) or node positions (pos)")
-            width = len({pos[node][0] for node in self.og.graph.nodes()}) * 0.7
+            width = len({pos[node][0] for node in self.og.graph.nodes()}) * 1.0
         else:
-            width = (max(l_k.values(), default=0) + 1) * 0.7
+            width = (max(l_k.values(), default=0) + 1) * 1.0
         height = len({pos[node][1] for node in self.og.graph.nodes()}) if pos is not None else len(self.og.output_nodes)
         return (width * node_distance[0], height * node_distance[1])
 

@@ -349,7 +349,7 @@ def test_format_measurement_label_bloch() -> None:
     label = GraphVisualizer._format_measurement_label(bloch_xy)
     assert label is not None
     assert "XY" in label
-    assert "frac" in label or "pi" in label  # LaTeX fraction format
+    assert "π" in label  # Unicode fraction format e.g. XY(π/4)
 
 
 def test_format_measurement_label_bloch_zero() -> None:
