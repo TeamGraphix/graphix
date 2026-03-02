@@ -666,9 +666,7 @@ class GraphVisualizer:
                 # Exclude candidates that push the label past the leftmost/rightmost
                 # node column — text would overflow the plot boundary there.
                 valid = [
-                    c for c in candidates
-                    if not (c[0] < 0 and x <= x_lo + 1e-9)
-                    and not (c[0] > 0 and x >= x_hi - 1e-9)
+                    c for c in candidates if not (c[0] < 0 and x <= x_lo + 1e-9) and not (c[0] > 0 and x >= x_hi - 1e-9)
                 ]
                 if not valid:
                     valid = candidates  # fallback: use all if none pass the filter
