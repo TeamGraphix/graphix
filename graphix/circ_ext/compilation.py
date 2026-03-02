@@ -64,7 +64,10 @@ class CompilationPass:
         outputs_mapping = NodeIndex()
         outputs_mapping.extend(er.pexp_dag.output_nodes)
 
-        self.cm_cp.add_to_circuit(er.clifford_map.remap(outputs_mapping.index), circuit)
+        inputs_mapping = NodeIndex()
+        inputs_mapping.extend(er.clifford_map.input_nodes)
+
+        self.cm_cp.add_to_circuit(er.clifford_map.remap(inputs_mapping.index, outputs_mapping.index), circuit)
         self.pexp_cp.add_to_circuit(er.pexp_dag.remap(outputs_mapping.index), circuit)
         return circuit
 

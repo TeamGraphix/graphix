@@ -337,13 +337,23 @@ class CliffordMap:
         x_map = clifford_x_map_from_focused_flow(flow)
         return CliffordMap(x_map, z_map, flow.og.input_nodes, flow.og.output_nodes)
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
+    def remap(self, inputs_mapping: Callable[[int], int], outputs_mapping: Callable[[int], int]) -> Self:
         """Remap nodes to qubit indices.
 
-        See documentation in :meth:`PauliString.remap` for additional information.
+        Parameters
+        ----------
+        inputs_mapping: Callable[[int], int]
+            Mapping between input node numbers of the original MBQC pattern or open graph and qubit indices of a quantum circuit.
+        outputs_mapping: Callable[[int], int]
+            Mapping between output node numbers of the original MBQC pattern or open graph and qubit indices of a quantum circuit.
+
+        Returns
+        -------
+        CliffordMap
+            Clifford map defined on qubit indices.
         """
-        x_map = {node: ps.remap(outputs_mapping) for node, ps in self.x_map.items()}
-        z_map = {node: ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
+        x_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.x_map.items()}
+        z_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
         return replace(self, x_map=x_map, z_map=z_map)
 
 
