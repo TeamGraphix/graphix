@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #450: `Circuit.visit` and `BaseInstruction.visit` performs simple replacements on circuits and instructions, given an `InstructionVisitor`.
 
+- #445: Circuit extraction.
+  - Added `PauliFlow.is_focused` to verify if a Pauli flow is focused and `PauliFlow.pauli_strings` associating a Pauli string to the every corrected node.
+  - Added `PauliFlow.extract_circuit`
+  - Added new module `graphix.circ_ext.extraction` to extract circuits from Pauli flows with the following new classes:
+        - `ExtractionResult`
+        - `PauliString`
+        - `PauliExponential`
+        - `PauliExponentialDAG`
+        - `CliffordMap`
+  - Added new module `graphix.circ_ext.compilation` to perform the transformation `ExtractionResult` -> `Graphix circuit` with the following new classes:
+        - `CompilationPass`
+        - `PauliExponentialDAGCompilationPass`
+        - `CliffordMapCompilationPass`
+        - `LadderPass`
+
+
 ### Fixed
 
 - #429
