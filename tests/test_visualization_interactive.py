@@ -521,7 +521,7 @@ class TestGraphVisualizerSharedAPI:
         assert backend_instance.measure.call_count == 2
 
     def test_z_correction_initializes_corrections_dict_with_simulation(self, mocker: MagicMock) -> None:
-        """Test that a Z correction on a new node initializes the corrections dict entry (line 435)."""
+        """Test that a Z correction on a new node initializes the corrections dict entry."""
         pattern = Pattern(input_nodes=[0])
         pattern.add(N(node=0))
         pattern.add(Z(node=0, domain=set()))
@@ -545,7 +545,7 @@ class TestGraphVisualizerSharedAPI:
         backend_instance.correct_byproduct.assert_called()
 
     def test_command_window_size_odd_after_init(self, mocker: MagicMock) -> None:
-        """Test that command_window_size is decremented when even (line 119)."""
+        """Test that command_window_size is decremented when even."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
         mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
@@ -570,7 +570,7 @@ class TestGraphVisualizerSharedAPI:
         return p
 
     def test_draw_command_list_returns_early_when_focus_below_start(self, mocker: MagicMock) -> None:
-        """Test that _draw_command_list returns early when focus_idx < start (line 249)."""
+        """Test that _draw_command_list returns early when focus_idx < start."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
         mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
@@ -590,7 +590,7 @@ class TestGraphVisualizerSharedAPI:
         viz.ax_commands.text.assert_not_called()
 
     def test_draw_graph_without_flow_uses_draw_edges_with_routing(self, mocker: MagicMock) -> None:
-        """Test the else branch when arrow_path is None calls draw_edges_with_routing (line 523)."""
+        """Test the else branch when arrow_path is None calls draw_edges_with_routing."""
         # A pattern without causal/Pauli flow so arrow_path is None
         no_flow_pattern = Pattern(
             input_nodes=[0, 1],
@@ -621,7 +621,7 @@ class TestGraphVisualizerSharedAPI:
         mock_vis_obj.draw_flow_arrows.assert_not_called()
 
     def test_draw_graph_annotates_measurement_plane_for_active_nodes(self, mocker: MagicMock) -> None:
-        """Test that non-measured nodes with measurements get plane annotation (lines 557-561)."""
+        """Test that non-measured nodes with measurements get plane annotation."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
         mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
