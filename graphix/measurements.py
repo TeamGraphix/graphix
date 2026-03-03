@@ -190,11 +190,6 @@ class Measurement(AbstractMeasurement, Generic[AngleT_co]):
             Absolute tolerance for comparing angles, passed to :func:`math.isclose`.
             Default is ``0.0``.
 
-        Notes
-        -----
-            A measurement with a parameterized angle is not considered as Pauli, but can become a Pauli
-            measurement after substitution.
-
         Returns
         -------
         PauliMeasurement | None
@@ -203,6 +198,11 @@ class Measurement(AbstractMeasurement, Generic[AngleT_co]):
             either the measurement is close to a Pauli measurement (i.e., the angle is close to an
             integer multiple of π/2) and the corresponding Pauli measurement is returned,
             or it is not and ``None`` is returned.
+
+        Notes
+        -----
+            A measurement with a parameterized angle is not considered as Pauli, but can become a Pauli
+            measurement after substitution.
 
         Examples
         --------
