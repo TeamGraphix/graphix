@@ -130,6 +130,7 @@ class ReverseDependency:
             version_constraint=VersionRange(upper=Version("3.14")),
             doctest_modules=False,
         ),
+        ReverseDependency("https://github.com/matulni/graphix-stim-compiler"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:

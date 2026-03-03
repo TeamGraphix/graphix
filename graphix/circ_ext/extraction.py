@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
 
-    from graphix.circ_ext.compilation import CompilationPass
     from graphix.command import Node
     from graphix.flow.core import PauliFlow
     from graphix.opengraph import OpenGraph
@@ -46,7 +45,11 @@ class ExtractionResult:
     pexp_dag: PauliExponentialDAG
     clifford_map: CliffordMap
 
-    def to_circuit(self, cp: CompilationPass) -> Circuit:
+    def to_circuit(
+        self,
+        pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None = None,
+        cm_cp: Callable[[CliffordMap, Circuit], None] | None = None,
+    ) -> Circuit:
         """Transpile the extraction result to circuit.
 
         Transpilation is only supported when the pair Pauli-exponential DAG and Clifford map represents a unitary transformation.
@@ -61,7 +64,10 @@ class ExtractionResult:
         Circuit
             Quantum circuit represented as a set of instructions.
         """
-        return cp.er_to_circuit(self)
+        # Circumvent import loop
+        from graphix.circ_ext.compilation import er_to_circuit  # noqa: PLC0415
+
+        return er_to_circuit(self, pexp_cp=pexp_cp, cm_cp=cm_cp)
 
 
 @dataclass(frozen=True)

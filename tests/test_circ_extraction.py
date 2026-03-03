@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, NamedTuple
 import networkx as nx
 import pytest
 
-from graphix.circ_ext.compilation import LadderPass
+from graphix.circ_ext.compilation import ladder_pass
 from graphix.circ_ext.extraction import PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
 from graphix.fundamentals import ANGLE_PI, Sign
@@ -33,7 +33,8 @@ class TestPauliString:
         outputs_mapping = NodeIndex()
         outputs_mapping.extend([2, 1, 3, 4])
 
-        LadderPass.add_pexp(pexp.remap(outputs_mapping.index), qc)  # `qc` is modified in place
+        pexp_dag = PauliExponentialDAG({0: pexp}, [{1, 4, 2}, {0}], [1, 4, 2])
+        ladder_pass(pexp_dag.remap(outputs_mapping.index), qc)  # `qc` is modified in place
 
         qc_ref = Circuit(width=4, instr=[H(1), CNOT(3, 1), CNOT(0, 3), RZ(0, angle_rz), CNOT(0, 3), CNOT(3, 1), H(1)])
 
@@ -115,7 +116,7 @@ class TestPauliExponential:
         qc = Circuit(len(test_case.p_exp.output_nodes))
         outputs_mapping = NodeIndex()
         outputs_mapping.extend(test_case.p_exp.output_nodes)
-        LadderPass.add_to_circuit(test_case.p_exp.remap(outputs_mapping.index), qc)
+        ladder_pass(test_case.p_exp.remap(outputs_mapping.index), qc)
         state = qc.simulate_statevector().statevec
         state_ref = test_case.qc.simulate_statevector().statevec
         assert state.isclose(state_ref)
@@ -131,14 +132,14 @@ class TestPauliExponential:
         qc_1 = Circuit(2)
         outputs_mapping_1 = NodeIndex()
         outputs_mapping_1.extend(pexp_dag_1.output_nodes)
-        LadderPass.add_to_circuit(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
+        ladder_pass(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
         s_1 = qc_1.simulate_statevector().statevec
 
         pexp_dag_2 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_2)
         qc_2 = Circuit(2)
         outputs_mapping_2 = NodeIndex()
         outputs_mapping_2.extend(pexp_dag_2.output_nodes)
-        LadderPass.add_to_circuit(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
+        ladder_pass(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
 
         s_2 = qc_2.simulate_statevector().statevec
         assert not s_1.isclose(s_2)
