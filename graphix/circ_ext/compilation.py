@@ -15,9 +15,73 @@ if TYPE_CHECKING:
     from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponential, PauliExponentialDAG
 
 
-def ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
-    r"""Compilation pass to synthetize a Pauli exponential DAG by using a ladder decomposition.
+def er_to_circuit(
+    er: ExtractionResult,
+    pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None = None,
+    cm_cp: Callable[[CliffordMap, Circuit], None] | None = None,
+) -> Circuit:
+    """Convert a circuit extraction result into a quantum circuit representation.
 
+    This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) in the extraction result. It performs a validation check to ensure that the output nodes of both components are identical and it maps the output node numbers to qubit indices.
+
+    Parameters
+    ----------
+    er : ExtractionResult
+        The result of the extraction process, containing both the ``clifford_map`` and the ``pexp_dag``.
+    pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
+        Compilation pass to synthetize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
+    cm_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
+        Compilation pass to synthetize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
+
+    Returns
+    -------
+    Circuit
+        A quantum circuit that combines the Clifford map operations followed by the Pauli exponential operations.
+
+    Raises
+    ------
+    ValueError
+        If the output nodes of ``er.pexp_dag`` and ``er.clifford_map`` do not match, indicating an incompatible extraction result.
+    """
+    if list(er.pexp_dag.output_nodes) != list(er.clifford_map.output_nodes):
+        raise ValueError(
+            "The Pauli Exponential DAG and the Clifford Map in the Extraction Result are incompatible since they have different output nodes."
+        )
+    if pexp_cp is None:
+        pexp_cp = pexp_ladder_pass
+
+    if cm_cp is None:
+        raise ValueError(
+            "Clifford-map pass is missing: there is still no default pass for Clifford map integrated in Graphix. You may use graphix-stim-compiler plugin."
+        )
+
+    n_qubits = len(er.pexp_dag.output_nodes)
+    circuit = Circuit(n_qubits)
+    outputs_mapping = NodeIndex()
+    outputs_mapping.extend(er.pexp_dag.output_nodes)
+
+    inputs_mapping = NodeIndex()
+    inputs_mapping.extend(er.clifford_map.input_nodes)
+
+    cm_cp(er.clifford_map.remap(inputs_mapping.index, outputs_mapping.index), circuit)
+    pexp_cp(er.pexp_dag.remap(outputs_mapping.index), circuit)
+    return circuit
+
+
+def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
+    r"""Add a Pauli exponential DAG to a circuit by using a ladder decomposition.
+
+    The input circuit is modified in-place. This function assumes that the Pauli exponential DAG has been remap, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
+
+    Parameters
+    ----------
+    pexp_dag: PauliExponentialDAG
+        The Pauli exponential rotation to be added to the circuit. Its Pauli strings are assumed to be defined on qubit indices.
+    circuit : Circuit
+        The circuit to which the operation is added. The input circuit is assumed to be compatible with ``pexp_dag.output_nodes``.
+
+    Notes
+    -----
     Pauli exponentials in the DAG are compiled sequentially following an arbitrary total order compatible with the DAG. Each Pauli exponential is decomposed into a sequence of basis changes, CNOT gates, and a single :math:`R_Z` rotation:
 
     .. math::
@@ -28,24 +92,13 @@ def ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 
     Gate set: H, CNOT, RZ, RY
 
-    Notes
-    -----
     See https://quantumcomputing.stackexchange.com/questions/5567/circuit-construction-for-hamiltonian-simulation/11373#11373 for additional information.
     """
-
-    def add_to_circuit(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
-        """Add a Pauli exponential DAG to a circuit.
-
-        See documentation in :meth:`PauliExponentialDAGCompilationPass.add_to_circuit` for additional information.
-        """
-        for node in chain(*reversed(pexp_dag.partial_order_layers[1:])):
-            pexp = pexp_dag.pauli_exponentials[node]
-            add_pexp(pexp, circuit)
 
     def add_pexp(pexp: PauliExponential, circuit: Circuit) -> None:
         r"""Add the Pauli exponential unitary to a quantum circuit.
 
-        This method modifies the input circuit in-place.
+        This function modifies the input circuit in-place.
 
         Parameters
         ----------
@@ -98,7 +151,7 @@ def ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     def add_basis_change(pexp: PauliExponential, qubit: int, circuit: Circuit) -> None:
         """Apply an X or a Y basis change to a given qubit if required by the Pauli string.
 
-        This method modifies the input circuit in-place.
+        This function modifies the input circuit in-place.
 
         Parameters
         ----------
@@ -117,7 +170,14 @@ def ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     def add_hy(qubit: int, circuit: Circuit) -> None:
         """Add a pi rotation around the z + y axis.
 
-        This method modifies the input circuit in-place.
+        This function modifies the input circuit in-place.
+
+        Parameters
+        ----------
+        qubit : int
+            The qubit on which the basis-change operation is performed.
+        circuit : Circuit
+            The quantum circuit to which the basis change is added.
         """
         circuit.rz(qubit, ANGLE_PI / 2)
         circuit.ry(qubit, ANGLE_PI / 2)
@@ -126,55 +186,3 @@ def ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     for node in chain(*reversed(pexp_dag.partial_order_layers[1:])):
         pexp = pexp_dag.pauli_exponentials[node]
         add_pexp(pexp, circuit)
-
-
-def er_to_circuit(
-    er: ExtractionResult,
-    pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None = None,
-    cm_cp: Callable[[CliffordMap, Circuit], None] | None = None,
-) -> Circuit:
-    """Convert a circuit extraction result into a quantum circuit representation.
-
-    This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) in the extraction result. It performs a validation check to ensure that the output nodes of both components are identical and it maps the output node numbers to qubit indices.
-
-    Parameters
-    ----------
-    er : ExtractionResult
-        The result of the extraction process, containing both the ``clifford_map`` and the ``pexp_dag``.
-
-    Returns
-    -------
-    Circuit
-        A quantum circuit that combines the Clifford map operations followed by the Pauli exponential operations.
-
-    Raises
-    ------
-    ValueError
-        If the output nodes of ``er.pexp_dag`` and ``er.clifford_map`` do not match, indicating an incompatible extraction result.
-
-    Notes
-    -----
-    The conversion relies on the internal compilation passes ``self.cm_cp`` (Clifford Map Circuit Processor) and ``self.pexp_cp`` (Pauli Exponential Circuit Processor) to handle the low-level circuit synthesis.
-    """
-    if list(er.pexp_dag.output_nodes) != list(er.clifford_map.output_nodes):
-        raise ValueError(
-            "The Pauli Exponential DAG and the Clifford Map in the Extraction Result are incompatible since they have different output nodes."
-        )
-    if pexp_cp is None:
-        pexp_cp = ladder_pass
-    if cm_cp is None:
-        raise ValueError(
-            "Clifford-map pass is missing: there is still no default pass for Clifford map integrated in Graphix. You may use graphix-stim-compiler plugin."
-        )
-
-    n_qubits = len(er.pexp_dag.output_nodes)
-    circuit = Circuit(n_qubits)
-    outputs_mapping = NodeIndex()
-    outputs_mapping.extend(er.pexp_dag.output_nodes)
-
-    inputs_mapping = NodeIndex()
-    inputs_mapping.extend(er.clifford_map.input_nodes)
-
-    cm_cp(er.clifford_map.remap(inputs_mapping.index, outputs_mapping.index), circuit)
-    pexp_cp(er.pexp_dag.remap(outputs_mapping.index), circuit)
-    return circuit

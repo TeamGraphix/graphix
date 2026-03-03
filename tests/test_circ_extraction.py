@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import NamedTuple
 
 import networkx as nx
 import pytest
 
-from graphix.circ_ext.compilation import ladder_pass
+from graphix.circ_ext.compilation import pexp_ladder_pass
 from graphix.circ_ext.extraction import PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
 from graphix.fundamentals import ANGLE_PI, Sign
@@ -14,34 +14,6 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
-
-if TYPE_CHECKING:
-    from numpy.random import Generator
-
-
-class TestPauliString:
-    def test_add_circuit(self, fx_rng: Generator) -> None:
-        angle = 0.3 * ANGLE_PI
-        angle_rz = -2 * angle
-        x_nodes = {1}
-        z_nodes = {4, 2}
-        pauli_string = PauliString(x_nodes=x_nodes, z_nodes=z_nodes)
-
-        pexp = PauliExponential(angle, pauli_string)
-
-        qc = Circuit(4)
-        outputs_mapping = NodeIndex()
-        outputs_mapping.extend([2, 1, 3, 4])
-
-        pexp_dag = PauliExponentialDAG({0: pexp}, [{1, 4, 2}, {0}], [1, 4, 2])
-        ladder_pass(pexp_dag.remap(outputs_mapping.index), qc)  # `qc` is modified in place
-
-        qc_ref = Circuit(width=4, instr=[H(1), CNOT(3, 1), CNOT(0, 3), RZ(0, angle_rz), CNOT(0, 3), CNOT(3, 1), H(1)])
-
-        state = qc.simulate_statevector(rng=fx_rng).statevec
-        state_ref = qc_ref.simulate_statevector(rng=fx_rng).statevec
-
-        assert state.isclose(state_ref)
 
 
 class PauliExpTestCase(NamedTuple):
@@ -110,13 +82,23 @@ class TestPauliExponential:
                 ),
                 Circuit(width=2, instr=[CNOT(1, 0)]),
             ),
+            PauliExpTestCase(
+                PauliExponentialDAG(
+                    pauli_exponentials={
+                        0: PauliExponential(alpha / 2, PauliString(x_nodes={1}, z_nodes={4, 2})),
+                    },
+                    partial_order_layers=[{1, 2, 3, 4}, {0}],
+                    output_nodes=[2, 1, 3, 4],
+                ),
+                Circuit(width=4, instr=[H(1), CNOT(3, 1), CNOT(0, 3), RZ(0, -alpha), CNOT(0, 3), CNOT(3, 1), H(1)]),
+            ),
         ],
     )
     def test_to_circuit(self, test_case: PauliExpTestCase) -> None:
         qc = Circuit(len(test_case.p_exp.output_nodes))
         outputs_mapping = NodeIndex()
         outputs_mapping.extend(test_case.p_exp.output_nodes)
-        ladder_pass(test_case.p_exp.remap(outputs_mapping.index), qc)
+        pexp_ladder_pass(test_case.p_exp.remap(outputs_mapping.index), qc)
         state = qc.simulate_statevector().statevec
         state_ref = test_case.qc.simulate_statevector().statevec
         assert state.isclose(state_ref)
@@ -132,14 +114,14 @@ class TestPauliExponential:
         qc_1 = Circuit(2)
         outputs_mapping_1 = NodeIndex()
         outputs_mapping_1.extend(pexp_dag_1.output_nodes)
-        ladder_pass(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
+        pexp_ladder_pass(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
         s_1 = qc_1.simulate_statevector().statevec
 
         pexp_dag_2 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_2)
         qc_2 = Circuit(2)
         outputs_mapping_2 = NodeIndex()
         outputs_mapping_2.extend(pexp_dag_2.output_nodes)
-        ladder_pass(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
+        pexp_ladder_pass(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
 
         s_2 = qc_2.simulate_statevector().statevec
         assert not s_1.isclose(s_2)

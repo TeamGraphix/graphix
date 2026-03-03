@@ -56,8 +56,10 @@ class ExtractionResult:
 
         Parameters
         ----------
-        cp : CompilationPass
-            Compilation pass to synthesize the Pauli exponential DAG and the Clifford map in the extraction result.
+        pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
+            Compilation pass to synthetize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
+        cm_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
+            Compilation pass to synthetize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
 
         Returns
         -------

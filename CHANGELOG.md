@@ -26,11 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - `PauliExponential`
         - `PauliExponentialDAG`
         - `CliffordMap`
-  - Added new module `graphix.circ_ext.compilation` to perform the transformation `ExtractionResult` -> `Graphix circuit` with the following new classes:
-        - `CompilationPass`
-        - `PauliExponentialDAGCompilationPass`
-        - `CliffordMapCompilationPass`
-        - `LadderPass`
+  - Added new module `graphix.circ_ext.compilation` to perform the transformation `ExtractionResult` -> `Graphix circuit` with the following new functions:
+        - `er_to_circuit`
+        - `pexp_ladder_pass`
 
 
 ### Fixed
