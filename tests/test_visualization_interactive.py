@@ -404,7 +404,7 @@ class TestInteractiveGraphVisualizer:
         mocker.patch("traceback.print_exc")
 
         # This should not raise but log/print
-        mock_state = (set(), set(), [], {}, {})
+        mock_state: tuple[set[int], set[int], list[tuple[int, int]], dict[int, set[str]], dict[int, int]] = (set(), set(), [], {}, {})
         viz._draw_graph(mock_state)
 
 
@@ -488,3 +488,166 @@ class TestGraphVisualizerSharedAPI:
 
         vis.draw_edges(ax, pos)
         assert ax.plot.call_count == 3
+
+    def test_adaptive_measurement_s_and_t_signal_clifford(self, mocker: MagicMock) -> None:
+        """Test that adaptive measurement applies Clifford.X for odd s_signal and Clifford.Z for odd t_signal."""
+        # Node 0 is measured first (result=1), then node 1 uses s_domain={0} and t_domain={0}
+        # Both s_signal and t_signal will be 1 (odd), hitting lines 421 and 423.
+        pattern = Pattern(input_nodes=[0, 1])
+        pattern.add(N(node=2))
+        pattern.add(E(nodes=(0, 2)))
+        pattern.add(E(nodes=(1, 2)))
+        pattern.add(M(node=0, measurement=Measurement.XY(0.0)))
+        pattern.add(M(node=1, measurement=Measurement.XY(0.0), s_domain={0}, t_domain={0}))
+
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+        mock_backend = mocker.patch("graphix.visualization_interactive.StatevectorBackend")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+
+        backend_instance = mock_backend.return_value
+        backend_instance.measure.return_value = 1
+
+        viz = InteractiveGraphVisualizer(pattern, enable_simulation=True)
+        _active, _measured, _, _, results = viz._update_graph_state(len(pattern))
+
+        assert results[0] == 1
+        assert results[1] == 1
+        assert backend_instance.measure.call_count == 2
+
+    def test_z_correction_initializes_corrections_dict_with_simulation(self, mocker: MagicMock) -> None:
+        """Test that a Z correction on a new node initializes the corrections dict entry (line 435)."""
+        pattern = Pattern(input_nodes=[0])
+        pattern.add(N(node=0))
+        pattern.add(Z(node=0, domain=set()))
+
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+        mock_backend = mocker.patch("graphix.visualization_interactive.StatevectorBackend")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0)}, {}, {})
+
+        backend_instance = mock_backend.return_value
+
+        viz = InteractiveGraphVisualizer(pattern, enable_simulation=True)
+        _active, _measured, _, corrections, _ = viz._update_graph_state(len(pattern))
+
+        assert "Z" in corrections.get(0, set())
+        backend_instance.correct_byproduct.assert_called()
+
+    def test_command_window_size_odd_after_init(self, mocker: MagicMock) -> None:
+        """Test that command_window_size is decremented when even (line 119)."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        # Force a narrow fig_width so command_window_size starts as an even number.
+        # max(1, min(7, int(4.0 / 1.8))) = max(1, min(7, 2)) = 2 → even → decremented to 1.
+        mock_vis_obj.determine_figsize.return_value = (4.0, 7.0)
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+
+        viz = InteractiveGraphVisualizer(self.pattern())
+        assert viz.command_window_size % 2 == 1
+
+    def pattern(self) -> Pattern:
+        """Build a fresh pattern without the fixture."""
+        p = Pattern(input_nodes=[0, 1])
+        p.add(N(node=2))
+        p.add(E(nodes=(0, 1)))
+        p.add(M(node=0, measurement=Measurement.XY(0.5)))
+        p.add(M(node=1, measurement=Measurement.XY(0.0)))
+        return p
+
+    def test_draw_command_list_returns_early_when_focus_below_start(self, mocker: MagicMock) -> None:
+        """Test that _draw_command_list returns early when focus_idx < start (line 249)."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
+        mock_vis_obj.get_layout.return_value = ({}, {}, {})
+
+        empty_pattern = Pattern(input_nodes=[])
+        viz = InteractiveGraphVisualizer(empty_pattern, enable_simulation=False)
+        viz.ax_commands = MagicMock()
+        viz.current_step = 0
+
+        # With empty pattern total_steps=0, end=0, focus_idx=min(0,-1)=-1 < 0=start → return early.
+        viz._draw_command_list({})
+        viz.ax_commands.text.assert_not_called()
+
+    def test_draw_graph_without_flow_uses_draw_edges_with_routing(self, mocker: MagicMock) -> None:
+        """Test the else branch when arrow_path is None calls draw_edges_with_routing (line 523)."""
+        # A pattern without causal/Pauli flow so arrow_path is None
+        no_flow_pattern = Pattern(
+            input_nodes=[0, 1],
+            cmds=[N(node=0), N(node=1), E(nodes=(0, 1)), M(node=0), M(node=1)],
+        )
+
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
+        # _place_paths returns (edge_path, None) to trigger else branch
+        mock_place_paths = MagicMock(return_value=({(0, 1): [(0.0, 0.0), (1.0, 0.0)]}, None))
+        mock_vis_obj.get_layout.return_value = ({0: (0.0, 0.0), 1: (1.0, 0.0)}, mock_place_paths, None)
+
+        viz = InteractiveGraphVisualizer(no_flow_pattern, enable_simulation=False)
+        viz.ax_graph = MagicMock()
+        viz.ax_commands = MagicMock()
+        viz.slider = MagicMock()
+        viz.slider.val = len(no_flow_pattern)
+
+        viz._update(len(no_flow_pattern))
+
+        # draw_edges_with_routing should be called (else branch, no draw_flow_arrows)
+        mock_vis_obj.draw_edges_with_routing.assert_called()
+        mock_vis_obj.draw_flow_arrows.assert_not_called()
+
+    def test_draw_graph_annotates_measurement_plane_for_active_nodes(self, mocker: MagicMock) -> None:
+        """Test that non-measured nodes with measurements get plane annotation (lines 557-561)."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.determine_figsize.return_value = (14.0, 7.0)
+        mock_place_paths = MagicMock(return_value=({}, None))
+        mock_vis_obj.get_layout.return_value = ({0: (0.0, 0.0), 1: (1.0, 0.0), 2: (0.0, 1.0)}, mock_place_paths, None)
+
+        # og.measurements must contain the nodes and return real measurement objects
+        mock_meas = MagicMock()
+        mock_meas.to_plane_or_axis.return_value.name = "XY"
+        mock_vis_obj.og.measurements = {0: mock_meas, 1: mock_meas}
+        mock_vis_obj.og.input_nodes = []
+
+        local_pattern = self.pattern()
+        viz = InteractiveGraphVisualizer(local_pattern, enable_simulation=False)
+        viz.ax_graph = MagicMock()
+        viz.ax_commands = MagicMock()
+        viz.slider = MagicMock()
+        viz.node_positions = {0: (0.0, 0.0), 1: (1.0, 0.0), 2: (0.0, 1.0)}
+
+        # current_step starts at 0; call with step=1 so the condition step!=current_step is True
+        viz._update(1)
+
+        annotate_calls = viz.ax_graph.annotate.call_args_list
+        plane_labels = [c.args[0] for c in annotate_calls if c.args and isinstance(c.args[0], str)]
+        assert any(lbl == "XY" for lbl in plane_labels)
