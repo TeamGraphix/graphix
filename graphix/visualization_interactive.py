@@ -264,7 +264,7 @@ class InteractiveGraphVisualizer:
             picker=True,
             clip_on=True,
         )
-        artists[focus_idx].index = focus_idx  # type: ignore[attr-defined]
+        artists[focus_idx].index = focus_idx
 
         if meas_str:
             self.ax_commands.annotate(
@@ -304,7 +304,7 @@ class InteractiveGraphVisualizer:
                 annotation_clip=True,
                 clip_on=True,
             )
-            artists[abs_idx].index = abs_idx  # type: ignore[attr-defined]
+            artists[abs_idx].index = abs_idx
 
             if meas_str:
                 self.ax_commands.annotate(
@@ -346,7 +346,7 @@ class InteractiveGraphVisualizer:
                 annotation_clip=True,
                 clip_on=True,
             )
-            artists[abs_idx].index = abs_idx  # type: ignore[attr-defined]
+            artists[abs_idx].index = abs_idx
 
             if meas_str:
                 self.ax_commands.annotate(
