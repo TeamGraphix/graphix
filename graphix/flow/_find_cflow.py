@@ -45,6 +45,7 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
         if measurement.to_plane() in {Plane.XZ, Plane.YZ}:
             return None
 
+    graph_nodes = set(og.graph.nodes)
     corrected_nodes = set(og.output_nodes)
     corrector_candidates = corrected_nodes - set(og.input_nodes)
     non_input_nodes = og.graph.nodes - set(og.input_nodes)
@@ -59,10 +60,7 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     corrector_nodes_new: set[int]
     curr_layer: set[int]
 
-    while True:
-        if corrected_nodes == set(og.graph.nodes):
-            return CausalFlow(og, cf, tuple(layers))
-
+    while corrected_nodes != graph_nodes:
         corrected_nodes_new = set()
         corrector_nodes_new = set()
         curr_layer = set()
@@ -85,3 +83,5 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
 
         corrected_nodes |= corrected_nodes_new
         corrector_candidates = (corrector_candidates - corrector_nodes_new) | (corrected_nodes_new & non_input_nodes)
+
+    return CausalFlow(og, cf, tuple(layers))
