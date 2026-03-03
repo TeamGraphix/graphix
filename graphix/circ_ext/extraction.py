@@ -25,14 +25,6 @@ if TYPE_CHECKING:
 class ExtractionResult:
     """Dataclass to represent the output of the circuit-extraction algorithm introduced in Ref. [1].
 
-    Attributes
-    ----------
-    pexp_dag: PauliExponentialDAG
-        Pauli exponential directed acyclical graph (DAG) representing a sequence multi-qubit rotations.
-
-    clifford_map: CliffordMap
-        Clifford transformation.
-
     Notes
     -----
     See Definition 3.3 in Ref. [1].
@@ -40,6 +32,14 @@ class ExtractionResult:
     References
     ----------
     [1] Simmons, 2021 (arXiv:2109.05654).
+
+    Attributes
+    ----------
+    pexp_dag: PauliExponentialDAG
+        Pauli exponential directed acyclical graph (DAG) representing a sequence multi-qubit rotations.
+
+    clifford_map: CliffordMap
+        Clifford transformation.
     """
 
     pexp_dag: PauliExponentialDAG
@@ -231,6 +231,14 @@ class PauliExponential:
 class PauliExponentialDAG:
     """Dataclass to represent a multi-qubit rotation formed by a sequence of Pauli exponentials extracted from a pattern.
 
+    Notes
+    -----
+    See Definition 3.3 in Ref. [1].
+
+    References
+    ----------
+    [1] Simmons, 2021 (arXiv:2109.05654).
+
     Attributes
     ----------
     pauli_exponentials: Mapping[int, PauliExponential]
@@ -239,14 +247,6 @@ class PauliExponentialDAG:
         Partial order between the Pauli exponentials in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. The pattern's output nodes are always in layer 0.
     output_nodes: Sequence[int]
         Output nodes on which the Pauli exponential rotation acts.
-
-    Notes
-    -----
-    See Definition 3.3 in Ref. [1].
-
-    References
-    ----------
-    [1] Simmons, 2021 (arXiv:2109.05654).
     """
 
     pauli_exponentials: Mapping[int, PauliExponential]
@@ -295,6 +295,14 @@ class CliffordMap:
 
     A Clifford map describes a linear transformation between the space of input qubits and the space of output qubits. It is encoded as a map from the Pauli-group generators (X and Z) over the input nodes to Pauli strings over the output nodes.
 
+    Notes
+    -----
+    See Definition 3.3 in Ref. [1].
+
+    References
+    ----------
+    [1] Simmons, 2021 (arXiv:2109.05654).
+
     Attributes
     ----------
     x_map: Mapping[int, PauliString]
@@ -305,14 +313,6 @@ class CliffordMap:
         Sequence of inputs nodes.
     output_nodes: Sequence[int]
         Sequence of outputs nodes.
-
-    Notes
-    -----
-    See Definition 3.3 in Ref. [1].
-
-    References
-    ----------
-    [1] Simmons, 2021 (arXiv:2109.05654).
     """
 
     x_map: Mapping[int, PauliString]
