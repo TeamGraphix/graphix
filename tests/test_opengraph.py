@@ -874,15 +874,15 @@ class TestOpenGraph:
         -----
         This linear graph will trigger a `RecursionError` in the recursive implementation of the causal-flow finding algorithm.
         """
-        n_nodes = 1200
+        n_nodes = sys.getrecursionlimit()
         og = OpenGraph(
-            graph=nx.Graph([(i, i + 1) for i in range(n_nodes - 1)]),
+            graph=nx.path_graph(n_nodes),
             input_nodes=[0],
             output_nodes=[n_nodes - 1],
             measurements=dict.fromkeys(range(n_nodes - 1), Measurement.XY(0.2)),
         )
         c_ref = {i: frozenset({i + 1}) for i in og.measurements}
-        pol_ref = tuple(frozenset({i}) for i in range(n_nodes - 1, -1, -1))
+        pol_ref = tuple(frozenset({i}) for i in reversed(range(n_nodes)))
 
         flow = og.extract_causal_flow()
         assert flow.correction_function == c_ref
