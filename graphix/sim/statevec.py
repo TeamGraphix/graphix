@@ -8,7 +8,7 @@ import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
+from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -20,11 +20,13 @@ from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
 
+_ENCODING = Literal["LSB", "MSB"]
+_A = TypeVar("_A")
 
 CZ_TENSOR = np.array(
     [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
@@ -426,6 +428,33 @@ class Statevec(DenseState):
             ``True`` if the states are equal up to global phase.
         """
         return math.isclose(self.fidelity(other), 1, rel_tol=rtol, abs_tol=atol)
+
+    def to_dict(
+        self,
+        encoding: _ENCODING = "LSB",
+        f: Callable[[complex], _A] = lambda _: _,
+        *,
+        rel_tol: float = 0.0,
+        abs_tol: float = 1e-8,
+    ) -> dict[str, _A]:
+
+        def format_encoding(i: int) -> str:
+            display_width = self.nqubit
+            output = f"{i:0{display_width}b}"
+            if encoding == "MSB":
+                return output[::-1]
+            return output
+
+        return {
+            format_encoding(i): f(amp)
+            for i, amp in enumerate(self.flatten())
+            if not math.isclose(abs(amp), 0, rel_tol=rel_tol, abs_tol=abs_tol)
+        }
+
+    def to_prob_dict(
+        self, encoding: _ENCODING = "LSB", *, rel_tol: float = 0.0, abs_tol: float = 1e-8
+    ) -> dict[str, float]:
+        return self.to_dict(encoding, lambda amp: float(abs(amp) ** 2), rel_tol=rel_tol, abs_tol=abs_tol)
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
         """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""

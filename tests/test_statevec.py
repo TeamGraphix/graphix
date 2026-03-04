@@ -207,6 +207,28 @@ class TestFidelityIsclose:
         assert not zero.isclose(almost)
         assert zero.isclose(almost, atol=1e-6)
 
+    def test_to_dict(self) -> None:
+        sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
+        lsb_ref = {"000": 0.5, "010": 0.5, "001": -0.5, "011": -0.5}
+        msb_ref = {"000": 0.5, "010": 0.5, "100": -0.5, "110": -0.5}
+        for (k_lsb, v_lsb), (k_msb, v_msb) in zip(
+            sv.to_dict().items(), sv.to_dict(encoding="MSB").items(), strict=True
+        ):
+            assert np.isclose(lsb_ref[k_lsb], v_lsb.real)
+            assert np.isclose(0, v_lsb.imag)
+            assert np.isclose(msb_ref[k_msb], v_msb.real)
+            assert np.isclose(0, v_msb.imag)
+
+    def test_to_prob_dict(self) -> None:
+        sv = Statevec(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
+        lsb_ref = {"100": 0.25, "110": 0.25, "101": 0.25, "111": 0.25}
+        msb_ref = {"001": 0.25, "011": 0.25, "101": 0.25, "111": 0.25}
+        for (k_lsb, v_lsb), (k_msb, v_msb) in zip(
+            sv.to_prob_dict().items(), sv.to_prob_dict(encoding="MSB").items(), strict=True
+        ):
+            assert np.isclose(lsb_ref[k_lsb], v_lsb)
+            assert np.isclose(msb_ref[k_msb], v_msb)
+
 
 def test_normalize() -> None:
     statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
