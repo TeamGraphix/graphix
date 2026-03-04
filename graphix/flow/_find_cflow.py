@@ -52,9 +52,7 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
 
     cf: dict[int, frozenset[int]] = {}
     # Output nodes are always in layer 0. If the open graph has flow, it must have outputs, so we never end up with an empty set at `layers[0]`.
-    layers: list[frozenset[int]] = [
-        frozenset(og.output_nodes)
-    ]  # A copy is necessary because `corrected_nodes` is mutable and changes during the algorithm.
+    layers: list[frozenset[int]] = [frozenset(og.output_nodes)]
 
     while corrected_nodes != graph_nodes:
         corrected_nodes_new: set[int] = set()
