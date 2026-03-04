@@ -7,6 +7,7 @@ Output correctness is verified by checking if the resulting pattern is determini
 from __future__ import annotations
 
 import re
+import sys
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
