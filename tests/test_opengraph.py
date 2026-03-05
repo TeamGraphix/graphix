@@ -7,6 +7,7 @@ Output correctness is verified by checking if the resulting pattern is determini
 from __future__ import annotations
 
 import re
+import sys
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -862,6 +863,31 @@ class TestOpenGraph:
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a Pauli flow."):
                 og.extract_pauli_flow()
+
+    def test_large_linear_graph(self) -> None:
+        r"""Test causal-flow extraction algorithm on large linear open graphs.
+
+        Open graph structure:
+
+        [0]-1-...-1498-(1499)
+
+        Notes
+        -----
+        This linear graph will trigger a `RecursionError` in the recursive implementation of the causal-flow finding algorithm.
+        """
+        n_nodes = sys.getrecursionlimit()
+        og = OpenGraph(
+            graph=nx.path_graph(n_nodes),
+            input_nodes=[0],
+            output_nodes=[n_nodes - 1],
+            measurements=dict.fromkeys(range(n_nodes - 1), Measurement.XY(0.2)),
+        )
+        c_ref = {i: frozenset({i + 1}) for i in og.measurements}
+        pol_ref = tuple(frozenset({i}) for i in reversed(range(n_nodes)))
+
+        flow = og.extract_causal_flow()
+        assert flow.correction_function == c_ref
+        assert flow.partial_order_layers == pol_ref
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_gflow_focused(self, test_case: OpenGraphFlowTestCase) -> None:
