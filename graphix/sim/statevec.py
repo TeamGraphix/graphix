@@ -478,9 +478,9 @@ class Statevec(DenseState):
         >>> from graphix.sim.statevec import Statevec
         >>> sv = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
         >>> sv.to_dict()
-        {'01': 1}
+        {'01': np.complex128(1+0j)}
         >>> sv.to_dict(encoding="LSB")
-        {'10': 1}
+        {'10': np.complex128(1+0j)}
         """
 
         def format_encoding(i: int) -> str:
