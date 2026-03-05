@@ -355,7 +355,7 @@ class PatternSimulator(Generic[_StateT_co]):
         """Return the measure method."""
         return self.__measure_method
 
-    def run(self, input_state: Data = BasicStates.PLUS, rng: Generator | None = None) -> None:
+    def run(self, input_state: Data | None = BasicStates.PLUS, rng: Generator | None = None) -> None:
         """Perform the simulation.
 
         Returns
