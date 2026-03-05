@@ -20,7 +20,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         Parameters
         ----------
-        data : array
+        data : npt.ArrayLike
             Data in array
         copy : bool
             Optional, defaults to `True`. If `False` and if possible, data
@@ -28,7 +28,8 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         Return
         -------
-            MatGF2
+        MatGF2
+            New `MatGF2` object.
         """
         arr = np.array(data, dtype=np.uint8, copy=copy)
         return super().__new__(cls, shape=arr.shape, dtype=arr.dtype, buffer=arr)
@@ -38,7 +39,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         Parameters
         ----------
-        other : array
+        other : MatGF2 | npt.NDArray[np.uint8]
             Matrix that right-multiplies `self`.
 
         Returns
@@ -67,7 +68,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         Returns
         -------
-        int : int
+        int
             Rank of the matrix.
         """
         mat_a = self.row_reduction(copy=True)
@@ -78,10 +79,8 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         Returns
         -------
-        rinv : MatGF2
-            Any right inverse of the matrix.
-        or `None`
-            If the matrix does not have a right inverse.
+        rinv : MatGF2 | None
+            Any right inverse of the matrix. None if the matrix does not have a right inverse.
 
         Notes
         -----
@@ -101,12 +100,11 @@ class MatGF2(npt.NDArray[np.uint8]):
         # We don't use `MatGF2.compute_rank()` to avoid row-reducing twice.
         if m != np.count_nonzero(red[:, :n].any(axis=1)):
             return None
-        rinv = np.zeros((n, m), dtype=np.uint8).view(MatGF2)
+        rinv: MatGF2 = np.zeros((n, m), dtype=np.uint8).view(MatGF2)
 
         for i, row in enumerate(red):
             j = np.flatnonzero(row)[0]  # Column index corresponding to the leading 1 in row `i`.
             rinv[j, :] = red[i, n:]
-
         return rinv
 
     def null_space(self) -> MatGF2:
