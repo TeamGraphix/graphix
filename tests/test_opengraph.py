@@ -889,6 +889,20 @@ class TestOpenGraph:
         assert flow.correction_function == c_ref
         assert flow.partial_order_layers == pol_ref
 
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
+    def test_gflow_focused(self, test_case: OpenGraphFlowTestCase) -> None:
+        """Test that the algebraic flow-finding algorithm generated focused gflows."""
+        if test_case.has_gflow:
+            gf = test_case.og.to_bloch().extract_gflow()
+            assert gf.is_focused()
+
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
+    def test_pflow_focused(self, test_case: OpenGraphFlowTestCase) -> None:
+        """Test that the algebraic flow-finding algorithm generated focused Pauli flows."""
+        if test_case.has_pflow:
+            pf = test_case.og.infer_pauli_measurements().extract_pauli_flow()
+            assert pf.is_focused()
+
     def test_double_entanglement(self) -> None:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
         pattern2 = pattern.extract_opengraph().to_pattern()

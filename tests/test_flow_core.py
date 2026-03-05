@@ -473,6 +473,25 @@ class TestFlow:
         assert flow_ref.correction_function == flow_test.correction_function
         assert flow_ref.partial_order_layers == flow_test.partial_order_layers
 
+    # Test focusing
+    def test_is_focused(self) -> None:
+        graph: nx.Graph[int] = nx.Graph([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (4, 6), (7, 6)])
+        inputs = [0, 7]
+        outputs = [4, 5, 6]
+        measurements = dict.fromkeys([0, 1, 2, 3, 7], Plane.XY)
+        og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
+
+        partial_order = ({4, 5, 6}, {3}, {2}, {1}, {0, 7})
+
+        cf = {0: {1}, 1: {2}, 2: {3}, 3: {4}, 7: {6}}
+        cf_focused = {0: {1, 3}, 1: {2, 4}, 2: {3}, 3: {4}, 7: {6}}
+
+        flow = GFlow(og, cf, partial_order)
+        flow_focused = GFlow(og, cf_focused, partial_order)
+
+        assert not flow.is_focused()
+        assert flow_focused.is_focused()
+
 
 class TestXZCorrections:
     """Bundle for unit tests of :class:`XZCorrections`."""
