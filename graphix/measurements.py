@@ -14,7 +14,7 @@ from typing import (
 )
 
 # override introduced in Python 3.12
-from typing_extensions import override, overload
+from typing_extensions import override
 
 from graphix import parameter
 from graphix.fundamentals import (
