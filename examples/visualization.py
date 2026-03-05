@@ -33,13 +33,13 @@ circuit.cnot(2, 1)
 pattern = circuit.transpile().pattern
 # note that this visualization is not always consistent with the correction set of pattern,
 # since we find the correction sets with flow-finding algorithms.
-pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True)
+pattern.draw_graph(flow_from_pattern=False, show_measurements=True)
 
 # %%
 # next, show the gflow:
 pattern.remove_input_nodes()
 pattern.perform_pauli_measurements()
-pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True, node_distance=(1, 0.6))
+pattern.draw_graph(flow_from_pattern=False, show_measurements=True, node_distance=(1, 0.6))
 
 
 # %%
@@ -49,7 +49,7 @@ pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True, node_d
 #
 
 # node_distance argument specifies the scale of the node arrangement in x and y directions.
-pattern.draw_graph(flow_from_pattern=True, show_measurement_planes=True, node_distance=(0.7, 0.6))
+pattern.draw_graph(flow_from_pattern=True, show_measurements=True, node_distance=(0.7, 0.6))
 
 # %%
 # Instead of the measurement planes, we can show the local Clifford of the resource graph.
@@ -75,7 +75,7 @@ outputs = [4, 5, 6]
 measurements = {node: Measurement.XY(0) for node in graph.nodes() if node not in outputs}
 og = OpenGraph(graph, inputs, outputs, measurements)
 vis = GraphVisualizer(og)
-vis.visualize(show_measurement_planes=True)
+vis.visualize(show_measurements=True)
 
 # %%
 
@@ -91,6 +91,6 @@ measurements = {
 }
 og = OpenGraph(graph, inputs, outputs, measurements)
 vis = GraphVisualizer(og)
-vis.visualize(show_measurement_planes=True)
+vis.visualize(show_measurements=True)
 
 # %%
