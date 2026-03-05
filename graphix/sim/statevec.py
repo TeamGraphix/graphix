@@ -216,7 +216,7 @@ class Statevec(DenseState):
     @override
     def nqubit(self) -> int:
         """Return the number of qubits."""
-        return len(self.psi.shape)
+        return self.psi.ndim
 
     @override
     def remove_qubit(self, qarg: int) -> None:
