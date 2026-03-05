@@ -430,7 +430,7 @@ class Statevec(DenseState):
 
     def to_dict(
         self,
-        encoding: _ENCODING = "LSB",
+        encoding: _ENCODING = "MSB",
         *,
         rel_tol: float = 0.0,
         abs_tol: float = 1e-8,
@@ -442,7 +442,7 @@ class Statevec(DenseState):
 
         Parameters
         ----------
-        encoding : _ENCODING, default="LSB"
+        encoding : _ENCODING, default="MSB"
             Encoding for the basis kets. See `Notes` for additional information.
 
         rel_tol : float, default=0.0
@@ -469,8 +469,8 @@ class Statevec(DenseState):
 
         |\psi\rangle = q_0 \otimes q_1 \otimes q_2.
 
-        If ``encoding == "LSB"`` (least significant bit), the state is represented as `q0q1q2`. This is the default representation in Graphix.
-        If ``encoding == "MSB"`` (most significant bit), the state is represented as `q2q1q1`. This is the default representation in other software packages such as Qiskit.
+        If ``encoding == "MSB"``, the first qubit is represented in the Most Significant Bit -> `q0q1q2`. This is the default representation in Graphix.
+        If ``encoding == "LSB"``, the first qubit is represented in the Least Significant Bit -> `q2q1q1`. This is the default representation in other software packages such as Qiskit.
 
         Example
         -------
@@ -479,14 +479,14 @@ class Statevec(DenseState):
         >>> sv = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
         >>> sv.to_dict()
         {'01': 1}
-        >>> sv.to_dict(encoding="MSB")
+        >>> sv.to_dict(encoding="LSB")
         {'10': 1}
         """
 
         def format_encoding(i: int) -> str:
             display_width = self.nqubit
             output = f"{i:0{display_width}b}"
-            if encoding == "MSB":
+            if encoding == "LSB":
                 return output[::-1]
             return output
 
@@ -497,7 +497,7 @@ class Statevec(DenseState):
         }
 
     def to_prob_dict(
-        self, encoding: _ENCODING = "LSB", *, rel_tol: float = 0.0, abs_tol: float = 1e-8
+        self, encoding: _ENCODING = "MSB", *, rel_tol: float = 0.0, abs_tol: float = 1e-8
     ) -> dict[str, float]:
         r"""Convert the statevector to a probability distirbution in a dictionary form.
 
@@ -506,7 +506,7 @@ class Statevec(DenseState):
 
         Parameters
         ----------
-        encoding: _ENCODING, default="LSB"
+        encoding: _ENCODING, default="MSB"
             Encoding for the basis kets. See :meth:`to_dict` for additional information.
 
         rel_tol : float, default=0.0
