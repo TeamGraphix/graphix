@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 from warnings import warn
 
 import networkx as nx
@@ -11,8 +11,8 @@ import networkx as nx
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
-from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
-from graphix.measurements import BlochMeasurement, Measurement
+from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Angle
+from graphix.measurements import _M, BlochMeasurement, Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -24,10 +24,8 @@ if TYPE_CHECKING:
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
 _AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
 _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
-_M = TypeVar("_M", bound=Measurement)
 _A = TypeVar("_A", bound=AbstractMeasurement)
 _B = TypeVar("_B", bound=AbstractMeasurement)
-
 
 @dataclass(frozen=True)
 class OpenGraph(Generic[_AM_co]):
@@ -87,7 +85,7 @@ class OpenGraph(Generic[_AM_co]):
         if len(outputs) != len(self.output_nodes):
             raise OpenGraphError("Output nodes contain duplicates.")
 
-    def to_pattern(self: OpenGraph[Measurement], *, stacklevel: int = 1) -> Pattern:
+    def to_pattern(self: OpenGraph[_M], *, stacklevel: int = 1) -> Pattern[Any, _M]:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
 
         Parameters
@@ -98,7 +96,7 @@ class OpenGraph(Generic[_AM_co]):
 
         Returns
         -------
-        Pattern
+        Pattern[_M]
             A deterministic pattern on the open graph.
 
         Raises
@@ -120,7 +118,7 @@ class OpenGraph(Generic[_AM_co]):
         try:
             bloch_case = self.downcast_bloch()
         except TypeError:
-            flow: PauliFlow[Measurement] | None = None
+            flow = None
         else:
             flow = bloch_case.find_causal_flow()
         if flow is None:
@@ -160,7 +158,7 @@ class OpenGraph(Generic[_AM_co]):
         measurements = {node: f(meas) for node, meas in self.measurements.items()}
         return OpenGraph(self.graph, self.input_nodes, self.output_nodes, measurements)
 
-    def to_bloch(self: OpenGraph[Measurement]) -> OpenGraph[BlochMeasurement]:
+    def to_bloch(self: OpenGraph[_M]) -> OpenGraph[BlochMeasurement[Any]]:
         """Return the open graph where all measurements are converted to Bloch.
 
         Example
@@ -176,7 +174,7 @@ class OpenGraph(Generic[_AM_co]):
         """
         return self.map(lambda meas: meas.to_bloch())
 
-    def downcast_bloch(self: OpenGraph[Measurement]) -> OpenGraph[BlochMeasurement]:
+    def downcast_bloch(self: OpenGraph[_M]) -> OpenGraph[BlochMeasurement[Any]]:
         """Return the open graph if all measurements are described as Bloch measurements; raise `TypeError` otherwise.
 
         If this method succeeds, the returned graph is identical to
@@ -206,8 +204,8 @@ class OpenGraph(Generic[_AM_co]):
         return self.map(lambda meas: meas.downcast_bloch())
 
     def infer_pauli_measurements(
-        self: OpenGraph[Measurement], rel_tol: float = 1e-09, abs_tol: float = 0.0
-    ) -> OpenGraph[Measurement]:
+        self: OpenGraph[_M], rel_tol: float = 1e-09, abs_tol: float = 0.0
+    ) -> OpenGraph[_M]:
         r"""Return an equivalent open graph in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
 
         Pauli measurements are measurements with a Pauli angle,

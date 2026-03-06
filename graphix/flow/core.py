@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 import networkx as nx
 
@@ -40,7 +40,6 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderErrorReason,
 )
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
-from graphix.measurements import Measurement
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
 
 if TYPE_CHECKING:
@@ -48,14 +47,14 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Self
 
+    from graphix.measurements import _M, Measurement
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
 
 TotalOrder = Sequence[int]
 
-_T_PauliFlowMeasurement = TypeVar("_T_PauliFlowMeasurement", bound="PauliFlow[Measurement]")
-_M = TypeVar("_M", bound=Measurement)
+_T_PauliFlowMeasurement = TypeVar("_T_PauliFlowMeasurement", bound="PauliFlow[Measurement[Any]]")
 _AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
 _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
@@ -133,9 +132,9 @@ class XZCorrections(Generic[_AM_co]):
         return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
     def to_pattern(
-        self: XZCorrections[Measurement],
+        self: XZCorrections[_M],
         total_measurement_order: TotalOrder | None = None,
-    ) -> Pattern:
+    ) -> Pattern[_M]:
         """Generate a unique pattern from an instance of `XZCorrections[Measurement]`.
 
         Parameters
@@ -146,7 +145,7 @@ class XZCorrections(Generic[_AM_co]):
 
         Returns
         -------
-        Pattern
+        Pattern[_M]
 
         Raises
         ------
@@ -168,7 +167,7 @@ class XZCorrections(Generic[_AM_co]):
         elif not self.is_compatible(total_measurement_order):
             raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncompatibleOrder)
 
-        pattern = graphix.pattern.Pattern(input_nodes=self.og.input_nodes)
+        pattern: Pattern[_M] = graphix.pattern.Pattern(input_nodes=self.og.input_nodes)
         non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
 
         for i in non_input_nodes:

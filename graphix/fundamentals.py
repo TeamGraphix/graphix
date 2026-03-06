@@ -7,7 +7,7 @@ import enum
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
 from math import pi
-from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, SupportsIndex, overload
+from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, SupportsIndex, TypeVar, overload
 
 import typing_extensions
 
@@ -26,6 +26,10 @@ Angle: TypeAlias = float
 """In Graphix, angles are represented as floats and expressed in units of π."""
 
 ParameterizedAngle: TypeAlias = Expression | Angle
+
+AngleT = TypeVar("AngleT", ParameterizedAngle, Angle)
+AngleT_co = TypeVar("AngleT_co", ParameterizedAngle, Angle, covariant=True)
+AngleT_bound = TypeVar("AngleT_bound", bound=ParameterizedAngle | Angle)
 
 ANGLE_PI: Angle = 1
 """The constant ``ANGLE_PI = 1`` is defined for convenience to make expressions involving angles more readable."""

@@ -7,6 +7,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
+    Any,
     ClassVar,
     Generic,
     Literal,
@@ -39,7 +40,6 @@ if TYPE_CHECKING:
 Outcome: TypeAlias = Literal[0, 1]
 
 AngleT = TypeVar("AngleT", ParameterizedAngle, Angle)
-
 AngleT_co = TypeVar("AngleT_co", ParameterizedAngle, Angle, covariant=True)
 
 
@@ -190,6 +190,11 @@ class Measurement(AbstractMeasurement, Generic[AngleT_co]):
             Absolute tolerance for comparing angles, passed to :func:`math.isclose`.
             Default is ``0.0``.
 
+        Notes
+        -----
+            A measurement with a parameterized angle is not considered as Pauli, but can become a Pauli
+            measurement after substitution.
+
         Returns
         -------
         PauliMeasurement | None
@@ -198,11 +203,6 @@ class Measurement(AbstractMeasurement, Generic[AngleT_co]):
             either the measurement is close to a Pauli measurement (i.e., the angle is close to an
             integer multiple of π/2) and the corresponding Pauli measurement is returned,
             or it is not and ``None`` is returned.
-
-        Notes
-        -----
-            A measurement with a parameterized angle is not considered as Pauli, but can become a Pauli
-            measurement after substitution.
 
         Examples
         --------
@@ -312,7 +312,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement[AngleT_co], Generi
         return PauliMeasurement(axis, sign)
 
     @override
-    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | BlochMeasurement[AngleT_co]:
+    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> Measurement[AngleT_co]:
         pm = self.try_to_pauli(rel_tol=rel_tol, abs_tol=abs_tol)
         return self if pm is None else pm
 
@@ -544,3 +544,6 @@ class PauliMeasurement(Measurement[Angle], metaclass=PauliMeasurementMeta):
 Measurement.X = PauliMeasurement(Axis.X)
 Measurement.Y = PauliMeasurement(Axis.Y)
 Measurement.Z = PauliMeasurement(Axis.Z)
+
+_M = TypeVar("_M", bound=Measurement[Any])
+_M_co = TypeVar("_M_co", bound=Measurement[Any], covariant=True)

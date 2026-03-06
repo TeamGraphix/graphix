@@ -8,14 +8,14 @@ import string
 from enum import Enum
 from fractions import Fraction
 from math import pi
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 
 # `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never
 
 from graphix import command
-from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad, rad_to_angle
-from graphix.measurements import AngleT, BlochMeasurement, PauliMeasurement
+from graphix.fundamentals import AbstractMeasurement, Axis, ParameterizedAngle, Plane, Sign, angle_to_rad, rad_to_angle
+from graphix.measurements import AngleT, BlochMeasurement, Measurement, PauliMeasurement
 from graphix.parameter import AffineExpression
 
 if TYPE_CHECKING:
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
 
+_M = TypeVar("_M", bound=Measurement[ParameterizedAngle | Angle])
 
 class OutputFormat(Enum):
     """Enumeration of the output format for pretty-printing."""
@@ -137,7 +138,7 @@ def affine_expression_to_str(expr: AffineExpression, output: OutputFormat) -> st
     return result
 
 
-def command_to_str(cmd: command.Command[AngleT], output: OutputFormat) -> str:
+def command_to_str(cmd: command.Command[_M], output: OutputFormat) -> str:
     """Return the string representation of a command according to the given format.
 
     Parameters
@@ -147,7 +148,7 @@ def command_to_str(cmd: command.Command[AngleT], output: OutputFormat) -> str:
     output: OutputFormat
         The expected format.
     """
-    out = [cmd.kind.name]
+    out: list[str] = [cmd.kind.name]
 
     match cmd.kind:
         case command.CommandKind.E:
@@ -166,7 +167,7 @@ def command_to_str(cmd: command.Command[AngleT], output: OutputFormat) -> str:
         case _:
             # All other commands have a field `node` to print, together
             # with some other arguments and/or domains.
-            arguments = []
+            arguments: list[str] = []
             match cmd.kind:
                 case command.CommandKind.M:
                     match cmd.measurement:
@@ -239,7 +240,7 @@ def command_to_str(cmd: command.Command[AngleT], output: OutputFormat) -> str:
 
 
 def pattern_to_str(
-    pattern: Pattern[AngleT],
+    pattern: Pattern[_M],
     output: OutputFormat,
     left_to_right: bool = False,
     limit: int = 40,

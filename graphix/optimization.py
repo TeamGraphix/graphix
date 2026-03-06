@@ -7,7 +7,7 @@ from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeVar, Generic
 from warnings import warn
 
 import networkx as nx
@@ -25,8 +25,8 @@ from graphix.flow.exceptions import (
     FlowGenericError,
     FlowGenericErrorReason,
 )
-from graphix.fundamentals import Axis, Plane, Sign
-from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
+from graphix.fundamentals import Angle, Axis, ParameterizedAngle, Plane, Sign, AngleT_co, AngleT
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, _M, _M_co
 from graphix.opengraph import OpenGraph
 from graphix.states import BasicStates
 
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from graphix import Pattern
 
 
-def standardize(pattern: Pattern) -> Pattern:
+def standardize(pattern: Pattern[AngleT, _M]) -> Pattern[AngleT, _M]:
     """Return a standardized form to the given pattern.
 
     A standardized form is an equivalent pattern where the commands
@@ -84,13 +84,13 @@ class _StandardizedPattern:
     results: Mapping[Node, Outcome]
     n_list: tuple[command.N, ...]
     e_set: frozenset[frozenset[Node]]
-    m_list: tuple[command.M, ...]
+    m_list: tuple[command.M[Any], ...]
     c_dict: Mapping[Node, Clifford]
     z_dict: Mapping[Node, frozenset[Node]]
     x_dict: Mapping[Node, frozenset[Node]]
 
 
-class StandardizedPattern(_StandardizedPattern):
+class StandardizedPattern(_StandardizedPattern, Generic[AngleT_co, _M_co]):
     """Pattern in standardized form.
 
     Use the method :meth:`to_pattern()` to get the standardized pattern.
@@ -138,7 +138,7 @@ class StandardizedPattern(_StandardizedPattern):
         results: Mapping[Node, Outcome],
         n_list: Iterable[command.N],
         e_set: Iterable[Iterable[Node]],
-        m_list: Iterable[command.M],
+        m_list: Iterable[command.M[_M_co]],
         c_dict: Mapping[Node, Clifford],
         z_dict: Mapping[Node, Iterable[Node]],
         x_dict: Mapping[Node, Iterable[Node]],
@@ -157,7 +157,7 @@ class StandardizedPattern(_StandardizedPattern):
         )
 
     @classmethod
-    def from_pattern(cls, pattern: Pattern) -> Self:
+    def from_pattern(cls, pattern: Pattern[AngleT_co, _M_co]) -> Self:
         """Compute the standardized form of the given pattern."""
         s_domain: set[Node]
         t_domain: set[Node]
@@ -166,7 +166,7 @@ class StandardizedPattern(_StandardizedPattern):
 
         n_list: list[command.N] = []
         e_set: set[frozenset[Node]] = set()
-        m_list: list[command.M] = []
+        m_list: list[command.M[_M_co]] = []
         c_dict: dict[Node, Clifford] = {}
         z_dict: dict[Node, set[Node]] = {}
         x_dict: dict[Node, set[Node]] = {}
@@ -347,9 +347,9 @@ class StandardizedPattern(_StandardizedPattern):
             {node: expand_domain(domain) for node, domain in self.x_dict.items()},
         )
 
-    def to_pattern(self) -> Pattern:
+    def to_pattern(self) -> Pattern[AngleT_co, _M_co]:
         """Return the standardized pattern."""
-        pattern = graphix.pattern.Pattern(input_nodes=self.input_nodes)
+        pattern: Pattern[AngleT_co, _M_co] = graphix.pattern.Pattern(input_nodes=self.input_nodes)
         pattern.results = dict(self.results)
         pattern.extend(
             self.n_list,
@@ -362,9 +362,9 @@ class StandardizedPattern(_StandardizedPattern):
         pattern.reorder_output_nodes(self.output_nodes)
         return pattern
 
-    def to_space_optimal_pattern(self) -> Pattern:
+    def to_space_optimal_pattern(self) -> Pattern[AngleT_co, _M_co]:
         """Return a pattern that is space-optimal for the given measurement order."""
-        pattern = graphix.pattern.Pattern(input_nodes=self.input_nodes)
+        pattern: Pattern[AngleT_co, _M_co] = graphix.pattern.Pattern(input_nodes=self.input_nodes)
         pattern.results = dict(self.results)
         active = set(self.input_nodes)
         done: set[Node] = set()
@@ -400,12 +400,12 @@ class StandardizedPattern(_StandardizedPattern):
             done.add(node)
         return pattern
 
-    def extract_opengraph(self) -> OpenGraph[Measurement]:
+    def extract_opengraph(self) -> OpenGraph[_M_co]:
         """Extract the underlying resource-state open graph from the pattern.
 
         Returns
         -------
-        OpenGraph[Measurement]
+        OpenGraph[_M_co]
 
         Raises
         ------
@@ -485,7 +485,7 @@ class StandardizedPattern(_StandardizedPattern):
             return oset, *generations[::-1]
         return generations[::-1]
 
-    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
+    def extract_causal_flow(self: StandardizedPattern[AngleT, Measurement[AngleT]]) -> CausalFlow[BlochMeasurement[AngleT]]:
         """Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
@@ -537,7 +537,7 @@ class StandardizedPattern(_StandardizedPattern):
         cf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible, or if a measured node is corrected by more than one node.
         return cf
 
-    def extract_gflow(self) -> GFlow[BlochMeasurement]:
+    def extract_gflow(self: StandardizedPattern[AngleT, Measurement[AngleT]]) -> GFlow[BlochMeasurement[AngleT]]:
         """Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
@@ -583,12 +583,12 @@ class StandardizedPattern(_StandardizedPattern):
         gf.check_well_formed()
         return gf
 
-    def extract_xzcorrections(self) -> XZCorrections[Measurement]:
+    def extract_xzcorrections(self: StandardizedPattern[AngleT, Measurement[AngleT]]) -> XZCorrections[Measurement[AngleT]]:
         """Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
-        XZCorrections[Measurement]
+        XZCorrections[Measurement[AngleT]]
             The XZ-corrections associated with the current pattern.
 
         Raises
@@ -704,9 +704,9 @@ def _update_corrections(node: Node, domain: AbstractSet[Node], correction: dict[
         correction.setdefault(measured_node, set()).add(node)
 
 
-def incorporate_pauli_results(pattern: Pattern) -> Pattern:
+def incorporate_pauli_results(pattern: Pattern[AngleT, _M]) -> Pattern[AngleT, _M]:
     """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
-    result = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
+    result: Pattern[AngleT, _M] = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     for cmd in pattern:
         match cmd.kind:
             case CommandKind.M:
@@ -723,7 +723,7 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
                     else:
                         apply_z = False
                         new_t_domain = cmd.t_domain
-                    new_cmd = command.M(cmd.node, cmd.measurement, new_s_domain, new_t_domain)
+                    new_cmd: command.M[_M] = command.M(cmd.node, cmd.measurement, new_s_domain, new_t_domain)
                     if apply_x:
                         new_cmd = new_cmd.clifford(Clifford.X)
                     if apply_z:
@@ -749,9 +749,9 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
     return result
 
 
-def remove_useless_domains(pattern: Pattern) -> Pattern:
+def remove_useless_domains(pattern: Pattern[AngleT, _M]) -> Pattern[AngleT, _M]:
     """Return an equivalent pattern where measurement domains that are not used given the specific measurement angles and planes are removed."""
-    new_pattern = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
+    new_pattern: Pattern[AngleT, _M] = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     new_pattern.results = pattern.results
     for cmd in pattern:
         if cmd.kind == CommandKind.M:
@@ -769,12 +769,12 @@ def remove_useless_domains(pattern: Pattern) -> Pattern:
     return new_pattern
 
 
-def single_qubit_domains(pattern: Pattern) -> Pattern:
+def single_qubit_domains(pattern: Pattern[AngleT, _M]) -> Pattern[AngleT, _M]:
     """Return an equivalent pattern where domains contains at most one qubit."""
-    new_pattern = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
+    new_pattern: Pattern[AngleT, _M] = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     new_pattern.results = pattern.results
 
-    def decompose_domain(cmd: Callable[[int, set[int]], command.Command], node: int, domain: AbstractSet[int]) -> bool:
+    def decompose_domain(cmd: Callable[[int, set[int]], command.Command[_M]], node: int, domain: AbstractSet[int]) -> bool:
         if len(domain) <= 1:
             return False
         for src in domain:
@@ -787,8 +787,8 @@ def single_qubit_domains(pattern: Pattern) -> Pattern:
                 replaced_s_domain = decompose_domain(command.X, cmd.node, cmd.s_domain)
                 replaced_t_domain = decompose_domain(command.Z, cmd.node, cmd.t_domain)
                 if replaced_s_domain or replaced_t_domain:
-                    new_s_domain = set() if replaced_s_domain else cmd.s_domain
-                    new_t_domain = set() if replaced_t_domain else cmd.t_domain
+                    new_s_domain: set[int] = set() if replaced_s_domain else cmd.s_domain
+                    new_t_domain: set[int] = set() if replaced_t_domain else cmd.t_domain
                     new_cmd = dataclasses.replace(cmd, s_domain=new_s_domain, t_domain=new_t_domain)
                     new_pattern.add(new_cmd)
                     continue

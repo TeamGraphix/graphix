@@ -6,7 +6,7 @@ import dataclasses
 import enum
 import logging
 from enum import Enum
-from typing import ClassVar, Generic, Literal, TypeVar, cast
+from typing import Any, ClassVar, Generic, Literal, TypeVar, cast
 
 from graphix import utils
 from graphix.clifford import Clifford, Domains
@@ -20,8 +20,9 @@ Node = int
 logger = logging.getLogger(__name__)
 
 AngleT = TypeVar("AngleT", ParameterizedAngle, Angle)
-
 AngleT_co = TypeVar("AngleT_co", ParameterizedAngle, Angle, covariant=True)
+
+_M = TypeVar("_M", bound=Measurement[ParameterizedAngle | Angle])
 
 
 class CommandKind(Enum):
@@ -105,7 +106,7 @@ class BaseM(BaseCommand):
 
 
 @dataclasses.dataclass(repr=False)
-class M(BaseM, _KindChecker, Generic[AngleT_co]):
+class M(BaseM, _KindChecker, Generic[_M]):
     r"""Measurement command.
 
     Parameters
@@ -120,12 +121,12 @@ class M(BaseM, _KindChecker, Generic[AngleT_co]):
         Domain for the Z byproduct operator.
     """
 
-    measurement: Measurement[AngleT_co] = cast("Measurement[AngleT_co]", Measurement.X)  # noqa: RUF009
+    measurement: _M = cast("_M", Measurement.X)  # noqa: RUF009
     s_domain: set[Node] = dataclasses.field(default_factory=set)
     t_domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
 
-    def clifford(self, clifford_gate: Clifford) -> M[AngleT_co]:
+    def clifford(self, clifford_gate: Clifford) -> M[_M]:
         r"""Return a new measurement command with a Clifford applied.
 
         Parameters
@@ -242,5 +243,5 @@ class T(_KindChecker, BaseCommand):
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
 
-Command = N | M[AngleT_co] | E | C | X | Z | S | T
+Command = N | M[_M] | E | C | X | Z | S | T
 Correction = X | Z

@@ -9,7 +9,7 @@ from __future__ import annotations
 import abc
 import logging
 import warnings
-from typing import TYPE_CHECKING, Generic, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
     from graphix.command import BaseN
     from graphix.fundamentals import Angle
-    from graphix.measurements import AngleT, Measurement, Outcome
+    from graphix.measurements import _M, AngleT, Measurement, Outcome, _M_co
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
     from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevec
@@ -105,7 +105,7 @@ class MeasureMethod(abc.ABC):
         self.store_measurement_outcome(cmd.node, result)
 
     @abc.abstractmethod
-    def describe_measurement(self, cmd: BaseM) -> Measurement[AngleT_co]:
+    def describe_measurement(self, cmd: BaseM) -> Measurement[Any]:
         """Return the description of the measurement performed by a command.
 
         Parameters
@@ -184,7 +184,7 @@ class DefaultMeasureMethod(MeasureMethod):
         self.results = {} if results is None else dict(results)
 
     @override
-    def describe_measurement(self, cmd: BaseM) -> Measurement[AngleT_co]:
+    def describe_measurement(self, cmd: BaseM) -> Measurement[Any]:
         """Return the description of the measurement performed by ``cmd``.
 
         Parameters
@@ -201,7 +201,7 @@ class DefaultMeasureMethod(MeasureMethod):
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain) % 2
         t_signal = sum(self.results[j] for j in cmd.t_domain) % 2
-        measurement = cmd.measurement
+        measurement: Measurement[Any] = cmd.measurement
         if s_signal:
             measurement = measurement.clifford(Clifford.X)
         if t_signal:
@@ -250,7 +250,7 @@ class PatternSimulator(Generic[_StateT_co]):
     @overload
     def __init__(
         self: PatternSimulator[Statevec],
-        pattern: Pattern[AngleT],
+        pattern: Pattern[AngleT, Measurement[AngleT]],
         backend: Literal["statevector"] = ...,
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
@@ -263,7 +263,7 @@ class PatternSimulator(Generic[_StateT_co]):
     @overload
     def __init__(
         self: PatternSimulator[DensityMatrix],
-        pattern: Pattern[AngleT],
+        pattern: Pattern[AngleT, Measurement[AngleT]],
         backend: Literal["densitymatrix"] = ...,
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
@@ -276,7 +276,7 @@ class PatternSimulator(Generic[_StateT_co]):
     @overload
     def __init__(
         self: PatternSimulator[MBQCTensorNet],
-        pattern: Pattern[Angle],
+        pattern: Pattern[Angle, Measurement[Angle]],
         backend: Literal["tensornetwork", "mps"] = ...,
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
@@ -289,7 +289,7 @@ class PatternSimulator(Generic[_StateT_co]):
     @overload
     def __init__(
         self: PatternSimulator[_StateT],
-        pattern: Pattern[AngleT],
+        pattern: Pattern[AngleT, Measurement[AngleT]],
         backend: Backend[_StateT] = ...,
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
@@ -301,7 +301,7 @@ class PatternSimulator(Generic[_StateT_co]):
 
     def __init__(
         self: PatternSimulator[_StateT | _BuiltinBackendState],
-        pattern: Pattern[AngleT],
+        pattern: Pattern[AngleT, Measurement[AngleT]],
         backend: Backend[_StateT] | _BackendLiteral = "statevector",
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
@@ -339,7 +339,7 @@ class PatternSimulator(Generic[_StateT_co]):
         """
         self.backend = _initialize_backend(pattern, backend, noise_model, branch_selector, graph_prep, symbolic)
         self.noise_model = noise_model
-        self.__pattern: Pattern[AngleT] = pattern
+        self.__pattern: Pattern[Any, Any] = pattern
         if prepare_method is None:
             prepare_method = DefaultPrepareMethod()
         self.__prepare_method = prepare_method
@@ -348,7 +348,7 @@ class PatternSimulator(Generic[_StateT_co]):
         self.__measure_method = measure_method
 
     @property
-    def pattern(self) -> Pattern[AngleT]:
+    def pattern(self) -> Pattern[AngleT, Measurement[AngleT]]:
         """Return the pattern."""
         return self.__pattern
 
@@ -418,7 +418,7 @@ class PatternSimulator(Generic[_StateT_co]):
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[ParameterizedAngle] | Pattern[Angle],
+    pattern: Pattern[AngleT, _M],
     backend: StatevectorBackend | Literal["statevector"],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -429,7 +429,7 @@ def _initialize_backend(
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[ParameterizedAngle] | Pattern[Angle],
+    pattern: Pattern[AngleT, _M],
     backend: DensityMatrixBackend | Literal["densitymatrix"],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -440,7 +440,7 @@ def _initialize_backend(
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[Angle],
+    pattern: Pattern[Angle, Measurement[Angle]],
     backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -451,23 +451,34 @@ def _initialize_backend(
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[AngleT],
-    backend: Backend[_StateT_co],
+    pattern: Pattern[AngleT, _M],
+    backend: Backend[_StateT],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
-) -> Backend[_StateT_co]: ...
+) -> Backend[_StateT]: ...
+
+
+@overload
+def _initialize_backend(
+    pattern: Pattern[AngleT, _M],
+    backend: _BackendLiteral,
+    noise_model: NoiseModel | None,
+    branch_selector: BranchSelector | None,
+    graph_prep: str | None,
+    symbolic: bool,
+) -> _BuiltinBackend: ...
 
 
 def _initialize_backend(
-    pattern: Pattern[AngleT],
-    backend: Backend[_StateT_co] | _BackendLiteral,
+    pattern: Pattern[AngleT, _M],
+    backend: Backend[_StateT] | _BackendLiteral,
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
-) -> _BuiltinBackend | Backend[_StateT_co]:
+) -> _BuiltinBackend | Backend[_StateT]:
     """
     Initialize the backend.
 

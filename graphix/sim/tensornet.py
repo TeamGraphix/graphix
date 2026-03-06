@@ -574,7 +574,7 @@ def _decompose_cz() -> list[npt.NDArray[np.complex128]]:
 @dataclass(frozen=True)
 class _AbstractTensorNetworkBackend(Backend[MBQCTensorNet], ABC):
     state: MBQCTensorNet
-    pattern: Pattern[Angle]
+    pattern: Pattern[Measurement[Angle]]
     graph_prep: str
     input_state: Data
     branch_selector: BranchSelector
@@ -611,7 +611,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
 
     def __init__(
         self,
-        pattern: Pattern[Angle],
+        pattern: Pattern[Measurement[Angle]],
         graph_prep: str = "auto",
         input_state: Data | None = None,
         branch_selector: BranchSelector | None = None,

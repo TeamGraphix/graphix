@@ -11,7 +11,7 @@ from graphix._version import version
 from graphix.command import CommandKind
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane
 from graphix.instruction import Instruction, InstructionKind
-from graphix.measurements import AngleT
+from graphix.measurements import _M, AngleT
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.states import BasicStates, State
 
@@ -113,7 +113,7 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
             assert_never(instruction.kind)
 
 
-def pattern_to_qasm3(pattern: Pattern[AngleT], input_state: dict[int, State] | State = BasicStates.PLUS) -> str:
+def pattern_to_qasm3(pattern: Pattern[_M], input_state: dict[int, State] | State = BasicStates.PLUS) -> str:
     """Export a pattern to OpenQASM 3.0 representation.
 
     The generated OpenQASM may include initializations of classical
@@ -137,7 +137,7 @@ def pattern_to_qasm3(pattern: Pattern[AngleT], input_state: dict[int, State] | S
     return "".join(pattern_to_qasm3_lines(pattern, input_state=input_state))
 
 
-def pattern_to_qasm3_lines(pattern: Pattern[AngleT], input_state: dict[int, State] | State = BasicStates.PLUS) -> Iterator[str]:
+def pattern_to_qasm3_lines(pattern: Pattern[_M], input_state: dict[int, State] | State = BasicStates.PLUS) -> Iterator[str]:
     """Export pattern to line-by-line OpenQASM 3.0 representation.
 
     See :func:`pattern_to_qasm3`.
@@ -161,7 +161,7 @@ def pattern_to_qasm3_lines(pattern: Pattern[AngleT], input_state: dict[int, Stat
         yield from command_to_qasm3_lines(cmd)
 
 
-def command_to_qasm3_lines(cmd: Command[AngleT]) -> Iterator[str]:
+def command_to_qasm3_lines(cmd: Command[_M]) -> Iterator[str]:
     """Convert a command in the pattern into OpenQASM 3.0 statement.
 
     Parameter
