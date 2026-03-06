@@ -193,17 +193,15 @@ class TestFidelityIsclose:
 
     def test_isclose_orthogonal(self) -> None:
         zero = Statevec(data=BasicStates.ZERO)
-        one = Statevec(data=BasicStates.ONE)
-        assert not zero.isclose(one)
+        assert not zero.isclose(BasicStates.ONE.to_statevector())
 
     def test_isclose_global_phase(self) -> None:
         plus = Statevec(data=BasicStates.PLUS)
-        rotated = Statevec(data=np.array([1, 1]) / np.sqrt(2) * np.exp(1j * 0.7))
-        assert plus.isclose(rotated)
+        assert plus.isclose(np.array([1, 1]) / np.sqrt(2) * np.exp(1j * 0.7))
 
     def test_isclose_tolerance(self) -> None:
         zero = Statevec(data=BasicStates.ZERO)
-        almost = Statevec(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)]))
+        almost = np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)])
         assert not zero.isclose(almost)
         assert zero.isclose(almost, atol=1e-6)
 

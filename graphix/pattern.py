@@ -1332,7 +1332,8 @@ class Pattern:
         | Statevec
         | Iterable[State]
         | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]] = ...,
+        | Iterable[Iterable[ExpressionOrSupportsComplex]]
+        | None = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> Statevec: ...
@@ -1345,7 +1346,8 @@ class Pattern:
         | DensityMatrix
         | Iterable[State]
         | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]] = ...,
+        | Iterable[Iterable[ExpressionOrSupportsComplex]]
+        | None = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> DensityMatrix: ...
@@ -1357,7 +1359,8 @@ class Pattern:
         input_state: State
         | Iterable[State]
         | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]] = ...,
+        | Iterable[Iterable[ExpressionOrSupportsComplex]]
+        | None = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> MBQCTensorNet: ...
@@ -1366,7 +1369,7 @@ class Pattern:
     def simulate_pattern(
         self,
         backend: Backend[_StateT_co],
-        input_state: Data = ...,
+        input_state: Data | None = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> _StateT_co: ...
@@ -1374,7 +1377,7 @@ class Pattern:
     def simulate_pattern(
         self,
         backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
-        input_state: Data = BasicStates.PLUS,
+        input_state: Data | None = BasicStates.PLUS,
         rng: Generator | None = None,
         **kwargs: Any,
     ) -> _StateT_co | _BuiltinBackendState:
