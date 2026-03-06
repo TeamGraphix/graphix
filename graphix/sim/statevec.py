@@ -469,8 +469,8 @@ class Statevec(DenseState):
 
         |\psi\rangle = q_0 \otimes q_1 \otimes q_2.
 
-        If ``encoding == "MSB"``, the first qubit is represented in the Most Significant Bit -> ``q0q1q2``. This is the default representation in Graphix.
-        If ``encoding == "LSB"``, the first qubit is represented in the Least Significant Bit -> ``q2q1q1``. This is the default representation in other software packages such as Qiskit.
+        If ``encoding == "MSB"`` the first qubit is represented in the Most Significant Bit -> ``q0q1q2``\. This is the default representation in Graphix.
+        If ``encoding == "LSB"`` the first qubit is represented in the Least Significant Bit -> ``q2q1q1``\. This is the default representation in other software packages such as Qiskit.
 
         Example
         -------
