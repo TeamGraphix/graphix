@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #430: The whole code base is now type-checked with `mypy` and `pyright`, including examples.
 
+- #460: Updated `Pattern` methods (`to_ascii`, `to_unicode`, `to_latex`) and `pattern_to_str` to allow `limit` to be `None`. Removed the deprecated `print_pattern` function.
+
 ## [0.3.4] - 2026-02-05
 
 ### Added

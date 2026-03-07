@@ -374,42 +374,64 @@ class Pattern:
         )
 
     def to_ascii(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+        self, left_to_right: bool = False, limit: int | None = 40, target: Container[command.CommandKind] | None = None
     ) -> str:
-        """Return the ASCII string representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
-
-    def to_latex(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
-    ) -> str:
-        """Return a string containing the LaTeX representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
-
-    def to_unicode(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
-    ) -> str:
-        """Return the Unicode string representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
-
-    def print_pattern(self, lim: int = 40, target: Container[CommandKind] | None = None) -> None:
-        """Print the pattern sequence (Pattern.seq).
-
-        This method is deprecated.
-        See :meth:`to_ascii`, :meth:`to_latex`, :meth:`to_unicode` and :func:`graphix.pretty_print.pattern_to_str`.
+        """Return the ASCII string representation of the pattern.
 
         Parameters
         ----------
-        lim: int, optional
-            maximum number of commands to show
-        target : list of CommandKind, optional
-            show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
+        left_to_right: bool, optional
+            If ``True``, the first command will appear at the beginning of
+            the resulting string. If ``False`` (the default), the first command will
+            appear at the end of the string.
+        limit: int | None, optional
+            If set to an int (default: 40), only first ``limit`` commands are printed,
+            and an ellipsis is added at the end to indicate that some commands have been elided.
+            If ``limit=None``, there is no limit on the number of printed commands.
+        target: Container[command.CommandKind], optional
+            If set, only commands of kinds specified in ``target`` are printed.
         """
-        warnings.warn(
-            "Method `print_pattern` is deprecated. Use one of the methods `to_ascii`, `to_latex`, `to_unicode`, or the function `graphix.pretty_print.pattern_to_str`.",
-            DeprecationWarning,
-            stacklevel=1,
-        )
-        print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
+        return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
+
+    def to_latex(
+        self, left_to_right: bool = False, limit: int | None = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return a string containing the LaTeX representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool, optional
+            If ``True``, the first command will appear at the beginning of
+            the resulting string. If ``False`` (the default), the first command will
+            appear at the end of the string.
+        limit: int | None, optional
+            If set to an int (default: 40), only first ``limit`` commands are printed,
+            and an ellipsis is added at the end to indicate that some commands have been elided.
+            If ``limit=None``, there is no limit on the number of printed commands.
+        target: Container[command.CommandKind], optional
+            If set, only commands of kinds specified in ``target`` are printed.
+        """
+        return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
+
+    def to_unicode(
+        self, left_to_right: bool = False, limit: int | None = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return the Unicode string representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool, optional
+            If ``True``, the first command will appear at the beginning of
+            the resulting string. If ``False`` (the default), the first command will
+            appear at the end of the string.
+        limit: int | None, optional
+            If set to an int (default: 40), only first ``limit`` commands are printed,
+            and an ellipsis is added at the end to indicate that some commands have been elided.
+            If ``limit=None``, there is no limit on the number of printed commands.
+        target: Container[command.CommandKind], optional
+            If set, only commands of kinds specified in ``target`` are printed.
+        """
+        return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
 
     def standardize(self) -> None:
         """Execute standardization of the pattern.
