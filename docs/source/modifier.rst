@@ -40,8 +40,6 @@ Pattern Manipulation
 
     .. automethod:: to_latex
 
-    .. automethod:: print_pattern
-
     .. automethod:: standardize
 
     .. automethod:: shift_signals
