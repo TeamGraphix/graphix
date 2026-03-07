@@ -270,16 +270,12 @@ def pattern_to_str(
         command_list = [command for command in command_list if command.kind in target]
     if not left_to_right:
         command_list.reverse()
-    if limit is not None and len(command_list) > limit:
-        truncated = True
-        short_command_list = command_list[: limit - 1]
-    else:
-        truncated = False
-        short_command_list = command_list
+    truncated = limit is not None and len(command_list) > limit
+    short_command_list = command_list[: limit - 1] if limit is not None and truncated else command_list
     result = separator.join(command_to_str(command, output) for command in short_command_list)
     if output == OutputFormat.LaTeX:
         result = f"\\({result}\\)"
-    if truncated:
+    if limit is not None and truncated:
         return f"{result}...({len(command_list) - limit + 1} more commands)"
     return result
 
