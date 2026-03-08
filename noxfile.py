@@ -112,7 +112,7 @@ class ReverseDependency:
         ReverseDependency(
             # "https://github.com/TeamGraphix/graphix-symbolic",
             "https://github.com/thierry-martinez/graphix-symbolic",
-            branch="fix/graphix_220",
+            branch="python_314",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
