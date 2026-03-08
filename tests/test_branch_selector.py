@@ -35,11 +35,13 @@ class CheckedBranchSelector(RandomBranchSelector):
     abs_tol: float = 0.0
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Return the measurement outcome of ``qubit``."""
         expectation0 = f_expectation0()
         assert math.isclose(expectation0, self.expected[qubit], rel_tol=self.rel_tol, abs_tol=self.abs_tol)
-        return super().measure(qubit, lambda: expectation0)
+        return super().measure(qubit, lambda: expectation0, rng=rng, stacklevel=stacklevel + 1)
 
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
@@ -95,14 +97,14 @@ def test_random_branch_selector(fx_rng: Generator, backend: _BackendLiteral) -> 
         "tensornetwork",
     ],
 )
-def test_random_branch_selector_without_pr_calc(backend: _BackendLiteral) -> None:
+def test_random_branch_selector_without_pr_calc(fx_rng: Generator, backend: _BackendLiteral) -> None:
     branch_selector = RandomBranchSelector(pr_calc=False)
     # Pattern that measures 0 on qubit 0 with probability > 0.999999999, to avoid numerical errors when exploring impossible branches.
     pattern = Pattern(cmds=[N(0), M(0, Measurement.XY(1e-5))])
     nb_outcome_1 = 0
     for _ in range(NB_ROUNDS):
         measure_method = DefaultMeasureMethod()
-        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
+        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method, rng=fx_rng)
         if measure_method.results[0]:
             nb_outcome_1 += 1
     assert abs(nb_outcome_1 - NB_ROUNDS / 2) < NB_ROUNDS / 5

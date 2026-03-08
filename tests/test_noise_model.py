@@ -54,7 +54,7 @@ def test_compose_noise_model_transpile(fx_rng: Generator) -> None:
     noise_model = ComposeNoiseModel(
         [DepolarisingNoiseModel(x_error_prob=0.5), DepolarisingNoiseModel(z_error_prob=0.5)]
     )
-    noisy_pattern = noise_model.transpile(pattern)
+    noisy_pattern = noise_model.transpile(pattern, rng=fx_rng)
     iterator = iter(noisy_pattern)
 
     def check_noise_command(cmd: CommandOrNoise, prob: float, two_qubits: bool) -> None:

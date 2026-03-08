@@ -162,13 +162,13 @@ class TestPattern:
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
-    def test_empty_output_nodes(self, backend_type: _BackendLiteral) -> None:
+    def test_empty_output_nodes(self, fx_rng: Generator, backend_type: _BackendLiteral) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.add(M(0, Measurement.Y))
 
         def simulate_and_measure() -> int:
             sim = PatternSimulator(pattern, backend_type)
-            sim.run()
+            sim.run(rng=fx_rng)
             state = sim.backend.state
             if isinstance(state, Statevec):
                 assert state.dims() == ()
@@ -450,7 +450,7 @@ class TestPattern:
         pattern.standardize()
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern()
+        state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
         assert state_p.isclose(state_ref)
 
@@ -464,7 +464,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="direct")
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern()
+        state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
         assert state_p.isclose(state_ref)
 
@@ -480,7 +480,7 @@ class TestPattern:
         pattern.standardize()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=rng)
         assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -728,8 +728,8 @@ class TestPattern:
         )
         p.minimize_space()
         p_compose.minimize_space()
-        s = p.simulate_pattern()
-        s_compose = p_compose.simulate_pattern()
+        s = p.simulate_pattern(rng=rng)
+        s_compose = p_compose.simulate_pattern(rng=rng)
         assert s.isclose(s_compose)
 
     # Test warning composition after standardization
@@ -1025,7 +1025,7 @@ class TestPattern:
     def test_extract_causal_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         if test_case.has_cflow:
             alpha = 2 * np.pi * fx_rng.random()
-            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             p_test = test_case.pattern.to_bloch().extract_causal_flow().to_corrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
@@ -1039,7 +1039,7 @@ class TestPattern:
     def test_extract_gflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         if test_case.has_gflow:
             alpha = 2 * np.pi * fx_rng.random()
-            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             p_test = test_case.pattern.to_bloch().extract_gflow().to_corrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
@@ -1065,10 +1065,10 @@ class TestPattern:
             },
         )
         p_ref = og.extract_causal_flow().to_corrections().to_pattern()
-        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
-        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
@@ -1089,10 +1089,10 @@ class TestPattern:
         )
 
         p_ref = og.extract_gflow().to_corrections().to_pattern()
-        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         p_test = p_ref.extract_gflow().to_corrections().to_pattern()
-        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 

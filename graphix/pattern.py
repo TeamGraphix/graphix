@@ -1376,6 +1376,8 @@ class Pattern:
         backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
         input_state: Data = BasicStates.PLUS,
         rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
         **kwargs: Any,
     ) -> _StateT_co | _BuiltinBackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
@@ -1400,7 +1402,7 @@ class Pattern:
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
-        sim.run(input_state, rng=rng)
+        sim.run(input_state, rng=rng, stacklevel=stacklevel + 1)
         return sim.backend.state
 
     def remove_input_nodes(self) -> None:

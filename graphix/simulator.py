@@ -93,13 +93,15 @@ class MeasureMethod(abc.ABC):
         cmd: BaseM,
         noise_model: NoiseModel | None = None,
         rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
     ) -> None:
         """Perform a measure."""
         description = self.describe_measurement(cmd)
-        result = backend.measure(cmd.node, description, rng=rng)
+        result = backend.measure(cmd.node, description, rng=rng, stacklevel=stacklevel + 1)
         logger.debug("Measure: %s", result)
         if noise_model is not None:
-            result = noise_model.confuse_result(cmd, result, rng=rng)
+            result = noise_model.confuse_result(cmd, result, rng=rng, stacklevel=stacklevel + 1)
         self.store_measurement_outcome(cmd.node, result)
 
     @abc.abstractmethod
@@ -355,7 +357,7 @@ class PatternSimulator(Generic[_StateT_co]):
         """Return the measure method."""
         return self.__measure_method
 
-    def run(self, input_state: Data = BasicStates.PLUS, rng: Generator | None = None) -> None:
+    def run(self, input_state: Data = BasicStates.PLUS, rng: Generator | None = None, *, stacklevel: int = 1) -> None:
         """Perform the simulation.
 
         Returns
@@ -391,7 +393,9 @@ class PatternSimulator(Generic[_StateT_co]):
                 case CommandKind.E:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 case CommandKind.M:
-                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
+                    self.__measure_method.measure(
+                        self.backend, cmd, noise_model=self.noise_model, rng=rng, stacklevel=stacklevel + 1
+                    )
                 case CommandKind.X | CommandKind.Z:
                     if self.__measure_method.check_domain(cmd.domain):
                         self.backend.correct_byproduct(cmd)
