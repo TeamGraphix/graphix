@@ -174,7 +174,9 @@ class TestTranspilerUnitGates:
     @pytest.mark.parametrize("input_axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("input_sign", [Sign.PLUS, Sign.MINUS])
     @pytest.mark.parametrize("measurement_axis", [Axis.X, Axis.Y, Axis.Z])
-    def test_measurement_expectation_value(self, fx_rng: Generator, input_axis: Axis, input_sign: Sign, measurement_axis: Axis) -> None:
+    def test_measurement_expectation_value(
+        self, fx_rng: Generator, input_axis: Axis, input_sign: Sign, measurement_axis: Axis
+    ) -> None:
         match input_axis, input_sign:
             case Axis.X, Sign.PLUS:
                 input_state = BasicStates.PLUS
