@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #440, #441: `Statevec.nqubits` now returns the correct value.
 
+- #455: Causal-flow finding algorithm (`graphix.flow._find_cflow.py`) does not raise `RecursionError` now.
+
 ### Changed
 
 - #181, #423: Structural separation of Pauli measurements
