@@ -557,6 +557,33 @@ def _og_19() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
+def _og_20() -> OpenGraphFlowTestCase:
+    r"""Generate open graph.
+
+    Structure:
+
+    0
+    [(1)]-[(2)]
+
+    Notes
+    -----
+    This opengraph triggered issue #464.
+    https://github.com/TeamGraphix/graphix/issues/464
+    """
+    graph: nx.Graph[int] = nx.Graph([(1, 2)])
+    graph.add_node(0)
+    og = OpenGraph(
+        graph=graph,
+        input_nodes=[],
+        output_nodes=[1, 2],
+        measurements={
+            0: Measurement.YZ(angle=0),
+        },
+    )
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
+
+
 class OpenGraphComposeTestCase(NamedTuple):
     og1: OpenGraph[AbstractMeasurement]
     og2: OpenGraph[AbstractMeasurement]
