@@ -39,16 +39,16 @@ class AlgebraicOpenGraph(Generic[_AM_co]):
 
     It reuses the class `:class: graphix.sim.base_backend.NodeIndex` introduced for managing the mapping between node numbers and qubit indices in the internal state of the backend.
 
-    Notes
-    -----
-    At initialization, `non_outputs_optim` is a copy of `non_outputs`. The nodes corresponding to zero-rows of the order-demand matrix are removed for calculating the :math:`P` matrix more efficiently in the `:func: _compute_correction_matrix_general` routine.
-
     Attributes
     ----------
         og (OpenGraph)
         non_inputs (NodeIndex) : Mapping between matrix indices and non-input nodes (labelled with integers).
         non_outputs (NodeIndex) : Mapping between matrix indices and non-output nodes (labelled with integers).
         non_outputs_optim (NodeIndex) : Mapping between matrix indices and a subset of non-output nodes (labelled with integers).
+
+    Notes
+    -----
+    At initialization, `non_outputs_optim` is a copy of `non_outputs`. The nodes corresponding to zero-rows of the order-demand matrix are removed for calculating the :math:`P` matrix more efficiently in the `:func: _compute_correction_matrix_general` routine.
 
     References
     ----------

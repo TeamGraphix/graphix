@@ -406,14 +406,6 @@ class XZCorrections(Generic[_AM_co]):
 class PauliFlow(Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
-    Notes
-    -----
-    - See Definition 5 in Ref. [1] for a definition of Pauli flow.
-
-    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only `og` and `correction_function` are necessary to initialize an `PauliFlow` instance (see :func:`PauliFlow.try_from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
-
-    - A correct flow can only exist on an open graph with output nodes, so `layers[0]` always contains a finite set of nodes.
-
     Attributes
     ----------
     og : OpenGraph[_AM_co]
@@ -422,6 +414,14 @@ class PauliFlow(Generic[_AM_co]):
         Pauli flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
     partial_order_layers : Sequence[AbstractSet[int]]
         Partial order between the open graph's nodes in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0.
+
+    Notes
+    -----
+    - See Definition 5 in Ref. [1] for a definition of Pauli flow.
+
+    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only `og` and `correction_function` are necessary to initialize an `PauliFlow` instance (see :func:`PauliFlow.try_from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
+
+    - A correct flow can only exist on an open graph with output nodes, so `layers[0]` always contains a finite set of nodes.
 
     References
     ----------
