@@ -2,6 +2,7 @@
 mypy==1.19.1
 pre-commit # for language-agnostic hooks
 pyright
+pydoclint
 ruff==0.15.4
 
 # Stubs
