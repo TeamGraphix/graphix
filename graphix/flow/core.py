@@ -64,10 +64,6 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 class XZCorrections(Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
-    Notes
-    -----
-    The XZ-corrections mappings define a partial order, therefore, only `og`, `x_corrections` and `z_corrections` are necessary to initialize an `XZCorrections` instance (see :func:`XZCorrections.from_measured_nodes_mapping`). However, XZ-corrections are often extracted from a flow whose partial order is known and can be used to construct a pattern, so it can also be passed as an argument to the `dataclass` constructor. The correctness of the input parameters is not verified automatically.
-
     Attributes
     ----------
     og : OpenGraph[_AM_co]
@@ -78,6 +74,10 @@ class XZCorrections(Generic[_AM_co]):
         Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
     partial_order_layers : Sequence[AbstractSet[int]]
         Partial order between the open graph's nodes in a layer form determined by the corrections. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. If the open graph has output nodes, they are always in layer 0. Non-corrected, measured nodes are always in the last layer.
+
+    Notes
+    -----
+    The XZ-corrections mappings define a partial order, therefore, only `og`, `x_corrections` and `z_corrections` are necessary to initialize an `XZCorrections` instance (see :func:`XZCorrections.from_measured_nodes_mapping`). However, XZ-corrections are often extracted from a flow whose partial order is known and can be used to construct a pattern, so it can also be passed as an argument to the `dataclass` constructor. The correctness of the input parameters is not verified automatically.
     """
 
     og: OpenGraph[_AM_co]
@@ -414,11 +414,6 @@ class PauliFlow(Generic[_AM_co]):
 
     - A correct flow can only exist on an open graph with output nodes, so `layers[0]` always contains a finite set of nodes.
 
-    References
-    ----------
-    [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
-    [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
-
     Attributes
     ----------
     og : OpenGraph[_AM_co]
@@ -427,6 +422,11 @@ class PauliFlow(Generic[_AM_co]):
         Pauli flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
     partial_order_layers : Sequence[AbstractSet[int]]
         Partial order between the open graph's nodes in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0.
+
+    References
+    ----------
+    [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+    [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
 
     og: OpenGraph[_AM_co]

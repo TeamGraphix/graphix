@@ -43,16 +43,16 @@ class AlgebraicOpenGraph(Generic[_AM_co]):
     -----
     At initialization, `non_outputs_optim` is a copy of `non_outputs`. The nodes corresponding to zero-rows of the order-demand matrix are removed for calculating the :math:`P` matrix more efficiently in the `:func: _compute_correction_matrix_general` routine.
 
-    References
-    ----------
-    [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
-
     Attributes
     ----------
         og (OpenGraph)
         non_inputs (NodeIndex) : Mapping between matrix indices and non-input nodes (labelled with integers).
         non_outputs (NodeIndex) : Mapping between matrix indices and non-output nodes (labelled with integers).
         non_outputs_optim (NodeIndex) : Mapping between matrix indices and a subset of non-output nodes (labelled with integers).
+
+    References
+    ----------
+    [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
 
     def __init__(self, og: OpenGraph[_AM_co]) -> None:
@@ -230,16 +230,17 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
 class CorrectionMatrix(Generic[_AM_co]):
     r"""A dataclass to bundle the correction matrix and its associated open graph.
 
+    Attributes
+    ----------
+        aog (AgebraicOpenGraph) : Open graph in an algebraic representation.
+        c_matrix (MatGF2) : Matrix encoding the correction function of a Pauli (or generalised) flow, :math:`C`.
+
     Notes
     -----
     The correction matrix :math:`C` is an :math:`(n - n_I) \times (n - n_O)` matrix related to the correction function :math:`c(v) = \{u \in I^c|C_{u,v} = 1\}`, where :math:`I^c` are the non-input nodes of `aog`. In other words, the column :math:`v` of :math:`C` encodes the correction set of :math:`v`, :math:`c(v)`.
 
     See Definition 3.6 in Mitosek and Backens, 2024 (arXiv:2410.23439).
 
-    Attributes
-    ----------
-        aog (AgebraicOpenGraph) : Open graph in an algebraic representation.
-        c_matrix (MatGF2) : Matrix encoding the correction function of a Pauli (or generalised) flow, :math:`C`.
     """
 
     aog: AlgebraicOpenGraph[_AM_co]
