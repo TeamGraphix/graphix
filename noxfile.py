@@ -108,25 +108,21 @@ class ReverseDependency:
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-stim-backend",
             branch="fix/graphix-461",
-            version_constraint=VersionRange(upper=Version("3.14")),
         ),
         ReverseDependency(
             # "https://github.com/TeamGraphix/graphix-symbolic",
             "https://github.com/thierry-martinez/graphix-symbolic",
-            branch="fix/graphix_220",
-            version_constraint=VersionRange(upper=Version("3.14")),
+            branch="python_314",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
             branch="fix/graphix-461",
-            version_constraint=VersionRange(upper=Version("3.14")),
             doctest_modules=False,
         ),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq",
-            branch="fix/graphix_423",
-            version_constraint=VersionRange(upper=Version("3.14")),
+            branch="python_314",
             doctest_modules=False,
         ),
     ],
