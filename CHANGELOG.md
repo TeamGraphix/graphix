@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #450: `Circuit.visit` and `BaseInstruction.visit` performs simple replacements on circuits and instructions, given an `InstructionVisitor`.
 
+- #461: A warning is raised when the `rng` parameter is not set, as the default random generator will be used and results may not be reproducible.
+
 ### Fixed
 
 - #429
