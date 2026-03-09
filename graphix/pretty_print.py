@@ -271,6 +271,8 @@ def pattern_to_str(
     if not left_to_right:
         command_list.reverse()
     truncated = limit is not None and len(command_list) > limit
+    # Note: The redundant test `limit is not None` is required for mypy
+    # to narrow the type of `limit` in the then-branch.
     short_command_list = command_list[: limit - 1] if limit is not None and truncated else command_list
     result = separator.join(command_to_str(command, output) for command in short_command_list)
     if output == OutputFormat.LaTeX:
