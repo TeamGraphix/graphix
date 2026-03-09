@@ -32,7 +32,7 @@ def ensure_rng(rng: Generator | None = None, *, stacklevel: int = 1) -> Generato
     """
     if rng is not None:
         return rng
-    warnings.warn("Default random-number generator is used. Results are not reproducible.", stacklevel=stacklevel + 1)
+    warnings.warn("Default random-number generator is used. Results may not be reproducible.", stacklevel=stacklevel + 1)
     stored: Generator | None = getattr(_rng_local, "rng", None)
     if stored is not None:
         return stored
