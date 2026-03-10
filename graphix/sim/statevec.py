@@ -8,7 +8,7 @@ import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
 import numpy.typing as npt
@@ -21,11 +21,13 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from typing import Literal
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
 
-_ENCODING = Literal["LSB", "MSB"]
+    _ENCODING = Literal["LSB", "MSB"]
+
 
 CZ_TENSOR = np.array(
     [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
@@ -442,7 +444,7 @@ class Statevec(DenseState):
 
         Parameters
         ----------
-        encoding : _ENCODING, default="MSB"
+        encoding : Literal["LSB", "MSB"], default="MSB"
             Encoding for the basis kets. See notes for additional information.
 
         rel_tol : float, default=0.0
@@ -470,7 +472,7 @@ class Statevec(DenseState):
         \lvert\psi\rangle = q_0 \otimes q_1 \otimes q_2.
 
         If ``encoding == "MSB"`` the first qubit is represented in the Most Significant Bit -> ``q0q1q2``. This is the default representation in Graphix.
-        If ``encoding == "LSB"`` the first qubit is represented in the Least Significant Bit -> ``q2q1q1``. This is the default representation in other software packages such as Qiskit.
+        If ``encoding == "LSB"`` the first qubit is represented in the Least Significant Bit -> ``q2q1q0``. This is the default representation in other software packages such as Qiskit.
 
         Example
         -------
@@ -506,7 +508,7 @@ class Statevec(DenseState):
 
         Parameters
         ----------
-        encoding: _ENCODING, default="MSB"
+        encoding: Literal["LSB", "MSB"], default="MSB"
             Encoding for the basis kets. See :meth:`to_dict` for additional information.
 
         rel_tol : float, default=0.0
