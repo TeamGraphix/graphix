@@ -29,6 +29,7 @@ uv run pytest
 ```
 
 You can also run the full CI suite locally:
+
 ```bash
 uv run nox
 ```
