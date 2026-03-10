@@ -224,17 +224,21 @@ class TestLinAlg:
 
         assert np.all((mat @ x) % 2 == b)  # Test with numpy matrix product.
 
-    @pytest.mark.parametrize("size,ncol,order", [
-        ((10, 10), 4, "K"),
-        ((3, 7), 5, "C"),
-        ((6, 2), 2, "F"),
-    ])
-    def test_row_reduction(self, fx_rng: Generator, size: tuple[int, int], ncol: int, order: Literal["K", "C", "F"]) -> None:
-
-        for size, ncol, order in zip(sizes, ncols, orders, strict=True):
-            mat = MatGF2(np.asarray(fx_rng.integers(size=size, low=0, high=2, dtype=np.uint8), order=order))
-            mat_red = mat.row_reduction(ncols=ncol, copy=True)
-            verify_elimination(mat, mat_red, ncol, full_reduce=True)
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            ((10, 10), 4, "K"),
+            ((3, 7), 5, "C"),
+            ((6, 2), 2, "F"),
+        ],
+    )
+    def test_row_reduction(
+        self, fx_rng: Generator, test_case: tuple[tuple[int, int], int, Literal["K", "C", "F"]]
+    ) -> None:
+        size, ncol, order = test_case
+        mat = MatGF2(np.asarray(fx_rng.integers(size=size, low=0, high=2, dtype=np.uint8), order=order))
+        mat_red = mat.row_reduction(ncols=ncol, copy=True)
+        verify_elimination(mat, mat_red, ncol, full_reduce=True)
 
     def test_initialization(self) -> None:
         mat_c = MatGF2(np.array([[1, 0], [0, 1], [1, 0]], dtype=np.uint8))
