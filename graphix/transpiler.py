@@ -6,16 +6,18 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 
 from __future__ import annotations
 
-import dataclasses
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsFloat
 
-from typing_extensions import assert_never
+# assert_never introduced in Python 3.11
+# override introduced in Python 3.12
+from typing_extensions import assert_never, override
 
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.instruction import Instruction, InstructionKind
+from graphix.instruction import Instruction, InstructionKind, InstructionVisitor, InstructionWithoutRZZ
 from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
 from graphix.pattern import Pattern
@@ -33,7 +35,7 @@ if TYPE_CHECKING:
     from graphix.sim.base_backend import Matrix
 
 
-@dataclasses.dataclass
+@dataclass
 class TranspileResult:
     """
     The result of a transpilation.
@@ -46,7 +48,7 @@ class TranspileResult:
     classical_outputs: tuple[int, ...]
 
 
-@dataclasses.dataclass
+@dataclass
 class SimulateResult:
     """
     The result of a simulation.
@@ -65,6 +67,15 @@ def _check_target(out: Sequence[int | None], index: int) -> int:
         msg = f"Qubit {index} has already been measured."
         raise ValueError(msg)
     return target
+
+
+@dataclass
+class _MapAngleVisitor(InstructionVisitor):
+    f: Callable[[ParameterizedAngle], ParameterizedAngle]
+
+    @override
+    def visit_angle(self, angle: ParameterizedAngle) -> ParameterizedAngle:
+        return self.f(angle)
 
 
 class Circuit:
@@ -461,7 +472,7 @@ class Circuit:
                     classical_outputs.append(target)
                     out[instr.target] = None
                 case _:
-                    raise ValueError("Unknown instruction, commands not added")
+                    assert_never(instr.kind)
         output_nodes = [node for node in out if node is not None]
         pattern.reorder_output_nodes(output_nodes)
         return TranspileResult(pattern, tuple(classical_outputs))
@@ -995,17 +1006,16 @@ class Circuit:
                     raise ValueError(f"Unknown instruction: {instr}")
         return SimulateResult(backend.state, tuple(classical_measures))
 
-    def map_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle]) -> Circuit:
-        """Apply `f` to all angles that occur in the circuit."""
+    def visit(self, visitor: InstructionVisitor) -> Circuit:
+        """Apply `visitor` to all instructions in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
-            match instr.kind:
-                case InstructionKind.RZZ | InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
-                    new_instr = dataclasses.replace(instr, angle=f(instr.angle))
-                    result.instruction.append(new_instr)
-                case _:
-                    result.instruction.append(instr)
+            result.instruction.append(instr.visit(visitor))
         return result
+
+    def map_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle]) -> Circuit:
+        """Apply `f` to all angles that occur in the circuit."""
+        return self.visit(_MapAngleVisitor(f))
 
     def is_parameterized(self) -> bool:
         """
@@ -1053,7 +1063,7 @@ class Circuit:
         return circuit
 
 
-def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]:
+def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[InstructionWithoutRZZ]:
     for instr in instructions:
         if instr.kind == InstructionKind.RZZ:
             yield instruction.CNOT(control=instr.control, target=instr.target)
@@ -1061,3 +1071,62 @@ def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]
             yield instruction.CNOT(control=instr.control, target=instr.target)
         else:
             yield instr
+
+
+@dataclass(frozen=True)
+class TranspileSwapsResult:
+    """The result returned by :func:`transpile_swaps`."""
+
+    circuit: Circuit
+    """Circuit without SWAP gates."""
+
+    qubits: tuple[int | None, ...]
+    """
+    Tuple which has the same width as the circuit and which for
+    every qubit of the original circuit provides the index of the
+    corresponding qubit in the output of the returned
+    circuit. Measured qubits are mapped to ``None`` in this tuple.
+    """
+
+
+class _TranspileSwapVisitor(InstructionVisitor):
+    qubits: list[int | None]
+
+    def __init__(self, width: int) -> None:
+        self.qubits = list(range(width))
+
+    @override
+    def visit_qubit(self, qubit: int) -> int:
+        return _check_target(self.qubits, qubit)
+
+
+def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
+    """Return a new circuit equivalent to the original one but without SWAP gates.
+
+    Parameters
+    ----------
+    circuit : Circuit
+        The original circuit
+
+    Returns
+    -------
+    TranspileSwapsResult
+        The field ``circuit`` contains an equivalent circuit without
+        SWAP gates.
+        The field ``qubits`` contains a tuple which has the same width
+        as the circuit and which for every qubit of the original
+        circuit provides the index of the corresponding qubit in the
+        output of the returned circuit. Measured qubits are mapped to
+        ``None`` in this tuple.
+    """
+    new_circuit = Circuit(circuit.width)
+    visitor = _TranspileSwapVisitor(circuit.width)
+    for instr in circuit.instruction:
+        if instr.kind == InstructionKind.SWAP:
+            u, v = instr.targets
+            visitor.qubits[u], visitor.qubits[v] = visitor.qubits[v], visitor.qubits[u]
+        else:
+            new_circuit.add(instr.visit(visitor))
+            if instr.kind == InstructionKind.M:
+                visitor.qubits[instr.target] = None
+    return TranspileSwapsResult(new_circuit, tuple(visitor.qubits))

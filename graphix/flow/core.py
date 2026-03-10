@@ -78,7 +78,6 @@ class XZCorrections(Generic[_AM_co]):
     Notes
     -----
     The XZ-corrections mappings define a partial order, therefore, only `og`, `x_corrections` and `z_corrections` are necessary to initialize an `XZCorrections` instance (see :func:`XZCorrections.from_measured_nodes_mapping`). However, XZ-corrections are often extracted from a flow whose partial order is known and can be used to construct a pattern, so it can also be passed as an argument to the `dataclass` constructor. The correctness of the input parameters is not verified automatically.
-
     """
 
     og: OpenGraph[_AM_co]
@@ -428,7 +427,6 @@ class PauliFlow(Generic[_AM_co]):
     ----------
     [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
     [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
-
     """
 
     og: OpenGraph[_AM_co]

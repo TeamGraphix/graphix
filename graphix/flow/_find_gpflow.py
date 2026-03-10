@@ -240,6 +240,7 @@ class CorrectionMatrix(Generic[_AM_co]):
     The correction matrix :math:`C` is an :math:`(n - n_I) \times (n - n_O)` matrix related to the correction function :math:`c(v) = \{u \in I^c|C_{u,v} = 1\}`, where :math:`I^c` are the non-input nodes of `aog`. In other words, the column :math:`v` of :math:`C` encodes the correction set of :math:`v`, :math:`c(v)`.
 
     See Definition 3.6 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+
     """
 
     aog: AlgebraicOpenGraph[_AM_co]
