@@ -8,6 +8,8 @@ import pytest
 from graphix._linalg import MatGF2, solve_f2_linear_system
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from numpy.random import Generator
     from pytest_benchmark import BenchmarkFixture
 
@@ -82,6 +84,13 @@ def prepare_test_matrix() -> list[LinalgTestCase]:
             0,
             False,
         ),
+        # same as before but F-contiguous matrix
+        LinalgTestCase(
+            MatGF2(np.array([[1, 0], [0, 1], [1, 0]], dtype=np.uint8, order="F")),
+            2,
+            0,
+            False,
+        ),
     ]
 
 
@@ -108,6 +117,11 @@ def prepare_test_f2_linear_system() -> list[LSF2TestCase]:
             ),
             LSF2TestCase(
                 mat=MatGF2([[1, 0, 1], [0, 1, 0], [0, 0, 1]]),
+                b=MatGF2([1, 1, 1]),
+            ),
+            # Same as previous one but F-contiguous
+            LSF2TestCase(
+                mat=MatGF2(np.array([[1, 0, 1], [0, 1, 0], [0, 0, 1]], dtype=np.uint8, order="F")),
                 b=MatGF2([1, 1, 1]),
             ),
         )
@@ -213,8 +227,21 @@ class TestLinAlg:
     def test_row_reduction(self, fx_rng: Generator) -> None:
         sizes = [(10, 10), (3, 7), (6, 2)]
         ncols = [4, 5, 2]
+        orders: list[Literal["K", "C", "F"]] = ["K", "C", "F"]
 
-        for size, ncol in zip(sizes, ncols, strict=True):
-            mat = MatGF2(fx_rng.integers(size=size, low=0, high=2, dtype=np.uint8))
+        for size, ncol, order in zip(sizes, ncols, orders, strict=True):
+            mat = MatGF2(np.asarray(fx_rng.integers(size=size, low=0, high=2, dtype=np.uint8), order=order))
             mat_red = mat.row_reduction(ncols=ncol, copy=True)
             verify_elimination(mat, mat_red, ncol, full_reduce=True)
+
+    def test_initialization(self) -> None:
+        mat_c = MatGF2(np.array([[1, 0], [0, 1], [1, 0]], dtype=np.uint8))
+        mat_f = MatGF2(np.asfortranarray(np.array([[1, 0], [0, 1], [1, 0]], dtype=np.uint8)))
+
+        assert mat_c.flags.c_contiguous
+        assert not mat_c.flags.f_contiguous
+
+        assert not mat_f.flags.c_contiguous
+        assert mat_f.flags.f_contiguous
+
+        assert np.all(mat_c == mat_f)

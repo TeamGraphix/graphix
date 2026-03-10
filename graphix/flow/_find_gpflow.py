@@ -505,8 +505,7 @@ def _compute_correction_matrix_general_case(
         return None  # The flow-demand matrix is not invertible, therefore there's no flow.
 
     # Steps 5, 6 and 7
-    ker_flow_demand_matrix = np.ascontiguousarray(flow_demand_matrix.null_space().transpose())  # F matrix.
-    # `np.ascontiguousarray` guarantees that `ker_flow_demand_matrix` is C_CONTIGUOUS. This is required to fit the signature of jitted functions in `graphix._linalg.py`
+    ker_flow_demand_matrix = flow_demand_matrix.null_space().transpose()  # F matrix.
     c_prime_matrix = np.concatenate((correction_matrix_0, ker_flow_demand_matrix), axis=1).view(MatGF2)
 
     row_idxs = np.flatnonzero(order_demand_matrix.any(axis=1))  # Row indices of the non-zero rows.
