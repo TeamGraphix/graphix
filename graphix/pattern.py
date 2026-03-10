@@ -374,42 +374,112 @@ class Pattern:
         )
 
     def to_ascii(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+        self, left_to_right: bool = False, limit: int | None = 40, target: Container[command.CommandKind] | None = None
     ) -> str:
-        """Return the ASCII string representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
-
-    def to_latex(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
-    ) -> str:
-        """Return a string containing the LaTeX representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
-
-    def to_unicode(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
-    ) -> str:
-        """Return the Unicode string representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
-
-    def print_pattern(self, lim: int = 40, target: Container[CommandKind] | None = None) -> None:
-        """Print the pattern sequence (Pattern.seq).
-
-        This method is deprecated.
-        See :meth:`to_ascii`, :meth:`to_latex`, :meth:`to_unicode` and :func:`graphix.pretty_print.pattern_to_str`.
+        """Return the ASCII string representation of the pattern.
 
         Parameters
         ----------
-        lim: int, optional
-            maximum number of commands to show
-        target : list of CommandKind, optional
-            show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
+        left_to_right: bool, optional
+            If ``True``, the first command will appear at the beginning of
+            the resulting string. If ``False`` (the default), the first command will
+            appear at the end of the string.
+        limit: int | None, optional
+            If set to an int (default: 40), only first ``limit`` commands are printed,
+            and an ellipsis is added at the end to indicate that some commands have been elided.
+            If ``limit=None``, there is no limit on the number of printed commands.
+        target: Container[command.CommandKind], optional
+            If set, only commands of kinds specified in ``target`` are printed.
+
+        Examples
+        --------
+        >>> from graphix import Circuit
+        >>> circuit = Circuit(3)
+        >>> circuit.ccx(0, 1, 2)
+        >>> pattern = circuit.transpile().pattern
+        >>> pattern.to_ascii()
+        'Z(16,{11}) Z(18,{13}) Z(20,{7}) X(16,{15}) X(18,{14}) X(20,{19}) {17}[M(19)]{7} {10}[M(15,-pi/4)]{11} {17,12}[M(14)]{13} {17,9}[M(11)]{10} {0,1,5,10,13}[M(7,-pi/4)]{17} {1}[M(13,-7pi/4)]{12} {8}[M(10,-7pi/4)]{9} {17}[M(12)]{1} {6}[M(9)]{8} {8,3}[M(1,-pi/4)] {5}[M(8,-pi/4)]{6} {17,4}[M(6)]{5} [M(17)]{0} {3}[M(5,-7pi/4)]{4} M(0) {2}[M(4)]{3} [M(3)]{2} M(2) E(19,20) E(15,16) E(14,18) E(11,15) E(7,19) E(7,14) E(7,11) E(13,14) E(10,11) E(12,13) E(12,7) E(9,10) E(1,12) E(1,9) E(8,9)...(27 more commands)'
+        >>> pattern.to_ascii(left_to_right=True)
+        'N(3) N(4) N(5) N(6) N(7) N(8) N(9) N(10) N(11) N(12) N(13) N(14) N(15) N(16) N(17) N(18) N(19) N(20) E(2,3) E(3,4) E(4,5) E(4,1) E(0,17) E(5,6) E(17,7) E(6,8) E(6,7) E(8,9) E(1,9) E(1,12) E(9,10) E(12,7) E(12,13) E(10,11) E(13,14) E(7,11) E(7,14) E(7,19) E(11,15)...(27 more commands)'
+        >>> pattern.to_ascii(limit=None)
+        'Z(16,{11}) Z(18,{13}) Z(20,{7}) X(16,{15}) X(18,{14}) X(20,{19}) {17}[M(19)]{7} {10}[M(15,-pi/4)]{11} {17,12}[M(14)]{13} {17,9}[M(11)]{10} {0,1,5,10,13}[M(7,-pi/4)]{17} {1}[M(13,-7pi/4)]{12} {8}[M(10,-7pi/4)]{9} {17}[M(12)]{1} {6}[M(9)]{8} {8,3}[M(1,-pi/4)] {5}[M(8,-pi/4)]{6} {17,4}[M(6)]{5} [M(17)]{0} {3}[M(5,-7pi/4)]{4} M(0) {2}[M(4)]{3} [M(3)]{2} M(2) E(19,20) E(15,16) E(14,18) E(11,15) E(7,19) E(7,14) E(7,11) E(13,14) E(10,11) E(12,13) E(12,7) E(9,10) E(1,12) E(1,9) E(8,9) E(6,7) E(6,8) E(17,7) E(5,6) E(0,17) E(4,1) E(4,5) E(3,4) E(2,3) N(20) N(19) N(18) N(17) N(16) N(15) N(14) N(13) N(12) N(11) N(10) N(9) N(8) N(7) N(6) N(5) N(4) N(3)'
+        >>> from graphix.command import CommandKind
+        >>> pattern.to_ascii(target={CommandKind.M})
+        '{17}[M(19)]{7} {10}[M(15,-pi/4)]{11} {17,12}[M(14)]{13} {17,9}[M(11)]{10} {0,1,5,10,13}[M(7,-pi/4)]{17} {1}[M(13,-7pi/4)]{12} {8}[M(10,-7pi/4)]{9} {17}[M(12)]{1} {6}[M(9)]{8} {8,3}[M(1,-pi/4)] {5}[M(8,-pi/4)]{6} {17,4}[M(6)]{5} [M(17)]{0} {3}[M(5,-7pi/4)]{4} M(0) {2}[M(4)]{3} [M(3)]{2} M(2)'
+        >>> pattern.to_ascii(target={CommandKind.X, CommandKind.Z})
+        'Z(16,{11}) Z(18,{13}) Z(20,{7}) X(16,{15}) X(18,{14}) X(20,{19})'
         """
-        warnings.warn(
-            "Method `print_pattern` is deprecated. Use one of the methods `to_ascii`, `to_latex`, `to_unicode`, or the function `graphix.pretty_print.pattern_to_str`.",
-            DeprecationWarning,
-            stacklevel=1,
-        )
-        print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
+        return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
+
+    def to_latex(
+        self, left_to_right: bool = False, limit: int | None = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        r"""Return a string containing the LaTeX representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool, optional
+            If ``True``, the first command will appear at the beginning of
+            the resulting string. If ``False`` (the default), the first command will
+            appear at the end of the string.
+        limit: int | None, optional
+            If set to an int (default: 40), only first ``limit`` commands are printed,
+            and an ellipsis is added at the end to indicate that some commands have been elided.
+            If ``limit=None``, there is no limit on the number of printed commands.
+        target: Container[command.CommandKind], optional
+            If set, only commands of kinds specified in ``target`` are printed.
+
+        Examples
+        --------
+        >>> from graphix import Circuit
+        >>> circuit = Circuit(3)
+        >>> circuit.ccx(0, 1, 2)
+        >>> pattern = circuit.transpile().pattern
+        >>> pattern.to_latex()
+        '\\(Z_{16}^{11}\\,Z_{18}^{13}\\,Z_{20}^{7}\\,X_{16}^{15}\\,X_{18}^{14}\\,X_{20}^{19}\\,{}_{17}[M_{19}]^{7}\\,{}_{10}[M_{15}^{-\\frac{\\pi}{4}}]^{11}\\,{}_{17,12}[M_{14}]^{13}\\,{}_{17,9}[M_{11}]^{10}\\,{}_{0,1,5,10,13}[M_{7}^{-\\frac{\\pi}{4}}]^{17}\\,{}_{1}[M_{13}^{-\\frac{7\\pi}{4}}]^{12}\\,{}_{8}[M_{10}^{-\\frac{7\\pi}{4}}]^{9}\\,{}_{17}[M_{12}]^{1}\\,{}_{6}[M_{9}]^{8}\\,{}_{8,3}[M_{1}^{-\\frac{\\pi}{4}}]\\,{}_{5}[M_{8}^{-\\frac{\\pi}{4}}]^{6}\\,{}_{17,4}[M_{6}]^{5}\\,[M_{17}]^{0}\\,{}_{3}[M_{5}^{-\\frac{7\\pi}{4}}]^{4}\\,M_{0}\\,{}_{2}[M_{4}]^{3}\\,[M_{3}]^{2}\\,M_{2}\\,E_{19,20}\\,E_{15,16}\\,E_{14,18}\\,E_{11,15}\\,E_{7,19}\\,E_{7,14}\\,E_{7,11}\\,E_{13,14}\\,E_{10,11}\\,E_{12,13}\\,E_{12,7}\\,E_{9,10}\\,E_{1,12}\\,E_{1,9}\\,E_{8,9}\\)...(27 more commands)'
+        >>> pattern.to_latex(left_to_right=True)
+        '\\(N_{3}\\,N_{4}\\,N_{5}\\,N_{6}\\,N_{7}\\,N_{8}\\,N_{9}\\,N_{10}\\,N_{11}\\,N_{12}\\,N_{13}\\,N_{14}\\,N_{15}\\,N_{16}\\,N_{17}\\,N_{18}\\,N_{19}\\,N_{20}\\,E_{2,3}\\,E_{3,4}\\,E_{4,5}\\,E_{4,1}\\,E_{0,17}\\,E_{5,6}\\,E_{17,7}\\,E_{6,8}\\,E_{6,7}\\,E_{8,9}\\,E_{1,9}\\,E_{1,12}\\,E_{9,10}\\,E_{12,7}\\,E_{12,13}\\,E_{10,11}\\,E_{13,14}\\,E_{7,11}\\,E_{7,14}\\,E_{7,19}\\,E_{11,15}\\)...(27 more commands)'
+        >>> pattern.to_latex(target={CommandKind.M})
+        '\\({}_{17}[M_{19}]^{7}\\,{}_{10}[M_{15}^{-\\frac{\\pi}{4}}]^{11}\\,{}_{17,12}[M_{14}]^{13}\\,{}_{17,9}[M_{11}]^{10}\\,{}_{0,1,5,10,13}[M_{7}^{-\\frac{\\pi}{4}}]^{17}\\,{}_{1}[M_{13}^{-\\frac{7\\pi}{4}}]^{12}\\,{}_{8}[M_{10}^{-\\frac{7\\pi}{4}}]^{9}\\,{}_{17}[M_{12}]^{1}\\,{}_{6}[M_{9}]^{8}\\,{}_{8,3}[M_{1}^{-\\frac{\\pi}{4}}]\\,{}_{5}[M_{8}^{-\\frac{\\pi}{4}}]^{6}\\,{}_{17,4}[M_{6}]^{5}\\,[M_{17}]^{0}\\,{}_{3}[M_{5}^{-\\frac{7\\pi}{4}}]^{4}\\,M_{0}\\,{}_{2}[M_{4}]^{3}\\,[M_{3}]^{2}\\,M_{2}\\)'
+        >>> pattern.to_latex(target={CommandKind.X, CommandKind.Z})
+        '\\(Z_{16}^{11}\\,Z_{18}^{13}\\,Z_{20}^{7}\\,X_{16}^{15}\\,X_{18}^{14}\\,X_{20}^{19}\\)'
+        """
+        return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
+
+    def to_unicode(
+        self, left_to_right: bool = False, limit: int | None = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return the Unicode string representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool, optional
+            If ``True``, the first command will appear at the beginning of
+            the resulting string. If ``False`` (the default), the first command will
+            appear at the end of the string.
+        limit: int | None, optional
+            If set to an int (default: 40), only first ``limit`` commands are printed,
+            and an ellipsis is added at the end to indicate that some commands have been elided.
+            If ``limit=None``, there is no limit on the number of printed commands.
+        target: Container[command.CommandKind], optional
+            If set, only commands of kinds specified in ``target`` are printed.
+
+        Examples
+        --------
+        >>> from graphix import Circuit
+        >>> circuit = Circuit(3)
+        >>> circuit.ccx(0, 1, 2)
+        >>> pattern = circuit.transpile().pattern
+        >>> pattern.to_unicode()
+        'Z₁₆¹¹ Z₁₈¹³ Z₂₀⁷ X₁₆¹⁵ X₁₈¹⁴ X₂₀¹⁹ ₁₇[M₁₉]⁷ ₁₀[M₁₅(-π/4)]¹¹ ₁₇₊₁₂[M₁₄]¹³ ₁₇₊₉[M₁₁]¹⁰ ₀₊₁₊₅₊₁₀₊₁₃[M₇(-π/4)]¹⁷ ₁[M₁₃(-7π/4)]¹² ₈[M₁₀(-7π/4)]⁹ ₁₇[M₁₂]¹ ₆[M₉]⁸ ₈₊₃[M₁(-π/4)] ₅[M₈(-π/4)]⁶ ₁₇₊₄[M₆]⁵ [M₁₇]⁰ ₃[M₅(-7π/4)]⁴ M₀ ₂[M₄]³ [M₃]² M₂ E₁₉₋₂₀ E₁₅₋₁₆ E₁₄₋₁₈ E₁₁₋₁₅ E₇₋₁₉ E₇₋₁₄ E₇₋₁₁ E₁₃₋₁₄ E₁₀₋₁₁ E₁₂₋₁₃ E₁₂₋₇ E₉₋₁₀ E₁₋₁₂ E₁₋₉ E₈₋₉...(27 more commands)'
+        >>> pattern.to_unicode(left_to_right=True)
+        'N₃ N₄ N₅ N₆ N₇ N₈ N₉ N₁₀ N₁₁ N₁₂ N₁₃ N₁₄ N₁₅ N₁₆ N₁₇ N₁₈ N₁₉ N₂₀ E₂₋₃ E₃₋₄ E₄₋₅ E₄₋₁ E₀₋₁₇ E₅₋₆ E₁₇₋₇ E₆₋₈ E₆₋₇ E₈₋₉ E₁₋₉ E₁₋₁₂ E₉₋₁₀ E₁₂₋₇ E₁₂₋₁₃ E₁₀₋₁₁ E₁₃₋₁₄ E₇₋₁₁ E₇₋₁₄ E₇₋₁₉ E₁₁₋₁₅...(27 more commands)'
+        >>> pattern.to_unicode(target={CommandKind.M})
+        '₁₇[M₁₉]⁷ ₁₀[M₁₅(-π/4)]¹¹ ₁₇₊₁₂[M₁₄]¹³ ₁₇₊₉[M₁₁]¹⁰ ₀₊₁₊₅₊₁₀₊₁₃[M₇(-π/4)]¹⁷ ₁[M₁₃(-7π/4)]¹² ₈[M₁₀(-7π/4)]⁹ ₁₇[M₁₂]¹ ₆[M₉]⁸ ₈₊₃[M₁(-π/4)] ₅[M₈(-π/4)]⁶ ₁₇₊₄[M₆]⁵ [M₁₇]⁰ ₃[M₅(-7π/4)]⁴ M₀ ₂[M₄]³ [M₃]² M₂'
+        >>> pattern.to_unicode(target={CommandKind.X, CommandKind.Z})
+        'Z₁₆¹¹ Z₁₈¹³ Z₂₀⁷ X₁₆¹⁵ X₁₈¹⁴ X₂₀¹⁹'
+        """
+        return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
 
     def standardize(self) -> None:
         """Execute standardization of the pattern.
