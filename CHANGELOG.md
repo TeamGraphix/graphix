@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #455: Causal-flow finding algorithm (`graphix.flow._find_cflow.py`) does not raise `RecursionError` now.
 
+- #465: Fix #464. Functions in `graphix._linalg.py` convert arrays to c-contiguous form before passing them to numba-jitted functions.
+
 ### Changed
 
 - #181, #423: Structural separation of Pauli measurements
