@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #455: Causal-flow finding algorithm (`graphix.flow._find_cflow.py`) does not raise `RecursionError` now.
 
+- #458: The type for the `input_state` parameter in the simulator now allows `None` to indicate that the input qubits have already been specified in the backend.
+
 ### Changed
 
 - #181, #423: Structural separation of Pauli measurements
