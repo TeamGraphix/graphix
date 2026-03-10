@@ -92,7 +92,7 @@ line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-preview = true
+preview = false
 select = ["ALL"]
 extend-ignore = [
   "C90",     # Complexity

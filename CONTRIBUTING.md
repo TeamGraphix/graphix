@@ -12,12 +12,10 @@ We recommend to [fork the repository](https://docs.github.com/en/get-started/qui
 Once created, you'll need to clone the repository, and you can follow below to set up the environment. We recommend you use a virtual environment like `uv`, but you may prefer to use `conda env` or `pipenv`.
 
 ```bash
-git clone git@github.com:<username>/graphix.git
+git clone git@github.com:TeamGraphix/graphix.git
 cd graphix
 uv sync --extra dev --extra extra
 ```
-
-This creates a virtual environment and installs all development dependencies (linting, testing, type-checking, etc.) from the lockfile.
 
 ## Local checks
 

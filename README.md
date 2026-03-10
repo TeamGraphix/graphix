@@ -34,7 +34,17 @@ Install with [extra dependencies](https://github.com/TeamGraphix/graphix/blob/ma
 pip install graphix[extra]
 ```
 
-Graphix also supports using `uv`.
+### Editable installation
+
+As well as support for editable installation using pip, Graphix also supports using `uv`:
+
+```bash
+git clone git@github.com:TeamGraphix/graphix.git
+cd graphix
+uv sync --extra dev --extra extra
+```
+
+This creates a virtual environment and installs all development and extra dependencies from the `pyproject.toml` and `uv` lockfile.
 
 ## Using graphix
 
@@ -135,7 +145,7 @@ Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) and Masato
 </a>
 </p>
 
-Since 2023, Graphix team is joined by Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/), who develops and maintains the library.
+Since 2023, Graphix team is joined by the Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/), who develops and maintains the library.
 
 <p>
 <a href="https://www.inria.fr/" style="margin-right: 30px;">
