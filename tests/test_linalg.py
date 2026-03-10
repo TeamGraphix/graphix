@@ -224,10 +224,12 @@ class TestLinAlg:
 
         assert np.all((mat @ x) % 2 == b)  # Test with numpy matrix product.
 
-    def test_row_reduction(self, fx_rng: Generator) -> None:
-        sizes = [(10, 10), (3, 7), (6, 2)]
-        ncols = [4, 5, 2]
-        orders: list[Literal["K", "C", "F"]] = ["K", "C", "F"]
+    @pytest.mark.parametrize("size,ncol,order", [
+        ((10, 10), 4, "K"),
+        ((3, 7), 5, "C"),
+        ((6, 2), 2, "F"),
+    ])
+    def test_row_reduction(self, fx_rng: Generator, size: tuple[int, int], ncol: int, order: Literal["K", "C", "F"]) -> None:
 
         for size, ncol, order in zip(sizes, ncols, orders, strict=True):
             mat = MatGF2(np.asarray(fx_rng.integers(size=size, low=0, high=2, dtype=np.uint8), order=order))
