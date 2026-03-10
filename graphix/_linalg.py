@@ -203,7 +203,7 @@ def _solve_f2_linear_system_jit(
 ) -> npt.NDArray[np.uint8]:
     """See docstring of `:func:solve_f2_linear_system` for details.
 
-    The signature of the numba decorator requites the input arrays to be C_CONTIGUOUS.
+    The signature of the numba decorator requires the input arrays to be C_CONTIGUOUS.
     """
     m, n = mat_data.shape
     x = np.zeros(n, dtype=np.uint8)
@@ -243,7 +243,7 @@ def _solve_f2_linear_system_jit(
 def _elimination_jit(mat_data: npt.NDArray[np.uint8], ncols: int, full_reduce: bool) -> npt.NDArray[np.uint8]:
     r"""Return row echelon form (REF) or row-reduced echelon form (RREF) by performing Gaussian elimination.
 
-    The signature of the numba decorator requites the input arrays to be C_CONTIGUOUS.
+    The signature of the numba decorator requires the input arrays to be C_CONTIGUOUS.
 
     Parameters
     ----------
@@ -311,7 +311,7 @@ def _elimination_jit(mat_data: npt.NDArray[np.uint8], ncols: int, full_reduce: b
 def _mat_mul_jit(m1: npt.NDArray[np.uint8], m2: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     """See docstring of `:func:MatGF2.__matmul__` for details.
 
-    The signature of the numba decorator requites the input arrays to be C_CONTIGUOUS.
+    The signature of the numba decorator requires the input arrays to be C_CONTIGUOUS.
     """
     m, l = m1.shape
     _, n = m2.shape
