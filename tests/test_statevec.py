@@ -12,7 +12,12 @@ from graphix.sim.statevec import Statevec, _norm_numeric
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from typing import Literal
+
     from numpy.random import Generator
+
+    _ENCODING = Literal["LSB", "MSB"]
 
 
 class TestStatevec:
@@ -206,6 +211,32 @@ class TestFidelityIsclose:
         almost = Statevec(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)]))
         assert not zero.isclose(almost)
         assert zero.isclose(almost, atol=1e-6)
+
+    @pytest.mark.parametrize(
+        ("encoding", "dict_ref"),
+        [
+            ("LSB", {"000": 0.5, "010": 0.5, "100": -0.5, "110": -0.5}),
+            ("MSB", {"000": 0.5, "010": 0.5, "001": -0.5, "011": -0.5}),
+        ],
+    )
+    def test_to_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
+        sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
+        for ket, amp in sv.to_dict(encoding=encoding).items():
+            assert np.isclose(dict_ref[ket], amp.real)
+            assert np.isclose(0, amp.imag)
+
+    @pytest.mark.parametrize(
+        ("encoding", "dict_ref"),
+        [
+            ("LSB", {"001": 0.25, "011": 0.25, "101": 0.25, "111": 0.25}),
+            ("MSB", {"100": 0.25, "110": 0.25, "101": 0.25, "111": 0.25}),
+        ],
+    )
+    def test_to_prob_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
+        sv = Statevec(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
+        for ket, amp2 in sv.to_prob_dict(encoding=encoding).items():
+            assert np.isclose(dict_ref[ket], amp2.real)
+            assert np.isclose(0, amp2.imag)
 
 
 def test_normalize() -> None:

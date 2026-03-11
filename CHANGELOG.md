@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #450: `Circuit.visit` and `BaseInstruction.visit` performs simple replacements on circuits and instructions, given an `InstructionVisitor`.
 
+- #457: Added `Statevec.to_dict` and `Statevec.to_prob_dict` methods to convert a statevector to dictionary form as suggested in #100.
+
 ### Fixed
 
 - #429
