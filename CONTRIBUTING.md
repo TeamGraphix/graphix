@@ -14,6 +14,7 @@ Once created, you'll need to clone the repository, and you can follow below to s
 ```bash
 git clone git@github.com:TeamGraphix/graphix.git
 cd graphix
+pip install uv
 uv sync --extra dev --extra extra
 ```
 
@@ -34,11 +35,12 @@ You can also run the full CI suite locally:
 uv run nox
 ```
 
-Before committing, format the code:
+Before committing, format the code and check test coverage:
 
 ```bash
-uv run ruff check --select I --fix .
+uv run ruff check --fix .
 uv run ruff format .
+uv run pytest --cov=./graphix --cov-report=xml --cov-report=term --doctest-modules
 ```
 
 ### VS Code configuration
@@ -67,16 +69,16 @@ If `graphix` is installed with `uv sync` or `pip install -e`, `mypy` may fail to
 error: Skipping analyzing "graphix": module is installed, but missing library stubs or py.typed marker  [import-untyped]
 ```
 
-To work around this, install `graphix` non-editable:
+To work around this, install `graphix` in strict editable mode:
 
 ```bash
-uv sync --no-editable
+uv sync --config-setting editable_mode=strict
 ```
 
-Or with pip:
+Or similarly with pip:
 
 ```bash
-pip install . --config-settings editable_mode=strict
+pip install -e . --config-setting editable_mode=strict
 ```
 
 See https://github.com/pypa/setuptools/issues/3518 for more details.

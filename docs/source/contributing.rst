@@ -10,6 +10,7 @@ Clone the repository and install all development dependencies::
 
     git clone https://github.com/TeamGraphix/graphix.git
     cd graphix
+    pip install uv
     uv sync --extra dev --extra extra
 
 Local checks
@@ -26,10 +27,11 @@ Or run individual checks::
     uv run mypy
     uv run pytest
 
-Format code before committing::
+Format code and check code coverage before committing::
 
     uv run ruff check --select I --fix .
     uv run ruff format .
+    uv run pytest --cov=./graphix --cov-report=xml --cov-report=term --doctest-modules
 
 VS Code configuration
 ---------------------
