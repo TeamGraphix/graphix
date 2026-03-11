@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #450: `Circuit.visit` and `BaseInstruction.visit` performs simple replacements on circuits and instructions, given an `InstructionVisitor`.
 
+- #457: Added `Statevec.to_dict` and `Statevec.to_prob_dict` methods to convert a statevector to dictionary form as suggested in #100.
+
 - #445: Circuit extraction.
   - Added `PauliFlow.is_focused` to verify if a Pauli flow is focused and `PauliFlow.pauli_strings` associating a Pauli string to the every corrected node.
   - Added `PauliFlow.extract_circuit`
@@ -46,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #455: Causal-flow finding algorithm (`graphix.flow._find_cflow.py`) does not raise `RecursionError` now.
 
+- #458: The type for the `input_state` parameter in the simulator now allows `None` to indicate that the input qubits have already been specified in the backend.
+
+- #465: Fix #464. Functions in `graphix._linalg.py` convert arrays to c-contiguous form before passing them to numba-jitted functions.
+
 ### Changed
 
 - #181, #423: Structural separation of Pauli measurements
@@ -54,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Conversions are explicit with `Measurement.to_bloch()` and `Measurement.infer_pauli_measurements()`. Pauli measurement inference uses `math.isclose` and has optional parameters `rel_tol` and `abs_tol`.
 
 - #430: The whole code base is now type-checked with `mypy` and `pyright`, including examples.
+
+- #460: Updated `Pattern` methods (`to_ascii`, `to_unicode`, `to_latex`) and `pattern_to_str` to allow `limit` to be `None`. Removed the deprecated `print_pattern` function.
 
 ## [0.3.4] - 2026-02-05
 

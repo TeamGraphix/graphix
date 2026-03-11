@@ -2,10 +2,10 @@
 mypy==1.19.1
 pre-commit # for language-agnostic hooks
 pyright
-ruff==0.15.4
+ruff==0.15.5
 
 # Stubs
-types-networkx==3.6.1.20260210
+types-networkx==3.6.1.20260303
 types-psutil
 types-setuptools
 scipy-stubs
@@ -23,7 +23,7 @@ pytest-mpl
 # Optional dependencies
 qiskit>=1.0
 qiskit_qasm3_import
-qiskit-aer; python_version < "3.14"
+qiskit-aer
 
 openqasm-parser>=3.1.0
 graphix-qasm-parser>=0.1.1

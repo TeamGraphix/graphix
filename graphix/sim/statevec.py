@@ -20,10 +20,14 @@ from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
+    from typing import Any, Literal, TypeVar
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
+
+    _ENCODING = Literal["LSB", "MSB"]
+    _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
 
 
 CZ_TENSOR = np.array(
@@ -214,7 +218,7 @@ class Statevec(DenseState):
     @override
     def nqubit(self) -> int:
         """Return the number of qubits."""
-        return len(self.psi.shape)
+        return self.psi.ndim
 
     @override
     def remove_qubit(self, qarg: int) -> None:
@@ -427,6 +431,109 @@ class Statevec(DenseState):
         """
         return math.isclose(self.fidelity(other), 1, rel_tol=rtol, abs_tol=atol)
 
+    def to_dict(
+        self,
+        encoding: _ENCODING = "MSB",
+        *,
+        rtol: float = 0.0,
+        atol: float = 1e-8,
+    ) -> dict[str, np.object_ | np.complex128]:
+        r"""Convert the statevector to dictionary form.
+
+        This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding complex amplitudes. Amplitudes below a certain threshold are filtered out.
+
+        Parameters
+        ----------
+        encoding : Literal["LSB", "MSB"], default="MSB"
+            Encoding for the basis kets. See notes for additional information.
+
+        rtol : float, default=0.0
+            Relative tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        atol : float, default=1e-8
+            Absolute tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        Returns
+        -------
+        dict[str, complex]
+            The statevector in dictionary form.
+
+        Notes
+        -----
+        The encoding determines the bit ordering convention used when mapping basis states to dictionary
+        keys. Consider a tensor product of three qubits:
+
+        .. math::
+
+        \lvert\psi\rangle = q_0 \otimes q_1 \otimes q_2.
+
+        If ``encoding == "MSB"`` the first qubit is represented in the Most Significant Bit -> ``q0q1q2``. This is the default representation in Graphix.
+        If ``encoding == "LSB"`` the first qubit is represented in the Least Significant Bit -> ``q2q1q0``. This is the default representation in other software packages such as Qiskit.
+
+        Example
+        -------
+        >>> from graphix.states import BasicStates
+        >>> from graphix.sim.statevec import Statevec
+        >>> sv = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
+        >>> sv.to_dict()
+        {'01': np.complex128(1+0j)}
+        >>> sv.to_dict(encoding="LSB")
+        {'10': np.complex128(1+0j)}
+        """
+        return self._to_dict_map(lambda x: x, encoding, rtol=rtol, atol=atol)
+
+    def to_prob_dict(
+        self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8
+    ) -> dict[str, np.object_ | np.float64]:
+        r"""Convert the statevector to a probability distirbution in a dictionary form.
+
+        This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding probabilities.
+        Basis vector whose amplitude is below a certain threshold are filtered out.
+
+        Parameters
+        ----------
+        encoding: Literal["LSB", "MSB"], default="MSB"
+            Encoding for the basis kets. See :meth:`to_dict` for additional information.
+
+        rtol : float, default=0.0
+            Relative tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        atol : float, default=1e-8
+            Absolute tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        Returns
+        -------
+        dict[str, float]
+            The probability distribution associated to the statevector in dictionary form.
+
+        See Also
+        --------
+        .. :meth:`to_dict`
+        """
+        return self._to_dict_map(lambda x: np.abs(x) ** 2, encoding, rtol=rtol, atol=atol)
+
+    def _to_dict_map(
+        self,
+        f: Callable[[npt.NDArray[np.object_ | np.complex128]], npt.NDArray[_ScalarT]],
+        encoding: _ENCODING = "MSB",
+        *,
+        rtol: float = 0.0,
+        atol: float = 1e-8,
+    ) -> dict[str, _ScalarT]:
+        mask = np.logical_not(np.isclose(np.abs(self.flatten()), 0, rtol=rtol, atol=atol))
+        i_vals = np.arange(1 << self.nqubit)[mask]
+        amp_vals = f(self.flatten()[mask])
+
+        return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
+
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
         """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
         result = Statevec()
@@ -466,3 +573,12 @@ def _norm(psi: Matrix) -> ExpressionOrFloat:
     if psi.dtype == np.object_:
         return _norm_symbolic(psi.astype(np.object_, copy=False))
     return _norm_numeric(psi.astype(np.complex128, copy=False))
+
+
+def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
+    """Format the i-th basis vector as a ket. See :meth:`Statevec.to_dict` for additional details."""
+    display_width = nqubit
+    output = f"{i:0{display_width}b}"
+    if encoding == "LSB":
+        return output[::-1]
+    return output

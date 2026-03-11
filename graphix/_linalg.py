@@ -31,7 +31,9 @@ class MatGF2(npt.NDArray[np.uint8]):
             MatGF2
         """
         arr = np.array(data, dtype=np.uint8, copy=copy)
-        return super().__new__(cls, shape=arr.shape, dtype=arr.dtype, buffer=arr)
+        return super().__new__(
+            cls, shape=arr.shape, dtype=arr.dtype, buffer=arr, strides=arr.strides
+        )  # `strides=arr.strides` allows to preserve the memory layout of the original data.
 
     def mat_mul(self, other: MatGF2 | npt.NDArray[np.uint8]) -> MatGF2:
         r"""Multiply two matrices.
@@ -60,7 +62,7 @@ class MatGF2(npt.NDArray[np.uint8]):
                 f"Dimension mismatch. Attempted to multiply `self` with shape {self.shape} and  `other` with shape {other.shape}"
             )
 
-        return MatGF2(_mat_mul_jit(self, other), copy=False)
+        return MatGF2(_mat_mul_jit(np.ascontiguousarray(self), np.ascontiguousarray(other)), copy=False)
 
     def compute_rank(self) -> np.intp:
         """Get the rank of the matrix.
@@ -149,7 +151,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         ncols_value = self.shape[1] if ncols is None else ncols
         mat_ref = MatGF2(self) if copy else self
 
-        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=False), copy=False)
+        return MatGF2(_elimination_jit(np.ascontiguousarray(mat_ref), ncols=ncols_value, full_reduce=False), copy=False)
 
     def row_reduction(self, ncols: int | None = None, copy: bool = True) -> MatGF2:
         """Return row-reduced echelon form (RREF) by performing Gaussian elimination.
@@ -170,7 +172,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         ncols_value = self.shape[1] if ncols is None else ncols
         mat_ref = self.copy() if copy else self
 
-        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=True), copy=False)
+        return MatGF2(_elimination_jit(np.ascontiguousarray(mat_ref), ncols=ncols_value, full_reduce=True), copy=False)
 
 
 def solve_f2_linear_system(mat: MatGF2, b: MatGF2) -> MatGF2:
@@ -192,14 +194,17 @@ def solve_f2_linear_system(mat: MatGF2, b: MatGF2) -> MatGF2:
     -----
     This function is not integrated in `:class: graphix.linalg.MatGF2` because it does not perform any checks on the form of `mat` to ensure that it is in REF or that the system is solvable.
     """
-    return MatGF2(_solve_f2_linear_system_jit(mat, b), copy=False)
+    return MatGF2(_solve_f2_linear_system_jit(np.ascontiguousarray(mat), np.ascontiguousarray(b)), copy=False)
 
 
 @nb.njit("uint8[::1](uint8[:,::1], uint8[::1])")
 def _solve_f2_linear_system_jit(
     mat_data: npt.NDArray[np.uint8], b_data: npt.NDArray[np.uint8]
 ) -> npt.NDArray[np.uint8]:
-    """See docstring of `:func:solve_f2_linear_system` for details."""
+    """See docstring of `:func:solve_f2_linear_system` for details.
+
+    The signature of the numba decorator requires the input arrays to be C_CONTIGUOUS.
+    """
     m, n = mat_data.shape
     x = np.zeros(n, dtype=np.uint8)
 
@@ -237,6 +242,8 @@ def _solve_f2_linear_system_jit(
 @nb.njit("uint8[:,::1](uint8[:,::1], uint64, boolean)")
 def _elimination_jit(mat_data: npt.NDArray[np.uint8], ncols: int, full_reduce: bool) -> npt.NDArray[np.uint8]:
     r"""Return row echelon form (REF) or row-reduced echelon form (RREF) by performing Gaussian elimination.
+
+    The signature of the numba decorator requires the input arrays to be C_CONTIGUOUS.
 
     Parameters
     ----------
@@ -302,7 +309,10 @@ def _elimination_jit(mat_data: npt.NDArray[np.uint8], ncols: int, full_reduce: b
 
 @nb.njit("uint8[:,::1](uint8[:,::1], uint8[:,::1])", parallel=True)
 def _mat_mul_jit(m1: npt.NDArray[np.uint8], m2: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
-    """See docstring of `:func:MatGF2.__matmul__` for details."""
+    """See docstring of `:func:MatGF2.__matmul__` for details.
+
+    The signature of the numba decorator requires the input arrays to be C_CONTIGUOUS.
+    """
     m, l = m1.shape
     _, n = m2.shape
 
