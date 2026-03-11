@@ -407,10 +407,10 @@ class TestFlowPatternConversion:
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
                 alpha = 2 * ANGLE_PI * fx_rng.random()
-                state_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
+                state_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
 
                 for _ in range(n_shots):
-                    state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
+                    state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
                     assert state.isclose(state_ref)
 
 

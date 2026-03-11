@@ -15,7 +15,7 @@ from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
-    from numpy.random import PCG64
+    from numpy.random import PCG64, Generator
 
     from graphix.parameter import Parameter
 
@@ -61,14 +61,14 @@ def test_pattern_substitution() -> None:
     assert list(pattern0.infer_pauli_measurements()) == [graphix.command.M(0), graphix.command.M(1)]
 
 
-def test_instantiated_pattern_simulation() -> None:
+def test_instantiated_pattern_simulation(fx_rng: Generator) -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     pattern0 = pattern.subs(alpha, 0)
     # Instantied patterns can be simulated.
-    pattern0.simulate_pattern()
+    pattern0.simulate_pattern(rng=fx_rng)
     pattern1 = pattern.subs(alpha, 1)
     assert not pattern1.is_parameterized()
     assert list(pattern1) == [graphix.command.M(node=0), graphix.command.M(1, Measurement.XY(1))]
@@ -76,10 +76,10 @@ def test_instantiated_pattern_simulation() -> None:
         graphix.command.M(node=0),
         graphix.command.M(1, -Measurement.X),
     ]
-    pattern1.simulate_pattern()
+    pattern1.simulate_pattern(rng=fx_rng)
 
 
-def test_multiple_parameters() -> None:
+def test_multiple_parameters(fx_rng: Generator) -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
@@ -104,7 +104,7 @@ def test_multiple_parameters() -> None:
         graphix.command.N(node=2),
         graphix.command.M(2, -Measurement.X),
     ]
-    pattern23.simulate_pattern()
+    pattern23.simulate_pattern(rng=fx_rng)
 
 
 def test_parallel_substitution() -> None:
@@ -176,10 +176,10 @@ def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_xreplace: 
     assignment: dict[Parameter, float] = {alpha: rng.uniform(high=2), beta: rng.uniform(high=2)}
     if use_xreplace:
         state = circuit.xreplace(assignment).simulate_statevector().statevec
-        state_mbqc = pattern.xreplace(assignment).simulate_pattern()
+        state_mbqc = pattern.xreplace(assignment).simulate_pattern(rng=rng)
     else:
         state = circuit.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_statevector().statevec
-        state_mbqc = pattern.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_pattern()
+        state_mbqc = pattern.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_pattern(rng=rng)
     assert state_mbqc.isclose(state)
 
 
@@ -192,10 +192,10 @@ def test_visualization() -> None:
     pattern.draw_graph()
 
 
-def test_simulation_exception() -> None:
+def test_simulation_exception(fx_rng: Generator) -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     with pytest.raises(PlaceholderOperationError):
-        pattern.simulate_pattern()
+        pattern.simulate_pattern(rng=fx_rng)

@@ -28,16 +28,16 @@ if TYPE_CHECKING:
     IntLike: TypeAlias = int | np.integer
 
 
-def rand_herm(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
+def rand_herm(sz: IntLike, rng: Generator | None = None, *, stacklevel: int = 1) -> npt.NDArray[np.complex128]:
     """Generate random hermitian matrix of size sz*sz."""
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
     tmp = rng.random(size=(sz, sz)) + 1j * rng.random(size=(sz, sz))
     return tmp + tmp.conj().T
 
 
-def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
+def rand_unit(sz: IntLike, rng: Generator | None = None, *, stacklevel: int = 1) -> npt.NDArray[np.complex128]:
     """Generate haar random unitary matrix of size sz*sz."""
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
     return unitary_group.rvs(int(sz), random_state=rng)
@@ -46,7 +46,9 @@ def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.compl
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: IntLike, rng: Generator | None = None, rank: IntLike | None = None) -> npt.NDArray[np.complex128]:
+def rand_dm(
+    dim: IntLike, rng: Generator | None = None, rank: IntLike | None = None, *, stacklevel: int = 1
+) -> npt.NDArray[np.complex128]:
     """Generate random density matrices (positive semi-definite matrices with unit trace).
 
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter *dm_dtype*.
@@ -62,7 +64,7 @@ def rand_dm(dim: IntLike, rng: Generator | None = None, rank: IntLike | None = N
     .. note::
         Thanks to Ulysse Chabaud.
     """
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
 
     if rank is None:
         rank = dim
@@ -74,7 +76,7 @@ def rand_dm(dim: IntLike, rng: Generator | None = None, rank: IntLike | None = N
 
     dm = np.diag(padded_evals / np.sum(padded_evals))
 
-    rand_u = rand_unit(dim)
+    rand_u = rand_unit(dim, rng, stacklevel=stacklevel + 1)
     return rand_u @ dm @ rand_u.transpose().conj()
 
 
@@ -91,7 +93,9 @@ def _make_sig(sig: _SIG, dim: IntLike) -> float:
     return sig
 
 
-def rand_gauss_cpx_mat(dim: IntLike, rng: Generator | None = None, sig: _SIG = None) -> npt.NDArray[np.complex128]:
+def rand_gauss_cpx_mat(
+    dim: IntLike, rng: Generator | None = None, sig: _SIG = None, *, stacklevel: int = 1
+) -> npt.NDArray[np.complex128]:
     """Return a square array of standard normal complex random variates.
 
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
@@ -105,7 +109,7 @@ def rand_gauss_cpx_mat(dim: IntLike, rng: Generator | None = None, sig: _SIG = N
         ``sig = 'ginibre`` draws from the Ginibre ensemble ie  sig = 1 / sqrt(2 * dim).
 
     """
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
 
     result: npt.NDArray[np.complex128] = np.sum(
         rng.normal(loc=0.0, scale=_make_sig(sig, dim), size=((dim,) * 2 + (2,))) * UNITS, axis=-1
@@ -114,7 +118,7 @@ def rand_gauss_cpx_mat(dim: IntLike, rng: Generator | None = None, sig: _SIG = N
 
 
 def rand_channel_kraus(
-    dim: int, rng: Generator | None = None, rank: int | None = None, sig: _SIG = None
+    dim: int, rng: Generator | None = None, rank: int | None = None, sig: _SIG = None, *, stacklevel: int = 1
 ) -> KrausChannel:
     """Return a random :class:`graphix.sim.channels.KrausChannel` object of given dimension and rank.
 
@@ -133,7 +137,7 @@ def rand_channel_kraus(
     sig : see rand_cpx
 
     """
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
 
     if rank is None:
         rank = dim**2
@@ -141,7 +145,9 @@ def rand_channel_kraus(
     if not rank >= 1:
         raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
 
-    pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=_make_sig(sig, dim)) for _ in range(rank)]
+    pre_kraus_list = [
+        rand_gauss_cpx_mat(dim=dim, sig=_make_sig(sig, dim), rng=rng, stacklevel=stacklevel + 1) for _ in range(rank)
+    ]
     h_mat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
     kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(h_mat))
 
@@ -150,9 +156,11 @@ def rand_channel_kraus(
 
 # or merge with previous with a "pauli" kwarg?
 # continue here
-def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int | None = None) -> KrausChannel:
+def rand_pauli_channel_kraus(
+    dim: int, rng: Generator | None = None, rank: int | None = None, *, stacklevel: int = 1
+) -> KrausChannel:
     """Return a random Kraus channel operator."""
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
 
     if not dim & (dim - 1) == 0:
         raise ValueError(f"The dimension must be a power of 2 and not {dim}.")
@@ -279,6 +287,7 @@ def rand_gate(
     rng: Generator | None = None,
     *,
     use_rzz: bool = False,
+    stacklevel: int = 1,
 ) -> Circuit:
     """Return a random gate composed of single-qubit rotations and entangling operations.
 
@@ -301,7 +310,7 @@ def rand_gate(
     Circuit
         The generated random circuit.
     """
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
     circuit = Circuit(nqubits)
     _first_rotation(circuit, nqubits, rng)
     _entangler(circuit, pairs)
@@ -372,6 +381,7 @@ def rand_circuit(
     use_rzz: bool = False,
     use_ccx: bool = False,
     parameters: Iterable[Parameter] | None = None,
+    stacklevel: int = 1,
 ) -> Circuit:
     """Return a random parameterized circuit used for testing or benchmarking.
 
@@ -397,7 +407,7 @@ def rand_circuit(
     Circuit
         The generated random circuit.
     """
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
     circuit = Circuit(nqubits)
     parametric_gate_choice = (
         functools.partial(rotation, angle=parameter)
@@ -435,7 +445,7 @@ def rand_circuit(
     return circuit
 
 
-def rand_state_vector(nqubits: int, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
+def rand_state_vector(nqubits: int, rng: Generator | None = None, *, stacklevel: int = 1) -> npt.NDArray[np.complex128]:
     """
     Generate a random normalized complex state vector of size 2^n.
 
@@ -449,7 +459,7 @@ def rand_state_vector(nqubits: int, rng: Generator | None = None) -> npt.NDArray
     numpy.ndarray
         Normalized complex vector of size 2^nqubits
     """
-    rng = ensure_rng(rng)
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
     dim = 1 << nqubits  # 2**nqubits is typed Any
     real, imag = rng.random((2, dim)) - 0.5
     vec: npt.NDArray[np.complex128] = (real + 1j * imag).astype(np.complex128)

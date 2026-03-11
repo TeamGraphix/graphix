@@ -23,3 +23,12 @@ This module provides functions to generate various random objects.
 .. autofunction:: rand_gate
 
 .. autofunction:: rand_circuit
+
+:mod:`graphix.rng` module
++++++++++++++++++++++++++
+
+This module provides a default random-number generator if ``None`` is given.
+
+.. currentmodule:: graphix.rng
+
+.. autofunction:: ensure_rng

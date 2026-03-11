@@ -174,7 +174,9 @@ class TestTranspilerUnitGates:
     @pytest.mark.parametrize("input_axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("input_sign", [Sign.PLUS, Sign.MINUS])
     @pytest.mark.parametrize("measurement_axis", [Axis.X, Axis.Y, Axis.Z])
-    def test_measurement_expectation_value(self, input_axis: Axis, input_sign: Sign, measurement_axis: Axis) -> None:
+    def test_measurement_expectation_value(
+        self, fx_rng: Generator, input_axis: Axis, input_sign: Sign, measurement_axis: Axis
+    ) -> None:
         match input_axis, input_sign:
             case Axis.X, Sign.PLUS:
                 input_state = BasicStates.PLUS
@@ -192,7 +194,7 @@ class TestTranspilerUnitGates:
         circuit.m(0, measurement_axis)
         expectation_value0 = 0.5 if input_axis != measurement_axis else 1 if input_sign == Sign.PLUS else 0
         branch_selector = CheckedBranchSelector(expected={0: expectation_value0}, abs_tol=1e-15)
-        circuit.simulate_statevector(input_state=input_state, branch_selector=branch_selector)
+        circuit.simulate_statevector(input_state=input_state, branch_selector=branch_selector, rng=fx_rng)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
