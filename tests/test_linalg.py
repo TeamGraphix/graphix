@@ -225,7 +225,7 @@ class TestLinAlg:
         assert np.all((mat @ x) % 2 == b)  # Test with numpy matrix product.
 
     @pytest.mark.parametrize(
-        "test_case",
+        ("size", "ncol", "order"),
         [
             ((10, 10), 4, "K"),
             ((3, 7), 5, "C"),
@@ -233,9 +233,8 @@ class TestLinAlg:
         ],
     )
     def test_row_reduction(
-        self, fx_rng: Generator, test_case: tuple[tuple[int, int], int, Literal["K", "C", "F"]]
+        self, fx_rng: Generator, size: tuple[int, int], ncol: int, order: Literal["K", "C", "F"]
     ) -> None:
-        size, ncol, order = test_case
         mat = MatGF2(np.asarray(fx_rng.integers(size=size, low=0, high=2, dtype=np.uint8), order=order))
         mat_red = mat.row_reduction(ncols=ncol, copy=True)
         verify_elimination(mat, mat_red, ncol, full_reduce=True)
