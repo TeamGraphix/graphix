@@ -20,13 +20,14 @@ from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
-    from typing import Literal
+    from collections.abc import Callable, Mapping, Sequence
+    from typing import Any, Literal, TypeVar
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
 
     _ENCODING = Literal["LSB", "MSB"]
+    _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
 
 
 CZ_TENSOR = np.array(
@@ -436,7 +437,7 @@ class Statevec(DenseState):
         *,
         rtol: float = 0.0,
         atol: float = 1e-8,
-    ) -> dict[str, complex]:
+    ) -> dict[str, np.object_ | np.complex128]:
         r"""Convert the statevector to dictionary form.
 
         This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding complex amplitudes. Amplitudes below a certain threshold are filtered out.
@@ -483,13 +484,11 @@ class Statevec(DenseState):
         >>> sv.to_dict(encoding="LSB")
         {'10': np.complex128(1+0j)}
         """
-        mask = np.logical_not(np.isclose(np.abs(self.flatten()), 0, rtol=rtol, atol=atol))
-        i_vals = np.arange(1 << self.nqubit)[mask]
-        amp_vals = self.flatten()[mask]
+        return self._to_dict_map(lambda x: x, encoding, rtol=rtol, atol=atol)
 
-        return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
-
-    def to_prob_dict(self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8) -> dict[str, float]:
+    def to_prob_dict(
+        self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8
+    ) -> dict[str, np.object_ | np.float64]:
         r"""Convert the statevector to a probability distirbution in a dictionary form.
 
         This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding probabilities.
@@ -519,11 +518,21 @@ class Statevec(DenseState):
         --------
         .. :meth:`to_dict`
         """
+        return self._to_dict_map(lambda x: np.abs(x) ** 2, encoding, rtol=rtol, atol=atol)
+
+    def _to_dict_map(
+        self,
+        f: Callable[[npt.NDArray[np.object_ | np.complex128]], npt.NDArray[_ScalarT]],
+        encoding: _ENCODING = "MSB",
+        *,
+        rtol: float = 0.0,
+        atol: float = 1e-8,
+    ) -> dict[str, _ScalarT]:
         mask = np.logical_not(np.isclose(np.abs(self.flatten()), 0, rtol=rtol, atol=atol))
         i_vals = np.arange(1 << self.nqubit)[mask]
-        amp2_vals = np.abs(self.flatten()[mask]) ** 2
+        amp_vals = f(self.flatten()[mask])
 
-        return {_format_encoding(self.nqubit, i, encoding): amp2 for i, amp2 in zip(i_vals, amp2_vals, strict=True)}
+        return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
         """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
