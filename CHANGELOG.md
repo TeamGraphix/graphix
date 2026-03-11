@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #450: `Circuit.visit` and `BaseInstruction.visit` performs simple replacements on circuits and instructions, given an `InstructionVisitor`.
 
+- #457: Added `Statevec.to_dict` and `Statevec.to_prob_dict` methods to convert a statevector to dictionary form as suggested in #100.
+
 - #461: A warning is raised when the `rng` parameter is not set, as the default random generator will be used and results may not be reproducible.
 
 ### Fixed
@@ -35,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #455: Causal-flow finding algorithm (`graphix.flow._find_cflow.py`) does not raise `RecursionError` now.
 
 - #458: The type for the `input_state` parameter in the simulator now allows `None` to indicate that the input qubits have already been specified in the backend.
+
+- #465: Fix #464. Functions in `graphix._linalg.py` convert arrays to c-contiguous form before passing them to numba-jitted functions.
 
 ### Changed
 
