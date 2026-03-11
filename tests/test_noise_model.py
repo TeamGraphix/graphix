@@ -85,6 +85,20 @@ def test_compose_noise_model_transpile(fx_rng: Generator) -> None:
                 check_noise_command(next(iterator), 0, False)
 
 
+def test_compose_noise_model_simulation(fx_rng: Generator) -> None:
+    nqubits = 5
+    depth = 5
+    circuit = rand_circuit(nqubits, depth, rng=fx_rng)
+    state = circuit.simulate_statevector().statevec
+    pattern = circuit.transpile().pattern
+    pattern.standardize()
+    pattern.minimize_space()
+    # By default, `DepolarisingNoiseModel` is noiseless.
+    noise_model = ComposeNoiseModel([NoiselessNoiseModel(), DepolarisingNoiseModel()])
+    state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
+    assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
+
+
 def test_confuse_result(fx_rng: Generator) -> None:
     # Pattern that measures 0 on qubit 0 with probability 1.
     pattern = Pattern(cmds=[N(0), M(0)])
