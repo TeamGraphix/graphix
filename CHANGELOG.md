@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #458: The type for the `input_state` parameter in the simulator now allows `None` to indicate that the input qubits have already been specified in the backend.
 
+- #465: Fix #464. Functions in `graphix._linalg.py` convert arrays to c-contiguous form before passing them to numba-jitted functions.
+
 ### Changed
 
 - #181, #423: Structural separation of Pauli measurements
