@@ -125,6 +125,7 @@ class ReverseDependency:
             branch="python_314",
             doctest_modules=False,
         ),
+        ReverseDependency("https://github.com/matulni/graphix-stim-compiler"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
