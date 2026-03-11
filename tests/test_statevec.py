@@ -12,7 +12,12 @@ from graphix.sim.statevec import Statevec, _norm_numeric
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from typing import Literal
+
     from numpy.random import Generator
+
+    _ENCODING = Literal["LSB", "MSB"]
 
 
 class TestStatevec:
@@ -207,27 +212,31 @@ class TestFidelityIsclose:
         assert not zero.isclose(almost)
         assert zero.isclose(almost, atol=1e-6)
 
-    def test_to_dict(self) -> None:
+    @pytest.mark.parametrize(
+        ("encoding", "dict_ref"),
+        [
+            ("LSB", {"000": 0.5, "010": 0.5, "100": -0.5, "110": -0.5}),
+            ("MSB", {"000": 0.5, "010": 0.5, "001": -0.5, "011": -0.5}),
+        ],
+    )
+    def test_to_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
         sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
-        lsb_ref = {"000": 0.5, "010": 0.5, "100": -0.5, "110": -0.5}
-        msb_ref = {"000": 0.5, "010": 0.5, "001": -0.5, "011": -0.5}
-        for (k_lsb, v_lsb), (k_msb, v_msb) in zip(
-            sv.to_dict(encoding="LSB").items(), sv.to_dict().items(), strict=True
-        ):
-            assert np.isclose(lsb_ref[k_lsb], v_lsb.real)
-            assert np.isclose(0, v_lsb.imag)
-            assert np.isclose(msb_ref[k_msb], v_msb.real)
-            assert np.isclose(0, v_msb.imag)
+        for ket, amp in sv.to_dict(encoding=encoding).items():
+            assert np.isclose(dict_ref[ket], amp.real)
+            assert np.isclose(0, amp.imag)
 
-    def test_to_prob_dict(self) -> None:
+    @pytest.mark.parametrize(
+        ("encoding", "dict_ref"),
+        [
+            ("LSB", {"001": 0.25, "011": 0.25, "101": 0.25, "111": 0.25}),
+            ("MSB", {"100": 0.25, "110": 0.25, "101": 0.25, "111": 0.25}),
+        ],
+    )
+    def test_to_prob_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
         sv = Statevec(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
-        lsb_ref = {"001": 0.25, "011": 0.25, "101": 0.25, "111": 0.25}
-        msb_ref = {"100": 0.25, "110": 0.25, "101": 0.25, "111": 0.25}
-        for (k_lsb, v_lsb), (k_msb, v_msb) in zip(
-            sv.to_prob_dict(encoding="LSB").items(), sv.to_prob_dict().items(), strict=True
-        ):
-            assert np.isclose(lsb_ref[k_lsb], v_lsb)
-            assert np.isclose(msb_ref[k_msb], v_msb)
+        for ket, amp2 in sv.to_prob_dict(encoding=encoding).items():
+            assert np.isclose(dict_ref[ket], amp2.real)
+            assert np.isclose(0, amp2.imag)
 
 
 def test_normalize() -> None:
