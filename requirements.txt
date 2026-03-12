@@ -1,8 +1,0 @@
-matplotlib
-networkx
-numpy>=2
-opt_einsum
-quimb
-scipy
-sympy
-typing_extensions

@@ -50,32 +50,32 @@ class TestSign:
     def test_mul_float(self) -> None:
         left = Sign.PLUS * 1.0
         assert isinstance(left, float)
-        assert left == float(Sign.PLUS)  # noqa: RUF069
+        assert left == float(Sign.PLUS)
         right = 1.0 * Sign.PLUS
         assert isinstance(right, float)
-        assert right == float(Sign.PLUS)  # noqa: RUF069
+        assert right == float(Sign.PLUS)
 
         left = Sign.MINUS * 1.0
         assert isinstance(left, float)
-        assert left == float(Sign.MINUS)  # noqa: RUF069
+        assert left == float(Sign.MINUS)
         right = 1.0 * Sign.MINUS
         assert isinstance(right, float)
-        assert right == float(Sign.MINUS)  # noqa: RUF069
+        assert right == float(Sign.MINUS)
 
     def test_mul_complex(self) -> None:
         left = Sign.PLUS * complex(1)
         assert isinstance(left, complex)
-        assert left == complex(Sign.PLUS)  # noqa: RUF069
+        assert left == complex(Sign.PLUS)
         right = complex(1) * Sign.PLUS
         assert isinstance(right, complex)
-        assert right == complex(Sign.PLUS)  # noqa: RUF069
+        assert right == complex(Sign.PLUS)
 
         left = Sign.MINUS * complex(1)
         assert isinstance(left, complex)
-        assert left == complex(Sign.MINUS)  # noqa: RUF069
+        assert left == complex(Sign.MINUS)
         right = complex(1) * Sign.MINUS
         assert isinstance(right, complex)
-        assert right == complex(Sign.MINUS)  # noqa: RUF069
+        assert right == complex(Sign.MINUS)
 
     def test_int(self) -> None:
         # Necessary to justify `type: ignore`
@@ -103,10 +103,10 @@ class TestComplexUnit:
         assert ComplexUnit.from_properties(sign=sign, is_imag=is_imag).is_imag == is_imag
 
     def test_complex(self) -> None:
-        assert complex(ComplexUnit.ONE) == 1  # noqa: RUF069
-        assert complex(ComplexUnit.J) == 1j  # noqa: RUF069
-        assert complex(ComplexUnit.MINUS_ONE) == -1  # noqa: RUF069
-        assert complex(ComplexUnit.MINUS_J) == -1j  # noqa: RUF069
+        assert complex(ComplexUnit.ONE) == 1
+        assert complex(ComplexUnit.J) == 1j
+        assert complex(ComplexUnit.MINUS_ONE) == -1
+        assert complex(ComplexUnit.MINUS_J) == -1j
 
     def test_str(self) -> None:
         assert str(ComplexUnit.ONE) == "1"
@@ -116,15 +116,15 @@ class TestComplexUnit:
 
     @pytest.mark.parametrize(("lhs", "rhs"), itertools.product(ComplexUnit, ComplexUnit))
     def test_mul_self(self, lhs: ComplexUnit, rhs: ComplexUnit) -> None:
-        assert complex(lhs * rhs) == complex(lhs) * complex(rhs)  # noqa: RUF069
+        assert complex(lhs * rhs) == complex(lhs) * complex(rhs)
 
     def test_mul_number(self) -> None:
         assert ComplexUnit.ONE * 1 == ComplexUnit.ONE
         assert 1 * ComplexUnit.ONE == ComplexUnit.ONE
-        assert ComplexUnit.ONE * 1.0 == ComplexUnit.ONE  # noqa: RUF069
-        assert 1.0 * ComplexUnit.ONE == ComplexUnit.ONE  # noqa: RUF069
-        assert ComplexUnit.ONE * complex(1) == ComplexUnit.ONE  # noqa: RUF069
-        assert complex(1) * ComplexUnit.ONE == ComplexUnit.ONE  # noqa: RUF069
+        assert ComplexUnit.ONE * 1.0 == ComplexUnit.ONE
+        assert 1.0 * ComplexUnit.ONE == ComplexUnit.ONE
+        assert ComplexUnit.ONE * complex(1) == ComplexUnit.ONE
+        assert complex(1) * ComplexUnit.ONE == ComplexUnit.ONE
 
     def test_neg(self) -> None:
         assert -ComplexUnit.ONE == ComplexUnit.MINUS_ONE

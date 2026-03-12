@@ -15,11 +15,13 @@ from packaging.version import Version
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+nox.options.default_venv_backend = "uv"
+
 PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
 
 def install_pytest(session: Session) -> None:
-    """Install pytest when requirements-dev.txt is not installed."""
+    """Install pytest when the dev extra is not installed."""
     session.install("pytest", "pytest-mock", "pytest-benchmark", "pytest-mpl", "psutil")
 
 
@@ -116,8 +118,8 @@ class ReverseDependency:
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
-            "https://github.com/thierry-martinez/veriphix",
-            branch="fix_reproducibility_and_types",
+            "https://github.com/qat-inria/veriphix",
+            branch="main",
             doctest_modules=False,
         ),
         ReverseDependency(
@@ -143,11 +145,11 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
             if package.branch is None:
-                session.run("git", "clone", package.repository)
+                session.run("git", "clone", package.repository, external=True)
             else:
-                session.run("git", "clone", "-b", package.branch, package.repository)
+                session.run("git", "clone", "-b", package.branch, package.repository, external=True)
             with session.cd(dirname):
-                session.install(".")
+                session.install(".[dev]")
         # Note that `session.cd` is used as a context manager above,
         # so that the working directory is restored at this point.  We
         # install now the graphix package from the working directory.
@@ -155,7 +157,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         # so that we run the test with the current graphix codebase,
         # even if another graphix version has been pinned in the
         # reverse dependendy.
-        session.install(".")
+        session.install(".[dev]")
         # Use `session.cd` as a context manager again to ensure that the
         # working directory is restored afterward. This is important
         # because Windows cannot delete a temporary directory while it
