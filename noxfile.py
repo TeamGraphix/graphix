@@ -145,11 +145,11 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
             if package.branch is None:
-                session.run("git", "clone", package.repository)
+                session.run("git", "clone", package.repository, external=True)
             else:
-                session.run("git", "clone", "-b", package.branch, package.repository)
+                session.run("git", "clone", "-b", package.branch, package.repository, external=True)
             with session.cd(dirname):
-                session.install("--reinstall-package", ".")
+                session.install("--reinstall", ".")
         # Note that `session.cd` is used as a context manager above,
         # so that the working directory is restored at this point.  We
         # install now the graphix package from the working directory.
@@ -157,7 +157,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         # so that we run the test with the current graphix codebase,
         # even if another graphix version has been pinned in the
         # reverse dependendy.
-        session.install("--reinstall-package", ".")
+        session.install(".")
         # Use `session.cd` as a context manager again to ensure that the
         # working directory is restored afterward. This is important
         # because Windows cannot delete a temporary directory while it
