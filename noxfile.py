@@ -118,8 +118,8 @@ class ReverseDependency:
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
-            "https://github.com/thierry-martinez/veriphix",
-            branch="fix_reproducibility_and_types",
+            "https://github.com/qat-inria/veriphix",
+            branch="main",
             doctest_modules=False,
         ),
         ReverseDependency(
@@ -149,7 +149,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
             else:
                 session.run("git", "clone", "-b", package.branch, package.repository, external=True)
             with session.cd(dirname):
-                session.install("--reinstall", ".")
+                session.install(".[dev]")
         # Note that `session.cd` is used as a context manager above,
         # so that the working directory is restored at this point.  We
         # install now the graphix package from the working directory.
@@ -157,7 +157,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         # so that we run the test with the current graphix codebase,
         # even if another graphix version has been pinned in the
         # reverse dependendy.
-        session.install(".")
+        session.install(".[dev]")
         # Use `session.cd` as a context manager again to ensure that the
         # working directory is restored afterward. This is important
         # because Windows cannot delete a temporary directory while it
