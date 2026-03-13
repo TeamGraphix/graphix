@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Self
 
-    from graphix.measurements import _M, Measurement
+    from graphix.measurements import _M, AngleT, AngleT_co, Measurement, _M_co
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
@@ -132,9 +132,9 @@ class XZCorrections(Generic[_AM_co]):
         return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
     def to_pattern(
-        self: XZCorrections[_M],
+        self: XZCorrections[_M_co],
         total_measurement_order: TotalOrder | None = None,
-    ) -> Pattern[_M]:
+    ) -> Pattern[AngleT_co, _M_co]:
         """Generate a unique pattern from an instance of `XZCorrections[Measurement]`.
 
         Parameters
@@ -145,7 +145,7 @@ class XZCorrections(Generic[_AM_co]):
 
         Returns
         -------
-        Pattern[_M]
+        Pattern[AngleT_co, _M_co]
 
         Raises
         ------
@@ -167,7 +167,7 @@ class XZCorrections(Generic[_AM_co]):
         elif not self.is_compatible(total_measurement_order):
             raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncompatibleOrder)
 
-        pattern: Pattern[_M] = graphix.pattern.Pattern(input_nodes=self.og.input_nodes)
+        pattern: Pattern[AngleT_co, _M_co] = graphix.pattern.Pattern(input_nodes=self.og.input_nodes)
         non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
 
         for i in non_input_nodes:

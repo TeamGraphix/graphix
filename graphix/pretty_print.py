@@ -240,7 +240,7 @@ def command_to_str(cmd: command.Command[_M], output: OutputFormat) -> str:
 
 
 def pattern_to_str(
-    pattern: Pattern[_M],
+    pattern: Pattern[AngleT, _M],
     output: OutputFormat,
     left_to_right: bool = False,
     limit: int = 40,

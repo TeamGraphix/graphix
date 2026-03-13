@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, SupportsComplex, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
-from graphix.measurements import AngleT
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
@@ -24,7 +23,6 @@ from graphix.ops import Ops
 from graphix.parameter import Expression
 from graphix.sim.base_backend import Backend
 from graphix.states import BasicStates, PlanarState
-from graphix.fundamentals import ParameterizedAngle, Angle
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -34,7 +32,8 @@ if TYPE_CHECKING:
 
     from graphix import Pattern
     from graphix.clifford import Clifford
-    from graphix.measurements import Measurement, Outcome
+    from graphix.fundamentals import Angle
+    from graphix.measurements import _M, AngleT, Measurement, Outcome
     from graphix.sim import Data
 
 PrepareState: TypeAlias = str | npt.NDArray[np.complex128]
@@ -574,7 +573,7 @@ def _decompose_cz() -> list[npt.NDArray[np.complex128]]:
 @dataclass(frozen=True)
 class _AbstractTensorNetworkBackend(Backend[MBQCTensorNet], ABC):
     state: MBQCTensorNet
-    pattern: Pattern[Measurement[Angle]]
+    pattern: Pattern[Angle, Measurement[Angle]]
     graph_prep: str
     input_state: Data
     branch_selector: BranchSelector
@@ -611,7 +610,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
 
     def __init__(
         self,
-        pattern: Pattern[Measurement[Angle]],
+        pattern: Pattern[Angle, Measurement[Angle]],
         graph_prep: str = "auto",
         input_state: Data | None = None,
         branch_selector: BranchSelector | None = None,

@@ -12,7 +12,7 @@ from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Angle
-from graphix.measurements import _M, BlochMeasurement, Measurement
+from graphix.measurements import _M, BlochMeasurement, Measurement, _M_co
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -204,8 +204,8 @@ class OpenGraph(Generic[_AM_co]):
         return self.map(lambda meas: meas.downcast_bloch())
 
     def infer_pauli_measurements(
-        self: OpenGraph[_M], rel_tol: float = 1e-09, abs_tol: float = 0.0
-    ) -> OpenGraph[_M]:
+        self: OpenGraph[_M_co], rel_tol: float = 1e-09, abs_tol: float = 0.0
+    ) -> OpenGraph[_M_co]:
         r"""Return an equivalent open graph in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
 
         Pauli measurements are measurements with a Pauli angle,

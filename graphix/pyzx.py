@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import warnings
 from fractions import Fraction
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, Any, SupportsFloat
 
 import networkx as nx
 import pyzx as zx
@@ -16,7 +16,7 @@ from pyzx.graph import Graph
 from pyzx.utils import EdgeType, FractionLike, VertexType
 
 from graphix.fundamentals import Plane
-from graphix.measurements import Measurement
+from graphix.measurements import _M, AngleT, Measurement
 from graphix.opengraph import OpenGraph
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
 
 
 # TODO: Adapt to new OpenGraph API
-def to_pyzx_graph(og: OpenGraph[BlochMeasurement]) -> BaseGraph[int, tuple[int, int]]:
+def to_pyzx_graph(og: OpenGraph[BlochMeasurement[_M]]) -> BaseGraph[int, tuple[int, int]]:
     """Return a :mod:`pyzx` graph corresponding to the open graph.
 
     Example
@@ -116,7 +116,7 @@ def _checked_float(x: FractionLike) -> float:
     return float(x)
 
 
-def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement]:
+def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement[AngleT]]:
     """Construct an :class:`OpenGraph` from a :mod:`pyzx` graph.
 
     This method may add additional nodes to the graph so that it adheres
@@ -135,7 +135,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     """
     zx.simplify.to_graph_like(g)
 
-    measurements: dict[int, Measurement] = {}
+    measurements: dict[int, Measurement[AngleT]] = {}
     inputs = list(g.inputs())
     outputs = list(g.outputs())
 

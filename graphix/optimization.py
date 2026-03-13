@@ -477,7 +477,7 @@ class StandardizedPattern(_StandardizedPattern, Generic[AngleT_co, _M_co]):
 
         zero_indegree -= indegree_map.keys()
 
-        generations = compute_topological_generations(dag, indegree_map, zero_indegree)
+        generations: tuple[frozenset[int], ...] | None = compute_topological_generations(dag, indegree_map, zero_indegree)
         if generations is None:
             raise ValueError("Pattern domains form closed loops.")
 

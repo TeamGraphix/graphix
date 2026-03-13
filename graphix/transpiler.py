@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, Any, Generic, SupportsFloat
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -18,7 +18,7 @@ from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import Instruction, InstructionKind, InstructionVisitor, InstructionWithoutRZZ
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.measurements import _M, AngleT, AngleT_co, Measurement, PauliMeasurement, _M_co
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec, StatevectorBackend
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class TranspileResult:
+class TranspileResult(Generic[AngleT_co, _M_co]):
     """
     The result of a transpilation.
 
@@ -44,7 +44,7 @@ class TranspileResult:
     classical_outputs : tuple[int,...], index of nodes measured with *M* gates
     """
 
-    pattern: Pattern
+    pattern: Pattern[AngleT_co, _M_co]
     classical_outputs: tuple[int, ...]
 
 
@@ -78,7 +78,7 @@ class _MapAngleVisitor(InstructionVisitor):
         return self.f(angle)
 
 
-class Circuit:
+class Circuit(Generic[AngleT_co, _M_co]):
     """Gate-to-MBQC transpiler.
 
     Holds gate operations and translates into MBQC measurement patterns.
@@ -255,7 +255,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Z(target=qubit))
 
-    def rx(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def rx(self, qubit: int, angle: AngleT) -> None:
         """Apply an X rotation gate.
 
         Parameters
@@ -268,7 +268,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
-    def ry(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def ry(self, qubit: int, angle: AngleT) -> None:
         """Apply a Y rotation gate.
 
         Parameters
@@ -281,7 +281,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
-    def rz(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def rz(self, qubit: int, angle: AngleT) -> None:
         """Apply a Z rotation gate.
 
         Parameters
@@ -294,7 +294,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
-    def rzz(self, control: int, target: int, angle: ParameterizedAngle) -> None:
+    def rzz(self, control: int, target: int, angle: AngleT) -> None:
         r"""Apply a ZZ-rotation gate.
 
         Equivalent to the sequence
@@ -374,7 +374,7 @@ class Circuit:
         """
         n_node = self.width
         out: list[int | None] = list(range(self.width))
-        pattern = Pattern(input_nodes=list(range(self.width)))
+        pattern: Pattern[AngleT_co, _M_co] = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
         for instr in _transpile_rzz(self.instruction):
             match instr.kind:
@@ -480,7 +480,7 @@ class Circuit:
     @classmethod
     def _cnot_command(
         cls, control_node: int, target_node: int, ancilla: Sequence[int]
-    ) -> tuple[int, int, list[command.Command]]:
+    ) -> tuple[int, int, list[command.Command[_M_co]]]:
         """MBQC commands for CNOT gate.
 
         Parameters
@@ -502,7 +502,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command[_M_co]] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(target_node, ancilla[0])),
@@ -518,7 +518,7 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _cz_command(cls, target_1: int, target_2: int) -> list[Command]:
+    def _cz_command(cls, target_1: int, target_2: int) -> list[Command[_M_co]]:
         """MBQC commands for CZ gate.
 
         Parameters
@@ -536,7 +536,7 @@ class Circuit:
         return [E(nodes=(target_1, target_2))]
 
     @classmethod
-    def _m_command(cls, input_node: int, axis: Axis) -> list[Command]:
+    def _m_command(cls, input_node: int, axis: Axis) -> list[Command[Measurement[Any]]]:
         """MBQC commands for measuring qubit.
 
         Parameters
@@ -555,7 +555,7 @@ class Circuit:
         return [M(input_node, PauliMeasurement(axis))]
 
     @classmethod
-    def _h_command(cls, input_node: int, ancilla: int) -> tuple[int, list[Command]]:
+    def _h_command(cls, input_node: int, ancilla: int) -> tuple[int, list[Command[_M_co]]]:
         """MBQC commands for Hadamard gate.
 
         Parameters
@@ -572,12 +572,12 @@ class Circuit:
         commands : list
             list of MBQC commands
         """
-        seq: list[Command] = [N(node=ancilla)]
+        seq: list[Command[_M_co]] = [N(node=ancilla)]
         seq.extend((E(nodes=(input_node, ancilla)), M(node=input_node), X(node=ancilla, domain={input_node})))
         return ancilla, seq
 
     @classmethod
-    def _s_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _s_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[Command[Measurement[Any]]]]:
         """MBQC commands for S gate.
 
         Parameters
@@ -595,7 +595,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), command.N(node=ancilla[1])]
+        seq: list[Command[Measurement[Any]]] = [N(node=ancilla[0]), command.N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -609,7 +609,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _x_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _x_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[Command[Measurement[Any]]]]:
         """MBQC commands for Pauli X gate.
 
         Parameters
@@ -627,7 +627,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command[Measurement[Any]]] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -641,7 +641,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _y_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _y_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[Command[Any]]]:
         """MBQC commands for Pauli Y gate.
 
         Parameters
@@ -659,7 +659,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 4
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command[Measurement[Any]]] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
         seq.extend(
             (
@@ -678,7 +678,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _z_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _z_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[Command[Measurement[Any]]]]:
         """MBQC commands for Pauli Z gate.
 
         Parameters
@@ -696,7 +696,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command[Measurement[Any]]] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -711,8 +711,8 @@ class Circuit:
 
     @classmethod
     def _rx_command(
-        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
-    ) -> tuple[int, list[command.Command]]:
+        cls, input_node: int, ancilla: Sequence[int], angle: AngleT
+    ) -> tuple[int, list[Command[Measurement[AngleT]]]]:
         """MBQC commands for X rotation gate.
 
         Parameters
@@ -732,7 +732,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command[Measurement[AngleT]]] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -747,8 +747,8 @@ class Circuit:
 
     @classmethod
     def _ry_command(
-        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
-    ) -> tuple[int, list[command.Command]]:
+        cls, input_node: int, ancilla: Sequence[int], angle: AngleT
+    ) -> tuple[int, list[Command[Measurement[Any]]]]:
         """MBQC commands for Y rotation gate.
 
         Parameters
@@ -768,7 +768,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 4
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command[Measurement[Any]]] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
         seq.extend(
             (
@@ -788,8 +788,8 @@ class Circuit:
 
     @classmethod
     def _rz_command(
-        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
-    ) -> tuple[int, list[command.Command]]:
+        cls, input_node: int, ancilla: Sequence[int], angle: AngleT
+    ) -> tuple[int, list[Command[Measurement[Any]]]]:
         """MBQC commands for Z rotation gate.
 
         Parameters
@@ -809,7 +809,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]  # assign new qubit labels
+        seq: list[Command[Measurement[Any]]] = [N(node=ancilla[0]), N(node=ancilla[1])]  # assign new qubit labels
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -829,7 +829,7 @@ class Circuit:
         control_node2: int,
         target_node: int,
         ancilla: Sequence[int],
-    ) -> tuple[int, int, int, list[command.Command]]:
+    ) -> tuple[int, int, int, list[Command[Measurement[Any]]]]:
         """MBQC commands for CCX gate.
 
         Parameters
@@ -855,7 +855,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 18
-        seq: list[Command] = [N(node=ancilla[i]) for i in range(18)]  # assign new qubit labels
+        seq: list[Command[Measurement[Any]]] = [N(node=ancilla[i]) for i in range(18)]  # assign new qubit labels
         seq.extend(
             (
                 E(nodes=(target_node, ancilla[0])),

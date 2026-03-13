@@ -312,7 +312,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement[AngleT_co], Generi
         return PauliMeasurement(axis, sign)
 
     @override
-    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> Measurement[AngleT_co]:
+    def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | BlochMeasurement[AngleT_co]:
         pm = self.try_to_pauli(rel_tol=rel_tol, abs_tol=abs_tol)
         return self if pm is None else pm
 

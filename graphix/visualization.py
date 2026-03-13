@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from graphix.flow.exceptions import FlowError
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.measurements import Measurement, PauliMeasurement, _M_co, AngleT, AngleT_co
 
 # OpenGraph is needed for dataclass
 from graphix.opengraph import OpenGraph  # noqa: TC001
@@ -49,7 +49,7 @@ class GraphVisualizer:
 
     """
 
-    og: OpenGraph[Measurement]
+    og: OpenGraph[_M_co]
     local_clifford: Mapping[int, Clifford] | None = None
 
     def visualize(
@@ -147,7 +147,7 @@ class GraphVisualizer:
 
     def visualize_from_pattern(
         self,
-        pattern: Pattern,
+        pattern: Pattern[AngleT_co, _M_co],
         show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
@@ -183,7 +183,7 @@ class GraphVisualizer:
             If not None, filename of the png file to save the plot. If None, the plot is not saved.
             Default in None.
         """
-        pattern_std = StandardizedPattern.from_pattern(pattern)
+        pattern_std: StandardizedPattern[AngleT_co, _M_co] = StandardizedPattern.from_pattern(pattern)
         cf: Mapping[int, AbstractSet[int]]
         corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None
 

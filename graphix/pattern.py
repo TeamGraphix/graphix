@@ -1375,7 +1375,7 @@ class Pattern(Generic[AngleT_co, _M_co]):
 
     @overload
     def simulate_pattern(
-        self,
+        self: Pattern[Angle, Measurement[Angle]],
         backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
         input_state: State
         | Iterable[State]
@@ -1422,7 +1422,7 @@ class Pattern(Generic[AngleT_co, _M_co]):
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-        sim = PatternSimulator(self, backend=backend, **kwargs)
+        sim = PatternSimulator(self, backend=backend, **kwargs)  # type: ignore[arg-type]
         sim.run(input_state, rng=rng)
         return sim.backend.state
 

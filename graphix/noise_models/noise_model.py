@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 from typing_extensions import override
 
 from graphix.command import BaseM, Command, CommandKind, Node, _KindChecker
+from graphix.measurements import _M
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -66,7 +67,7 @@ class ApplyNoise(_KindChecker):
     domain: set[Node] | None = None
 
 
-CommandOrNoise = Command | ApplyNoise
+CommandOrNoise = Command[_M] | ApplyNoise
 
 
 class NoiseModel(ABC):

@@ -374,7 +374,7 @@ class PatternSimulator(Generic[_StateT_co]):
         if input_state is not None:
             self.backend.add_nodes(self.pattern.input_nodes, input_state)
         if self.noise_model is None:
-            pattern: Iterable[CommandOrNoise] = self.pattern
+            pattern: Iterable[CommandOrNoise[Measurement[Any]]] = self.pattern
         else:
             pattern = self.noise_model.input_nodes(self.pattern.input_nodes, rng=rng) if input_state is not None else []
             pattern.extend(self.noise_model.transpile(self.pattern, rng=rng))
@@ -418,7 +418,7 @@ class PatternSimulator(Generic[_StateT_co]):
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[AngleT, _M],
+    pattern: Pattern[AngleT_co, _M_co],
     backend: StatevectorBackend | Literal["statevector"],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -429,7 +429,7 @@ def _initialize_backend(
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[AngleT, _M],
+    pattern: Pattern[AngleT_co, _M_co],
     backend: DensityMatrixBackend | Literal["densitymatrix"],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -451,7 +451,7 @@ def _initialize_backend(
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[AngleT, _M],
+    pattern: Pattern[AngleT_co, _M_co],
     backend: Backend[_StateT],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -462,7 +462,7 @@ def _initialize_backend(
 
 @overload
 def _initialize_backend(
-    pattern: Pattern[AngleT, _M],
+    pattern: Pattern[AngleT_co, _M_co],
     backend: _BackendLiteral,
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -472,7 +472,7 @@ def _initialize_backend(
 
 
 def _initialize_backend(
-    pattern: Pattern[AngleT, _M],
+    pattern: Pattern[AngleT_co, _M_co],
     backend: Backend[_StateT] | _BackendLiteral,
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
@@ -484,6 +484,8 @@ def _initialize_backend(
 
     Parameters
     ----------
+    pattern: :class:`Pattern`
+        The pattern to simulate.
     backend: :class:`Backend` object,
         'statevector', or 'densitymatrix', or 'tensornetwork'
         simulation backend (optional), default is 'statevector'.
@@ -511,27 +513,29 @@ def _initialize_backend(
         return backend
     if branch_selector is None:
         branch_selector = RandomBranchSelector()
-    if backend in {"tensornetwork", "mps"}:
-        if noise_model is not None:
-            raise ValueError("`noise_model` cannot be specified for tensor network backend.")
-        if symbolic:
-            raise ValueError("`symbolic` cannot be specified for tensor network backend.")
-        if graph_prep is None:
-            graph_prep = "auto"
-        return TensorNetworkBackend(pattern, branch_selector=branch_selector, graph_prep=graph_prep)
-    if graph_prep is not None:
-        raise ValueError("`graph_prep` can only be specified for tensor network backend.")
     match backend:
         case "statevector":
+            if graph_prep is not None:
+                raise ValueError("`graph_prep` can only be specified for tensor network backend.")
             if noise_model is not None:
                 raise ValueError("`noise_model` cannot be specified for state vector backend.")
             return StatevectorBackend(branch_selector=branch_selector, symbolic=symbolic)
         case "densitymatrix":
+            if graph_prep is not None:
+                raise ValueError("`graph_prep` can only be specified for tensor network backend.")
             if noise_model is None:
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
                     stacklevel=1,
                 )
             return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
+        case "tensornetwork" | "mps":
+            if noise_model is not None:
+                raise ValueError("`noise_model` cannot be specified for tensor network backend.")
+            if symbolic:
+                raise ValueError("`symbolic` cannot be specified for tensor network backend.")
+            if graph_prep is None:
+                graph_prep = "auto"
+            return TensorNetworkBackend(pattern, branch_selector=branch_selector, graph_prep=graph_prep)
         case _:
             raise ValueError(f"Unknown backend {backend}.")

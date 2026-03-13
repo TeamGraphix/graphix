@@ -11,7 +11,6 @@ from graphix._version import version
 from graphix.command import CommandKind
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane
 from graphix.instruction import Instruction, InstructionKind
-from graphix.measurements import _M, AngleT
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.states import BasicStates, State
 
@@ -20,9 +19,10 @@ if TYPE_CHECKING:
 
     from graphix import Circuit, Pattern
     from graphix.command import Command
+    from graphix.measurements import _M, AngleT, AngleT_co, _M_co
 
 
-def circuit_to_qasm3(circuit: Circuit) -> str:
+def circuit_to_qasm3(circuit: Circuit[AngleT_co, _M_co]) -> str:
     """Export circuit instructions to OpenQASM 3.0 representation.
 
     Returns
@@ -33,7 +33,7 @@ def circuit_to_qasm3(circuit: Circuit) -> str:
     return "\n".join(circuit_to_qasm3_lines(circuit))
 
 
-def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
+def circuit_to_qasm3_lines(circuit: Circuit[AngleT_co, _M_co]) -> Iterator[str]:
     """Export circuit instructions to line-by-line OpenQASM 3.0 representation.
 
     Returns
@@ -64,7 +64,7 @@ def qasm3_gate_call(gate: str, operands: Iterable[str], args: Iterable[str] | No
     return f"{gate}({args_str}) {operands_str}"
 
 
-def angle_to_qasm3(angle: ParameterizedAngle) -> str:
+def angle_to_qasm3(angle: AngleT) -> str:
     """Get the OpenQASM3 representation of an angle."""
     if not isinstance(angle, float):
         raise TypeError("QASM export of symbolic pattern is not supported")
@@ -113,7 +113,7 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
             assert_never(instruction.kind)
 
 
-def pattern_to_qasm3(pattern: Pattern[_M], input_state: dict[int, State] | State = BasicStates.PLUS) -> str:
+def pattern_to_qasm3(pattern: Pattern[AngleT, _M], input_state: dict[int, State] | State = BasicStates.PLUS) -> str:
     """Export a pattern to OpenQASM 3.0 representation.
 
     The generated OpenQASM may include initializations of classical
@@ -137,7 +137,7 @@ def pattern_to_qasm3(pattern: Pattern[_M], input_state: dict[int, State] | State
     return "".join(pattern_to_qasm3_lines(pattern, input_state=input_state))
 
 
-def pattern_to_qasm3_lines(pattern: Pattern[_M], input_state: dict[int, State] | State = BasicStates.PLUS) -> Iterator[str]:
+def pattern_to_qasm3_lines(pattern: Pattern[AngleT, _M], input_state: dict[int, State] | State = BasicStates.PLUS) -> Iterator[str]:
     """Export pattern to line-by-line OpenQASM 3.0 representation.
 
     See :func:`pattern_to_qasm3`.
