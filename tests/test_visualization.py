@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -10,7 +11,7 @@ import pytest
 
 from graphix import Circuit, Pattern, command, visualization
 from graphix.fundamentals import ANGLE_PI
-from graphix.measurements import Measurement
+from graphix.measurements import Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
 
@@ -250,3 +251,129 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6), show_measurement_planes=True
     )
     return plt.gcf()
+
+
+def test_draw_edges_with_routing_skips_non_subset_edge() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    edge_path = {(0, 1): [(0.0, 0.0), (1.0, 0.0)], (1, 2): [(1.0, 0.0), (2.0, 0.0)]}
+    vis.draw_edges_with_routing(ax, edge_path, edge_subset=[(0, 1)])
+    assert ax.plot.call_count == 1
+
+
+def test_draw_edges_with_routing_color_and_linewidth_overrides() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    edge_path = {(0, 1): [(0.0, 0.0), (1.0, 0.0)]}
+    vis.draw_edges_with_routing(
+        ax,
+        edge_path,
+        edge_colors={(0, 1): "red"},
+        edge_linewidths={(0, 1): 2.5},
+    )
+    assert ax.plot.call_count == 1
+    call_kwargs = ax.plot.call_args
+    assert call_kwargs.kwargs["color"] == "red"
+    assert call_kwargs.kwargs["linewidth"] == pytest.approx(2.5)
+
+
+def test_draw_flow_arrows_with_subset() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    pos = {0: (0.0, 0.0), 1: (1.0, 0.0), 2: (2.0, 0.0)}
+    arrow_path = {(0, 1): [(0.0, 0.0), (1.0, 0.0)], (1, 2): [(1.0, 0.0), (2.0, 0.0)]}
+    vis.draw_flow_arrows(ax, pos, arrow_path, arrow_subset=[(0, 1)])
+    assert ax.annotate.call_count == 0  # no self-loop, no annotate
+
+
+def test_draw_flow_arrows_self_loop() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    pos = {0: (0.5, 0.5)}
+    loop_path = [(0.5, 0.5), (0.7, 0.7), (0.9, 0.5), (0.7, 0.3), (0.5, 0.5)]
+    arrow_path = {(0, 0): loop_path}
+    vis.draw_flow_arrows(ax, pos, arrow_path, show_loop=True)
+    assert ax.plot.called
+    assert ax.annotate.called
+
+
+def test_draw_node_labels_auto_fontsize() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    pos = {0: (0.0, 0.0), 1: (1.0, 0.0)}
+    vis.draw_node_labels(ax, pos)
+    assert ax.text.call_count == 2
+
+
+def test_draw_node_labels_with_extra_labels() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    pos = {0: (0.0, 0.0), 1: (1.0, 0.0)}
+    vis.draw_node_labels(ax, pos, extra_labels={0: "m=1"})
+    calls = ax.text.call_args_list
+    label_args = [call.args[2] for call in calls]
+    assert any("\n" in lbl for lbl in label_args)
+
+
+def test_draw_nodes_role_skips_node_not_in_pos() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    pos = {99: (0.0, 0.0)}
+    vis.draw_nodes_role(ax, pos)
+    assert ax.scatter.call_count == 0
+
+
+def test_draw_nodes_role_pauli_measurement_lightblue() -> None:
+    mock_og = MagicMock()
+    mock_og.graph.nodes.return_value = [0]
+    mock_og.input_nodes = []
+    mock_og.output_nodes = []
+    mock_og.measurements = {0: MagicMock(spec=PauliMeasurement)}
+
+    vis = GraphVisualizer(og=mock_og)
+    ax = MagicMock()
+    pos = {0: (0.0, 0.0)}
+
+    vis.draw_nodes_role(ax, pos, show_pauli_measurement=True)
+    call_kwargs = ax.scatter.call_args_list[0].kwargs
+    assert call_kwargs["facecolors"] == "lightblue"
+
+
+def test_draw_nodes_role_node_alpha_override() -> None:
+    mock_og = MagicMock()
+    mock_og.graph.nodes.return_value = [0]
+    mock_og.input_nodes = []
+    mock_og.output_nodes = []
+    mock_og.measurements = {}
+
+    vis = GraphVisualizer(og=mock_og)
+    ax = MagicMock()
+    pos = {0: (0.0, 0.0)}
+
+    vis.draw_nodes_role(ax, pos, node_alpha={0: 0.3})
+    call_kwargs = ax.scatter.call_args_list[0].kwargs
+    assert call_kwargs["alpha"] == pytest.approx(0.3)
+
+
+def test_draw_nodes_role_node_linewidths_override() -> None:
+    mock_og = MagicMock()
+    mock_og.graph.nodes.return_value = [0]
+    mock_og.input_nodes = []
+    mock_og.output_nodes = []
+    mock_og.measurements = {}
+
+    vis = GraphVisualizer(og=mock_og)
+    ax = MagicMock()
+    pos = {0: (0.0, 0.0)}
+
+    vis.draw_nodes_role(ax, pos, node_linewidths={0: 4.0})
+    call_kwargs = ax.scatter.call_args_list[0].kwargs
+    assert call_kwargs["linewidths"] == pytest.approx(4.0)
+
+
+def test_draw_layer_separators_empty_l_k() -> None:
+    vis, _pattern = example_visualizer()
+    ax = MagicMock()
+    pos = {0: (0.0, 0.0)}
+    vis.draw_layer_separators(ax, pos, l_k={})
+    ax.axvline.assert_not_called()
