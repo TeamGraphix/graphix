@@ -103,7 +103,7 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     assert state.isclose(state2)
 
 
-def test_to_space_optimal_pattern() -> None:
+def test_to_space_optimal_pattern(fx_rng: Generator) -> None:
     pattern = Pattern(
         cmds=[
             N(8),
@@ -120,6 +120,6 @@ def test_to_space_optimal_pattern() -> None:
         output_nodes=[17, 18],
     )
     pattern2 = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
-    state = pattern.simulate_pattern()
-    state2 = pattern2.simulate_pattern()
+    state = pattern.simulate_pattern(rng=fx_rng)
+    state2 = pattern2.simulate_pattern(rng=fx_rng)
     assert state.isclose(state2)

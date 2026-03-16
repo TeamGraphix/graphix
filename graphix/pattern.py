@@ -1449,20 +1449,28 @@ class Pattern:
         backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
         input_state: Data | None = BasicStates.PLUS,
         rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
         **kwargs: Any,
     ) -> _StateT_co | _BuiltinBackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
-        Available backend: ['statevector', 'densitymatrix', 'tensornetwork']
-
         Parameters
         ----------
-        backend : str
-            optional parameter to select simulator backend.
+        backend : :class:`Backend` or {'statevector', 'densitymatrix', 'tensornetwork'}, optional
+            The simulator backend to use: either an instantiated backend or the
+            name of a built-in backend. Default: ``'statevector'``.
+        input_state: Data or None, optional
+            the output quantum state, in a representation compatible with the selected backend.
+            Default: the ``|+>`` state (``BasicStates.PLUS``).
+            If ``None``, no input nodes are added by the simulator; input nodes must have been prepared in the backend before running the simulation.
         rng: Generator, optional
             Random-number generator for measurements.
             This generator is used only in case of random branch selection
             (see :class:`RandomBranchSelector`).
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
         kwargs: keyword args for specified backend.
 
         Returns
@@ -1473,7 +1481,7 @@ class Pattern:
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
-        sim.run(input_state, rng=rng)
+        sim.run(input_state, rng=rng, stacklevel=stacklevel + 1)
         return sim.backend.state
 
     def remove_input_nodes(self) -> None:

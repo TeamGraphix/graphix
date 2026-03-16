@@ -90,7 +90,6 @@ class DepolarisingNoiseModel(NoiseModel):
         entanglement_error_prob: float = 0.0,
         measure_channel_prob: float = 0.0,
         measure_error_prob: float = 0.0,
-        rng: Generator | None = None,
     ) -> None:
         self.prepare_error_prob = prepare_error_prob
         self.x_error_prob = x_error_prob
@@ -98,15 +97,18 @@ class DepolarisingNoiseModel(NoiseModel):
         self.entanglement_error_prob = entanglement_error_prob
         self.measure_error_prob = measure_error_prob
         self.measure_channel_prob = measure_channel_prob
-        self.rng = ensure_rng(rng)
 
     @typing_extensions.override
-    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
+    def input_nodes(
+        self, nodes: Iterable[int], rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
         return [ApplyNoise(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[node]) for node in nodes]
 
     @typing_extensions.override
-    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
+    def command(
+        self, cmd: CommandOrNoise, rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> list[CommandOrNoise]:
         """Return the noise to apply to the command ``cmd``."""
         match cmd.kind:
             case CommandKind.N:
@@ -136,8 +138,11 @@ class DepolarisingNoiseModel(NoiseModel):
                 typing_extensions.assert_never(cmd.kind)
 
     @typing_extensions.override
-    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
+    def confuse_result(
+        self, cmd: BaseM, result: Outcome, rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Assign wrong measurement result cmd = "M"."""
-        if self.rng.uniform() < self.measure_error_prob:
+        rng = ensure_rng(rng, stacklevel=stacklevel + 1)
+        if rng.uniform() < self.measure_error_prob:
             return toggle_outcome(result)
         return result

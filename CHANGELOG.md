@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #457: Added `Statevec.to_dict` and `Statevec.to_prob_dict` methods to convert a statevector to dictionary form as suggested in #100.
 
+- #461: A warning is raised when the `rng` parameter is not set, as the default random generator will be used and results may not be reproducible.
+
 ### Fixed
 
 - #429
