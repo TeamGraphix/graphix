@@ -99,6 +99,7 @@ class ReverseDependency:
     version_constraint: VersionRange | None = None
     doctest_modules: bool = True
     initialization: Callable[[Session], bool | None] | None = None
+    install_target: str = "."
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -117,8 +118,8 @@ class ReverseDependency:
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
-            branch="fix_reproducibility_and_types",
             doctest_modules=False,
+            install_target=".[dev]",
         ),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq",
@@ -155,7 +156,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         # so that we run the test with the current graphix codebase,
         # even if another graphix version has been pinned in the
         # reverse dependendy.
-        session.install(".")
+        session.install(package.install_target)
         # Use `session.cd` as a context manager again to ensure that the
         # working directory is restored afterward. This is important
         # because Windows cannot delete a temporary directory while it
