@@ -117,7 +117,8 @@ class ReverseDependency:
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
-            "https://github.com/qat-inria/veriphix",
+            "https://github.com/thierry-martinez/veriphix",
+            branch="fix/graphix-467",
             doctest_modules=False,
             install_target=".[dev]",
         ),
