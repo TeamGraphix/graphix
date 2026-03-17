@@ -124,7 +124,6 @@ Please cite as
 >
 > arXiv: https://doi.org/10.48550/arXiv.2212.11975
 
-
 ## Contributing
 
 We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking feature requests and bug reports.
