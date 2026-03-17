@@ -99,6 +99,7 @@ class ReverseDependency:
     version_constraint: VersionRange | None = None
     doctest_modules: bool = True
     initialization: Callable[[Session], bool | None] | None = None
+    install_target: str = "."
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -116,9 +117,9 @@ class ReverseDependency:
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
-            "https://github.com/thierry-martinez/veriphix",
-            branch="fix/graphix-461",
+            "https://github.com/qat-inria/veriphix",
             doctest_modules=False,
+            install_target=".[dev]",
         ),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq",
@@ -147,7 +148,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
             else:
                 session.run("git", "clone", "-b", package.branch, package.repository)
             with session.cd(dirname):
-                session.install(".")
+                session.install(package.install_target)
         # Note that `session.cd` is used as a context manager above,
         # so that the working directory is restored at this point.  We
         # install now the graphix package from the working directory.
