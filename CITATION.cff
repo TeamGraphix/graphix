@@ -1,13 +1,32 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
+  - family-names: Uldemolins
+    given-names: Mateo
+    orcid: https://orcid.org/0000-0001-9065-0952
+  - family-names: Fukushima
+    given-names: Masato
+  - family-names: Graham
+    given-names: Emlyn
+    orcid: https://orcid.org/0000-0002-3005-0215
+  - family-names: Nair
+    given-names: Pranav
+  - family-names: Sasaki
+    given-names: Daichi
+  - family-names: Shiratani
+    given-names: Sora
+  - family-names: Watanabe
+    given-names: Yuki
+  - family-names: Martinez
+    given-names: Thierry
+  - family-names: Garnier
+    given-names: Maxime
+    orcid: https://orcid.org/0000-0002-1606-5672
   - family-names: Sunami
     given-names: Shinichi
     orcid: https://orcid.org/0000-0002-0969-9909
-  - family-names: Fukushima
-    given-names: Masato
 title: Graphix
-version: v0.2.1
-doi: 10.5281/zenodo.7861382
-date-released: 2023-04-25
+version: v0.3.4
+doi: 10.5281/zenodo.18503266
+date-released: 2026-02-06
 url: https://github.com/TeamGraphix/graphix
