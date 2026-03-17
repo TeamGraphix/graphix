@@ -33,7 +33,9 @@ class BranchSelector(ABC):
     """
 
     @abstractmethod
-    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Return the measurement outcome of ``qubit``.
 
         Parameters
@@ -71,7 +73,9 @@ class RandomBranchSelector(BranchSelector):
     pr_calc: bool = True
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """
         Return the measurement outcome of ``qubit``.
 
@@ -79,7 +83,7 @@ class RandomBranchSelector(BranchSelector):
         computed probability of outcome 0. Otherwise, the result is randomly chosen
         with a 50% chance for either outcome.
         """
-        rng = ensure_rng(rng)
+        rng = ensure_rng(rng, stacklevel=stacklevel + 1)
         if self.pr_calc:
             prob_0 = f_expectation0()
             return outcome(rng.random() > prob_0)
@@ -114,7 +118,9 @@ class FixedBranchSelector(BranchSelector, Generic[_T]):
     default: BranchSelector | None = None
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """
         Return the predefined measurement outcome of ``qubit``, if available.
 
@@ -144,6 +150,8 @@ class ConstBranchSelector(BranchSelector):
     result: Outcome
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Return the constant measurement outcome ``result`` for any qubit."""
         return self.result

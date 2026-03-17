@@ -11,7 +11,7 @@ import pytest
 
 import graphix.random_objects as randobj
 from graphix import command
-from graphix.branch_selector import RandomBranchSelector
+from graphix.branch_selector import ConstBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
@@ -24,6 +24,7 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from numpy.random import Generator
 
+    from graphix.measurements import Outcome
     from graphix.pattern import Pattern
 
 
@@ -913,16 +914,18 @@ class TestDensityMatrixBackend:
         backend.entangle_nodes((0, 1))
         assert np.allclose(backend.state.rho, np.array([0.25] * 16).reshape(4, 4))
 
-    @pytest.mark.parametrize("pr_calc", [False, True])
-    def test_measure(self, pr_calc: bool) -> None:
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_measure(self, outcome: Outcome) -> None:
         measure_method = DefaultMeasureMethod()
-        backend = DensityMatrixBackend(branch_selector=RandomBranchSelector(pr_calc=pr_calc))
+        backend = DensityMatrixBackend(branch_selector=ConstBranchSelector(outcome))
         backend.add_nodes([0])
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         measure_method.measure(backend, command.M(0))
-
-        expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
-        expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
-        assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
+        expected_matrix = (
+            np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
+            if outcome
+            else np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
+        )
+        assert np.allclose(backend.state.rho, expected_matrix)

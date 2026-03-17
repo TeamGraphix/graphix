@@ -200,6 +200,8 @@ class MBQCTensorNet(TensorNetwork):
         bypass_probability_calculation: bool = True,
         outcome: Outcome | None = None,
         rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
     ) -> Outcome:
         """Measure a node in specified basis. Note this does not perform the partial trace.
 
@@ -225,7 +227,11 @@ class MBQCTensorNet(TensorNetwork):
             measurement result.
         """
         if bypass_probability_calculation:
-            result = outcome if outcome is not None else self.__branch_selector.measure(index, lambda: 0.5, rng=rng)
+            result = (
+                outcome
+                if outcome is not None
+                else self.__branch_selector.measure(index, lambda: 0.5, rng=rng, stacklevel=stacklevel + 1)
+            )
             # Basis state to be projected
             if isinstance(basis, np.ndarray):
                 if outcome is not None:
@@ -737,7 +743,9 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
                 pass
 
     @override
-    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Perform measurement of the node.
 
         In the context of tensornetwork, performing measurement equals to
@@ -754,11 +762,11 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             vector: npt.NDArray[np.complex128] = self.state.open_tensor(node)
             probs = (np.abs(vector) ** 2).astype(np.float64)
             probs /= np.sum(probs)
-            result: Outcome = self.branch_selector.measure(node, lambda: probs[0], rng=rng)
+            result: Outcome = self.branch_selector.measure(node, lambda: probs[0], rng=rng, stacklevel=stacklevel + 1)
             self.results[node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
-            result = self.branch_selector.measure(node, lambda: 0.5, rng=rng)
+            result = self.branch_selector.measure(node, lambda: 0.5, rng=rng, stacklevel=stacklevel + 1)
             self.results[node] = result
             buffer = 2**0.5
         bloch = measurement.to_bloch()
@@ -768,7 +776,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         if result:
             vec = Ops.from_axis(bloch.plane.orth) @ vec
         proj_vec = vec * buffer
-        self.state.measure_single(node, basis=proj_vec, rng=rng)
+        self.state.measure_single(node, basis=proj_vec, rng=rng, stacklevel=stacklevel + 1)
         return result
 
     @override

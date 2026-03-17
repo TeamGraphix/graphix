@@ -113,10 +113,10 @@ class TestStatevecNew:
             backend.entangle_nodes(edge=(nodes[0], nodes[1]))
             measurement = Measurement.X
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, measurement=measurement)
+            result = backend.measure(node=node_to_measure, measurement=measurement, rng=fx_rng)
             assert result == expected_result
 
-    def test_deterministic_measure(self) -> None:
+    def test_deterministic_measure(self, fx_rng: Generator) -> None:
         """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1."""
         for _ in range(10):
             # plus state (default)
@@ -130,11 +130,11 @@ class TestStatevecNew:
                 backend.entangle_nodes(edge=(nodes[0], i))
             measurement = Measurement.X
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, measurement=measurement)
+            result = backend.measure(node=node_to_measure, measurement=measurement, rng=fx_rng)
             assert result == 0
             assert list(backend.node_index) == list(range(1, n_neighbors + 1))
 
-    def test_deterministic_measure_many(self) -> None:
+    def test_deterministic_measure_many(self, fx_rng: Generator) -> None:
         """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1."""
         for _ in range(10):
             # plus state (default)
@@ -160,7 +160,7 @@ class TestStatevecNew:
 
             for trap in nodes[:n_traps]:
                 node_to_measure = trap
-                result = backend.measure(node=node_to_measure, measurement=measurement)
+                result = backend.measure(node=node_to_measure, measurement=measurement, rng=fx_rng)
                 assert result == 0
 
             assert list(backend.node_index) == list(range(n_traps, n_neighbors + n_traps + n_whatever))
@@ -184,6 +184,6 @@ class TestStatevecNew:
                 backend.entangle_nodes(edge=(nodes[0], i))
             measurement = Measurement.X
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, measurement=measurement)
+            result = backend.measure(node=node_to_measure, measurement=measurement, rng=fx_rng)
             assert result == expected_result
             assert list(backend.node_index) == list(range(1, n_neighbors + 1))

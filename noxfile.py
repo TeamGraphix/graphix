@@ -108,7 +108,7 @@ class ReverseDependency:
     [
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-stim-backend",
-            branch="fix_graphix423",
+            branch="fix/graphix-461",
         ),
         ReverseDependency(
             # "https://github.com/TeamGraphix/graphix-symbolic",

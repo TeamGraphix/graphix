@@ -924,6 +924,8 @@ class Circuit:
         input_state: Data | None = None,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
     ) -> SimulateResult:
         """Run statevector simulation of the gate sequence.
 
@@ -997,9 +999,7 @@ class Circuit:
                     evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
                 case instruction.InstructionKind.M:
                     result = backend.measure(
-                        instr.target,
-                        PauliMeasurement(instr.axis),
-                        rng=rng,
+                        instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1
                     )
                     classical_measures.append(result)
                 case _:

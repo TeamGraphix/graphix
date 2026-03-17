@@ -823,10 +823,10 @@ def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> 
     """Verify if the input pattern is deterministic."""
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
         alpha = 2 * ANGLE_PI * fx_rng.random()
-        state_ref = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
+        state_ref = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
 
         for _ in range(n_shots):
-            state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
+            state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
             if not state.isclose(state_ref):
                 return False
 
@@ -932,8 +932,8 @@ class TestOpenGraph:
 
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
             alpha = 2 * ANGLE_PI * fx_rng.random()
-            state_ref = pattern_ref.simulate_pattern(input_state=PlanarState(plane, alpha))
-            state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
+            state_ref = pattern_ref.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
+            state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
             assert state.isclose(state_ref)
 
     def test_isclose_measurement(self) -> None:

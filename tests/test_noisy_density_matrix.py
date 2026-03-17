@@ -191,7 +191,7 @@ class TestNoisyDensityMatrixBackend:
     def test_noiseless_noisy_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
-        noiselessres = rzpattern.simulate_pattern(backend="densitymatrix")
+        noiselessres = rzpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
         # noiseless noise model or DepolarisingNoiseModel() since all probas are 0
         noisynoiselessres = rzpattern.simulate_pattern(
             backend="densitymatrix",
