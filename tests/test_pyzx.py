@@ -88,15 +88,15 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     pattern.remove_input_nodes()
     pattern.perform_pauli_measurements()
     pattern.minimize_space()
-    state = pattern.simulate_pattern()
+    state = pattern.simulate_pattern(rng=rng)
     pattern2.remove_input_nodes()
     pattern2.perform_pauli_measurements()
     pattern2.minimize_space()
-    state2 = pattern2.simulate_pattern()
+    state2 = pattern2.simulate_pattern(rng=rng)
     assert state.isclose(state2)
 
 
-def test_rz() -> None:
+def test_rz(fx_rng: Generator) -> None:
     circuit = Circuit(2)
     circuit.rz(0, ANGLE_PI / 4)
     pattern = circuit.transpile().pattern
@@ -105,13 +105,13 @@ def test_rz() -> None:
     g = circ.to_graph()
     og = from_pyzx_graph(g).infer_pauli_measurements()
     pattern_zx = og.to_pattern()
-    state = pattern.simulate_pattern()
-    state_zx = pattern_zx.simulate_pattern()
+    state = pattern.simulate_pattern(rng=fx_rng)
+    state_zx = pattern_zx.simulate_pattern(rng=fx_rng)
     assert state_zx.isclose(state)
 
 
-# Issue #235
-def test_full_reduce_toffoli() -> None:
+@pytest.mark.xfail(reason="Issue #235: still to be fixed!")
+def test_full_reduce_toffoli(fx_rng: Generator) -> None:
     c = Circuit(3)
     c.ccx(0, 1, 2)
     p = c.transpile().pattern
@@ -126,6 +126,7 @@ def test_full_reduce_toffoli() -> None:
     assert zx.compare_tensors(t, t2)
     og2 = from_pyzx_graph(pyg).infer_pauli_measurements()
     p2 = og2.to_pattern()
-    s = p.simulate_pattern()
-    s2 = p2.simulate_pattern()
+    s = p.simulate_pattern(rng=fx_rng)
+    s2 = p2.simulate_pattern(rng=fx_rng)
     print(s.fidelity(s2))
+    assert s.isclose(s2)

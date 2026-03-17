@@ -93,13 +93,15 @@ class MeasureMethod(abc.ABC):
         cmd: BaseM,
         noise_model: NoiseModel | None = None,
         rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
     ) -> None:
         """Perform a measure."""
         description = self.describe_measurement(cmd)
-        result = backend.measure(cmd.node, description, rng=rng)
+        result = backend.measure(cmd.node, description, rng=rng, stacklevel=stacklevel + 1)
         logger.debug("Measure: %s", result)
         if noise_model is not None:
-            result = noise_model.confuse_result(cmd, result, rng=rng)
+            result = noise_model.confuse_result(cmd, result, rng=rng, stacklevel=stacklevel + 1)
         self.store_measurement_outcome(cmd.node, result)
 
     @abc.abstractmethod
@@ -315,9 +317,9 @@ class PatternSimulator(Generic[_StateT_co]):
         ----------
         pattern: :class:`Pattern` object
             MBQC pattern to be simulated.
-        backend: :class:`Backend` object,
-            or 'statevector', or 'densitymatrix', or 'tensornetwork'
-            simulation backend (optional), default is 'statevector'.
+        backend : :class:`Backend` or {'statevector', 'densitymatrix', 'tensornetwork'}, optional
+            The simulator backend to use: either an instantiated backend or the
+            name of a built-in backend. Default: ``'statevector'``.
         prepare_method: :class:`PrepareMethod`, optional
             Prepare method used by the simulator. Default is :class:`DefaultPrepareMethod`.
         measure_method: :class:`MeasureMethod`, optional
@@ -355,19 +357,25 @@ class PatternSimulator(Generic[_StateT_co]):
         """Return the measure method."""
         return self.__measure_method
 
-    def run(self, input_state: Data | None = BasicStates.PLUS, rng: Generator | None = None) -> None:
+    def run(
+        self, input_state: Data | None = BasicStates.PLUS, rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> None:
         """Perform the simulation.
 
-        Returns
-        -------
-        input_state: Data, optional
-            the output quantum state,
-            in the representation depending on the backend used.
-            Default: ``|+>``.
+        Parameters
+        ----------
+        input_state: Data | None, optional
+            the output quantum state, in the representation depending on the backend used.
+            Default: ``|+>``. If ``None``, no input nodes are added by the simulator to
+            the backend: input nodes must have been prepared in the backend before
+            running the simulation.
         rng: Generator, optional
-            Random-number generator for measurements.
+            Random number generator for measurements.
             This generator is used only in case of random branch selection
             (see :class:`RandomBranchSelector`).
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
         """
         if input_state is not None:
             self.backend.add_nodes(self.pattern.input_nodes, input_state)
@@ -391,7 +399,9 @@ class PatternSimulator(Generic[_StateT_co]):
                 case CommandKind.E:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 case CommandKind.M:
-                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
+                    self.__measure_method.measure(
+                        self.backend, cmd, noise_model=self.noise_model, rng=rng, stacklevel=stacklevel + 1
+                    )
                 case CommandKind.X | CommandKind.Z:
                     if self.__measure_method.check_domain(cmd.domain):
                         self.backend.correct_byproduct(cmd)

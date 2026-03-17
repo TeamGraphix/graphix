@@ -35,11 +35,13 @@ class CheckedBranchSelector(RandomBranchSelector):
     abs_tol: float = 0.0
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Return the measurement outcome of ``qubit``."""
         expectation0 = f_expectation0()
         assert math.isclose(expectation0, self.expected[qubit], rel_tol=self.rel_tol, abs_tol=self.abs_tol)
-        return super().measure(qubit, lambda: expectation0)
+        return super().measure(qubit, lambda: expectation0, rng=rng, stacklevel=stacklevel + 1)
 
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")

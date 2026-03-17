@@ -107,7 +107,7 @@ class ReverseDependency:
     [
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-stim-backend",
-            branch="fix_graphix423",
+            branch="fix/graphix-461",
         ),
         ReverseDependency(
             # "https://github.com/TeamGraphix/graphix-symbolic",
@@ -117,7 +117,7 @@ class ReverseDependency:
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
-            branch="fix_reproducibility_and_types",
+            branch="fix/graphix-461",
             doctest_modules=False,
         ),
         ReverseDependency(

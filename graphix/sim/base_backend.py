@@ -663,7 +663,9 @@ class Backend(Generic[_StateT_co]):
         """To be run at the end of pattern simulation to convey the order of output nodes."""
 
     @abstractmethod
-    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
@@ -751,7 +753,9 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         self.state.entangle((target, control))
 
     @override
-    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
+    def measure(
+        self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
@@ -778,7 +782,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
             assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
             return exp_val.real
 
-        outcome = self.branch_selector.measure(node, f_expectation0, rng)
+        outcome = self.branch_selector.measure(node, f_expectation0, rng, stacklevel=stacklevel + 1)
         op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=self.symbolic) if outcome else compute_op_mat0()
         self.state.evolve_single(op_mat, loc)
         self.node_index.remove(node)
