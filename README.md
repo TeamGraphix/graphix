@@ -96,9 +96,34 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 ## Citing
 
+Please cite as
+
+```
+@software{uldemolins_2026_18503266,
+  author       = {Uldemolins, Mateo and
+                  Fukushima, Masato and
+                  Graham, Emlyn and
+                  Nair, Pranav and
+                  Sasaki, Daichi and
+                  Shiratani, Sora and
+                  Watanabe, Yuki and
+                  Martinez, Thierry and
+                  Garnier, Maxime and
+                  Sunami, Shinichi},
+  title        = {Graphix},
+  month        = feb,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v0.3.4},
+  doi          = {10.5281/zenodo.18503266},
+  url          = {https://doi.org/10.5281/zenodo.18503266},
+}
+```
+
 > Zenodo: https://doi.org/10.5281/zenodo.7861382
 >
 > arXiv: https://doi.org/10.48550/arXiv.2212.11975
+
 
 ## Contributing
 
