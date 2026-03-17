@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 import pytest
@@ -14,6 +14,9 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
 class PauliExpTestCase(NamedTuple):
@@ -94,16 +97,16 @@ class TestPauliExponential:
             ),
         ],
     )
-    def test_to_circuit(self, test_case: PauliExpTestCase) -> None:
+    def test_to_circuit(self, test_case: PauliExpTestCase, fx_rng: Generator) -> None:
         qc = Circuit(len(test_case.p_exp.output_nodes))
         outputs_mapping = NodeIndex()
         outputs_mapping.extend(test_case.p_exp.output_nodes)
         pexp_ladder_pass(test_case.p_exp.remap(outputs_mapping.index), qc)
-        state = qc.simulate_statevector().statevec
-        state_ref = test_case.qc.simulate_statevector().statevec
+        state = qc.simulate_statevector(rng=fx_rng).statevec
+        state_ref = test_case.qc.simulate_statevector(rng=fx_rng).statevec
         assert state.isclose(state_ref)
 
-    def test_to_circuit_outputs_order(self) -> None:
+    def test_to_circuit_outputs_order(self, fx_rng: Generator) -> None:
         pexp_map = {2: PauliExponential(0.1, PauliString(x_nodes=frozenset({1}), z_nodes=frozenset({0})))}
         pol = [{0, 1}, {2}]
 
@@ -115,7 +118,7 @@ class TestPauliExponential:
         outputs_mapping_1 = NodeIndex()
         outputs_mapping_1.extend(pexp_dag_1.output_nodes)
         pexp_ladder_pass(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
-        s_1 = qc_1.simulate_statevector().statevec
+        s_1 = qc_1.simulate_statevector(rng=fx_rng).statevec
 
         pexp_dag_2 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_2)
         qc_2 = Circuit(2)
@@ -123,11 +126,11 @@ class TestPauliExponential:
         outputs_mapping_2.extend(pexp_dag_2.output_nodes)
         pexp_ladder_pass(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
 
-        s_2 = qc_2.simulate_statevector().statevec
+        s_2 = qc_2.simulate_statevector(rng=fx_rng).statevec
         assert not s_1.isclose(s_2)
 
         qc_2.swap(0, 1)
-        s_2 = qc_2.simulate_statevector().statevec
+        s_2 = qc_2.simulate_statevector(rng=fx_rng).statevec
 
         assert s_1.isclose(s_2)
 
