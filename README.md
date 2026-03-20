@@ -99,7 +99,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 Please cite as
 
 ```
-@software{uldemolins_2026_18503266,
+@software{uldemolins2026grpahix034,
   author       = {Uldemolins, Mateo and
                   Fukushima, Masato and
                   Graham, Emlyn and
@@ -118,11 +118,15 @@ Please cite as
   doi          = {10.5281/zenodo.18503266},
   url          = {https://doi.org/10.5281/zenodo.18503266},
 }
-```
-
-> Zenodo: https://doi.org/10.5281/zenodo.7861382
->
-> arXiv: https://doi.org/10.48550/arXiv.2212.11975
+@misc{sunami2022graphix,
+      title={Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph}, 
+      author={Shinichi Sunami and Masato Fukushima},
+      year={2022},
+      eprint={2212.11975},
+      archivePrefix={arXiv},
+      primaryClass={quant-ph},
+      url={https://arxiv.org/abs/2212.11975}, 
+}
 
 ## Contributing
 
