@@ -96,9 +96,38 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 ## Citing
 
-> Zenodo: https://doi.org/10.5281/zenodo.7861382
->
-> arXiv: https://doi.org/10.48550/arXiv.2212.11975
+Please cite as
+
+```
+@software{uldemolins2026grpahix034,
+  author       = {Uldemolins, Mateo and
+                  Fukushima, Masato and
+                  Graham, Emlyn and
+                  Nair, Pranav and
+                  Sasaki, Daichi and
+                  Shiratani, Sora and
+                  Watanabe, Yuki and
+                  Martinez, Thierry and
+                  Garnier, Maxime and
+                  Sunami, Shinichi},
+  title        = {Graphix},
+  month        = feb,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v0.3.4},
+  doi          = {10.5281/zenodo.18503266},
+  url          = {https://doi.org/10.5281/zenodo.18503266},
+}
+@misc{sunami2022graphix,
+      title={Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph},
+      author={Shinichi Sunami and Masato Fukushima},
+      year={2022},
+      eprint={2212.11975},
+      archivePrefix={arXiv},
+      primaryClass={quant-ph},
+      url={https://arxiv.org/abs/2212.11975},
+}
+```
 
 ## Contributing
 
@@ -123,7 +152,7 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 ## Acknowledgements
 
-Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) and Masato Fukushima (University of Tokyo, Fixstars Amplify) with support from [Fixstars Amplify](https://amplify.fixstars.com/en/) and [Unitary Foundation](https://unitary.foundation/grants.html), and later joined by Daichi Sasaki, Yuki Watanabe and Sora Shiratani (University of Tokyo, Fixstars Amplify).
+Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) with assistance from Masato Fukushima (University of Tokyo, Fixstars Amplify), supported by [Fixstars Amplify](https://amplify.fixstars.com/en/) and [Unitary Foundation](https://unitary.foundation/grants.html), and later joined by Daichi Sasaki, Yuki Watanabe and Sora Shiratani (University of Tokyo, Fixstars Amplify).
 
 <p>
 <a href="https://unitary.foundation/grants/" style="margin-right: 30px;">
