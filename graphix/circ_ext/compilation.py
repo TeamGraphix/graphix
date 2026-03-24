@@ -5,7 +5,7 @@ from __future__ import annotations
 from itertools import chain, pairwise
 from typing import TYPE_CHECKING
 
-from graphix.fundamentals import ANGLE_PI
+from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
 
@@ -114,8 +114,7 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 
         # We assume that nodes in the Pauli strings have been mapped to qubits.
         # The order on which we iterate over the modified qubits does not matter.
-        modified_qubits = list(pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes)
-
+        modified_qubits = list(pexp.pauli_string.axes)
         angle = -2 * pexp.angle * pexp.pauli_string.sign
 
         if len(modified_qubits) == 0:  # Identity
@@ -124,12 +123,7 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
         q0 = modified_qubits[0]
 
         if len(modified_qubits) == 1:
-            if q0 in pexp.pauli_string.x_nodes:
-                circuit.rx(q0, angle)
-            elif q0 in pexp.pauli_string.y_nodes:
-                circuit.ry(q0, angle)
-            else:
-                circuit.rz(q0, angle)
+            circuit.r(q0, pexp.pauli_string.axes[q0], angle)
             return
 
         add_basis_change(pexp, q0, circuit)
@@ -160,10 +154,11 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
         circuit : Circuit
             The quantum circuit to which the basis change is added.
         """
-        if qubit in pexp.pauli_string.x_nodes:
-            circuit.h(qubit)
-        elif qubit in pexp.pauli_string.y_nodes:
-            add_hy(qubit, circuit)
+        match pexp.pauli_string.axes[qubit]:
+            case Axis.X:
+                circuit.h(qubit)
+            case Axis.Y:
+                add_hy(qubit, circuit)
 
     def add_hy(qubit: int, circuit: Circuit) -> None:
         """Add a pi rotation around the z + y axis.

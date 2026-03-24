@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import dataclasses
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from typing_extensions import Self  # Self introduced in 3.11
 
-from graphix.fundamentals import ParameterizedAngle, Plane, Sign
+from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 
 if TYPE_CHECKING:
@@ -88,10 +87,8 @@ class PauliString:
         Phase of the Pauli string.
     """
 
-    x_nodes: AbstractSet[int] = dataclasses.field(default_factory=frozenset)
-    y_nodes: AbstractSet[int] = dataclasses.field(default_factory=frozenset)
-    z_nodes: AbstractSet[int] = dataclasses.field(default_factory=frozenset)
-    sign: Sign = dataclasses.field(default_factory=lambda: Sign.PLUS)
+    axes: Mapping[int, Axis]
+    sign: Sign = Sign.PLUS
 
     @staticmethod
     def from_measured_node(flow: PauliFlow[Measurement], node: Node) -> PauliString:
@@ -144,9 +141,16 @@ class PauliString:
         # One phase flip if measured on the YZ plane.
         negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
 
-        return PauliString(x_corrections, y_corrections, z_corrections, Sign.minus_if(negative_sign))
+        nodes = {}
+        for cnode in x_corrections:
+            nodes[cnode] = Axis.X
+        for cnode in y_corrections:
+            nodes[cnode] = Axis.Y
+        for cnode in z_corrections:
+            nodes[cnode] = Axis.Z
+        return PauliString(nodes, Sign.minus_if(negative_sign))
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
+    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliString:
         """Remap nodes to qubit indices.
 
         Parameters
@@ -159,10 +163,8 @@ class PauliString:
         PauliString
             Pauli string defined on qubit indices.
         """
-        x_nodes = {outputs_mapping(n) for n in self.x_nodes}
-        y_nodes = {outputs_mapping(n) for n in self.y_nodes}
-        z_nodes = {outputs_mapping(n) for n in self.z_nodes}
-        return replace(self, x_nodes=frozenset(x_nodes), y_nodes=frozenset(y_nodes), z_nodes=frozenset(z_nodes))
+        axes = {outputs_mapping(n): axis for n, axis in self.axes.items()}
+        return PauliString(axes, self.sign)
 
 
 @dataclass(frozen=True)
@@ -431,7 +433,7 @@ def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, 
     """
     # Nodes are either measured or outputs.
     return {
-        node: flow.pauli_strings[node] if node in flow.og.measurements else PauliString(z_nodes=frozenset({node}))
+        node: flow.pauli_strings[node] if node in flow.og.measurements else PauliString({node: Axis.Z})
         for node in flow.og.input_nodes
     }
 

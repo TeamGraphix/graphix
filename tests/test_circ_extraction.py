@@ -8,7 +8,7 @@ import pytest
 from graphix.circ_ext.compilation import pexp_ladder_pass
 from graphix.circ_ext.extraction import PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
-from graphix.fundamentals import ANGLE_PI, Sign
+from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import CNOT, RX, RY, RZ, H
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
@@ -35,7 +35,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString(z_nodes={1}, sign=Sign.MINUS)),
+                        0: PauliExponential(alpha / 2, PauliString({1: Axis.Z}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -45,7 +45,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString(x_nodes={1}, sign=Sign.MINUS)),
+                        0: PauliExponential(alpha / 2, PauliString({1: Axis.X}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -55,7 +55,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString(y_nodes={1}, sign=Sign.MINUS)),
+                        0: PauliExponential(alpha / 2, PauliString({1: Axis.Y}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -65,9 +65,9 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={3}, sign=Sign.MINUS)),
-                        1: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3}, sign=Sign.MINUS)),
-                        2: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={3}, sign=Sign.MINUS)),
+                        0: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.Z}, sign=Sign.MINUS)),
+                        1: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.X}, sign=Sign.MINUS)),
+                        2: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.Z}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                     output_nodes=[3],
@@ -77,9 +77,9 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3})),
-                        1: PauliExponential(ANGLE_PI / 4, PauliString(z_nodes={5})),
-                        2: PauliExponential(ANGLE_PI / 4, PauliString(x_nodes={3}, z_nodes={5}, sign=Sign.MINUS)),
+                        0: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.X})),
+                        1: PauliExponential(ANGLE_PI / 4, PauliString({5: Axis.Z})),
+                        2: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.X, 5: Axis.Z}, Sign.MINUS)),
                     },
                     partial_order_layers=[{5, 3}, {2}, {0, 1}],
                     output_nodes=[5, 3],  # Node 5 -> qubit 0 (control), node 3 -> qubit 1 (target)
@@ -89,7 +89,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString(x_nodes={1}, z_nodes={4, 2})),
+                        0: PauliExponential(alpha / 2, PauliString({1: Axis.X, 2: Axis.Z, 4: Axis.Z})),
                     },
                     partial_order_layers=[{1, 2, 3, 4}, {0}],
                     output_nodes=[2, 1, 3, 4],
@@ -108,7 +108,7 @@ class TestPauliExponential:
         assert state.isclose(state_ref)
 
     def test_to_circuit_outputs_order(self, fx_rng: Generator) -> None:
-        pexp_map = {2: PauliExponential(0.1, PauliString(x_nodes=frozenset({1}), z_nodes=frozenset({0})))}
+        pexp_map = {2: PauliExponential(0.1, PauliString({1: Axis.X, 0: Axis.Z}))}
         pol = [{0, 1}, {2}]
 
         outputs_1 = [0, 1]
@@ -170,14 +170,12 @@ class TestPauliExponential:
 
         pexp_dag_ref = PauliExponentialDAG(
             pauli_exponentials={
-                0: PauliExponential(ANGLE_PI * 0.1 / 2, PauliString(x_nodes=frozenset({6}))),
-                1: PauliExponential(ANGLE_PI * 0.2 / 2, PauliString(y_nodes=frozenset({6}), z_nodes=frozenset({5}))),
-                2: PauliExponential(
-                    ANGLE_PI * 0.3 / 2, PauliString(y_nodes=frozenset({5}), z_nodes=frozenset({6}), sign=Sign.MINUS)
-                ),
-                3: PauliExponential(ANGLE_PI * 0.4 / 2, PauliString(x_nodes=frozenset({5}))),
+                0: PauliExponential(ANGLE_PI * 0.1 / 2, PauliString({6: Axis.X})),
+                1: PauliExponential(ANGLE_PI * 0.2 / 2, PauliString({6: Axis.Y, 5: Axis.Z})),
+                2: PauliExponential(ANGLE_PI * 0.3 / 2, PauliString({5: Axis.Y, 6: Axis.Z}, Sign.MINUS)),
+                3: PauliExponential(ANGLE_PI * 0.4 / 2, PauliString({5: Axis.X})),
                 4: PauliExponential(
-                    0, PauliString(x_nodes=frozenset({6}))
+                    0, PauliString({6: Axis.X})
                 ),  # The angle is 0 (interpreted from the Pauli measurement).
             },
             partial_order_layers=flow.partial_order_layers,
