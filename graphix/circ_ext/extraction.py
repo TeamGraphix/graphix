@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+import numpy as np
 from typing_extensions import Self  # Self introduced in 3.11
 
+from graphix._linalg import MatGF2
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 
@@ -367,6 +369,27 @@ class CliffordMap:
         x_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.x_map.items()}
         z_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
         return replace(self, x_map=x_map, z_map=z_map)
+
+    def to_tableau(self) -> MatGF2:  # Assume CM has be remapped.
+        """Return tableau."""
+        n = len(self.input_nodes)
+        if n != len(self.output_nodes):
+            raise ValueError("Isometries not supported.")
+
+        tab = MatGF2(np.zeros((2 * n, 2 * n + 1)))
+
+        for mapping, shift in zip((self.x_map, self.z_map), (0, n), strict=True):
+            for i in range(n):
+                for j, ps in mapping[i].axes.items():
+                    if ps in {Axis.X, Axis.Y}:
+                        tab[i + shift, j] = 1
+                    if ps in {Axis.Y, Axis.Z}:
+                        tab[i + shift, j + n] = 1
+
+                if mapping[i].sign is Sign.MINUS:
+                    tab[i + shift, 2 * n] = 1
+
+        return tab
 
 
 def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], dict[int, int]]:
