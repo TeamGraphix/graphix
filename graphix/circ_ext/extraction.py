@@ -370,7 +370,7 @@ class CliffordMap:
 def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], dict[int, int]]:
     r"""Extend the inputs of a given open graph.
 
-    For every input node :math:`v`, a new node :math:`u` and edge :math:`(u, v)` are added to the open graph. Node :math:`u` is measured in plane :math:`XY` with angle :math:`\alpha = 0` and replaces :math:`v` in the open graph's sequence of input nodes.
+    For every input node :math:`v`, a new node :math:`u` and edge :math:`(u, v)` are added to the open graph. Node :math:`u` is measured in Pauli axis :math:`X` and replaces :math:`v` in the open graph's sequence of input nodes.
 
     Parameters
     ----------

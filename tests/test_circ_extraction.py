@@ -13,6 +13,7 @@ from graphix.instruction import CNOT, RX, RY, RZ, H
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.sim.base_backend import NodeIndex
+from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -118,19 +119,20 @@ class TestPauliExponential:
         outputs_mapping_1 = NodeIndex()
         outputs_mapping_1.extend(pexp_dag_1.output_nodes)
         pexp_ladder_pass(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
-        s_1 = qc_1.simulate_statevector(rng=fx_rng).statevec
+        s_1 = qc_1.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
 
         pexp_dag_2 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_2)
         qc_2 = Circuit(2)
+        qc_2.swap(0, 1)  # We must swap before and after the Pauli exponential!
         outputs_mapping_2 = NodeIndex()
         outputs_mapping_2.extend(pexp_dag_2.output_nodes)
         pexp_ladder_pass(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
 
-        s_2 = qc_2.simulate_statevector(rng=fx_rng).statevec
+        s_2 = qc_2.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
         assert not s_1.isclose(s_2)
 
         qc_2.swap(0, 1)
-        s_2 = qc_2.simulate_statevector(rng=fx_rng).statevec
+        s_2 = qc_2.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
 
         assert s_1.isclose(s_2)
 

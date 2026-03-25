@@ -113,11 +113,9 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
             return
 
         # We assume that nodes in the Pauli strings have been mapped to qubits.
-        modified_qubits = [
-            qubit
-            for qubit in range(circuit.width)
-            if qubit in pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes
-        ]
+        # The order on which we iterate over the modified qubits does not matter.
+        modified_qubits = list(pexp.pauli_string.x_nodes | pexp.pauli_string.y_nodes | pexp.pauli_string.z_nodes)
+
         angle = -2 * pexp.angle * pexp.pauli_string.sign
 
         if len(modified_qubits) == 0:  # Identity
