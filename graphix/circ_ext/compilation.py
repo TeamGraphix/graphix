@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.instruction import CNOT, SWAP, H, S
+from graphix.instruction import CNOT, SWAP, H, S, X, Y, Z
 from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
 
@@ -196,22 +196,22 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     def process_qubit(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
 
-        # print(f"Qubit {q}")
+        print(f"Qubit {q}")
 
         # Step 1
         do_step_1(tab, instructions, row_idx=q)
 
-        # print("After step 1\n", tab)
+        print("After step 1\n", tab)
 
         # Step 2
         pivot = do_step_2(tab, instructions, row_idx=q)
-        # print("After step 2\n", tab)
+        print("After step 2\n", tab)
 
         # Step 3
         if pivot != q:
-            add_swap(tab, circuit, q, pivot)
+            add_swap(tab, instructions, q, pivot)
 
-        # print("After step 3\n", tab)
+        print("After step 3\n", tab)
 
         # Step 4
         col_idx_z = np.flatnonzero(tab[q + n, :-1])  # xz and zz blocks of qubit q, without sign.
@@ -222,17 +222,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
             assert pivot == q
             add_h(tab, instructions, q)
 
-        # print("After step 4\n", tab)
-
-        # Step 5
-        sign_xz = tab[q, -1], tab[q + n, -1]
-        match sign_xz:
-            case (0, 1):
-                circuit.x(q)
-            case (1, 1):
-                circuit.y(q)
-            case (1, 0):
-                circuit.z(q)
+        print("After step 4\n", tab)
 
     def do_step_1(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> None:
         col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])
@@ -251,14 +241,14 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
         return col_idx_xx[0]
 
     def add_h(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
-        tab[:, -1] ^= tab[:, q] * tab[:, q + n]
+        tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, [q, q + n]] = tab[:, [q + n, q]]
         instructions.append(H(q))
 
     def add_s(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
-        tab[:, -1] ^= tab[:, q] * tab[:, q + n]
+        tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, q + n] = tab[:, q] ^ tab[:, q + n]
-        instructions.append(S(q))
+        instructions.extend((S(q), Z(q)))
 
     def add_cnot(tab: MatGF2, instructions: list[Instruction], qc: Qubit, qt: Qubit) -> None:
         tab[:, -1] ^= tab[:, qc] * tab[:, qt + n] * (tab[:, qt] ^ tab[:, qc + n] ^ 1)
@@ -272,8 +262,25 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
         instructions.append(SWAP((q0, q1)))
 
+    def correct_signs(tab: MatGF2, instructions: list[Instruction]) -> None:
+        for q in range(n):
+            sign_xz = tab[q, -1], tab[q + n, -1]
+            match sign_xz:
+                case (0, 1):
+                    instructions.append(X(q))
+                case (1, 1):
+                    instructions.append(Y(q))
+                case (1, 0):
+                    instructions.append(Z(q))
+
+            tab[q, -1], tab[q + n, -1] = 0, 0
+
     for q in range(n):
         process_qubit(tab, instructions, q)
 
+    correct_signs(tab, instructions)
+
     for instr in instructions[::-1]:
         circuit.add(instr)
+
+    return tab

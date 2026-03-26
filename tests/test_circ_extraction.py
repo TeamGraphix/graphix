@@ -5,9 +5,11 @@ from typing import TYPE_CHECKING, NamedTuple
 import networkx as nx
 import numpy as np
 import pytest
+import stim
+from graphix_stim_compiler import stim_tableau_to_cm
 
 from graphix._linalg import MatGF2
-from graphix.circ_ext.compilation import pexp_ladder_pass
+from graphix.circ_ext.compilation import cm_berg_pass, pexp_ladder_pass
 from graphix.circ_ext.extraction import CliffordMap, PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
@@ -188,6 +190,31 @@ class TestPauliExponential:
 
 
 class TestCliffordMap:
+    def stim_to_clifford_circuit(self, stim_circuit: stim.Circuit) -> Circuit:
+
+        circuit = Circuit(stim_circuit.num_qubits)
+
+        # "stim.Circuit" has no attribute "__iter__"
+        # (but __len__ and __getitem__)
+        instruction: stim.CircuitInstruction
+        for instruction in stim_circuit:  # type: ignore[attr-defined]
+            match instruction.name:
+                case "CX":
+                    for control, target in instruction.target_groups():
+                        assert control.qubit_value is not None
+                        assert target.qubit_value is not None
+                        circuit.cnot(control.qubit_value, target.qubit_value)
+                case "H":
+                    for (qubit,) in instruction.target_groups():
+                        assert qubit.qubit_value is not None
+                        circuit.h(qubit.qubit_value)
+                case "S":
+                    for (qubit,) in instruction.target_groups():
+                        assert qubit.qubit_value is not None
+                        circuit.s(qubit.qubit_value)
+
+        return circuit
+
     @pytest.mark.parametrize(
         ("cm", "tab_ref"),
         [
@@ -227,6 +254,52 @@ class TestCliffordMap:
     def test_to_tableau(self, cm: CliffordMap, tab_ref: MatGF2) -> None:
         tab = cm.to_tableau()
         assert np.all(tab == tab_ref)
+
+    @pytest.mark.parametrize(
+        "stim_circuit",
+        [
+            stim.Circuit("H 0"),
+            stim.Circuit("S 0"),
+            stim.Circuit("CNOT 0 1"),
+            stim.Circuit("""
+                        CNOT 0 1
+                        H 0
+                        H 1
+                        CNOT 1 2
+                        S 1
+                        CNOT 0 2
+                        H 2
+                        S 2"""),
+        ],
+    )
+    def test_cm_berg_pass(self, stim_circuit: stim.Circuit, fx_rng: Generator) -> None:
+        tab_stim = stim.Tableau.from_circuit(stim_circuit)
+        qc_ref = self.stim_to_clifford_circuit(stim_circuit)
+
+        cm = stim_tableau_to_cm(tab_stim)
+        qc = Circuit(stim_circuit.num_qubits)
+        cm_berg_pass(cm, qc)
+
+        s_test = qc.simulate_statevector(rng=fx_rng).statevec
+        s_ref = qc_ref.simulate_statevector(rng=fx_rng).statevec
+
+        assert s_test.isclose(s_ref)
+
+    @pytest.mark.parametrize("nqubits", range(1, 5))
+    def test_cm_berg_pass_random(self, nqubits: int, fx_rng: Generator) -> None:
+        # `stim.Tableau.random` does not support seeding
+        # https://github.com/quantumlib/Stim/issues/974
+        tab_stim = stim.Tableau.random(nqubits)
+        qc_ref = self.stim_to_clifford_circuit(tab_stim.to_circuit())
+
+        cm = stim_tableau_to_cm(tab_stim)
+        qc = Circuit(nqubits)
+        cm_berg_pass(cm, qc)
+
+        s_test = qc.simulate_statevector(rng=fx_rng).statevec
+        s_ref = qc_ref.simulate_statevector(rng=fx_rng).statevec
+
+        assert s_test.isclose(s_ref)
 
 
 def test_extend_input() -> None:
