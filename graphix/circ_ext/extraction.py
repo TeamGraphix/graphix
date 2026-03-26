@@ -371,11 +371,47 @@ class CliffordMap:
         z_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
         return replace(self, x_map=x_map, z_map=z_map)
 
-    def to_tableau(self) -> MatGF2:  # Assume CM has be remapped.
-        """Return tableau."""
+    def to_tableau(self) -> MatGF2:
+        """Convert the CliffordMap into its binary tableau representation.
+
+        The returned tableau is a ``(2n, 2n + 1)`` binary matrix over GF(2),
+        where ``n`` is the number of qubits. The first ``n`` rows correspond
+        to the images of X generators, and the next ``n`` rows correspond to
+        the images of Z generators. Columns encode the X and Z components of
+        the resulting Pauli strings, along with a sign column.
+
+        Each PauliString in ``x_map`` and ``z_map`` is decomposed into its
+        X/Z support:
+        - X contributes a 1 to the X block.
+        - Z contributes a 1 to the Z block.
+        - Y contributes a 1 to both X and Z blocks.
+        The sign of the Pauli string is stored in the final column
+        (0 for ``Sign.PLUS`` and 1 for ``Sign.MINUS``).
+
+        Parameters
+        ----------
+        None
+            This method operates on the current CliffordMap instance. It
+            assumes the map has already been remapped such that input and
+            output nodes correspond to qubit indices.
+
+        Returns
+        -------
+        MatGF2
+            A binary matrix of shape ``(2n, 2n + 1)`` representing the
+            Clifford tableau.
+
+        Raises
+        ------
+        NotImplementedError
+            If the number of input nodes differs from the number of output
+            nodes (i.e., the map is an isometry instead of a square Clifford).
+        """
         n = len(self.input_nodes)
         if n != len(self.output_nodes):
-            raise ValueError("Isometries not supported.")
+            raise NotImplementedError(
+                f"Isometries are not supported yet: # of inputs ({len(self.input_nodes)}) must be equal to the # of outputs ({len(self.output_nodes)})."
+            )
 
         tab = MatGF2(np.zeros((2 * n, 2 * n + 1)))
 

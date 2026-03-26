@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
+import numpy as np
 import pytest
 
+from graphix._linalg import MatGF2
 from graphix.circ_ext.compilation import pexp_ladder_pass
-from graphix.circ_ext.extraction import PauliExponential, PauliExponentialDAG, PauliString, extend_input
+from graphix.circ_ext.extraction import CliffordMap, PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import CNOT, RX, RY, RZ, H
@@ -183,6 +185,48 @@ class TestPauliExponential:
         )
 
         assert pexp_dag == pexp_dag_ref
+
+
+class TestCliffordMap:
+    @pytest.mark.parametrize(
+        ("cm", "tab_ref"),
+        [
+            (
+                CliffordMap(
+                    x_map={0: PauliString({0: Axis.Z}), 1: PauliString({1: Axis.Y})},
+                    z_map={0: PauliString({0: Axis.X, 1: Axis.Y}, Sign.MINUS), 1: PauliString({0: Axis.Z, 1: Axis.Z})},
+                    input_nodes=[0, 1],
+                    output_nodes=[0, 1],
+                ),
+                MatGF2([[0, 0, 1, 0, 0], [0, 1, 0, 1, 0], [1, 1, 0, 1, 1], [0, 0, 1, 1, 0]]),
+            ),
+            (
+                CliffordMap(
+                    x_map={0: PauliString({0: Axis.Z}), 1: PauliString({1: Axis.X}), 2: PauliString({2: Axis.Y})},
+                    z_map={
+                        0: PauliString({0: Axis.X, 1: Axis.X}),
+                        1: PauliString({0: Axis.Z, 1: Axis.Z}),
+                        2: PauliString({2: Axis.Z}),
+                    },
+                    input_nodes=[0, 1, 2],
+                    output_nodes=[0, 1, 2],
+                ),
+                MatGF2(
+                    [
+                        [0, 0, 0, 1, 0, 0, 0],
+                        [0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 1, 0, 0, 1, 0],
+                        [1, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 1, 1, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 0],
+                    ]
+                ),
+            ),
+        ],
+    )
+    def test_to_tableau(self, cm: CliffordMap, tab_ref: MatGF2) -> None:
+        tab = cm.to_tableau()
+        assert np.all(tab == tab_ref)
 
 
 def test_extend_input() -> None:
