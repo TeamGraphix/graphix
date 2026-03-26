@@ -156,7 +156,7 @@ class ComposeNoiseModel(NoiseModel):
         """Return the noise to apply to the command ``cmd``."""
         sequence = [cmd]
         for model in self.models:
-            sequence = model.transpile(sequence, stacklevel=stacklevel + 1)
+            sequence = model.transpile(sequence, rng=rng, stacklevel=stacklevel + 1)
         return sequence
 
     @override
@@ -165,5 +165,5 @@ class ComposeNoiseModel(NoiseModel):
     ) -> Outcome:
         """Assign wrong measurement result."""
         for m in self.models:
-            result = m.confuse_result(cmd, result, stacklevel=stacklevel + 1)
+            result = m.confuse_result(cmd, result, rng=rng, stacklevel=stacklevel + 1)
         return result

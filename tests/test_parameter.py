@@ -183,6 +183,7 @@ def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_xreplace: 
     assert state_mbqc.isclose(state)
 
 
+@pytest.mark.usefixtures("mock_plot")
 def test_visualization() -> None:
     mpl.use("Agg")  # Use a non-interactive backend
     pattern = Pattern(input_nodes=[0, 1])

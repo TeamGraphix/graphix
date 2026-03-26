@@ -843,7 +843,7 @@ class GraphVisualizer:
         node_pos_array = np.array(node_pos)
         edge_vector = np.asarray(end, dtype=np.float64) - np.asarray(start, dtype=np.float64)
         # Rotate the edge vector 90 degrees or -90 degrees according to the node position
-        cross = np.cross(edge_vector, node_pos_array - np.array(start))
+        cross = _cross2d(edge_vector, node_pos_array - np.array(start))
         if cross > 0:
             dir_vector = np.array([edge_vector[1], -edge_vector[0]])  # Rotate the edge vector 90 degrees
         else:
@@ -904,3 +904,13 @@ class GraphVisualizer:
 
 def _set_node_attributes(graph: nx.Graph[_HashableT], attrs: Mapping[_HashableT, object], name: str) -> None:
     nx.set_node_attributes(graph, attrs, name=name)  # type: ignore[arg-type]
+
+
+def _cross2d(arr1: npt.NDArray[np.float64], arr2: npt.NDArray[np.float64]) -> np.float64:
+    """Cross-product for 2D vectors.
+
+    `np.cross()` is deprecated for 2D vectors since numpy 2.
+    See https://github.com/numpy/numpy/issues/26620 .
+    """
+    product: np.float64 = arr1[0] * arr2[1] - arr1[1] * arr2[0]
+    return product
