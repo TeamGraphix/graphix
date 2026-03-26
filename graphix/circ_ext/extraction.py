@@ -77,14 +77,14 @@ class PauliString:
 
     Attributes
     ----------
-    x_nodes : AbstractSet[int]
-        Nodes on which a Pauli X operator is applied.
-    y_nodes : AbstractSet[int]
-        Nodes on which a Pauli Y operator is applied.
-    z_nodes : AbstractSet[int]
-        Nodes on which a Pauli Z operator is applied.
+    axes : Mapping[int, Axis]
+        Mapping between nodes and the applied Pauli operator.
     sign : Sign
         Phase of the Pauli string.
+
+    Notes
+    -----
+    The identity operator is ommitted in this representation, which means that in general it is not possible to infer the size of the Hilbert space from an instance of `PauliString` alone.
     """
 
     axes: Mapping[int, Axis]
@@ -104,7 +104,7 @@ class PauliString:
         Returns
         -------
         PauliString
-            Primary extraction string associated to the input measured nodes. The sets in the returned `PauliString` instance are disjoint.
+            Primary extraction string associated to the input measured nodes.
 
         Notes
         -----
@@ -142,6 +142,7 @@ class PauliString:
         negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
 
         nodes = {}
+        # Sets `x_corrections`, `y_corrections` and `z_corrections` are disjoint.
         for cnode in x_corrections:
             nodes[cnode] = Axis.X
         for cnode in y_corrections:
