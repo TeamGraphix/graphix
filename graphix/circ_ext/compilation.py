@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
-from itertools import chain, pairwise
+from itertools import batched, chain, pairwise
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from graphix.fundamentals import ANGLE_PI, Axis
+from graphix.instruction import CNOT, SWAP, H, S
 from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import TypeAlias
 
+    from graphix._linalg import MatGF2
     from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponential, PauliExponentialDAG
+    from graphix.instruction import Instruction
+
+    Qubit: TypeAlias = int | np.int_
 
 
 def er_to_circuit(
@@ -179,3 +187,93 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     for node in chain(*reversed(pexp_dag.partial_order_layers[1:])):
         pexp = pexp_dag.pauli_exponentials[node]
         add_pexp(pexp, circuit)
+
+
+def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
+    tab = clifford_map.to_tableau()
+    n = len(clifford_map.output_nodes)
+    instructions: list[Instruction] = []
+
+    def process_qubit(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
+
+        # print(f"Qubit {q}")
+
+        # Step 1
+        do_step_1(tab, instructions, row_idx=q)
+
+        # print("After step 1\n", tab)
+
+        # Step 2
+        pivot = do_step_2(tab, instructions, row_idx=q)
+        # print("After step 2\n", tab)
+
+        # Step 3
+        if pivot != q:
+            add_swap(tab, circuit, q, pivot)
+
+        # print("After step 3\n", tab)
+
+        # Step 4
+        col_idx_z = np.flatnonzero(tab[q + n, :-1])  # xz and zz blocks of qubit q, without sign.
+        if not (len(col_idx_z) == 1 and col_idx_z[0] == q + n):
+            add_h(tab, instructions, q)
+            do_step_1(tab, instructions, row_idx=q + n)
+            pivot = do_step_2(tab, instructions, row_idx=q + n)
+            assert pivot == q
+            add_h(tab, instructions, q)
+
+        # print("After step 4\n", tab)
+
+        # Step 5
+        sign_xz = tab[q, -1], tab[q + n, -1]
+        match sign_xz:
+            case (0, 1):
+                circuit.x(q)
+            case (1, 1):
+                circuit.y(q)
+            case (1, 0):
+                circuit.z(q)
+
+    def do_step_1(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> None:
+        col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])
+        for j in col_idx_zx:
+            add_s(tab, instructions, int(j)) if tab[row_idx, j] else add_h(tab, instructions, int(j))
+
+    def do_step_2(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> int:
+        # Return pivot
+        col_idx_xx = np.flatnonzero(tab[row_idx, :n])
+        while len(col_idx_xx) > 1:
+            for edge in batched(col_idx_xx, 2):
+                if len(edge) == 2:
+                    add_cnot(tab, instructions, *edge)
+            col_idx_xx = col_idx_xx[::2]
+
+        return col_idx_xx[0]
+
+    def add_h(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
+        tab[:, -1] ^= tab[:, q] * tab[:, q + n]
+        tab[:, [q, q + n]] = tab[:, [q + n, q]]
+        instructions.append(H(q))
+
+    def add_s(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
+        tab[:, -1] ^= tab[:, q] * tab[:, q + n]
+        tab[:, q + n] = tab[:, q] ^ tab[:, q + n]
+        instructions.append(S(q))
+
+    def add_cnot(tab: MatGF2, instructions: list[Instruction], qc: Qubit, qt: Qubit) -> None:
+        tab[:, -1] ^= tab[:, qc] * tab[:, qt + n] * (tab[:, qt] ^ tab[:, qc + n] ^ 1)
+        tab[:, qt] ^= tab[:, qc]
+        tab[:, qc + n] ^= tab[:, qt + n]
+        instructions.append(CNOT(control=qc, target=qt))
+
+    def add_swap(tab: MatGF2, instructions: list[Instruction], q0: Qubit, q1: Qubit) -> None:
+        for shift in [0, n]:
+            tab[:, [q0 + shift, q1 + shift]] = tab[:, [q1 + shift, q0 + shift]]
+
+        instructions.append(SWAP((q0, q1)))
+
+    for q in range(n):
+        process_qubit(tab, instructions, q)
+
+    for instr in instructions[::-1]:
+        circuit.add(instr)
