@@ -40,7 +40,7 @@ def er_to_circuit(
     pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
         Compilation pass to synthetize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
     cm_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-        Compilation pass to synthetize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
+        Compilation pass to synthetize a Clifford map. If ``None`` (default), :func:`cm_berg_pass` is employed.
 
     Returns
     -------
@@ -60,9 +60,7 @@ def er_to_circuit(
         pexp_cp = pexp_ladder_pass
 
     if cm_cp is None:
-        raise ValueError(
-            "Clifford-map pass is missing: there is still no default pass for Clifford map integrated in Graphix. You may use graphix-stim-compiler plugin."
-        )
+        cm_cp = cm_berg_pass
 
     n_qubits = len(er.pexp_dag.output_nodes)
     circuit = Circuit(n_qubits)
