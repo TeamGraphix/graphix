@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponential, PauliExponentialDAG
     from graphix.instruction import Instruction
 
+    # NOTE: This alias could be defined at the level of graphix.instruction, and treat all qubit indices as `Qubit`. This change would affect many files in the codebase, so as a temporary solution `Qubit` is casted to `int` in this module.
     Qubit: TypeAlias = int | np.int_
 
 
@@ -280,7 +281,9 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
             add_h(tab, instructions, q)
             do_step_1(tab, instructions, row_idx=q + n)
             pivot = do_step_2(tab, instructions, row_idx=q + n)
-            assert pivot == q
+            if pivot != q:
+                raise AssertionError(f"Pivot in block ZZ should be at q = {q}. This error probably means that `CliffordMap` doesn't describe a valid Clifford operation. All Pauli strings must commute, except for `x_map[q]` anticommuting with `z_map[q]` for each q.")
+
             add_h(tab, instructions, q)
 
     def do_step_1(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> None:
@@ -297,9 +300,10 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
                     add_cnot(tab, instructions, *edge)
             col_idx_xx = col_idx_xx[::2]
 
-        return col_idx_xx[0]
+        return int(col_idx_xx[0])
 
     def add_h(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
+        q = int(q)  # Cast to `int` to avoid typing issues
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, [q, q + n]] = tab[:, [q + n, q]]
         instructions.append(H(q))
@@ -307,15 +311,17 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
     def add_s(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, q + n] = tab[:, q] ^ tab[:, q + n]
+        q = int(q)
         instructions.extend((S(q), Z(q)))  # We append Sdagger to get C instead of C^dagger
 
     def add_cnot(tab: MatGF2, instructions: list[Instruction], qc: Qubit, qt: Qubit) -> None:
         tab[:, -1] ^= tab[:, qc] * tab[:, qt + n] * (tab[:, qt] ^ tab[:, qc + n] ^ 1)
         tab[:, qt] ^= tab[:, qc]
         tab[:, qc + n] ^= tab[:, qt + n]
-        instructions.append(CNOT(control=qc, target=qt))
+        instructions.append(CNOT(control=int(qc), target=int(qt)))
 
     def add_swap(tab: MatGF2, instructions: list[Instruction], q0: Qubit, q1: Qubit) -> None:
+        q0, q1 = int(q0), int(q1)  # Cast to `int` to avoid typing issues
         for shift in [0, n]:
             tab[:, [q0 + shift, q1 + shift]] = tab[:, [q1 + shift, q0 + shift]]
 

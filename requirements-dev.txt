@@ -27,3 +27,4 @@ qiskit-aer
 
 openqasm-parser>=3.1.0
 graphix-qasm-parser>=0.1.1
+#graphix-stim-compiler @ git+https://github.com/qat-inria/graphix-stim-compiler.git@clifford_extraction
