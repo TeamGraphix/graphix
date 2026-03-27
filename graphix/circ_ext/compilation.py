@@ -282,7 +282,9 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
             do_step_1(tab, instructions, row_idx=q + n)
             pivot = do_step_2(tab, instructions, row_idx=q + n)
             if pivot != q:
-                raise AssertionError(f"Pivot in block ZZ should be at q = {q}. This error probably means that `CliffordMap` doesn't describe a valid Clifford operation. All Pauli strings must commute, except for `x_map[q]` anticommuting with `z_map[q]` for each q.")
+                raise AssertionError(
+                    f"Pivot in block ZZ should be at q = {q}. This error probably means that `CliffordMap` doesn't describe a valid Clifford operation. All Pauli strings must commute, except for `x_map[q]` anticommuting with `z_map[q]` for each q."
+                )
 
             add_h(tab, instructions, q)
 
