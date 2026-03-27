@@ -190,39 +190,98 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 
 
 def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
+    r"""Add a Clifford map to a circuit by using and adaptation of van den Berg's sweeping algorithm introduced in Ref.[1].
+
+    The input circuit is modified in-place. This function assumes that the Clifford Map has been remap, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
+
+    Parameters
+    ----------
+    clifford_map: CliffordMap
+        The Clifford map to be transpiled. Its Pauli strings are assumed to be defined on qubit indices.
+    circuit : Circuit
+        The circuit to which the operation is added. The input circuit is assumed to be compatible with ``CliffordMap.input_nodes`` and ``CliffordMap.output_nodes``.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``len(clifford_map.input_nodes) != len(clifford_map.output_nodes)``.
+    AssertionError
+        If an unexpected pivot position is encountered during Step 4.
+
+    Notes
+    -----
+    This pass only handles unitaries so far (Clifford maps with the same number of input and ouptut nodes).
+
+    Gate set: H, S, CNOT, SWAP, X, Y, Z
+
+    This function converts a ``CliffordMap`` into a sequence of quantum
+    gate instructions by operating on its binary tableau representation.
+    The synthesis proceeds qubit-by-qubit, applying a sequence of local
+    transformations (H, S, CNOT, and SWAP gates) to reduce the
+    tableau into a canonical form. The resulting sequence represents the
+    adjoint of the input Clifford map, therefore it's appended in reverse
+    order (and exchanging S by Sdagger) to the provided ``Circuit``.
+
+    The synthesis applies a series of steps on every qubit subtableau:
+
+    .. math::
+
+    T_q = \begin{pmatrix}
+        XX & XZ \\
+        ZX & ZZ
+    \end{pmatrix}
+
+    1. Clear elements in the XZ-block by applying single-qubit gates (H or S).
+
+    2. Use CNOT gates to reduce the XX block to a single pivot column.
+
+    3. Apply a SWAP gae to bring the pivot to the diagonal if neccesary.
+
+    4. Ensure the ZX and ZZ blocks of the tableau have the correct canonical form
+    by redoing steps 1. and 2.
+
+    After processing all qubits, a final sign correction step applies
+    Pauli gates (X, Y, Z) to fix phase bits in the tableau.
+
+    The generated instructions are accumulated during the forward pass
+    and then appended to the circuit in reverse order to yield the
+    correct overall transformation.
+
+    For the mapping between tableau updates and Clifford gates (H, S, CNOT) see [2].
+
+    References
+    ----------
+    [1] Van Den Berg, 2021. A simple method for sampling random Clifford operators (arxiv:2008.06011).
+    [2] Aaronson, Gottesman, (2004). Improved Simulation of Stabilizer Circuits (arXiv:quant-ph/0406196).
+    """
     tab = clifford_map.to_tableau()
     n = len(clifford_map.output_nodes)
+    if len(clifford_map.input_nodes) != n:
+        raise NotImplementedError(
+            ":func:`cm_berg_pass` does not support circuit compilation if the number of input and output nodes is different (isometry)."
+        )
     instructions: list[Instruction] = []
 
     def process_qubit(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
-
-        print(f"Qubit {q}")
-
+        """Bring to canonical form two tableau rows corresponding to qubit ``q``."""
         # Step 1
         do_step_1(tab, instructions, row_idx=q)
 
-        print("After step 1\n", tab)
-
         # Step 2
         pivot = do_step_2(tab, instructions, row_idx=q)
-        print("After step 2\n", tab)
 
         # Step 3
         if pivot != q:
             add_swap(tab, instructions, q, pivot)
 
-        print("After step 3\n", tab)
-
         # Step 4
-        col_idx_z = np.flatnonzero(tab[q + n, :-1])  # xz and zz blocks of qubit q, without sign.
+        col_idx_z = np.flatnonzero(tab[q + n, :-1])  # ZX and ZZ blocks of qubit q, without sign.
         if not (len(col_idx_z) == 1 and col_idx_z[0] == q + n):
             add_h(tab, instructions, q)
             do_step_1(tab, instructions, row_idx=q + n)
             pivot = do_step_2(tab, instructions, row_idx=q + n)
             assert pivot == q
             add_h(tab, instructions, q)
-
-        print("After step 4\n", tab)
 
     def do_step_1(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> None:
         col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])
@@ -248,7 +307,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
     def add_s(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, q + n] = tab[:, q] ^ tab[:, q + n]
-        instructions.extend((S(q), Z(q)))
+        instructions.extend((S(q), Z(q)))  # We append Sdagger to get C instead of C^dagger
 
     def add_cnot(tab: MatGF2, instructions: list[Instruction], qc: Qubit, qt: Qubit) -> None:
         tab[:, -1] ^= tab[:, qc] * tab[:, qt + n] * (tab[:, qt] ^ tab[:, qc + n] ^ 1)
@@ -273,7 +332,8 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
                 case (1, 0):
                     instructions.append(Z(q))
 
-            tab[q, -1], tab[q + n, -1] = 0, 0
+            # The tableau sign column should be set to 0, but we don't need to do it since it's the last step.
+            # tab[q, -1], tab[q + n, -1] = 0, 0
 
     for q in range(n):
         process_qubit(tab, instructions, q)
@@ -282,5 +342,3 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     for instr in instructions[::-1]:
         circuit.add(instr)
-
-    return tab
