@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class PauliExpTestCase(NamedTuple):
-    p_exp: PauliExponentialDAG
+    pexp_dag: PauliExponentialDAG
     qc: Circuit
 
 
@@ -99,10 +99,10 @@ class TestPauliExponential:
         ],
     )
     def test_to_circuit(self, test_case: PauliExpTestCase, fx_rng: Generator) -> None:
-        qc = Circuit(len(test_case.p_exp.output_nodes))
+        qc = Circuit(len(test_case.pexp_dag.output_nodes))
         outputs_mapping = NodeIndex()
-        outputs_mapping.extend(test_case.p_exp.output_nodes)
-        pexp_ladder_pass(test_case.p_exp.remap(outputs_mapping.index), qc)
+        outputs_mapping.extend(test_case.pexp_dag.output_nodes)
+        pexp_ladder_pass(test_case.pexp_dag.remap(outputs_mapping.index), qc)
         state = qc.simulate_statevector(rng=fx_rng).statevec
         state_ref = test_case.qc.simulate_statevector(rng=fx_rng).statevec
         assert state.isclose(state_ref)
