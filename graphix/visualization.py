@@ -911,6 +911,11 @@ def _cross2d(arr1: npt.NDArray[np.float64], arr2: npt.NDArray[np.float64]) -> np
 
     `np.cross()` is deprecated for 2D vectors since numpy 2.
     See https://github.com/numpy/numpy/issues/26620 .
+
+    The cross-product of two 2D vectors is the determinant of the
+    2×2 matrix formed by placing them as columns.  Equivalently, it
+    is the z-component of the 3D cross-product when the vectors are
+    extended with a zero z-coordinate.
     """
     if arr1.shape != (2,) or arr2.shape != (2,):
         raise ValueError("Expected 2D vectors of shape (2,)")
