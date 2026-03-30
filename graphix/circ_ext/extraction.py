@@ -58,9 +58,9 @@ class ExtractionResult:
         Parameters
         ----------
         pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-            Compilation pass to synthetize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
+            Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
         cm_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-            Compilation pass to synthetize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
+            Compilation pass to synthesize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
 
         Returns
         -------
@@ -86,7 +86,7 @@ class PauliString:
 
     Notes
     -----
-    The identity operator is ommitted in this representation, which means that in general it is not possible to infer the size of the Hilbert space from an instance of `PauliString` alone.
+    The identity operator is omitted in this representation, which means that in general it is not possible to infer the size of the Hilbert space from an instance of ``PauliString`` alone.
     """
 
     axes: Mapping[int, Axis]
@@ -178,7 +178,7 @@ class PauliExponential:
 
     .. math::
 
-        U(\alpha) = \exp \left(i \frac{alpha}{2} P\right),
+        U(\alpha) = \exp \left(i \frac{\alpha}{2} P\right),
 
     where :math:`\alpha` is a real-valued angle and :math:`P` is a Pauli string.
 
@@ -207,7 +207,7 @@ class PauliExponential:
         Returns
         -------
         PauliExponential
-            Primary extraction string associated to the input measured nodes. The sets in the returned `PauliString` instance are disjoint.
+            Primary extraction string associated to the input measured nodes. The sets in the returned ``PauliString`` instance are disjoint.
 
         Notes
         -----
@@ -241,7 +241,7 @@ class PauliExponentialDAG:
     pauli_exponentials: Mapping[int, PauliExponential]
         Mapping between measured nodes (``keys``) and Pauli exponentials (``values``).
     partial_order_layers: Sequence[AbstractSet[int]]
-        Partial order between the Pauli exponentials in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. The pattern's output nodes are always in layer 0.
+        Partial order between the Pauli exponentials in a layer form. The set ``layers[i]`` comprises the nodes in layer ``i``. Nodes in layer ``i`` are "larger" in the partial order than nodes in layer ``i+1``. The pattern's output nodes are always in layer 0.
     output_nodes: Sequence[int]
         Output nodes on which the Pauli exponential rotation acts.
 
@@ -271,7 +271,7 @@ class PauliExponentialDAG:
 
         Returns
         -------
-        PauliExponentialRotation
+        PauliExponentialDAG
 
         Notes
         -----
@@ -329,7 +329,7 @@ class CliffordMap:
     def from_focused_flow(flow: PauliFlow[Measurement]) -> CliffordMap:
         """Extract a Clifford map from a focused Pauli flow.
 
-        This routine associates a two Pauli strings (one per generator of the Pauli group, X and Z) to each input node in ``flow.og``.
+        This routine associates two Pauli strings (one per generator of the Pauli group, X and Z) to each input node in ``flow.og``.
 
         Parameters
         ----------
