@@ -906,7 +906,9 @@ def _set_node_attributes(graph: nx.Graph[_HashableT], attrs: Mapping[_HashableT,
     nx.set_node_attributes(graph, attrs, name=name)  # type: ignore[arg-type]
 
 
-def _cross2d(arr1: npt.NDArray[np.float64], arr2: npt.NDArray[np.float64]) -> np.float64:
+def _cross2d(
+    arr1: np.ndarray[tuple[int], np.dtype[np.float64]], arr2: np.ndarray[tuple[int], np.dtype[np.float64]]
+) -> np.float64:
     """Cross-product for 2D vectors.
 
     `np.cross()` is deprecated for 2D vectors since numpy 2.
