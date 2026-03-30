@@ -912,5 +912,7 @@ def _cross2d(arr1: npt.NDArray[np.float64], arr2: npt.NDArray[np.float64]) -> np
     `np.cross()` is deprecated for 2D vectors since numpy 2.
     See https://github.com/numpy/numpy/issues/26620 .
     """
+    if arr1.shape != (2,) or arr2.shape != (2,):
+        raise ValueError("Expected 2D vectors of shape (2,)")
     product: np.float64 = arr1[0] * arr2[1] - arr1[1] * arr2[0]
     return product
