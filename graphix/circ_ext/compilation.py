@@ -29,9 +29,9 @@ def er_to_circuit(
     er : ExtractionResult
         The result of the extraction process, containing both the ``clifford_map`` and the ``pexp_dag``.
     pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-        Compilation pass to synthetize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
-    cm_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-        Compilation pass to synthetize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
+        Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
+    cm_cp: Callable[[CliffordMap, Circuit], None] | None
+        Compilation pass to synthesize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
 
     Returns
     -------
@@ -71,7 +71,7 @@ def er_to_circuit(
 def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     r"""Add a Pauli exponential DAG to a circuit by using a ladder decomposition.
 
-    The input circuit is modified in-place. This function assumes that the Pauli exponential DAG has been remap, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
+    The input circuit is modified in-place. This function assumes that the Pauli exponential DAG has been remapped, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
 
     Parameters
     ----------
@@ -88,7 +88,7 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 
         R_Z(\phi) = \exp \left(-i \frac{\phi}{2} Z \right),
 
-    with effective angle :math:`\phi = -2\alpha`, where :math:`\alpha` is the angle encoded in `self.angle`. Basis changes map :math:`X` and :math:`Y` operators to the :math:`Z` basis before entangling the qubits in a CNOT ladder.
+    with effective angle :math:`\phi = -2\alpha`, where :math:`\alpha` is the angle encoded in ``self.angle``. Basis changes map :math:`X` and :math:`Y` operators to the :math:`Z` basis before entangling the qubits in a CNOT ladder.
 
     Gate set: H, CNOT, RZ, RY
 
@@ -102,6 +102,8 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 
         Parameters
         ----------
+        pexp: PauliExponential
+            The Pauli exponential to add.
         circuit : Circuit
             The quantum circuit to which the Pauli exponential is added.
 
