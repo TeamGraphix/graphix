@@ -109,11 +109,8 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 
         Parameters
         ----------
-        <<<<<<< HEAD
-        =======
         pexp: PauliExponential
             The Pauli exponential to add.
-        >>>>>>> master
         circuit : Circuit
             The quantum circuit to which the Pauli exponential is added.
 
