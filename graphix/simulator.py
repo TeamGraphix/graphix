@@ -96,7 +96,7 @@ class MeasureMethod(abc.ABC):
         *,
         stacklevel: int = 1,
     ) -> None:
-        """Perform a measure.
+        """Perform a measurement.
 
         Parameters
         ----------
