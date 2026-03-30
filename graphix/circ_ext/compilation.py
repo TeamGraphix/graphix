@@ -31,7 +31,7 @@ def er_to_circuit(
     pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
         Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
     cm_cp: Callable[[CliffordMap, Circuit], None] | None
-        Compilation pass to synthesize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
+        Compilation pass to synthesize a Clifford map. If ``None`` (default), a ``ValueError`` is raised since there is still no default pass for Clifford map integrated in Graphix.
 
     Returns
     -------
