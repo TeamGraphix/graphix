@@ -433,7 +433,7 @@ class TestExtraction:
     def test_parametric_angles(self, test_case: float, fx_rng: Generator) -> None:
         alpha = Placeholder("alpha")
         alpha_val = test_case
-        flow = OpenGraph(
+        og = OpenGraph(
             graph=nx.Graph([(1, 3), (2, 4), (3, 4), (3, 5), (4, 6)]),
             input_nodes=[1, 2],
             output_nodes=[5, 6],
@@ -443,14 +443,15 @@ class TestExtraction:
                 3: Measurement.XY(0.3),
                 4: Measurement.XY(alpha),
             },
-        ).extract_pauli_flow()
+        )
 
         # Substitute parameter at the level of the extracted circuit
-        qc1 = flow.extract_circuit().to_circuit()
+        qc1 = og.extract_circuit()
         s1 = qc1.subs(alpha, alpha_val).simulate_statevector(rng=fx_rng).statevec
 
-        # Substitute parameter at the level of the flow object
-        qc2 = flow.subs(alpha, alpha_val).extract_circuit().to_circuit()
+        # Substitute parameter at the level of the open graph object
+        # Calling `infer_pauli_measurements` is not necessary for the test to pass (and it should not), but it suppresses the warnings.
+        qc2 = og.subs(alpha, alpha_val).infer_pauli_measurements().extract_circuit()
         s2 = qc2.simulate_statevector(rng=fx_rng).statevec
 
         assert s1.isclose(s2)

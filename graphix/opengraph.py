@@ -547,6 +547,8 @@ class OpenGraph(Generic[_AM_co]):
         self: OpenGraph[Measurement],
         pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None = None,
         cm_cp: Callable[[CliffordMap, Circuit], None] | None = None,
+        *,
+        stacklevel: int = 1,
     ) -> Circuit:
         """Extract a unitary in the form of a circuit from an open graph resource state.
 
@@ -567,13 +569,47 @@ class OpenGraph(Generic[_AM_co]):
 
         Notes
         -----
-        - The open graph instance must be of parametric type ``Measurement`` to allow for a circuit extraction, otherwise it does not contain information about the measurement angles.
+        - The open graph instance must be of parametric type ``Measurement`` to allow
+        for a circuit extraction, otherwise it does not contain information about the
+        measurement angles.
+
+        - This wrapper extracts a Pauli flow rather than a gflow, as the former is more
+        general while the underlying extraction algorithms have the same computational
+        complexity in both cases. The resulting unitary is identical whether it is
+        obtained from a ``GFlow`` or from a ``PauliFlow`` with inferred Pauli measurements.
+        However, compilation passes that simultaneously diagonalize Pauli exponentials
+        within the same layer of the Pauli exponential DAG may benefit from flows of
+        lower depth, which is often the case for Pauli flow.  The pass :func:`graphix.circ_ext.compilation.pexp_ladder_pass` does not take into account the flow's depth.
 
         References
         ----------
         [1] Simmons, 2021 (arXiv:2109.05654).
+
+        Examples
+        --------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> og = OpenGraph(
+        ...     graph=nx.Graph([(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (7, 8), (1, 3), (4, 6)]),
+        ...     input_nodes=(0, 3, 6),
+        ...     output_nodes=(2, 5, 8),
+        ...     measurements=dict.fromkeys((0, 1, 3, 4, 6, 7), Measurement.XY(angle=0)),
+        ... )
+        >>> og.extract_circuit()
+        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0),
+        ...                     CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
+        >>> # The default compilation passes do not exploit the lower depth of the Pauli flow
+        >>> # compared the gflow.
+        >>> og.infer_pauli_measurements().extract_circuit()
+        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0),
+        ...                     CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         """
-        return self.extract_pauli_flow().extract_circuit().to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
+        return (
+            self.extract_pauli_flow(stacklevel=stacklevel + 1)
+            .extract_circuit()
+            .to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
+        )
 
     def compose(self, other: OpenGraph[_AM_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_AM_co], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from ``self`` and ``other``, and relabeling the nodes of ``other`` that were not merged.
