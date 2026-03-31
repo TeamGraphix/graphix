@@ -220,6 +220,7 @@ class TestPattern:
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
     def test_pauli_measurement_random_circuit(
         self, fx_bg: PCG64, jumps: int, backend: Literal["statevector", "densitymatrix"]
@@ -1334,6 +1335,7 @@ class TestMCOps:
         p.perform_pauli_measurements()
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_arbitrary_inputs(
         self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: Literal["statevector", "densitymatrix"]
     ) -> None:

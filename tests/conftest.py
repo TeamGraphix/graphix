@@ -10,6 +10,7 @@ if os.environ.get("NUMBA_NUM_THREADS") is None:
     #  Need to set as soon as possible
     os.environ["NUMBA_NUM_THREADS"] = f"{psutil.cpu_count(logical=False)}"
 
+import matplotlib.pyplot as plt
 import pytest
 from numpy.random import PCG64, Generator
 
@@ -53,3 +54,8 @@ def rand_circ(nqb: int, fx_rng: Generator) -> Circuit:
 @pytest.fixture
 def randpattern(rand_circ: Circuit) -> Pattern:
     return rand_circ.transpile().pattern
+
+
+@pytest.fixture
+def mock_plot(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(plt, "show", lambda: None)

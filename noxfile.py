@@ -106,14 +106,9 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend"),
         ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-stim-backend",
-            branch="fix/graphix-461",
-        ),
-        ReverseDependency(
-            # "https://github.com/TeamGraphix/graphix-symbolic",
-            "https://github.com/thierry-martinez/graphix-symbolic",
-            branch="python_314",
+            "https://github.com/TeamGraphix/graphix-symbolic",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
@@ -121,11 +116,7 @@ class ReverseDependency:
             doctest_modules=False,
             install_target=".[dev]",
         ),
-        ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-ibmq",
-            branch="python_314",
-            doctest_modules=False,
-        ),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
         ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler", branch="clifford_extraction"),
     ],
 )

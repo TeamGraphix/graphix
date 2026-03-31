@@ -104,11 +104,6 @@ def test_place_causal_flow() -> None:
     assert pos is not None
 
 
-@pytest.fixture
-def mock_plot(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(plt, "show", lambda: None)
-
-
 @pytest.mark.usefixtures("mock_plot")
 @pytest.mark.parametrize("example", [example_flow, example_gflow, example_pflow])
 @pytest.mark.parametrize("flow_from_pattern", [False, True])
