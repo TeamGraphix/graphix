@@ -27,4 +27,6 @@ qiskit-aer
 
 openqasm-parser>=3.1.0
 graphix-qasm-parser>=0.1.1
-graphix-stim-compiler @ git+https://github.com/qat-inria/graphix-stim-compiler.git@clifford_extraction # Needed for test_circ_extraction 
+# The following are needed for test_circ_extraction 
+graphix-stim-compiler @ git+https://github.com/qat-inria/graphix-stim-compiler.git@clifford_extraction 
+stim>=1.15,<2

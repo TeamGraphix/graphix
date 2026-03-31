@@ -404,6 +404,8 @@ class TestExtraction:
     )
     def test_extract_og(self, test_case: OpenGraph[Measurement], fx_rng: Generator) -> None:
         pattern = test_case.to_pattern()
+        # Calling `infer_pauli_measurements` is not necessary for the test to pass
+        # (and it should not be), but it suppresses the warnings.
         circuit = pattern.extract_opengraph().infer_pauli_measurements().extract_circuit()
 
         state = circuit.simulate_statevector(rng=fx_rng).statevec
@@ -450,7 +452,8 @@ class TestExtraction:
         s1 = qc1.subs(alpha, alpha_val).simulate_statevector(rng=fx_rng).statevec
 
         # Substitute parameter at the level of the open graph object
-        # Calling `infer_pauli_measurements` is not necessary for the test to pass (and it should not), but it suppresses the warnings.
+        # Calling `infer_pauli_measurements` is not necessary for the test to pass
+        # (and it should not be), but it suppresses the warnings.
         qc2 = og.subs(alpha, alpha_val).infer_pauli_measurements().extract_circuit()
         s2 = qc2.simulate_statevector(rng=fx_rng).statevec
 
