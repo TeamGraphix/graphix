@@ -21,6 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #461: A warning is raised when the `rng` parameter is not set, as the default random generator will be used and results may not be reproducible.
 
+- #445: Circuit extraction.
+  - Added `PauliFlow.is_focused` to verify if a Pauli flow is focused and `PauliFlow.pauli_strings` associating a Pauli string to the every corrected node.
+  - Added `PauliFlow.extract_circuit`
+  - Added new module `graphix.circ_ext.extraction` to extract circuits from Pauli flows with the following new classes:
+        - `ExtractionResult`
+        - `PauliString`
+        - `PauliExponential`
+        - `PauliExponentialDAG`
+        - `CliffordMap`
+  - Added new module `graphix.circ_ext.compilation` to perform the transformation `ExtractionResult` -> `Graphix circuit` with the following new functions:
+        - `er_to_circuit`
+        - `pexp_ladder_pass`
+
 ### Fixed
 
 - #429

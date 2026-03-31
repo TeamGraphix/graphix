@@ -294,6 +294,28 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
+    def r(self, qubit: int, axis: Axis, angle: ParameterizedAngle) -> None:
+        """Apply a rotation gate on the given axis.
+
+        Parameters
+        ----------
+        qubit : int
+            target qubit
+        axis : Axis
+            rotation axis
+        angle : ParameterizedAngle
+            rotation angle in units of π
+        """
+        match axis:
+            case Axis.X:
+                self.rx(qubit, angle)
+            case Axis.Y:
+                self.ry(qubit, angle)
+            case Axis.Z:
+                self.rz(qubit, angle)
+            case _:
+                assert_never(axis)
+
     def rzz(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         r"""Apply a ZZ-rotation gate.
 
