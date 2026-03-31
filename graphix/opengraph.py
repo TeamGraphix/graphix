@@ -552,15 +552,28 @@ class OpenGraph(Generic[_AM_co]):
     ) -> Circuit:
         """Extract a unitary in the form of a circuit from an open graph resource state.
 
-        This method acts as a wrapper around the circuit extraction routine, simplifying its usage. It first attempts to extract the Pauli flow of the open graph, then applies the circuit extraction procedure described in Ref. [1], and finally compiles the resulting circuit using the provided passes.
-        To obtain the open graph's unitary in the form of a Pauli exponential DAG along with a Clifford transformation, as presented in Ref. [1], one should instead operate directly on the flow object using :meth:`PauliFlow.extract_circuit`.
+        This method acts as a wrapper around the circuit extraction routine, simplifying
+        its usage. It first attempts to extract the Pauli flow of the open graph, then
+        applies the circuit extraction procedure described in Ref. [1], and finally compiles
+        the resulting circuit using the provided passes.
+        To obtain the open graph's unitary in the form of a Pauli exponential DAG along with
+        a Clifford transformation, as presented in Ref. [1], one should instead operate
+        directly on the flow object using :meth:`PauliFlow.extract_circuit`.
 
         Parameters
         ----------
         pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-            Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`graphix.circ_ext.compilation.pexp_ladder_pass` is employed.
+            Compilation pass to synthesize a Pauli exponential DAG.
+            If ``None`` (default), :func:`graphix.circ_ext.compilation.pexp_ladder_pass` is
+            employed.
         cm_cp: Callable[[CliffordMap, Circuit], None] | None
-            Compilation pass to synthesize a Clifford map. If ``None`` (default), :func:`graphix.circ_ext.compilation.cm_berg_pass` is employed. This pass only handles unitaries so far (Clifford maps with the same number of input and ouptut nodes).
+            Compilation pass to synthesize a Clifford map. If ``None`` (default),
+            :func:`graphix.circ_ext.compilation.cm_berg_pass` is employed. This pass
+            only handles unitaries so far (Clifford maps with the same number of input
+            and ouptut nodes).
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -579,7 +592,9 @@ class OpenGraph(Generic[_AM_co]):
         obtained from a ``GFlow`` or from a ``PauliFlow`` with inferred Pauli measurements.
         However, compilation passes that simultaneously diagonalize Pauli exponentials
         within the same layer of the Pauli exponential DAG may benefit from flows of
-        lower depth, which is often the case for Pauli flow.  The pass :func:`graphix.circ_ext.compilation.pexp_ladder_pass` does not take into account the flow's depth.
+        lower depth, which is often the case for Pauli flow.  The pass
+        :func:`graphix.circ_ext.compilation.pexp_ladder_pass` does not take into account
+        the flow's depth.
 
         References
         ----------

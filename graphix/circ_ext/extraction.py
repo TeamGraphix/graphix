@@ -416,14 +416,14 @@ class CliffordMap:
         tab = MatGF2(np.zeros((2 * n, 2 * n + 1)))
 
         for mapping, shift in zip((self.x_map, self.z_map), (0, n), strict=True):
-            for i in range(n):
-                for j, ps in mapping[i].axes.items():
-                    if ps in {Axis.X, Axis.Y}:
+            for i, ps in mapping.items():  # Clifford map has been remap so keys correspond to qubits.
+                for j, ax in ps.axes.items():
+                    if ax in {Axis.X, Axis.Y}:
                         tab[i + shift, j] = 1
-                    if ps in {Axis.Y, Axis.Z}:
+                    if ax in {Axis.Y, Axis.Z}:
                         tab[i + shift, j + n] = 1
 
-                if mapping[i].sign is Sign.MINUS:
+                if ps.sign is Sign.MINUS:
                     tab[i + shift, 2 * n] = 1
 
         return tab
