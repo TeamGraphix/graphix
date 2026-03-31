@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from itertools import batched, chain, pairwise
+from itertools import chain, pairwise
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -298,10 +298,9 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
     def do_step_2(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> int:
         col_idx_xx = np.flatnonzero(tab[row_idx, :n])
         while len(col_idx_xx) > 1:
-            for edge in batched(col_idx_xx, 2):
+            for i in range(0, len(col_idx_xx) - 1, 2):  # itertools.batched only avaialble in Python 3.12+
                 # Apply CNOTS to disjoint qubits in parallel
-                if len(edge) == 2:
-                    add_cnot(tab, instructions, *edge)
+                add_cnot(tab, instructions, qc=col_idx_xx[i], qt=col_idx_xx[i + 1])
             col_idx_xx = col_idx_xx[::2]
 
         return int(col_idx_xx[0])  # Return pivot
