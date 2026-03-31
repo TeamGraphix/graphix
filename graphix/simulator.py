@@ -96,7 +96,22 @@ class MeasureMethod(abc.ABC):
         *,
         stacklevel: int = 1,
     ) -> None:
-        """Perform a measure."""
+        """Perform a measurement.
+
+        Parameters
+        ----------
+        backend : :class:`Backend`
+            The simulator backend to use.
+        cmd: BaseM
+            Measurement command.
+        noise_model: :class:`NoiseModel`, optional
+            Noise model used to confuse result.
+        rng : Generator, optional
+            Random number generator used to confuse result.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+        """
         description = self.describe_measurement(cmd)
         result = backend.measure(cmd.node, description, rng=rng, stacklevel=stacklevel + 1)
         logger.debug("Measure: %s", result)
@@ -258,6 +273,8 @@ class PatternSimulator(Generic[_StateT_co]):
         branch_selector: BranchSelector | None = None,
         graph_prep: str | None = None,
         symbolic: bool = False,
+        *,
+        stacklevel: int = 1,
     ) -> None: ...
 
     @overload
@@ -271,6 +288,8 @@ class PatternSimulator(Generic[_StateT_co]):
         branch_selector: BranchSelector | None = None,
         graph_prep: str | None = None,
         symbolic: bool = False,
+        *,
+        stacklevel: int = 1,
     ) -> None: ...
 
     @overload
@@ -284,6 +303,8 @@ class PatternSimulator(Generic[_StateT_co]):
         branch_selector: BranchSelector | None = None,
         graph_prep: str | None = None,
         symbolic: bool = False,
+        *,
+        stacklevel: int = 1,
     ) -> None: ...
 
     @overload
@@ -297,6 +318,8 @@ class PatternSimulator(Generic[_StateT_co]):
         branch_selector: BranchSelector | None = None,
         graph_prep: str | None = None,
         symbolic: bool = False,
+        *,
+        stacklevel: int = 1,
     ) -> None: ...
 
     def __init__(
@@ -309,6 +332,8 @@ class PatternSimulator(Generic[_StateT_co]):
         branch_selector: BranchSelector | None = None,
         graph_prep: str | None = None,
         symbolic: bool = False,
+        *,
+        stacklevel: int = 1,
     ) -> None:
         """
         Construct a pattern simulator.
@@ -332,12 +357,17 @@ class PatternSimulator(Generic[_StateT_co]):
             [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
         symbolic : bool, optional
             [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
             :class:`graphix.sim.tensornet.TensorNetworkBackend`\
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
-        self.backend = _initialize_backend(pattern, backend, noise_model, branch_selector, graph_prep, symbolic)
+        self.backend = _initialize_backend(
+            pattern, backend, noise_model, branch_selector, graph_prep, symbolic, stacklevel=stacklevel + 1
+        )
         self.noise_model = noise_model
         self.__pattern = pattern
         if prepare_method is None:
@@ -432,6 +462,8 @@ def _initialize_backend(
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
+    *,
+    stacklevel: int = 1,
 ) -> StatevectorBackend: ...
 
 
@@ -443,6 +475,8 @@ def _initialize_backend(
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
+    *,
+    stacklevel: int = 1,
 ) -> DensityMatrixBackend: ...
 
 
@@ -454,6 +488,8 @@ def _initialize_backend(
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
+    *,
+    stacklevel: int = 1,
 ) -> TensorNetworkBackend: ...
 
 
@@ -465,6 +501,8 @@ def _initialize_backend(
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
+    *,
+    stacklevel: int = 1,
 ) -> Backend[_StateT_co]: ...
 
 
@@ -475,6 +513,8 @@ def _initialize_backend(
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
+    *,
+    stacklevel: int = 1,
 ) -> _BuiltinBackend | Backend[_StateT_co]:
     """
     Initialize the backend.
@@ -527,7 +567,7 @@ def _initialize_backend(
             if noise_model is None:
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
-                    stacklevel=1,
+                    stacklevel=stacklevel + 1,
                 )
             return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
         case _:
