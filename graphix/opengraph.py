@@ -597,13 +597,11 @@ class OpenGraph(Generic[_AM_co]):
         ...     measurements=dict.fromkeys((0, 1, 3, 4, 6, 7), Measurement.XY(angle=0)),
         ... )
         >>> og.extract_circuit()
-        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0),
-        ...                     CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
+        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         >>> # The default compilation passes do not exploit the lower depth of the Pauli flow
         >>> # compared the gflow.
         >>> og.infer_pauli_measurements().extract_circuit()
-        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0),
-        ...                     CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
+        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         """
         return (
             self.extract_pauli_flow(stacklevel=stacklevel + 1)
