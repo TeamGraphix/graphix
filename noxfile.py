@@ -116,7 +116,7 @@ class ReverseDependency:
             doctest_modules=False,
             install_target=".[dev]",
         ),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
         ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler"),
     ],
 )
