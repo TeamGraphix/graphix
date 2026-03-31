@@ -108,9 +108,7 @@ class ReverseDependency:
     [
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend"),
         ReverseDependency(
-            # "https://github.com/TeamGraphix/graphix-symbolic",
-            "https://github.com/thierry-martinez/graphix-symbolic",
-            branch="python_314",
+            "https://github.com/TeamGraphix/graphix-symbolic",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
@@ -118,11 +116,7 @@ class ReverseDependency:
             doctest_modules=False,
             install_target=".[dev]",
         ),
-        ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-ibmq",
-            branch="python_314",
-            doctest_modules=False,
-        ),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
