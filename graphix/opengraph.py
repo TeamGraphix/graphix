@@ -17,9 +17,11 @@ from graphix.measurements import BlochMeasurement, Measurement
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
+    from graphix.circ_ext.extraction import CliffordMap, PauliExponentialDAG
     from graphix.flow.core import CausalFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
+    from graphix.transpiler import Circuit
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
 _AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
@@ -540,6 +542,38 @@ class OpenGraph(Generic[_AM_co]):
         return PauliFlow.try_from_correction_matrix(
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
+
+    def extract_circuit(
+        self: OpenGraph[Measurement],
+        pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None = None,
+        cm_cp: Callable[[CliffordMap, Circuit], None] | None = None,
+    ) -> Circuit:
+        """Extract a unitary in the form of a circuit from an open graph resource state.
+
+        This method acts as a wrapper around the circuit extraction routine, simplifying its usage. It first attempts to extract the Pauli flow of the open graph, then applies the circuit extraction procedure described in Ref. [1], and finally compiles the resulting circuit using the provided passes.
+        To obtain the open graph's unitary in the form of a Pauli exponential DAG along with a Clifford transformation, as presented in Ref. [1], one should instead operate directly on the flow object using :meth:`PauliFlow.extract_circuit`.
+
+        Parameters
+        ----------
+        pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
+            Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`graphix.circ_ext.compilation.pexp_ladder_pass` is employed.
+        cm_cp: Callable[[CliffordMap, Circuit], None] | None
+            Compilation pass to synthesize a Clifford map. If ``None`` (default), :func:`graphix.circ_ext.compilation.cm_berg_pass` is employed. This pass only handles unitaries so far (Clifford maps with the same number of input and ouptut nodes).
+
+        Returns
+        -------
+        Circuit
+            Quantum circuit represented as a set of instructions.
+
+        Notes
+        -----
+        - The open graph instance must be of parametric type ``Measurement`` to allow for a circuit extraction, otherwise it does not contain information about the measurement angles.
+
+        References
+        ----------
+        [1] Simmons, 2021 (arXiv:2109.05654).
+        """
+        return self.extract_pauli_flow().extract_circuit().to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
 
     def compose(self, other: OpenGraph[_AM_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_AM_co], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from ``self`` and ``other``, and relabeling the nodes of ``other`` that were not merged.

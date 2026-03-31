@@ -314,11 +314,11 @@ class TestExtraction:
         circuit_ref = rand_circuit(nqubits, depth, rng, use_ccx=False)
         pattern = circuit_ref.transpile().pattern
 
-        circuit = pattern.extract_opengraph().extract_pauli_flow().extract_circuit().to_circuit()
+        circuit = pattern.extract_opengraph().extract_circuit()
 
         s_ref = circuit.simulate_statevector(rng=rng).statevec
         s_test = circuit_ref.simulate_statevector(rng=rng).statevec
-        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        assert s_ref.isclose(s_test)
 
     @pytest.mark.parametrize(
         "test_case",
@@ -404,9 +404,7 @@ class TestExtraction:
     )
     def test_extract_og(self, test_case: OpenGraph[Measurement], fx_rng: Generator) -> None:
         pattern = test_case.to_pattern()
-        circuit = (
-            pattern.extract_opengraph().infer_pauli_measurements().extract_pauli_flow().extract_circuit().to_circuit()
-        )
+        circuit = pattern.extract_opengraph().infer_pauli_measurements().extract_circuit()
 
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_ref = pattern.simulate_pattern(rng=fx_rng)
