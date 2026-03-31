@@ -350,6 +350,6 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     correct_signs(tab, instructions)
 
-    # Append instructions in reverse order
+    # Append instructions in reverse order to get C instead of Cdagger
     for instr in instructions[::-1]:
         circuit.add(instr)
