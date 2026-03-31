@@ -191,7 +191,7 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 
 
 def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
-    r"""Add a Clifford map to a circuit by using and adaptation of van den Berg's sweeping algorithm introduced in Ref.[1].
+    r"""Add a Clifford map to a circuit by using an adaptation of van den Berg's sweeping algorithm introduced in Ref. [1].
 
     The input circuit is modified in-place. This function assumes that the Clifford Map has been remap, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
 
@@ -200,7 +200,8 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
     clifford_map: CliffordMap
         The Clifford map to be transpiled. Its Pauli strings are assumed to be defined on qubit indices.
     circuit : Circuit
-        The circuit to which the operation is added. The input circuit is assumed to be compatible with ``CliffordMap.input_nodes`` and ``CliffordMap.output_nodes``.
+        The circuit to which the operation is added. The input circuit is assumed to be compatible with
+        ``CliffordMap.input_nodes`` and ``CliffordMap.output_nodes``.
 
     Raises
     ------
@@ -236,7 +237,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     2. Use CNOT gates to reduce the XX block to a single pivot column.
 
-    3. Apply a SWAP gae to bring the pivot to the diagonal if neccesary.
+    3. Apply a SWAP gate to bring the pivot to the diagonal if neccesary.
 
     4. Ensure the ZX and ZZ blocks of the tableau have the correct canonical form
     by redoing steps 1. and 2.
@@ -278,6 +279,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
         # Step 4
         col_idx_z = np.flatnonzero(tab[q + n, :-1])  # ZX and ZZ blocks of qubit q, without sign.
         if not (len(col_idx_z) == 1 and col_idx_z[0] == q + n):
+            # ZX and ZZ blocks don't have the canonical form.
             add_h(tab, instructions, q)
             do_step_1(tab, instructions, row_idx=q + n)
             pivot = do_step_2(tab, instructions, row_idx=q + n)
@@ -285,29 +287,29 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
                 raise AssertionError(
                     f"Pivot in block ZZ should be at q = {q}. This error probably means that `CliffordMap` doesn't describe a valid Clifford operation. All Pauli strings must commute, except for `x_map[q]` anticommuting with `z_map[q]` for each q."
                 )
-
             add_h(tab, instructions, q)
 
     def do_step_1(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> None:
-        col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])
+        col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])  # Don't take the sign column
         for j in col_idx_zx:
+            # Each iteration sets the element `tab[row_idx, n+j]` to 0.
             add_s(tab, instructions, int(j)) if tab[row_idx, j] else add_h(tab, instructions, int(j))
 
     def do_step_2(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> int:
-        # Return pivot
         col_idx_xx = np.flatnonzero(tab[row_idx, :n])
         while len(col_idx_xx) > 1:
             for edge in batched(col_idx_xx, 2):
+                # Apply CNOTS to disjoint qubits in parallel
                 if len(edge) == 2:
                     add_cnot(tab, instructions, *edge)
             col_idx_xx = col_idx_xx[::2]
 
-        return int(col_idx_xx[0])
+        return int(col_idx_xx[0])  # Return pivot
 
     def add_h(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
         q = int(q)  # Cast to `int` to avoid typing issues
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
-        tab[:, [q, q + n]] = tab[:, [q + n, q]]
+        tab[:, [q, q + n]] = tab[:, [q + n, q]]  # The usual tuple assignment `a, b = b, a` does not work here.
         instructions.append(H(q))
 
     def add_s(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
@@ -348,5 +350,6 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     correct_signs(tab, instructions)
 
+    # Append instructions in reverse order
     for instr in instructions[::-1]:
         circuit.add(instr)
