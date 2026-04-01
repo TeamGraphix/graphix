@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, NamedTuple
 import networkx as nx
 import numpy as np
 import pytest
-import stim
-from graphix_stim_compiler import stim_tableau_to_cm
 from numpy.random import Generator
 
 from graphix._linalg import MatGF2
@@ -25,6 +23,16 @@ from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from numpy.random import PCG64
+
+try:
+    import stim
+    from graphix_stim_compiler import stim_tableau_to_cm
+
+    HAS_STIM = True
+except ImportError:
+    HAS_STIM = False
+
+requires_stim = pytest.mark.skipif(not HAS_STIM, reason="stim and graphix-stim-compiler not available")
 
 
 class PauliExpTestCase(NamedTuple):
@@ -193,31 +201,6 @@ class TestPauliExponential:
 
 
 class TestCliffordMap:
-    def stim_to_clifford_circuit(self, stim_circuit: stim.Circuit) -> Circuit:
-
-        circuit = Circuit(stim_circuit.num_qubits)
-
-        # "stim.Circuit" has no attribute "__iter__"
-        # (but __len__ and __getitem__)
-        instruction: stim.CircuitInstruction
-        for instruction in stim_circuit:  # type: ignore[attr-defined]
-            match instruction.name:
-                case "CX":
-                    for control, target in instruction.target_groups():
-                        assert control.qubit_value is not None
-                        assert target.qubit_value is not None
-                        circuit.cnot(control.qubit_value, target.qubit_value)
-                case "H":
-                    for (qubit,) in instruction.target_groups():
-                        assert qubit.qubit_value is not None
-                        circuit.h(qubit.qubit_value)
-                case "S":
-                    for (qubit,) in instruction.target_groups():
-                        assert qubit.qubit_value is not None
-                        circuit.s(qubit.qubit_value)
-
-        return circuit
-
     @pytest.mark.parametrize(
         ("cm", "tab_ref"),
         [
@@ -258,13 +241,20 @@ class TestCliffordMap:
         tab = cm.to_tableau()
         assert np.all(tab == tab_ref)
 
-    @pytest.mark.parametrize(
-        "stim_circuit",
-        [
-            stim.Circuit("H 0"),
-            stim.Circuit("S 0"),
-            stim.Circuit("CNOT 0 1"),
-            stim.Circuit("""
+
+def generate_stim_circuits() -> list[stim.Circuit]:
+    tests_cases: list[stim.Circuit] = []
+
+    # We do the import in this function again because @pytest.mark.parametrize is executed at import time so the import fails before skipif can do anything if stim cannot be imported.
+    try:
+        import stim  # noqa: PLC0415
+
+        tests_cases.extend(
+            [
+                stim.Circuit("H 0"),
+                stim.Circuit("S 0"),
+                stim.Circuit("CNOT 0 1"),
+                stim.Circuit("""
                         CNOT 0 1
                         H 0
                         H 1
@@ -273,7 +263,46 @@ class TestCliffordMap:
                         CNOT 0 2
                         H 2
                         S 2"""),
-        ],
+            ]
+        )
+    except ImportError:
+        pass
+
+    return tests_cases
+
+
+@requires_stim
+class TestCliffordMapStim:
+    """Bundle Clifford map test depending on stim."""
+
+    def stim_to_clifford_circuit(self, stim_circuit: stim.Circuit) -> Circuit:
+
+        circuit = Circuit(stim_circuit.num_qubits)
+
+        # "stim.Circuit" has no attribute "__iter__"
+        # (but __len__ and __getitem__)
+        instruction: stim.CircuitInstruction
+        for instruction in stim_circuit:  # type: ignore[attr-defined]
+            match instruction.name:
+                case "CX":
+                    for control, target in instruction.target_groups():
+                        assert control.qubit_value is not None
+                        assert target.qubit_value is not None
+                        circuit.cnot(control.qubit_value, target.qubit_value)
+                case "H":
+                    for (qubit,) in instruction.target_groups():
+                        assert qubit.qubit_value is not None
+                        circuit.h(qubit.qubit_value)
+                case "S":
+                    for (qubit,) in instruction.target_groups():
+                        assert qubit.qubit_value is not None
+                        circuit.s(qubit.qubit_value)
+
+        return circuit
+
+    @pytest.mark.parametrize(
+        "stim_circuit",
+        generate_stim_circuits(),
     )
     def test_cm_berg_pass(self, stim_circuit: stim.Circuit, fx_rng: Generator) -> None:
         tab_stim = stim.Tableau.from_circuit(stim_circuit)
