@@ -32,6 +32,14 @@ try:
 except ImportError:
     HAS_STIM = False
 
+    if TYPE_CHECKING:
+        import sys
+
+        # We skip type-checking the case where there is no pyzx, since
+        # pyright cannot figure out that tests are skipped in this
+        # case.
+        sys.exit(1)
+
 requires_stim = pytest.mark.skipif(not HAS_STIM, reason="stim and graphix-stim-compiler not available")
 
 
@@ -243,32 +251,29 @@ class TestCliffordMap:
 
 
 def generate_stim_circuits() -> list[stim.Circuit]:
-    tests_cases: list[stim.Circuit] = []
-
     # We do the import in this function again because @pytest.mark.parametrize is executed at import time so the import fails before skipif can do anything if stim cannot be imported.
     try:
         import stim  # noqa: PLC0415
-
-        tests_cases.extend(
-            [
-                stim.Circuit("H 0"),
-                stim.Circuit("S 0"),
-                stim.Circuit("CNOT 0 1"),
-                stim.Circuit("""
-                        CNOT 0 1
-                        H 0
-                        H 1
-                        CNOT 1 2
-                        S 1
-                        CNOT 0 2
-                        H 2
-                        S 2"""),
-            ]
-        )
     except ImportError:
-        pass
+        return []
 
-    return tests_cases
+    circuit_defs = [
+        "H 0",
+        "S 0",
+        "CNOT 0 1",
+        """
+        CNOT 0 1
+        H 0
+        H 1
+        CNOT 1 2
+        S 1
+        CNOT 0 2
+        H 2
+        S 2
+        """,
+    ]
+
+    return [stim.Circuit(defn.strip()) for defn in circuit_defs]
 
 
 @requires_stim
