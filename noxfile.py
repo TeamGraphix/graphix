@@ -117,7 +117,7 @@ class ReverseDependency:
             install_target=".[dev]",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
-        ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler"),
+        ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler", branch="clifford_extraction"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:

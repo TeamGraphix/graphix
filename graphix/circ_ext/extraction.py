@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+import numpy as np
 from typing_extensions import Self  # Self introduced in 3.11
 
+from graphix._linalg import MatGF2
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 
@@ -56,9 +58,9 @@ class ExtractionResult:
         Parameters
         ----------
         pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-            Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
-        cm_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
-            Compilation pass to synthesize a Clifford map. If ``None`` (default), a `ValueError` is raised since there is still no default pass for Clifford map integrated in Graphix.
+            Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`graphix.circ_ext.compilation.pexp_ladder_pass` is employed.
+        cm_cp: Callable[[CliffordMap, Circuit], None] | None
+            Compilation pass to synthesize a Clifford map. If ``None`` (default), :func:`graphix.circ_ext.compilation.cm_berg_pass` is employed. This pass only handles unitaries so far (Clifford maps with the same number of input and ouptut nodes).
 
         Returns
         -------
@@ -368,6 +370,63 @@ class CliffordMap:
         x_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.x_map.items()}
         z_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
         return replace(self, x_map=x_map, z_map=z_map)
+
+    def to_tableau(self) -> MatGF2:
+        """Convert the CliffordMap into its binary tableau representation.
+
+        The returned tableau is a ``(2n, 2n + 1)`` binary matrix over GF(2),
+        where ``n`` is the number of qubits. The first ``n`` rows correspond
+        to the images of X generators, and the next ``n`` rows correspond to
+        the images of Z generators. Columns encode the X and Z components of
+        the resulting Pauli strings, along with a sign column.
+
+        Each PauliString in ``x_map`` and ``z_map`` is decomposed into its
+        X/Z support:
+        - X contributes a 1 to the X block.
+        - Z contributes a 1 to the Z block.
+        - Y contributes a 1 to both X and Z blocks.
+        The sign of the Pauli string is stored in the final column
+        (0 for ``Sign.PLUS`` and 1 for ``Sign.MINUS``).
+
+        Parameters
+        ----------
+        None
+            This method operates on the current CliffordMap instance. It
+            assumes the map has already been remapped such that input and
+            output nodes correspond to qubit indices.
+
+        Returns
+        -------
+        MatGF2
+            A binary matrix of shape ``(2n, 2n + 1)`` representing the
+            Clifford tableau.
+
+        Raises
+        ------
+        NotImplementedError
+            If the number of input nodes differs from the number of output
+            nodes (i.e., the map is an isometry instead of a square Clifford).
+        """
+        n = len(self.input_nodes)
+        if n != len(self.output_nodes):
+            raise NotImplementedError(
+                f"Isometries are not supported yet: # of inputs ({len(self.input_nodes)}) must be equal to the # of outputs ({len(self.output_nodes)})."
+            )
+
+        tab = MatGF2(np.zeros((2 * n, 2 * n + 1)))
+
+        for mapping, shift in zip((self.x_map, self.z_map), (0, n), strict=True):
+            for i, ps in mapping.items():  # Clifford map has been remap so keys correspond to qubits.
+                for j, ax in ps.axes.items():
+                    if ax in {Axis.X, Axis.Y}:
+                        tab[i + shift, j] = 1
+                    if ax in {Axis.Y, Axis.Z}:
+                        tab[i + shift, j + n] = 1
+
+                if ps.sign is Sign.MINUS:
+                    tab[i + shift, 2 * n] = 1
+
+        return tab
 
 
 def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], dict[int, int]]:
