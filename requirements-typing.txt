@@ -10,4 +10,4 @@
 
 # numpy and numba versions are sensitive and may cause typing issues
 numpy==2.4.2
-numba==0.64.0
+numba==0.65.0
