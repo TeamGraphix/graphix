@@ -1,4 +1,4 @@
-"""MBQC state vector backend."""
+\"\"\"MBQC state vector backend.\"\"\"
 
 from __future__ import annotations
 
@@ -533,6 +533,43 @@ class Statevec(DenseState):
         amp_vals = f(self.flatten()[mask])
 
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
+
+    def draw(self, format: Literal["latex", "text"] = "text") -> str | Any | None:
+        """Show state vector in latex format (in jupyter notebook) or text (in command line).
+
+        Parameters
+        ----------
+        format : str, optional
+            output format, "latex" or "text", default is "text"
+
+        Returns
+        -------
+        None or str or IPython.display.Latex
+            If format is "text", return the string representation.
+            If format is "latex", return the latex representation for jupyter notebook.
+        """
+        res = ""
+        state_dict = self.to_dict()
+        if format == "text":
+            for ket, amp in state_dict.items():
+                if res != "":
+                    res += " + "
+                res += f"({amp})|{ket}>"
+            return res
+        elif format == "latex":
+            from IPython.display import Latex
+
+            res = r"\("
+            first = True
+            for ket, amp in state_dict.items():
+                if not first:
+                    res += " + "
+                res += rf"({amp}) \lvert {ket} \rangle"
+                first = False
+            res += r"\)"
+            return Latex(res)
+        else:
+            raise ValueError(f"Invalid format: {format}. Use 'text' or 'latex'.")
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
         """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
