@@ -41,6 +41,7 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderError,
     XZCorrectionsOrderErrorReason,
 )
+from graphix.flow.visualization import GraphVisualizer
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
@@ -48,6 +49,7 @@ from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
+    from pathlib import Path
     from typing import Self
 
     from graphix.opengraph import OpenGraph
@@ -358,6 +360,27 @@ class XZCorrections(Generic[_AM_co]):
         See notes in :meth:`to_ascii` for additional information.
         """
         return xzcorr_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
+
+    def draw(
+        self,
+        show_pauli_measurement: bool = True,
+        show_measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> None:
+        gv = GraphVisualizer(
+            obj=self,
+            show_pauli_measurement=show_pauli_measurement,
+            show_measurement_labels=show_measurement_labels,
+            node_labels=node_labels,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+        )
+
+        gv.visualize()
 
     def subs(self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> XZCorrections[_M]:
         """Substitute a parameter with a value or expression in all measurement angles of the open graph.
@@ -685,6 +708,27 @@ class PauliFlow(Generic[_AM_co]):
         See notes in :meth:`to_ascii` for additional information.
         """
         return flow_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
+
+    def draw(
+        self,
+        show_pauli_measurement: bool = True,
+        show_measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> None:
+        gv = GraphVisualizer(
+            obj=self,
+            show_pauli_measurement=show_pauli_measurement,
+            show_measurement_labels=show_measurement_labels,
+            node_labels=node_labels,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+        )
+
+        gv.visualize()
 
     def subs(  # noqa: PYI019 Annotating with `Self` is not possible since `self` must be of parametric type `Measurement`.
         self: _T_PauliFlowMeasurement, variable: Parameter, substitute: ExpressionOrSupportsFloat

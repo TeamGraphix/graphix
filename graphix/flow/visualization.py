@@ -13,7 +13,6 @@ import numpy as np
 import numpy.typing as npt
 from matplotlib import pyplot as plt
 
-from graphix.flow.core import CausalFlow, PauliFlow, XZCorrections
 from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
@@ -22,6 +21,8 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import TypeAlias
 
+    from graphix.clifford import Clifford
+    from graphix.flow.core import CausalFlow, PauliFlow, XZCorrections
     from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 
     _Point: TypeAlias = tuple[float, float]
@@ -50,9 +51,9 @@ class PlotLims:
 class GraphVisualizer:
     obj: PauliFlow[AbstractMeasurement] | XZCorrections[AbstractMeasurement]
     show_pauli_measurement: bool = True
-    # show_local_clifford: bool = False
     show_measurement_labels: bool = False
     node_labels: bool | Mapping[int, str] = True
+    local_clifford: Mapping[int, Clifford] | None = None
     node_distance: tuple[float, float] = (1, 1)
     figsize: tuple[int, int] | None = None
     filename: Path | None = None
@@ -84,6 +85,7 @@ class GraphVisualizer:
 
     # Other labels
     LABEL_MEAS_FS: ClassVar[float] = 9.5
+    LC_MEAS_FS: ClassVar[float] = 9.5
 
     def visualize(self) -> None:
 
@@ -100,7 +102,8 @@ class GraphVisualizer:
         self._draw_nodes(pos)
         self._draw_layers(plot_lims)
         if self.show_measurement_labels:
-            self._draw_node_measurements(pos)
+            self._draw_measurements_labels(pos)
+        self._draw_local_clifford(pos)  # Skipped if `self.local_clifford` is `None`.
 
         self._set_plot_lims(plot_lims)
 
@@ -133,6 +136,9 @@ class GraphVisualizer:
         # If we annotate the dispatch argument with CausalFlow[AbstractPlanarMeasurement]
         # compilation will fail because generic types are only known statically.
         # If we don't specify the generic type (we don't need to), mypy will complain.
+
+        # Circumvent import loop
+        from graphix.flow.core import CausalFlow  # noqa: PLC0415
         pos = (
             _compute_positions_causal_flow(self.obj)
             if isinstance(self.obj, CausalFlow)
@@ -148,6 +154,10 @@ class GraphVisualizer:
 
     def _compute_arrow_paths(self, pos: Mapping[int, _Point]) -> dict[_Edge, Colored[_Path]]:
         correction_arrows: set[Colored[_Edge]]
+
+        # Circumvent import loop
+        from graphix.flow.core import PauliFlow, XZCorrections  # noqa: PLC0415
+
         if isinstance(self.obj, PauliFlow):
             correction_arrows = {
                 Colored((k, v), self.FLOW_C) for k, values in self.obj.correction_function.items() for v in values
@@ -248,15 +258,15 @@ class GraphVisualizer:
 
         # Add last label (layer 0)
         plt.text(
-                (nlayers - 1) * self.node_distance[0],
-                plot_lims.ymin,
-                str(0),
-                ha="center",
-                va="top",
-                fontsize=self.LAYER_FS,
-                color=self.LAYER_C,
-                transform=base + offset,
-            )
+            (nlayers - 1) * self.node_distance[0],
+            plot_lims.ymin,
+            str(0),
+            ha="center",
+            va="top",
+            fontsize=self.LAYER_FS,
+            color=self.LAYER_C,
+            transform=base + offset,
+        )
 
         # Draw horizontal arrow indicating measurement order with "Layer" label below
         offset = mtransforms.ScaledTranslation(0, -27 / 72, fig.dpi_scale_trans)
@@ -272,19 +282,34 @@ class GraphVisualizer:
 
         offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
         mid_x = (nlayers - 1) / 2 * self.node_distance[0]
-        plt.text(mid_x, plot_lims.ymin, "Layer", ha="center", va="top", fontsize=self.LAYER_FS, color=self.LAYER_C, transform=base + offset)
+        plt.text(
+            mid_x,
+            plot_lims.ymin,
+            "Layer",
+            ha="center",
+            va="top",
+            fontsize=self.LAYER_FS,
+            color=self.LAYER_C,
+            transform=base + offset,
+        )
 
         # Update plot_lims to take into account label
         trans = base + offset
         _, ydisp = trans.transform((0, plot_lims.ymin))
         plot_lims.ymin = base.inverted().transform((0, ydisp))[1]
 
-    def _draw_node_measurements(self, pos: Mapping[int, _Point]) -> None:
+    def _draw_measurements_labels(self, pos: Mapping[int, _Point]) -> None:
         for node, meas in self.obj.og.measurements.items():
             x, y = pos[node] + np.array([0.22, -0.2])
             label = meas.to_plane_or_axis().name
 
             plt.text(x, y, label, fontsize=self.LABEL_MEAS_FS, zorder=3)
+
+    def _draw_local_clifford(self, pos: Mapping[int, _Point]) -> None:
+        if self.local_clifford is not None:
+            for node in self.local_clifford:
+                x, y = pos[node] + np.array([0.2, 0.2])
+                plt.text(x, y, f"{self.local_clifford[node]}", fontsize=self.LC_MEAS_FS, zorder=3)
 
 
 def _compute_positions(
