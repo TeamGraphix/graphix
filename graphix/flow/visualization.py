@@ -38,7 +38,7 @@ class Colored(Generic[_T]):
     color: Color
 
 
-@dataclass(frozen=True)
+@dataclass
 class PlotLims:
     xmin: float
     xmax: float
@@ -86,15 +86,14 @@ class GraphVisualizer:
     LABEL_MEAS_FS: ClassVar[float] = 9.5
 
     def visualize(self) -> None:
-        if self.figsize is None:
-            figsize = self._determine_figsize()
-
-        plt.figure(figsize=figsize)
 
         pos = self._compute_positions()
         edge_paths = self._compute_edge_paths(pos)
         arrow_paths = self._compute_arrow_paths(pos)
         plot_lims = self._determine_plot_lims(pos)
+
+        figsize = self.figsize or self._determine_figsize(pos)
+        plt.figure(figsize=figsize)
 
         self._draw_edges(pos, edge_paths)
         self._draw_arrows(pos, arrow_paths)
@@ -107,13 +106,10 @@ class GraphVisualizer:
 
         plt.plot()
 
-    def _determine_figsize(self) -> _Point:
-        pol = self.obj.partial_order_layers
-        n_layers = len(pol)
-        max_nodes_per_layer = len(max(*pol, key=len)) if n_layers > 1 else self.obj.og.graph.number_of_nodes()
-
+    def _determine_figsize(self, pos: Mapping[int, _Point]) -> _Point:
+        n_layers = len(self.obj.partial_order_layers)
         width = n_layers * 0.8
-        height = max_nodes_per_layer
+        height = len({pos[node][1] for node in self.obj.og.graph.nodes()})
         return (width * self.node_distance[0], height * self.node_distance[1])
 
     def _determine_plot_lims(self, pos: Mapping[int, _Point]) -> PlotLims:
@@ -125,28 +121,11 @@ class GraphVisualizer:
 
         return PlotLims(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
 
-    def _set_plot_lims(self, plot_lims: PlotLims) -> None:
-        # offset = 0.5
-        # layer_label_offset = plot_lims.ymax / 6
-
-        # plt.xlim(plot_lims.xmin - offset, plot_lims.xmax + offset)
-        # plt.ylim(plot_lims.ymin - offset - layer_label_offset, plot_lims.ymax + offset)
-
-        xpad_in = 30 / 72
-        ypad_in = 25 / 72
-        ypad_bottom_in = 60 / 72  # larger to place layer label
-
-        bbox = plt.gca().get_position()
-        fig_w, fig_h = plt.gcf().get_size_inches()
-        ax_w = bbox.width * fig_w
-        ax_h = bbox.height * fig_h
-
-        xpad = xpad_in / ax_w * (plot_lims.xmax - plot_lims.xmin)
-        ypad = ypad_in / ax_h * (plot_lims.ymax - plot_lims.ymin)
-        ypad_bottom = ypad_bottom_in / ax_h * (plot_lims.ymax - plot_lims.ymin)
-
-        plt.xlim(plot_lims.xmin - xpad, plot_lims.xmax + xpad)
-        plt.ylim(plot_lims.ymin - ypad_bottom, plot_lims.ymax + ypad)
+    @staticmethod
+    def _set_plot_lims(plot_lims: PlotLims) -> None:
+        offset = 0.7
+        plt.xlim(plot_lims.xmin - offset, plot_lims.xmax + offset)
+        plt.ylim(plot_lims.ymin - offset, plot_lims.ymax + offset)
 
     def _compute_positions(self) -> dict[int, _Point]:
 
@@ -248,7 +227,7 @@ class GraphVisualizer:
         # This ensures that the layer is always at the same distance of the nodes, regardless of the ylims.
         offset = mtransforms.ScaledTranslation(0, -15 / 72, fig.dpi_scale_trans)
 
-        for layer in range(nlayers):
+        for layer in range(nlayers - 1):
             plt.axvline(
                 x=(layer + 0.5) * self.node_distance[0],
                 color=self.LAYER_C,
@@ -260,6 +239,18 @@ class GraphVisualizer:
                 layer * self.node_distance[0],
                 plot_lims.ymin,
                 str(nlayers - 1 - layer),
+                ha="center",
+                va="top",
+                fontsize=self.LAYER_FS,
+                color=self.LAYER_C,
+                transform=base + offset,
+            )
+
+        # Add last label (layer 0)
+        plt.text(
+                (nlayers - 1) * self.node_distance[0],
+                plot_lims.ymin,
+                str(0),
                 ha="center",
                 va="top",
                 fontsize=self.LAYER_FS,
@@ -282,6 +273,11 @@ class GraphVisualizer:
         offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
         mid_x = (nlayers - 1) / 2 * self.node_distance[0]
         plt.text(mid_x, plot_lims.ymin, "Layer", ha="center", va="top", fontsize=self.LAYER_FS, color=self.LAYER_C, transform=base + offset)
+
+        # Update plot_lims to take into account label
+        trans = base + offset
+        _, ydisp = trans.transform((0, plot_lims.ymin))
+        plot_lims.ymin = base.inverted().transform((0, ydisp))[1]
 
     def _draw_node_measurements(self, pos: Mapping[int, _Point]) -> None:
         for node, meas in self.obj.og.measurements.items():
