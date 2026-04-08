@@ -23,6 +23,7 @@ from graphix import command, optimization
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind, Node
 from graphix.flow.exceptions import FlowError
+from graphix.flow.visualization import GraphVisualizer
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
@@ -32,7 +33,7 @@ from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevec
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
-from graphix.visualization import GraphVisualizer
+from graphix.visualization import GraphVisualizer as GraphVisualizer_old
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Container, Iterator, Mapping
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.flow.core import CausalFlow, GFlow, XZCorrections
+    from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
@@ -1562,7 +1563,7 @@ class Pattern:
         og = self.extract_opengraph()
         local_clifford = self.extract_clifford()
 
-        vis = GraphVisualizer(og, local_clifford)
+        vis = GraphVisualizer_old(og, local_clifford)
 
         if flow_from_pattern:
             vis.visualize_from_pattern(
@@ -1585,6 +1586,122 @@ class Pattern:
                 figsize=figsize,
                 filename=filename,
             )
+
+    def draw_flow(
+        self,
+        flow_from_pattern: bool = True,
+        show_pauli_measurement: bool = True,
+        show_measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        local_clifford: bool = False,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+        *,
+        stacklevel: int = 1,
+    ) -> None:
+        """Visualize the underlying graph of the pattern with flow or gflow structure.
+
+        Parameters
+        ----------
+        flow_from_pattern : bool
+            If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
+        show_pauli_measurement : bool
+            If True, the nodes with Pauli measurement angles are colored light blue.
+        show_local_clifford : bool
+            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, measurement planes are displayed adjacent to the nodes.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to True.
+        node_distance : tuple
+            Distance multiplication factor between nodes for x and y directions.
+        figsize : tuple
+            Figure size of the plot.
+        filename : Path | None
+            If not None, filename of the png file to save the plot. If None, the plot is not saved.
+            Default in None.
+        """
+        flow: PauliFlow[Measurement] | None = None
+
+        if flow_from_pattern:
+            pattern_std = optimization.StandardizedPattern.from_pattern(self)
+            try:
+                flow = pattern_std.extract_causal_flow()
+            except FlowError:
+                try:
+                    flow = pattern_std.extract_gflow()
+                except (FlowError, TypeError):
+                    print(
+                        "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made."
+                    )
+
+        if flow is None:
+            og = self.extract_opengraph()
+            flow = og.find_causal_flow()
+            if flow is None:
+                flow = og.find_pauli_flow(stacklevel=stacklevel + 1)
+                if flow is None:
+                    raise PatternError("The pattern's open graph does not have Pauli flow.")
+
+        lc = self.extract_clifford() if local_clifford else None
+        gv = GraphVisualizer(
+            obj=flow,
+            show_pauli_measurement=show_pauli_measurement,
+            show_measurement_labels=show_measurement_labels,
+            node_labels=node_labels,
+            local_clifford=lc,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+        )
+        gv.visualize()
+
+    def draw_xzcorrections(
+        self,
+        show_pauli_measurement: bool = True,
+        show_measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        local_clifford: bool = False,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> None:
+        """Visualize the underlying graph of the pattern with flow or gflow structure.
+
+        Parameters
+        ----------
+        flow_from_pattern : bool
+            If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
+        show_pauli_measurement : bool
+            If True, the nodes with Pauli measurement angles are colored light blue.
+        show_local_clifford : bool
+            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, measurement planes are displayed adjacent to the nodes.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to True.
+        node_distance : tuple
+            Distance multiplication factor between nodes for x and y directions.
+        figsize : tuple
+            Figure size of the plot.
+        filename : Path | None
+            If not None, filename of the png file to save the plot. If None, the plot is not saved.
+            Default in None.
+        """
+        xzcorrections = self.extract_xzcorrections()
+        lc = self.extract_clifford() if local_clifford else None
+        gv = GraphVisualizer(
+            obj=xzcorrections,
+            show_pauli_measurement=show_pauli_measurement,
+            show_measurement_labels=show_measurement_labels,
+            node_labels=node_labels,
+            local_clifford=lc,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+        )
+        gv.visualize()
 
     def to_qasm3(self, filename: Path | str, input_state: dict[int, State] | State = BasicStates.PLUS) -> None:
         """Export measurement pattern to OpenQASM 3.0 file.

@@ -139,6 +139,7 @@ class GraphVisualizer:
 
         # Circumvent import loop
         from graphix.flow.core import CausalFlow  # noqa: PLC0415
+
         pos = (
             _compute_positions_causal_flow(self.obj)
             if isinstance(self.obj, CausalFlow)
