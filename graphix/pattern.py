@@ -1645,8 +1645,8 @@ class Pattern:
                     raise PatternError("The pattern's open graph does not have Pauli flow.")
 
         lc = self.extract_clifford() if local_clifford else None
-        gv = GraphVisualizer(
-            obj=flow,
+        gv = GraphVisualizer.from_flow(
+            flow=flow,
             show_pauli_measurement=show_pauli_measurement,
             show_measurement_labels=show_measurement_labels,
             node_labels=node_labels,
@@ -1691,8 +1691,8 @@ class Pattern:
         """
         xzcorrections = self.extract_xzcorrections()
         lc = self.extract_clifford() if local_clifford else None
-        gv = GraphVisualizer(
-            obj=xzcorrections,
+        gv = GraphVisualizer.from_xzcorrections(
+            xz_corr=xzcorrections,
             show_pauli_measurement=show_pauli_measurement,
             show_measurement_labels=show_measurement_labels,
             node_labels=node_labels,

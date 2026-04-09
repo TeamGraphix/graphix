@@ -370,8 +370,8 @@ class XZCorrections(Generic[_AM_co]):
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
-        gv = GraphVisualizer(
-            obj=self,
+        gv = GraphVisualizer.from_xzcorrections(
+            xz_corr=self,
             show_pauli_measurement=show_pauli_measurement,
             show_measurement_labels=show_measurement_labels,
             node_labels=node_labels,
@@ -718,8 +718,8 @@ class PauliFlow(Generic[_AM_co]):
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
-        gv = GraphVisualizer(
-            obj=self,
+        gv = GraphVisualizer.from_flow(
+            flow=self,
             show_pauli_measurement=show_pauli_measurement,
             show_measurement_labels=show_measurement_labels,
             node_labels=node_labels,

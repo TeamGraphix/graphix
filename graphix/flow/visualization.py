@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import matplotlib.transforms as mtransforms
 import networkx as nx
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from graphix.clifford import Clifford
     from graphix.flow.core import CausalFlow, PauliFlow, XZCorrections
     from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
+    from graphix.opengraph import OpenGraph
 
     _Point: TypeAlias = tuple[float, float]
     _Edge: TypeAlias = tuple[int, int]
@@ -31,6 +32,35 @@ if TYPE_CHECKING:
     Color: TypeAlias = str | tuple[float, float, float] | tuple[float, float, float, float]
 
 _T = TypeVar("_T")
+
+###################
+# Style constants #
+###################
+
+# Nodes
+DEFAULT_NODE_EC = "black"
+DEFAULT_NODE_FC = "white"
+INPUT_NODE_EC = "red"
+OUTPUT_NODE_FC = "lightgray"
+PAULI_NODE_FC = "lightblue"
+
+NODE_LABEL_FS = 12
+
+# Edge style
+
+# Correction arrows
+FLOW_C = "black"
+X_C = "tab:red"
+Z_C = "tab:green"
+XZ_C = "tab:brown"
+
+# Layers
+LAYER_C = "gray"
+LAYER_FS = 10
+
+# Other labels
+LABEL_MEAS_FS = 9.5
+LC_MEAS_FS = 9.5
 
 
 @dataclass(frozen=True)
@@ -49,7 +79,11 @@ class PlotLims:
 
 @dataclass(frozen=True)
 class GraphVisualizer:
-    obj: PauliFlow[AbstractMeasurement] | XZCorrections[AbstractMeasurement]
+    og: OpenGraph[AbstractMeasurement]
+    pos: Mapping[int, _Point]
+    edge_paths: Mapping[_Edge, _Path]
+    arrow_paths: Mapping[_Edge, Colored[_Path]] | None = None
+    n_layers: int | None = None
     show_pauli_measurement: bool = True
     show_measurement_labels: bool = False
     node_labels: bool | Mapping[int, str] = True
@@ -58,80 +92,20 @@ class GraphVisualizer:
     figsize: tuple[int, int] | None = None
     filename: Path | None = None
 
-    ###################
-    # Style constants #
-    ###################
-
-    # Nodes
-    DEFAULT_NODE_EC: ClassVar[Color] = "black"
-    DEFAULT_NODE_FC: ClassVar[Color] = "white"
-    INPUT_NODE_EC: ClassVar[Color] = "red"
-    OUTPUT_NODE_FC: ClassVar[Color] = "lightgray"
-    PAULI_NODE_FC: ClassVar[Color] = "lightblue"
-
-    NODE_LABEL_FS: ClassVar[float] = 12
-
-    # Edge style
-
-    # Correction arrows
-    FLOW_C: ClassVar[Color] = "black"
-    X_C: ClassVar[Color] = "tab:red"
-    Z_C: ClassVar[Color] = "tab:green"
-    XZ_C: ClassVar[Color] = "tab:brown"
-
-    # Layers
-    LAYER_C: ClassVar[Color] = "gray"
-    LAYER_FS: ClassVar[float] = 10
-
-    # Other labels
-    LABEL_MEAS_FS: ClassVar[float] = 9.5
-    LC_MEAS_FS: ClassVar[float] = 9.5
-
-    def visualize(self) -> None:
-
-        pos = self._compute_positions()
-        edge_paths = self._compute_edge_paths(pos)
-        arrow_paths = self._compute_arrow_paths(pos)
-        plot_lims = self._determine_plot_lims(pos)
-
-        figsize = self.figsize or self._determine_figsize(pos)
-        plt.figure(figsize=figsize)
-
-        self._draw_edges(pos, edge_paths)
-        self._draw_arrows(pos, arrow_paths)
-        self._draw_nodes(pos)
-        self._draw_layers(plot_lims)
-        if self.show_measurement_labels:
-            self._draw_measurements_labels(pos)
-        self._draw_local_clifford(pos)  # Skipped if `self.local_clifford` is `None`.
-
-        self._set_plot_lims(plot_lims)
-
-        plt.plot()
-
-    def _determine_figsize(self, pos: Mapping[int, _Point]) -> _Point:
-        n_layers = len(self.obj.partial_order_layers)
-        width = n_layers * 0.8
-        height = len({pos[node][1] for node in self.obj.og.graph.nodes()})
-        return (width * self.node_distance[0], height * self.node_distance[1])
-
-    def _determine_plot_lims(self, pos: Mapping[int, _Point]) -> PlotLims:
-        nodes = self.obj.og.graph.nodes()
-        xmin = min((pos[node][0] for node in nodes), default=0)
-        xmax = max((pos[node][0] for node in nodes), default=0)
-        ymin = min((pos[node][1] for node in nodes), default=0)
-        ymax = max((pos[node][1] for node in nodes), default=0)
-
-        return PlotLims(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    @staticmethod
+    def from_opengraph(og: OpenGraph[AbstractMeasurement]) -> GraphVisualizer: ...
 
     @staticmethod
-    def _set_plot_lims(plot_lims: PlotLims) -> None:
-        offset = 0.7
-        plt.xlim(plot_lims.xmin - offset, plot_lims.xmax + offset)
-        plt.ylim(plot_lims.ymin - offset, plot_lims.ymax + offset)
-
-    def _compute_positions(self) -> dict[int, _Point]:
-
+    def from_flow(
+        flow: PauliFlow[AbstractMeasurement],
+        show_pauli_measurement: bool = True,
+        show_measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        local_clifford: Mapping[int, Clifford] | None = None,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> GraphVisualizer:
         # We can't use functools.singledispatch here.
         # If we annotate the dispatch argument with CausalFlow[AbstractPlanarMeasurement]
         # compilation will fail because generic types are only known statically.
@@ -141,181 +115,242 @@ class GraphVisualizer:
         from graphix.flow.core import CausalFlow  # noqa: PLC0415
 
         pos = (
-            _compute_positions_causal_flow(self.obj)
-            if isinstance(self.obj, CausalFlow)
-            else _compute_positions(self.obj)
+            _compute_positions_causal_flow(flow)
+            if isinstance(flow, CausalFlow)
+            else _compute_positions_partial_order(flow)
         )
-        if self.node_distance != (1, 1):
-            pos = {k: (v[0] * self.node_distance[0], v[1] * self.node_distance[1]) for k, v in pos.items()}
-        return pos
+        pos = _scale_positions(pos, node_distance)
+        edge_paths = _compute_edge_paths(flow.og, pos)
+        corrections = _format_corrections_flow(flow)
+        arrow_paths = _compute_arrow_paths(pos, flow.og.graph.edges(), corrections)
+        n_layers = len(flow.partial_order_layers)
 
-    def _compute_edge_paths(self, pos: Mapping[int, _Point]) -> dict[_Edge, _Path]:
-        edges = self.obj.og.graph.edges()
-        return {edge: _find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in edges}
+        return GraphVisualizer(
+            og=flow.og,
+            pos=pos,
+            edge_paths=edge_paths,
+            arrow_paths=arrow_paths,
+            n_layers=n_layers,
+            show_pauli_measurement=show_pauli_measurement,
+            show_measurement_labels=show_measurement_labels,
+            node_labels=node_labels,
+            local_clifford=local_clifford,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+        )
 
-    def _compute_arrow_paths(self, pos: Mapping[int, _Point]) -> dict[_Edge, Colored[_Path]]:
-        correction_arrows: set[Colored[_Edge]]
+    @staticmethod
+    def from_xzcorrections(
+        xz_corr: XZCorrections[AbstractMeasurement],
+        show_pauli_measurement: bool = True,
+        show_measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        local_clifford: Mapping[int, Clifford] | None = None,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> GraphVisualizer:
+        pos = _compute_positions_partial_order(xz_corr)
+        pos = _scale_positions(pos, node_distance)
+        edge_paths = _compute_edge_paths(xz_corr.og, pos)
+        corrections = _format_corrections_xz(xz_corr)
+        arrow_paths = _compute_arrow_paths(pos, xz_corr.og.graph.edges(), corrections)
+        n_layers = len(xz_corr.partial_order_layers)
 
-        # Circumvent import loop
-        from graphix.flow.core import PauliFlow, XZCorrections  # noqa: PLC0415
+        return GraphVisualizer(
+            og=xz_corr.og,
+            pos=pos,
+            edge_paths=edge_paths,
+            arrow_paths=arrow_paths,
+            n_layers=n_layers,
+            show_pauli_measurement=show_pauli_measurement,
+            show_measurement_labels=show_measurement_labels,
+            node_labels=node_labels,
+            local_clifford=local_clifford,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+        )
 
-        if isinstance(self.obj, PauliFlow):
-            correction_arrows = {
-                Colored((k, v), self.FLOW_C) for k, values in self.obj.correction_function.items() for v in values
-            }
-        elif isinstance(self.obj, XZCorrections):
-            correction_arrows = set()
-            colors = (self.X_C, self.Z_C, self.XZ_C)
-            for measured_node in self.obj.og.measurements:
-                x_corr = self.obj.x_corrections.get(measured_node, set())
-                z_corr = self.obj.z_corrections.get(measured_node, set())
-                xz_corr = x_corr & z_corr
+    def visualize(self) -> None:
 
-                corrs = (x_corr - xz_corr, z_corr - xz_corr, xz_corr)
-                for corr_nodes, color in zip(corrs, colors, strict=True):
-                    correction_arrows.update(Colored((measured_node, corr_node), color) for corr_node in corr_nodes)
-        else:
-            raise TypeError("Expected code to be unreachable")
+        plot_lims = self._determine_plot_lims()
+        figsize = self.figsize or self._determine_figsize()
+        plt.figure(figsize=figsize)
 
-        return _compute_arrow_paths(pos, self.obj.og.graph.edges(), correction_arrows)
+        self._draw_edges()
+        self._draw_arrows()
+        self._draw_nodes()
+        self._draw_layers(plot_lims)
+        if self.show_measurement_labels:
+            self._draw_measurements_labels()
+        self._draw_local_clifford()  # Skipped if `self.local_clifford` is `None`.
 
-    def _draw_nodes(self, pos: Mapping[int, _Point]) -> None:
-        og = self.obj.og
-        fc = self.DEFAULT_NODE_FC
-        ec = self.DEFAULT_NODE_FC
-        for node in og.graph.nodes():
-            fc = self.DEFAULT_NODE_FC
-            ec = self.DEFAULT_NODE_EC
-            if node in og.input_nodes:
-                ec = self.INPUT_NODE_EC
-            if node in og.output_nodes:
-                fc = self.OUTPUT_NODE_FC
-            elif self.show_pauli_measurement and isinstance(og.measurements[node], PauliMeasurement):
-                fc = self.PAULI_NODE_FC
-            plt.scatter(*pos[node], edgecolor=ec, facecolor=fc, s=350, zorder=2)
+        self._set_plot_lims(plot_lims)
+
+        plt.plot()
+
+    def _determine_figsize(self) -> _Point:
+        x_pos: set[float] = set()
+        y_pos: set[float] = set()
+        for node in self.og.graph.nodes():
+            x_pos.add(self.pos[node][0])
+            y_pos.add(self.pos[node][1])
+
+        width = len(x_pos) * 0.8
+        height = len(y_pos)
+        return (width * self.node_distance[0], height * self.node_distance[1])
+
+    def _determine_plot_lims(self) -> PlotLims:
+        nodes = self.og.graph.nodes()
+        xmin = min((self.pos[node][0] for node in nodes), default=0)
+        xmax = max((self.pos[node][0] for node in nodes), default=0)
+        ymin = min((self.pos[node][1] for node in nodes), default=0)
+        ymax = max((self.pos[node][1] for node in nodes), default=0)
+
+        return PlotLims(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+    @staticmethod
+    def _set_plot_lims(plot_lims: PlotLims) -> None:
+        offset = 0.7
+        plt.xlim(plot_lims.xmin - offset, plot_lims.xmax + offset)
+        plt.ylim(plot_lims.ymin - offset, plot_lims.ymax + offset)
+
+    def _draw_nodes(self) -> None:
+        for node in self.og.graph.nodes():
+            fc = DEFAULT_NODE_FC
+            ec = DEFAULT_NODE_EC
+            if node in self.og.input_nodes:
+                ec = INPUT_NODE_EC
+            if node in self.og.output_nodes:
+                fc = OUTPUT_NODE_FC
+            elif self.show_pauli_measurement and isinstance(self.og.measurements[node], PauliMeasurement):
+                fc = PAULI_NODE_FC
+            plt.scatter(*self.pos[node], edgecolor=ec, facecolor=fc, s=350, zorder=2)
 
         labels = dict(self.node_labels) if isinstance(self.node_labels, Mapping) else None
-        fontsize = self.NODE_LABEL_FS
-        if max(og.graph.nodes(), default=0) >= 100:
-            fontsize = int(fontsize * 2 / len(str(max(og.graph.nodes()))))
-        nx.draw_networkx_labels(og.graph, pos, labels=labels, font_size=fontsize)
+        fontsize = NODE_LABEL_FS
+        if max(self.og.graph.nodes(), default=0) >= 100:
+            fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
+        nx.draw_networkx_labels(self.og.graph, self.pos, labels=labels, font_size=fontsize)
 
-    def _draw_edges(self, pos: Mapping[int, _Point], edge_paths: Mapping[_Edge, _Path]) -> None:
-        for edge, path in edge_paths.items():
+    def _draw_edges(self) -> None:
+        for edge, path in self.edge_paths.items():
             if len(path) == 2:
-                nx.draw_networkx_edges(self.obj.og.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.og.graph, self.pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 curve = _bezier_curve_linspace(path)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-    def _draw_arrows(self, pos: Mapping[int, _Point], arrow_paths: Mapping[_Edge, Colored[_Path]]) -> None:
-        for arrow, colored_path in arrow_paths.items():
-            path = colored_path.value
-            color = colored_path.color
+    def _draw_arrows(self) -> None:
+        if self.arrow_paths is not None:
+            for arrow, colored_path in self.arrow_paths.items():
+                path = colored_path.value
+                color = colored_path.color
 
-            if len(path) == 2:  # straight line
-                nx.draw_networkx_edges(
-                    self.obj.og.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
-                )
-            else:
-                new_path = _shorten_path(path) if arrow[0] != arrow[1] else path
-                curve = _bezier_curve_linspace(new_path)
-                plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
-                plt.annotate(
-                    "",
-                    xy=curve[-1],
-                    xytext=curve[-2],
-                    arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
-                )
+                if len(path) == 2:  # straight line
+                    nx.draw_networkx_edges(
+                        self.og.graph, self.pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
+                    )
+                else:
+                    new_path = _shorten_path(path) if arrow[0] != arrow[1] else path
+                    curve = _bezier_curve_linspace(new_path)
+                    plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
+                    plt.annotate(
+                        "",
+                        xy=curve[-1],
+                        xytext=curve[-2],
+                        arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
+                    )
 
     def _draw_layers(self, plot_lims: PlotLims) -> None:
-        nlayers = len(self.obj.partial_order_layers)
+        if self.n_layers is not None:
+            fig, ax = plt.gcf(), plt.gca()
+            base = ax.transData
 
-        fig, ax = plt.gcf(), plt.gca()
-        base = ax.transData
+            # Add a fixed vertical offset (e.g. -15 points)
+            # This ensures that the layer is always at the same distance of the nodes, regardless of the ylims.
+            offset = mtransforms.ScaledTranslation(0, -15 / 72, fig.dpi_scale_trans)
 
-        # Add a fixed vertical offset (e.g. -15 points)
-        # This ensures that the layer is always at the same distance of the nodes, regardless of the ylims.
-        offset = mtransforms.ScaledTranslation(0, -15 / 72, fig.dpi_scale_trans)
+            for layer in range(self.n_layers - 1):
+                plt.axvline(
+                    x=(layer + 0.5) * self.node_distance[0],
+                    color=LAYER_C,
+                    linestyle=":",
+                    linewidth=0.9,
+                    alpha=0.8,
+                )
+                plt.text(
+                    layer * self.node_distance[0],
+                    plot_lims.ymin,
+                    str(self.n_layers - 1 - layer),
+                    ha="center",
+                    va="top",
+                    fontsize=LAYER_FS,
+                    color=LAYER_C,
+                    transform=base + offset,
+                )
 
-        for layer in range(nlayers - 1):
-            plt.axvline(
-                x=(layer + 0.5) * self.node_distance[0],
-                color=self.LAYER_C,
-                linestyle=":",
-                linewidth=0.9,
-                alpha=0.8,
-            )
+            # Add last label (layer 0)
             plt.text(
-                layer * self.node_distance[0],
+                (self.n_layers - 1) * self.node_distance[0],
                 plot_lims.ymin,
-                str(nlayers - 1 - layer),
+                str(0),
                 ha="center",
                 va="top",
-                fontsize=self.LAYER_FS,
-                color=self.LAYER_C,
+                fontsize=LAYER_FS,
+                color=LAYER_C,
                 transform=base + offset,
             )
 
-        # Add last label (layer 0)
-        plt.text(
-            (nlayers - 1) * self.node_distance[0],
-            plot_lims.ymin,
-            str(0),
-            ha="center",
-            va="top",
-            fontsize=self.LAYER_FS,
-            color=self.LAYER_C,
-            transform=base + offset,
-        )
+            # Draw horizontal arrow indicating measurement order with "Layer" label below
+            offset = mtransforms.ScaledTranslation(0, -27 / 72, fig.dpi_scale_trans)
+            if self.n_layers > 1:
+                plt.annotate(
+                    "",
+                    xy=((self.n_layers - 1) * self.node_distance[0] + 0.3, plot_lims.ymin),
+                    xytext=(-0.3, plot_lims.ymin),
+                    xycoords=base + offset,
+                    textcoords=base + offset,
+                    arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
+                )
 
-        # Draw horizontal arrow indicating measurement order with "Layer" label below
-        offset = mtransforms.ScaledTranslation(0, -27 / 72, fig.dpi_scale_trans)
-        if nlayers > 1:
-            plt.annotate(
-                "",
-                xy=((nlayers - 1) * self.node_distance[0] + 0.3, plot_lims.ymin),
-                xytext=(-0.3, plot_lims.ymin),
-                xycoords=base + offset,
-                textcoords=base + offset,
-                arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
+            offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
+            mid_x = (self.n_layers - 1) / 2 * self.node_distance[0]
+            plt.text(
+                mid_x,
+                plot_lims.ymin,
+                "Layer",
+                ha="center",
+                va="top",
+                fontsize=LAYER_FS,
+                color=LAYER_C,
+                transform=base + offset,
             )
 
-        offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
-        mid_x = (nlayers - 1) / 2 * self.node_distance[0]
-        plt.text(
-            mid_x,
-            plot_lims.ymin,
-            "Layer",
-            ha="center",
-            va="top",
-            fontsize=self.LAYER_FS,
-            color=self.LAYER_C,
-            transform=base + offset,
-        )
+            # Update plot_lims to take into account label
+            trans = base + offset
+            _, ydisp = trans.transform((0, plot_lims.ymin))
+            plot_lims.ymin = base.inverted().transform((0, ydisp))[1]
 
-        # Update plot_lims to take into account label
-        trans = base + offset
-        _, ydisp = trans.transform((0, plot_lims.ymin))
-        plot_lims.ymin = base.inverted().transform((0, ydisp))[1]
-
-    def _draw_measurements_labels(self, pos: Mapping[int, _Point]) -> None:
-        for node, meas in self.obj.og.measurements.items():
-            x, y = pos[node] + np.array([0.22, -0.2])
+    def _draw_measurements_labels(self) -> None:
+        for node, meas in self.og.measurements.items():
+            x, y = self.pos[node] + np.array([0.22, -0.2])
             label = meas.to_plane_or_axis().name
 
-            plt.text(x, y, label, fontsize=self.LABEL_MEAS_FS, zorder=3)
+            plt.text(x, y, label, fontsize=LABEL_MEAS_FS, zorder=3)
 
-    def _draw_local_clifford(self, pos: Mapping[int, _Point]) -> None:
+    def _draw_local_clifford(self) -> None:
         if self.local_clifford is not None:
             for node in self.local_clifford:
-                x, y = pos[node] + np.array([0.2, 0.2])
-                plt.text(x, y, f"{self.local_clifford[node]}", fontsize=self.LC_MEAS_FS, zorder=3)
+                x, y = self.pos[node] + np.array([0.2, 0.2])
+                plt.text(x, y, f"{self.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
 
 
-def _compute_positions(
+def _compute_positions_partial_order(
     obj: PauliFlow[AbstractMeasurement] | XZCorrections[AbstractMeasurement],
-) -> dict[int, tuple[float, float]]:
+) -> dict[int, _Point]:
     graph = obj.og.graph
     pol = obj.partial_order_layers
 
@@ -330,7 +365,7 @@ def _compute_positions(
     return {node: (l_max - layer_idx, index[pos[node][1]]) for layer_idx, layer in enumerate(pol) for node in layer}
 
 
-def _compute_positions_causal_flow(obj: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, tuple[float, float]]:
+def _compute_positions_causal_flow(obj: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
     og = obj.og
     cf = obj.correction_function
     pol = obj.partial_order_layers
@@ -351,6 +386,35 @@ def _compute_positions_causal_flow(obj: CausalFlow[AbstractPlanarMeasurement]) -
         for node in layer:
             pos[node][0] = lmax - layer_idx
     return {k: (x, y) for k, (x, y) in pos.items()}
+
+
+def _scale_positions(pos: Mapping[int, _Point], node_distance: tuple[float, float]) -> dict[int, _Point]:
+    if node_distance != (1, 1):
+        pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}
+    return dict(pos)  # To comply with mypy
+
+
+def _compute_edge_paths(og: OpenGraph[AbstractMeasurement], pos: Mapping[int, _Point]) -> dict[_Edge, _Path]:
+    edges = og.graph.edges()
+    return {edge: _find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in edges}
+
+
+def _format_corrections_flow(flow: PauliFlow[AbstractMeasurement]) -> set[Colored[_Edge]]:
+    return {Colored((k, v), FLOW_C) for k, values in flow.correction_function.items() for v in values}
+
+
+def _format_corrections_xz(xz_corr: XZCorrections[AbstractMeasurement]) -> set[Colored[_Edge]]:
+    correction_arrows: set[Colored[_Edge]] = set()
+    colors = (X_C, Z_C, XZ_C)
+    for measured_node in xz_corr.og.measurements:
+        x_corr = xz_corr.x_corrections.get(measured_node, set())
+        z_corr = xz_corr.z_corrections.get(measured_node, set())
+        x_and_z_corr = x_corr & z_corr
+        corrs = (x_corr - x_and_z_corr, z_corr - x_and_z_corr, x_and_z_corr)
+        for corr_nodes, color in zip(corrs, colors, strict=True):
+            correction_arrows.update(Colored((measured_node, corr_node), color) for corr_node in corr_nodes)
+
+    return correction_arrows
 
 
 def _compute_arrow_paths(
