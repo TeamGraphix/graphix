@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from enum import Enum, auto
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import matplotlib.transforms as mtransforms
@@ -12,6 +13,7 @@ import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from matplotlib import pyplot as plt
+from typing_extensions import assert_never
 
 from graphix.measurements import PauliMeasurement
 
@@ -47,6 +49,7 @@ PAULI_NODE_FC = "lightblue"
 NODE_LABEL_FS = 12
 
 # Edge style
+EDGE_C = (0, 0, 0, 0.7)
 
 # Correction arrows
 FLOW_C = "black"
@@ -69,7 +72,7 @@ class Colored(Generic[_T]):
     color: Color
 
 
-@dataclass
+@dataclass(frozen=True)
 class PlotLims:
     xmin: float
     xmax: float
@@ -77,13 +80,18 @@ class PlotLims:
     ymax: float
 
 
+class _Source(Enum):
+    XZCorr = auto()
+    Flow = auto()
+
+
 @dataclass(frozen=True)
 class GraphVisualizer:
     og: OpenGraph[AbstractMeasurement]
     pos: Mapping[int, _Point]
     edge_paths: Mapping[_Edge, _Path]
-    arrow_paths: Mapping[_Edge, Colored[_Path]] | None = None
-    n_layers: int | None = None
+    arrow_paths: Mapping[_Edge, Colored[_Path]]
+    n_layers: int
     show_pauli_measurement: bool = True
     show_measurement_labels: bool = False
     node_labels: bool | Mapping[int, str] = True
@@ -91,9 +99,7 @@ class GraphVisualizer:
     node_distance: tuple[float, float] = (1, 1)
     figsize: tuple[int, int] | None = None
     filename: Path | None = None
-
-    @staticmethod
-    def from_opengraph(og: OpenGraph[AbstractMeasurement]) -> GraphVisualizer: ...
+    _source: _Source | None = None
 
     @staticmethod
     def from_flow(
@@ -138,6 +144,7 @@ class GraphVisualizer:
             node_distance=node_distance,
             figsize=figsize,
             filename=filename,
+            _source=_Source.Flow,
         )
 
     @staticmethod
@@ -171,10 +178,10 @@ class GraphVisualizer:
             node_distance=node_distance,
             figsize=figsize,
             filename=filename,
+            _source=_Source.XZCorr,
         )
 
     def visualize(self) -> None:
-
         plot_lims = self._determine_plot_lims()
         figsize = self.figsize or self._determine_figsize()
         plt.figure(figsize=figsize)
@@ -182,12 +189,13 @@ class GraphVisualizer:
         self._draw_edges()
         self._draw_arrows()
         self._draw_nodes()
-        self._draw_layers(plot_lims)
+        plot_lims = self._draw_layers(plot_lims)
         if self.show_measurement_labels:
             self._draw_measurements_labels()
         self._draw_local_clifford()  # Skipped if `self.local_clifford` is `None`.
 
         self._set_plot_lims(plot_lims)
+        self._draw_legend()
 
         plt.plot()
 
@@ -238,90 +246,51 @@ class GraphVisualizer:
     def _draw_edges(self) -> None:
         for edge, path in self.edge_paths.items():
             if len(path) == 2:
-                nx.draw_networkx_edges(self.og.graph, self.pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.og.graph, self.pos, edgelist=[edge], style="dashed", edge_color=EDGE_C)
             else:
                 curve = _bezier_curve_linspace(path)
-                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
+                plt.plot(curve[:, 0], curve[:, 1], "--", color=EDGE_C, linewidth=1)
 
     def _draw_arrows(self) -> None:
-        if self.arrow_paths is not None:
-            for arrow, colored_path in self.arrow_paths.items():
-                path = colored_path.value
-                color = colored_path.color
+        for arrow, colored_path in self.arrow_paths.items():
+            path = colored_path.value
+            color = colored_path.color
 
-                if len(path) == 2:  # straight line
-                    nx.draw_networkx_edges(
-                        self.og.graph, self.pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
-                    )
-                else:
-                    new_path = _shorten_path(path) if arrow[0] != arrow[1] else path
-                    curve = _bezier_curve_linspace(new_path)
-                    plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
-                    plt.annotate(
-                        "",
-                        xy=curve[-1],
-                        xytext=curve[-2],
-                        arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
-                    )
-
-    def _draw_layers(self, plot_lims: PlotLims) -> None:
-        if self.n_layers is not None:
-            fig, ax = plt.gcf(), plt.gca()
-            base = ax.transData
-
-            # Add a fixed vertical offset (e.g. -15 points)
-            # This ensures that the layer is always at the same distance of the nodes, regardless of the ylims.
-            offset = mtransforms.ScaledTranslation(0, -15 / 72, fig.dpi_scale_trans)
-
-            for layer in range(self.n_layers - 1):
-                plt.axvline(
-                    x=(layer + 0.5) * self.node_distance[0],
-                    color=LAYER_C,
-                    linestyle=":",
-                    linewidth=0.9,
-                    alpha=0.8,
+            if len(path) == 2:  # straight line
+                nx.draw_networkx_edges(
+                    self.og.graph, self.pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
                 )
-                plt.text(
-                    layer * self.node_distance[0],
-                    plot_lims.ymin,
-                    str(self.n_layers - 1 - layer),
-                    ha="center",
-                    va="top",
-                    fontsize=LAYER_FS,
-                    color=LAYER_C,
-                    transform=base + offset,
-                )
-
-            # Add last label (layer 0)
-            plt.text(
-                (self.n_layers - 1) * self.node_distance[0],
-                plot_lims.ymin,
-                str(0),
-                ha="center",
-                va="top",
-                fontsize=LAYER_FS,
-                color=LAYER_C,
-                transform=base + offset,
-            )
-
-            # Draw horizontal arrow indicating measurement order with "Layer" label below
-            offset = mtransforms.ScaledTranslation(0, -27 / 72, fig.dpi_scale_trans)
-            if self.n_layers > 1:
+            else:
+                new_path = _shorten_path(path) if arrow[0] != arrow[1] else path
+                curve = _bezier_curve_linspace(new_path)
+                plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
                 plt.annotate(
                     "",
-                    xy=((self.n_layers - 1) * self.node_distance[0] + 0.3, plot_lims.ymin),
-                    xytext=(-0.3, plot_lims.ymin),
-                    xycoords=base + offset,
-                    textcoords=base + offset,
-                    arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
+                    xy=curve[-1],
+                    xytext=curve[-2],
+                    arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
                 )
 
-            offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
-            mid_x = (self.n_layers - 1) / 2 * self.node_distance[0]
+    def _draw_layers(self, plot_lims: PlotLims) -> PlotLims:
+        fig, ax = plt.gcf(), plt.gca()
+        base = ax.transData
+
+        # Add a fixed vertical offset (e.g. -15 points)
+        # This ensures that the layer is always at the same distance of the nodes, regardless of the ylims.
+        offset = mtransforms.ScaledTranslation(0, -15 / 72, fig.dpi_scale_trans)
+
+        for layer in range(self.n_layers - 1):
+            plt.axvline(
+                x=(layer + 0.5) * self.node_distance[0],
+                color=LAYER_C,
+                linestyle=":",
+                linewidth=0.9,
+                alpha=0.8,
+            )
             plt.text(
-                mid_x,
+                layer * self.node_distance[0],
                 plot_lims.ymin,
-                "Layer",
+                str(self.n_layers - 1 - layer),
                 ha="center",
                 va="top",
                 fontsize=LAYER_FS,
@@ -329,10 +298,47 @@ class GraphVisualizer:
                 transform=base + offset,
             )
 
-            # Update plot_lims to take into account label
-            trans = base + offset
-            _, ydisp = trans.transform((0, plot_lims.ymin))
-            plot_lims.ymin = base.inverted().transform((0, ydisp))[1]
+        # Add last label (layer 0)
+        plt.text(
+            (self.n_layers - 1) * self.node_distance[0],
+            plot_lims.ymin,
+            str(0),
+            ha="center",
+            va="top",
+            fontsize=LAYER_FS,
+            color=LAYER_C,
+            transform=base + offset,
+        )
+
+        # Draw horizontal arrow indicating measurement order with "Layer" label below
+        offset = mtransforms.ScaledTranslation(0, -27 / 72, fig.dpi_scale_trans)
+        if self.n_layers > 1:
+            plt.annotate(
+                "",
+                xy=((self.n_layers - 1) * self.node_distance[0] + 0.3, plot_lims.ymin),
+                xytext=(-0.3, plot_lims.ymin),
+                xycoords=base + offset,
+                textcoords=base + offset,
+                arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
+            )
+
+        offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
+        mid_x = (self.n_layers - 1) / 2 * self.node_distance[0]
+        plt.text(
+            mid_x,
+            plot_lims.ymin,
+            "Layer",
+            ha="center",
+            va="top",
+            fontsize=LAYER_FS,
+            color=LAYER_C,
+            transform=base + offset,
+        )
+
+        # Update plot_lims to take into account label
+        trans = base + offset
+        _, ydisp = trans.transform((0, plot_lims.ymin))
+        return replace(plot_lims, ymin=base.inverted().transform((0, ydisp))[1])
 
     def _draw_measurements_labels(self) -> None:
         for node, meas in self.og.measurements.items():
@@ -347,20 +353,38 @@ class GraphVisualizer:
                 x, y = self.pos[node] + np.array([0.2, 0.2])
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
 
+    def _draw_legend(self) -> None:
+        plt.scatter([], [], edgecolor=INPUT_NODE_EC, facecolor=DEFAULT_NODE_FC, s=150, zorder=2, label="Input nodes")
+        plt.scatter([], [], edgecolor=DEFAULT_NODE_EC, facecolor=OUTPUT_NODE_FC, s=150, zorder=2, label="Output nodes")
+        plt.scatter(
+            [], [], edgecolor=DEFAULT_NODE_EC, facecolor=PAULI_NODE_FC, s=150, zorder=2, label="Pauli-measured nodes"
+        )
+        plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
+
+        if self._source is not None:
+            match self._source:
+                case _Source.Flow:
+                    plt.plot([], [], color=FLOW_C, label="Correction function")
+                case _Source.XZCorr:
+                    plt.plot([], [], color=X_C, label="X corrections")
+                    plt.plot([], [], color=Z_C, label="Z corrections")
+                    plt.plot([], [], color=XZ_C, label="X and Z corrections")
+                case _:
+                    assert_never(self._source)
+
+        plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
+
 
 def _compute_positions_partial_order(
     obj: PauliFlow[AbstractMeasurement] | XZCorrections[AbstractMeasurement],
 ) -> dict[int, _Point]:
     graph = obj.og.graph
     pol = obj.partial_order_layers
-
     layers = dict(enumerate(pol[::-1]))
     pos = nx.multipartite_layout(graph, subset_key=layers)
 
-    # TODO: Try to improve
     l_max = len(pol) - 1
-    vert = list({pos[node][1] for node in graph.nodes()})
-    vert.sort()
+    vert = sorted({pos[node][1] for node in graph.nodes()})
     index = {y: i for i, y in enumerate(vert)}
     return {node: (l_max - layer_idx, index[pos[node][1]]) for layer_idx, layer in enumerate(pol) for node in layer}
 
