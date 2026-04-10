@@ -60,10 +60,9 @@ pattern.draw_flow(flow_from_pattern=True, local_clifford=True, node_distance=(0.
 # %%
 # Visualize based on the graph
 # ----------------------------
-# The visualizer also works without the pattern. Simply supply the graph.
+
 
 import networkx as nx
-from graphix.visualization import GraphVisualizer
 
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
@@ -74,8 +73,7 @@ inputs = [1, 2, 3]
 outputs = [4, 5, 6]
 measurements = {node: Measurement.XY(0) for node in graph.nodes() if node not in outputs}
 og = OpenGraph(graph, inputs, outputs, measurements)
-vis = GraphVisualizer(og)
-vis.visualize(measurement_labels=True)
+og.draw(measurement_labels=True)
 
 # %%
 
@@ -90,7 +88,7 @@ measurements = {
     3: Measurement.YZ(0),
 }
 og = OpenGraph(graph, inputs, outputs, measurements)
-vis = GraphVisualizer(og)
-vis.visualize(measurement_labels=True)
+cf = og.extract_causal_flow()
+cf.draw()
 
 # %%
