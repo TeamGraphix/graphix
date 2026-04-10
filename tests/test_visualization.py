@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command, visualization
+from graphix import Circuit, Pattern, command
 from graphix.flow.visualization import _edge_intersects_node
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
@@ -99,18 +99,6 @@ def example_pflow(rng: Generator) -> Pattern:
     assert og.input_nodes == pattern.input_nodes
     assert og.output_nodes == pattern.output_nodes
     return pattern
-
-
-def test_place_causal_flow() -> None:
-    circuit = Circuit(1)
-    circuit.h(0)
-    pattern = circuit.transpile().pattern
-    og = pattern.extract_opengraph().to_bloch()
-    local_clifford = pattern.extract_clifford()
-    vis = visualization.GraphVisualizer(og, local_clifford)
-    causal_flow = og.extract_causal_flow()
-    pos = vis.place_causal_flow(causal_flow)
-    assert pos is not None
 
 
 @pytest.mark.usefixtures("mock_plot")
