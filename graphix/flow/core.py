@@ -363,17 +363,36 @@ class XZCorrections(Generic[_AM_co]):
 
     def draw(
         self,
-        show_pauli_measurement: bool = True,
-        show_measurement_labels: bool = False,
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
+        """Visualize the opengraph, correction structure and partial order.
+
+        Parameters
+        ----------
+        pauli_measurements : bool, default=True
+            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
+        measurement_labels : bool, default=False
+            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+        node_labels : bool | Mapping[int, str], default=True
+            If ``True``, display numeric node labels. If a mapping, use custom labels
+            for nodes specified in the mapping.
+        node_distance : tuple[float, float], default=(1, 1)
+            Scaling factors (x_scale, y_scale) applied to node positions.
+        figsize : tuple[int, int] | None, default=None
+            Figure dimensions (width, height) in inches. If ``None``, dimensions are
+            determined automatically based on graph structure.
+        filename : Path | None, default=None
+            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        """
         gv = GraphVisualizer.from_xzcorrections(
             xz_corr=self,
-            show_pauli_measurement=show_pauli_measurement,
-            show_measurement_labels=show_measurement_labels,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
             node_labels=node_labels,
             node_distance=node_distance,
             figsize=figsize,
@@ -711,17 +730,36 @@ class PauliFlow(Generic[_AM_co]):
 
     def draw(
         self,
-        show_pauli_measurement: bool = True,
-        show_measurement_labels: bool = False,
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
+        """Visualize the opengraph, correction structure and partial order.
+
+        Parameters
+        ----------
+        pauli_measurements : bool, default=True
+            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
+        measurement_labels : bool, default=False
+            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+        node_labels : bool | Mapping[int, str], default=True
+            If ``True``, display numeric node labels. If a mapping, use custom labels
+            for nodes specified in the mapping.
+        node_distance : tuple[float, float], default=(1, 1)
+            Scaling factors (x_scale, y_scale) applied to node positions.
+        figsize : tuple[int, int] | None, default=None
+            Figure dimensions (width, height) in inches. If ``None``, dimensions are
+            determined automatically based on graph structure.
+        filename : Path | None, default=None
+            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        """
         gv = GraphVisualizer.from_flow(
             flow=self,
-            show_pauli_measurement=show_pauli_measurement,
-            show_measurement_labels=show_measurement_labels,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
             node_labels=node_labels,
             node_distance=node_distance,
             figsize=figsize,

@@ -68,12 +68,24 @@ LC_MEAS_FS = 9.5
 
 @dataclass(frozen=True)
 class Colored(Generic[_T]):
+    """A generic container pairing a value with a color for visualization.
+
+    Parameters
+    ----------
+    value : _T
+        The value to be colored. Can be any type.
+    color : Color
+        The color to associate with the value, used during visualization.
+    """
+
     value: _T
     color: Color
 
 
 @dataclass(frozen=True)
 class PlotLims:
+    """Dataclass to wrap the plot limits in axis coordinates."""
+
     xmin: float
     xmax: float
     ymin: float
@@ -87,13 +99,57 @@ class _Source(Enum):
 
 @dataclass(frozen=True)
 class GraphVisualizer:
+    """Visualizer for flows and XZ-correction structures.
+
+    Attributes
+    ----------
+    og : OpenGraph[AbstractMeasurement]
+        The open graph of the object being rendered.
+    pos : Mapping[int, _Point]
+        Mapping of node identifiers to (x, y) coordinates.
+    edge_paths : Mapping[_Edge, _Path]
+        Bezier curve paths for graph edges.
+    arrow_paths : Mapping[_Edge, Colored[_Path]]
+        Colored bezier curve paths for correction dependency arrows.
+    n_layers : int
+        Number of measurement layers in the partial order (determines horizontal extent).
+    pauli_measurements : bool, default=True
+        If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
+    measurement_labels : bool, default=False
+        If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+    node_labels : bool | Mapping[int, str], default=True
+        If ``True``, display numeric node labels. If a mapping, use custom labels
+        for nodes specified in the mapping.
+    local_clifford : Mapping[int, Clifford] | None, default=None
+        Mapping of node identifiers to local Clifford operators. If provided,
+        operators are displayed on their corresponding nodes.
+    node_distance : tuple[float, float], default=(1, 1)
+        Scaling factors (x_scale, y_scale) applied to node positions.
+    figsize : tuple[int, int] | None, default=None
+        Figure dimensions (width, height) in inches. If ``None``, dimensions are
+        determined automatically based on graph structure.
+    filename : Path | None, default=None
+        File path to save the visualization. If ``None``, figure is displayed but not saved.
+    _source : _Source | None, default=None
+        Internal metadata indicating the source of the graph (e.g., ``PauliFlow`` or
+        ``XZCorrections``).
+
+    Notes
+    -----
+    Instantiate this class via factory methods rather than direct construction:
+    - :meth:`from_xzcorrections` : Create from ``XZCorrections`` instance.
+    - :meth:`from_flow` : Create from ``PauliFlow`` instance.
+
+    Call :meth:`visualize` to generate and display the graph visualization.
+    """
+
     og: OpenGraph[AbstractMeasurement]
     pos: Mapping[int, _Point]
     edge_paths: Mapping[_Edge, _Path]
     arrow_paths: Mapping[_Edge, Colored[_Path]]
     n_layers: int
-    show_pauli_measurement: bool = True
-    show_measurement_labels: bool = False
+    pauli_measurements: bool = True
+    measurement_labels: bool = False
     node_labels: bool | Mapping[int, str] = True
     local_clifford: Mapping[int, Clifford] | None = None
     node_distance: tuple[float, float] = (1, 1)
@@ -104,14 +160,31 @@ class GraphVisualizer:
     @staticmethod
     def from_flow(
         flow: PauliFlow[AbstractMeasurement],
-        show_pauli_measurement: bool = True,
-        show_measurement_labels: bool = False,
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         local_clifford: Mapping[int, Clifford] | None = None,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> GraphVisualizer:
+        """Create a ``GraphVisualizer`` from a ``PauliFlow`` instance.
+
+        Parameters
+        ----------
+        xz_corr : PauliFlow[AbstractMeasurement]
+        pauli_measurements : bool, default=True
+        measurement_labels : bool, default=False
+        node_labels : bool | Mapping[int, str], default=True
+        local_clifford : Mapping[int, Clifford] | None, default=None
+        node_distance : tuple[float, float], default=(1, 1)
+        figsize : tuple[int, int] | None, default=None
+        filename : Path | None, default=None
+
+        Returns
+        -------
+        GraphVisualizer
+        """
         # We can't use functools.singledispatch here.
         # If we annotate the dispatch argument with CausalFlow[AbstractPlanarMeasurement]
         # compilation will fail because generic types are only known statically.
@@ -137,8 +210,8 @@ class GraphVisualizer:
             edge_paths=edge_paths,
             arrow_paths=arrow_paths,
             n_layers=n_layers,
-            show_pauli_measurement=show_pauli_measurement,
-            show_measurement_labels=show_measurement_labels,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
             node_labels=node_labels,
             local_clifford=local_clifford,
             node_distance=node_distance,
@@ -150,14 +223,31 @@ class GraphVisualizer:
     @staticmethod
     def from_xzcorrections(
         xz_corr: XZCorrections[AbstractMeasurement],
-        show_pauli_measurement: bool = True,
-        show_measurement_labels: bool = False,
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         local_clifford: Mapping[int, Clifford] | None = None,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> GraphVisualizer:
+        """Create a ``GraphVisualizer`` from an ``XZCorrections`` instance.
+
+        Parameters
+        ----------
+        xz_corr : XZCorrections[AbstractMeasurement]
+        pauli_measurements : bool, default=True
+        measurement_labels : bool, default=False
+        node_labels : bool | Mapping[int, str], default=True
+        local_clifford : Mapping[int, Clifford] | None, default=None
+        node_distance : tuple[float, float], default=(1, 1)
+        figsize : tuple[int, int] | None, default=None
+        filename : Path | None, default=None
+
+        Returns
+        -------
+        GraphVisualizer
+        """
         pos = _compute_positions_partial_order(xz_corr)
         pos = _scale_positions(pos, node_distance)
         edge_paths = _compute_edge_paths(xz_corr.og, pos)
@@ -171,8 +261,8 @@ class GraphVisualizer:
             edge_paths=edge_paths,
             arrow_paths=arrow_paths,
             n_layers=n_layers,
-            show_pauli_measurement=show_pauli_measurement,
-            show_measurement_labels=show_measurement_labels,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
             node_labels=node_labels,
             local_clifford=local_clifford,
             node_distance=node_distance,
@@ -182,6 +272,10 @@ class GraphVisualizer:
         )
 
     def visualize(self) -> None:
+        """Generate and display the complete graph visualization.
+
+        The figure is displayed via ``plt.show()`` or saved when ``self.filename`` has a non-null value.
+        """
         plot_lims = self._determine_plot_lims()
         figsize = self.figsize or self._determine_figsize()
         plt.figure(figsize=figsize)
@@ -190,16 +284,25 @@ class GraphVisualizer:
         self._draw_arrows()
         self._draw_nodes()
         plot_lims = self._draw_layers(plot_lims)
-        if self.show_measurement_labels:
+        if self.measurement_labels:
             self._draw_measurements_labels()
         self._draw_local_clifford()  # Skipped if `self.local_clifford` is `None`.
 
         self._set_plot_lims(plot_lims)
         self._draw_legend()
 
-        plt.plot()
+        if self.filename is None:
+            plt.show()
+        else:
+            plt.savefig(self.filename, bbox_inches="tight")
 
     def _determine_figsize(self) -> _Point:
+        """Determine figure size based on node positions and node distance.
+
+        Returns
+        -------
+        _Point
+        """
         x_pos: set[float] = set()
         y_pos: set[float] = set()
         for node in self.og.graph.nodes():
@@ -211,6 +314,12 @@ class GraphVisualizer:
         return (width * self.node_distance[0], height * self.node_distance[1])
 
     def _determine_plot_lims(self) -> PlotLims:
+        """Determine plot axis limits based on node positions.
+
+        Returns
+        -------
+        PlotLims
+        """
         nodes = self.og.graph.nodes()
         xmin = min((self.pos[node][0] for node in nodes), default=0)
         xmax = max((self.pos[node][0] for node in nodes), default=0)
@@ -221,11 +330,37 @@ class GraphVisualizer:
 
     @staticmethod
     def _set_plot_lims(plot_lims: PlotLims) -> None:
+        """Adjust plot limits.
+
+        Parameters
+        ----------
+        plot_lims : PlotLims
+            Current plot limits in axis coordinates.
+        """
         offset = 0.7
         plt.xlim(plot_lims.xmin - offset, plot_lims.xmax + offset)
         plt.ylim(plot_lims.ymin - offset, plot_lims.ymax + offset)
 
     def _draw_nodes(self) -> None:
+        """Draw graph nodes with colors indicating their role and measurement type.
+
+        Notes
+        -----
+        Node colors are assigned as follows:
+        - Input nodes: default fill with input-colored edge.
+        - Output nodes: output-colored fill with default edge.
+        - Pauli measurement nodes (if ``self.show_pauli_measurement=True``): Pauli-colored fill.
+        - Other nodes: default fill and edge color.
+
+        See module-level Style constants for actual color values.
+
+        Node labels are drawn with adaptive font sizing: font size scales inversely
+        with the number of digits in the largest node index to prevent label overflow
+        in graphs with many nodes (100+).
+
+        Node labels are obtained from the ``self.node_labels`` mapping if provided; otherwise
+        ``networkx`` automatically generates numeric labels from node identifiers.
+        """
         for node in self.og.graph.nodes():
             fc = DEFAULT_NODE_FC
             ec = DEFAULT_NODE_EC
@@ -233,7 +368,7 @@ class GraphVisualizer:
                 ec = INPUT_NODE_EC
             if node in self.og.output_nodes:
                 fc = OUTPUT_NODE_FC
-            elif self.show_pauli_measurement and isinstance(self.og.measurements[node], PauliMeasurement):
+            elif self.pauli_measurements and isinstance(self.og.measurements[node], PauliMeasurement):
                 fc = PAULI_NODE_FC
             plt.scatter(*self.pos[node], edgecolor=ec, facecolor=fc, s=350, zorder=2)
 
@@ -244,6 +379,7 @@ class GraphVisualizer:
         nx.draw_networkx_labels(self.og.graph, self.pos, labels=labels, font_size=fontsize)
 
     def _draw_edges(self) -> None:
+        """Draw open graph's edges on the plot."""
         for edge, path in self.edge_paths.items():
             if len(path) == 2:
                 nx.draw_networkx_edges(self.og.graph, self.pos, edgelist=[edge], style="dashed", edge_color=EDGE_C)
@@ -252,6 +388,7 @@ class GraphVisualizer:
                 plt.plot(curve[:, 0], curve[:, 1], "--", color=EDGE_C, linewidth=1)
 
     def _draw_arrows(self) -> None:
+        """Draw correction arrows on the plot."""
         for arrow, colored_path in self.arrow_paths.items():
             path = colored_path.value
             color = colored_path.color
@@ -272,6 +409,31 @@ class GraphVisualizer:
                 )
 
     def _draw_layers(self, plot_lims: PlotLims) -> PlotLims:
+        """Draw partial order layer separators and labels on the plot.
+
+        Parameters
+        ----------
+        plot_lims : PlotLims
+            Current plot limits in axis coordinates.
+
+        Returns
+        -------
+        PlotLims
+            Updated plot limits with ``ymin`` adjusted to account for the layer labels
+            and measurement order indicator below the plot.
+
+        Notes
+        -----
+        This method adds the following visual elements:
+        1. Vertical dashed lines separating layers.
+        2. Layer index labels positioned at the bottom, numbered in descending order
+            from ``n_layers - 1`` to ``0``.
+        3. A horizontal arrow indicating measurement order direction.
+        4. A "Layer" label below the arrow.
+
+        All text elements use fixed point offsets (in display coordinates) to ensure
+        consistent spacing relative to the plot, independent of y-axis scaling.
+        """
         fig, ax = plt.gcf(), plt.gca()
         base = ax.transData
 
@@ -341,6 +503,7 @@ class GraphVisualizer:
         return replace(plot_lims, ymin=base.inverted().transform((0, ydisp))[1])
 
     def _draw_measurements_labels(self) -> None:
+        """Add text labels indicating measurement planes and axes."""
         for node, meas in self.og.measurements.items():
             x, y = self.pos[node] + np.array([0.22, -0.2])
             label = meas.to_plane_or_axis().name
@@ -348,12 +511,17 @@ class GraphVisualizer:
             plt.text(x, y, label, fontsize=LABEL_MEAS_FS, zorder=3)
 
     def _draw_local_clifford(self) -> None:
+        """Add text labels indicating Clifford commands."""
         if self.local_clifford is not None:
             for node in self.local_clifford:
                 x, y = self.pos[node] + np.array([0.2, 0.2])
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
 
     def _draw_legend(self) -> None:
+        """Add legend to plot.
+
+        Legend is customized depending on the object being plotted (flow or XZ-corections) indicated in ``self._source``.
+        """
         plt.scatter([], [], edgecolor=INPUT_NODE_EC, facecolor=DEFAULT_NODE_FC, s=150, zorder=2, label="Input nodes")
         plt.scatter([], [], edgecolor=DEFAULT_NODE_EC, facecolor=OUTPUT_NODE_FC, s=150, zorder=2, label="Output nodes")
         plt.scatter(
@@ -378,6 +546,19 @@ class GraphVisualizer:
 def _compute_positions_partial_order(
     obj: PauliFlow[AbstractMeasurement] | XZCorrections[AbstractMeasurement],
 ) -> dict[int, _Point]:
+    """Compute node positions for objects with a partial order.
+
+    Parameters
+    ----------
+    obj : PauliFlow[AbstractMeasurement] | XZCorrections[AbstractMeasurement]
+
+    Returns
+    -------
+    dict[int, _Point]
+        Dictionary mapping node identifiers to (x, y) coordinates for visualization.
+        X-coordinates represent the layer in the partial order (higher x = earlier layer).
+        Y-coordinates represent the vertical position within start node chains.
+    """
     graph = obj.og.graph
     pol = obj.partial_order_layers
     layers = dict(enumerate(pol[::-1]))
@@ -390,6 +571,19 @@ def _compute_positions_partial_order(
 
 
 def _compute_positions_causal_flow(obj: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
+    """Compute node positions for causal flow graph layout.
+
+    Parameters
+    ----------
+    obj : CausalFlow[AbstractPlanarMeasurement]
+
+    Returns
+    -------
+    dict[int, _Point]
+        Dictionary mapping node identifiers to (x, y) coordinates for visualization.
+        X-coordinates represent the layer in the partial order (higher x = earlier layer).
+        Y-coordinates represent the vertical position within start node chains.
+    """
     og = obj.og
     cf = obj.correction_function
     pol = obj.partial_order_layers
@@ -413,21 +607,87 @@ def _compute_positions_causal_flow(obj: CausalFlow[AbstractPlanarMeasurement]) -
 
 
 def _scale_positions(pos: Mapping[int, _Point], node_distance: tuple[float, float]) -> dict[int, _Point]:
+    """Scale node positions by a distance factor.
+
+    Parameters
+    ----------
+    pos : Mapping[int, _Point]
+        Mapping of node identifiers to their (x, y) coordinates.
+    node_distance : tuple[float, float]
+        Scaling factors as (x_scale, y_scale) to apply to each position.
+
+    Returns
+    -------
+    dict[int, _Point]
+        Dictionary mapping node identifiers to scaled (x, y) coordinates.
+        If node_distance is (1, 1), returns the original positions as a dict.
+    """
     if node_distance != (1, 1):
         pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}
     return dict(pos)  # To comply with mypy
 
 
 def _compute_edge_paths(og: OpenGraph[AbstractMeasurement], pos: Mapping[int, _Point]) -> dict[_Edge, _Path]:
+    """Compute bezier curve paths for all edges in the graph.
+
+    Parameters
+    ----------
+    og : OpenGraph[AbstractMeasurement]
+        The open graph containing nodes and edges to be rendered.
+    pos : Mapping[int, _Point]
+        Mapping of node identifiers to their (x, y) coordinates.
+
+    Returns
+    -------
+    dict[_Edge, _Path]
+        Dictionary mapping edges to their computed bezier curve paths.
+
+    See Also
+    --------
+    _find_bezier_path : Computes individual bezier curve paths between node pairs.
+    """
     edges = og.graph.edges()
     return {edge: _find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in edges}
 
 
 def _format_corrections_flow(flow: PauliFlow[AbstractMeasurement]) -> set[Colored[_Edge]]:
+    """Assign the standard flow color (FLOW_C) to correction function edges (pairs of measured and corrected nodes) in the flow graph.
+
+    Parameters
+    ----------
+    flow : PauliFlow[AbstractMeasurement]
+
+    Returns
+    -------
+    set[Colored[_Edge]]
+        Set of colored edges.
+
+    Notes
+    -----
+    See module-level Style constants for actual color values.
+    """
     return {Colored((k, v), FLOW_C) for k, values in flow.correction_function.items() for v in values}
 
 
 def _format_corrections_xz(xz_corr: XZCorrections[AbstractMeasurement]) -> set[Colored[_Edge]]:
+    """Assign colors to X and Z correction edges (pairs of measured and corrected nodes) based on correction type.
+
+    Parameters
+    ----------
+    xz_corr : XZCorrections[AbstractMeasurement]
+
+    Returns
+    -------
+    set[Colored[_Edge]]
+        Set of colored edges representing corrections. Edge colors are assigned as:
+        - ``X_C`` : edges in X-corrections only
+        - ``Z_C`` : edges in Z-corrections only
+        - ``XZ_C`` : edges in both X-corrections and Z-corrections
+
+    Notes
+    -----
+    See module-level Style constants for actual color values.
+    """
     correction_arrows: set[Colored[_Edge]] = set()
     colors = (X_C, Z_C, XZ_C)
     for measured_node in xz_corr.og.measurements:
@@ -444,6 +704,26 @@ def _format_corrections_xz(xz_corr: XZCorrections[AbstractMeasurement]) -> set[C
 def _compute_arrow_paths(
     pos: Mapping[int, _Point], edges: AbstractSet[_Edge], correction_arrows: AbstractSet[Colored[_Edge]]
 ) -> dict[_Edge, Colored[_Path]]:
+    """Compute bezier curve paths for all correction arrows in the graph.
+
+    Parameters
+    ----------
+    pos : Mapping[int, _Point]
+        Mapping of node identifiers to their (x, y) coordinates.
+    edges : AbstractSet[_Edge]
+        Open graph's edges.
+    correction_arrows: AbstractSet[Colored[_Edge]]
+        Set of colored edges representing corrections.
+
+    Returns
+    -------
+    dict[_Edge, _Path]
+        Dictionary mapping correction edges to their colored computed bezier curve paths.
+
+    See Also
+    --------
+    _find_bezier_path : Computes individual bezier curve paths between node pairs.
+    """
     arrow_paths: dict[_Edge, Colored[_Path]] = {}
 
     for colored_arrow in correction_arrows:
@@ -476,6 +756,24 @@ def _compute_arrow_paths(
 
 
 def _find_bezier_path(arrow: _Edge, bezier_path: Iterable[_Point], pos: Mapping[int, _Point]) -> list[_Point]:
+    """Compute a bezier curve path between two nodes, avoiding intersections with other nodes.
+
+    Parameters
+    ----------
+    arrow : _Edge
+        The edge as a (source_node, target_node) pair for which to compute the path.
+    bezier_path : Iterable[_Point]
+        Initial bezier path as a sequence of (x, y) coordinates.
+    pos : Mapping[int, _Point]
+        Mapping of all node identifiers to their (x, y) coordinates.
+
+    Returns
+    -------
+    list[_Point]
+        Refined bezier curve path as a list of (x, y) coordinates. The path is
+        iteratively adjusted to avoid intersections with intermediate nodes while
+        preserving the start and end points.
+    """
     bezier_path = list(bezier_path)
     max_iter = 5
     iteration = 0
@@ -636,18 +934,18 @@ def _point_from_node(pos: Sequence[float], dist: float, angle: float) -> _Point:
 
     Parameters
     ----------
-                    pos : Sequence[float]
-                        Coordinate of the node.
-                    dist : float
-                        Distance from ``pos``.
-                    angle : float
+    pos : Sequence[float]
+        Coordinate of the node.
+    dist : float
+        Distance from ``pos``.
+    angle : float
                         Angle in degrees measured counter-clockwise from the
                         positive x-axis.
 
     Returns
     -------
-                    _Point
-                        The new ``[x, y]`` coordinate.
+    _Point
+        The new ``[x, y]`` coordinate.
     """
     angle = np.deg2rad(angle)
     return (pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle))

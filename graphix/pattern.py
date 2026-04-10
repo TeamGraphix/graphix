@@ -1590,8 +1590,8 @@ class Pattern:
     def draw_flow(
         self,
         flow_from_pattern: bool = True,
-        show_pauli_measurement: bool = True,
-        show_measurement_labels: bool = False,
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         local_clifford: bool = False,
         node_distance: tuple[float, float] = (1, 1),
@@ -1600,27 +1600,34 @@ class Pattern:
         *,
         stacklevel: int = 1,
     ) -> None:
-        """Visualize the underlying graph of the pattern with flow or gflow structure.
+        """Visualize the underlying graph of the pattern with its flow if it exists.
 
         Parameters
         ----------
-        flow_from_pattern : bool
-            If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
-        show_local_clifford : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, measurement planes are displayed adjacent to the nodes.
-        show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to True.
-        node_distance : tuple
-            Distance multiplication factor between nodes for x and y directions.
-        figsize : tuple
-            Figure size of the plot.
-        filename : Path | None
-            If not None, filename of the png file to save the plot. If None, the plot is not saved.
-            Default in None.
+        flow_from_pattern : bool, default=True
+            If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
+        pauli_measurements : bool, default=True
+            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
+        measurement_labels : bool, default=False
+            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+        node_labels : bool | Mapping[int, str], default=True
+            If ``True``, display numeric node labels. If a mapping, use custom labels
+            for nodes specified in the mapping.
+        local_clifford : Mapping[int, Clifford] | None, default=None
+            Mapping of node identifiers to local Clifford operators. If provided,
+            operators are displayed on their corresponding nodes.
+        node_distance : tuple[float, float], default=(1, 1)
+            Scaling factors (x_scale, y_scale) applied to node positions.
+        figsize : tuple[int, int] | None, default=None
+            Figure dimensions (width, height) in inches. If ``None``, dimensions are
+            determined automatically based on graph structure.
+        filename : Path | None, default=None
+            File path to save the visualization. If ``None``, figure is displayed but not saved.
+
+        Raises
+        ------
+        PatternError
+            If the underlying opengraph does not have flow.
         """
         flow: PauliFlow[Measurement] | None = None
 
@@ -1647,8 +1654,8 @@ class Pattern:
         lc = self.extract_clifford() if local_clifford else None
         gv = GraphVisualizer.from_flow(
             flow=flow,
-            show_pauli_measurement=show_pauli_measurement,
-            show_measurement_labels=show_measurement_labels,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
             node_labels=node_labels,
             local_clifford=lc,
             node_distance=node_distance,
@@ -1659,42 +1666,44 @@ class Pattern:
 
     def draw_xzcorrections(
         self,
-        show_pauli_measurement: bool = True,
-        show_measurement_labels: bool = False,
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         local_clifford: bool = False,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
-        """Visualize the underlying graph of the pattern with flow or gflow structure.
+        """Visualize the underlying graph of the pattern with its XZ-corrections.
+
+        This method calls :meth:`self.extract_xzcorrections`.
 
         Parameters
         ----------
-        flow_from_pattern : bool
-            If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
-        show_local_clifford : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, measurement planes are displayed adjacent to the nodes.
-        show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to True.
-        node_distance : tuple
-            Distance multiplication factor between nodes for x and y directions.
-        figsize : tuple
-            Figure size of the plot.
-        filename : Path | None
-            If not None, filename of the png file to save the plot. If None, the plot is not saved.
-            Default in None.
+        pauli_measurements : bool, default=True
+            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
+        measurement_labels : bool, default=False
+            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+        node_labels : bool | Mapping[int, str], default=True
+            If ``True``, display numeric node labels. If a mapping, use custom labels
+            for nodes specified in the mapping.
+        local_clifford : Mapping[int, Clifford] | None, default=None
+            Mapping of node identifiers to local Clifford operators. If provided,
+            operators are displayed on their corresponding nodes.
+        node_distance : tuple[float, float], default=(1, 1)
+            Scaling factors (x_scale, y_scale) applied to node positions.
+        figsize : tuple[int, int] | None, default=None
+            Figure dimensions (width, height) in inches. If ``None``, dimensions are
+            determined automatically based on graph structure.
+        filename : Path | None, default=None
+            File path to save the visualization. If ``None``, figure is displayed but not saved.
         """
         xzcorrections = self.extract_xzcorrections()
         lc = self.extract_clifford() if local_clifford else None
         gv = GraphVisualizer.from_xzcorrections(
             xz_corr=xzcorrections,
-            show_pauli_measurement=show_pauli_measurement,
-            show_measurement_labels=show_measurement_labels,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
             node_labels=node_labels,
             local_clifford=lc,
             node_distance=node_distance,
