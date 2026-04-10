@@ -17,3 +17,18 @@ This module defines some optimization passes for patterns.
 .. autofunction:: remove_useless_domains
 
 .. autofunction:: single_qubit_domains
+
+:mod:`graphix.space_minimization` module
+++++++++++++++++++++++++++++++++++++++++
+
+This module defines space minimization procedures for patterns.
+
+.. currentmodule:: graphix.space_minimization
+
+.. autofunction:: minimize_space
+
+.. autofunction:: minimization_using_causal_flow
+
+.. autofunction:: do_nothing_for_space_minimization
+
+.. autofunction:: greedy_minimization_by_degree

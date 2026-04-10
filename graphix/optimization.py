@@ -28,6 +28,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
+from graphix.space_minimization import minimize_space, standardized_pattern_max_space
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     from typing import Self
 
     from graphix import Pattern
+    from graphix.space_minimization import SpaceMinimizationHeuristic
 
 
 def standardize(pattern: Pattern) -> Pattern:
@@ -347,6 +349,38 @@ class StandardizedPattern(_StandardizedPattern):
             {node: expand_domain(domain) for node, domain in self.x_dict.items()},
         )
 
+    def max_space(self) -> int:
+        """Compute the maximum number of nodes that must be present in the graph (graph space) during the execution of the space-optimal pattern for the given measurement order.
+
+        This is equivalent to ``to_space_optimal_pattern().max_space()``.
+
+        Returns
+        -------
+        n_nodes : int
+            Maximum number of nodes present in the graph during space-optimal
+            pattern execution.
+        """
+        return standardized_pattern_max_space(self)
+
+    def minimize_space(self, heuristics: Iterable[SpaceMinimizationHeuristic] | None = None) -> StandardizedPattern:
+        """Return a pattern that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
+
+        See :func:`graphix.space_minimization.minimize_space` for more information about the default heuristics.
+
+        Parameters
+        ----------
+        heuristics : Iterable[SpaceMinimizationHeuristic] | None = None
+            The heuristics to try in order.
+            By default:
+            ``[minimization_using_causal_flow, greedy_minimization_by_degree, do_nothing_for_space_minimization]``
+
+        Returns
+        -------
+        StandardizedPattern
+            The optimized pattern.
+        """
+        return minimize_space(self, heuristics)
+
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""
         pattern = graphix.pattern.Pattern(input_nodes=self.input_nodes)
@@ -364,41 +398,9 @@ class StandardizedPattern(_StandardizedPattern):
 
     def to_space_optimal_pattern(self) -> Pattern:
         """Return a pattern that is space-optimal for the given measurement order."""
-        pattern = graphix.pattern.Pattern(input_nodes=self.input_nodes)
-        pattern.results = dict(self.results)
-        active = set(self.input_nodes)
-        done: set[Node] = set()
-        n_dict = {n.node: n for n in self.n_list}
-        graph = self.extract_graph()
+        from graphix.space_minimization import standardized_to_space_optimal_pattern  # noqa: PLC0415
 
-        def ensure_active(node: Node) -> None:
-            """Initialize node in pattern if it has not been initialized before."""
-            if node not in active:
-                pattern.add(n_dict[node])
-                active.add(node)
-
-        def ensure_neighborhood(node: Node) -> None:
-            """Initialize and entangle the inactive nodes in the neighbourhood of ``node``."""
-            ensure_active(node)
-            for neighbor in graph.neighbors(node):
-                if neighbor not in done:
-                    ensure_active(neighbor)
-                    pattern.add(command.E((node, neighbor)))
-
-        for m in self.m_list:
-            ensure_neighborhood(m.node)
-            pattern.add(m)
-            done.add(m.node)
-        for node in self.output_nodes:
-            ensure_neighborhood(node)
-            if domain := self.z_dict.get(node):
-                pattern.add(command.Z(node, set(domain)))
-            if domain := self.x_dict.get(node):
-                pattern.add(command.X(node, set(domain)))
-            if clifford_gate := self.c_dict.get(node):
-                pattern.add(command.C(node, clifford_gate))
-            done.add(node)
-        return pattern
+        return standardized_to_space_optimal_pattern(self)
 
     def extract_opengraph(self) -> OpenGraph[Measurement]:
         """Extract the underlying resource-state open graph from the pattern.
