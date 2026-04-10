@@ -9,10 +9,10 @@ import networkx as nx
 import pytest
 
 from graphix import Circuit, Pattern, command, visualization
+from graphix.flow.visualization import _edge_intersects_node
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
-from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,6 +21,15 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.fundamentals import Angle
+
+
+def example_og() -> OpenGraph[Measurement]:
+    return OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (7, 8), (1, 3), (4, 6)]),
+        input_nodes=(0, 3, 6),
+        output_nodes=(2, 5, 8),
+        measurements=dict.fromkeys((0, 1, 3, 4, 6, 7), Measurement.XY(angle=0)),
+    )
 
 
 def example_flow(rng: Generator) -> Pattern:
@@ -107,12 +116,48 @@ def test_place_causal_flow() -> None:
 @pytest.mark.usefixtures("mock_plot")
 @pytest.mark.parametrize("example", [example_flow, example_gflow, example_pflow])
 @pytest.mark.parametrize("flow_from_pattern", [False, True])
-def test_draw_graph(example: Callable[[Generator], Pattern], flow_from_pattern: bool, fx_rng: Generator) -> None:
+@pytest.mark.parametrize("measurement_labels", [False, True])
+@pytest.mark.parametrize("pauli_measurements", [False, True])
+@pytest.mark.parametrize("local_clifford", [False, True])
+def test_draw_pattern_flow(
+    example: Callable[[Generator], Pattern],
+    flow_from_pattern: bool,
+    local_clifford: bool,
+    pauli_measurements: bool,
+    measurement_labels: bool,
+    fx_rng: Generator,
+) -> None:
     pattern = example(fx_rng)
-    pattern.draw_graph(
+    pattern.draw_flow(
         flow_from_pattern=flow_from_pattern,
+        pauli_measurements=pauli_measurements,
+        measurement_labels=measurement_labels,
+        local_clifford=local_clifford,
         node_distance=(0.7, 0.6),
     )
+    plt.close()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.parametrize("example", [example_flow, example_gflow, example_pflow])
+@pytest.mark.parametrize("measurement_labels", [False, True])
+@pytest.mark.parametrize("pauli_measurements", [False, True])
+@pytest.mark.parametrize("local_clifford", [False, True])
+def test_draw_pattern_xzcorrections(
+    example: Callable[[Generator], Pattern],
+    local_clifford: bool,
+    pauli_measurements: bool,
+    measurement_labels: bool,
+    fx_rng: Generator,
+) -> None:
+    pattern = example(fx_rng)
+    pattern.draw_xzcorrections(
+        pauli_measurements=pauli_measurements,
+        measurement_labels=measurement_labels,
+        local_clifford=local_clifford,
+        node_distance=(0.7, 0.6),
+    )
+    plt.close()
 
 
 def example_hadamard() -> Pattern:
@@ -128,78 +173,22 @@ def example_local_clifford() -> Pattern:
     return pattern
 
 
-@pytest.mark.usefixtures("mock_plot")
-def test_draw_graph_show_local_clifford() -> None:
-    pattern = example_local_clifford()
-    pattern.standardize()
-    pattern.draw_graph(
-        show_local_clifford=True,
-        node_distance=(0.7, 0.6),
-    )
-
-
-@pytest.mark.usefixtures("mock_plot")
-def test_draw_graph_show_measurement_planes(fx_rng: Generator) -> None:
-    pattern = example_pflow(fx_rng)
-    pattern.draw_graph(
-        show_measurement_planes=True,
-        node_distance=(0.7, 0.6),
-    )
-
-
-@pytest.mark.usefixtures("mock_plot")
-def test_draw_graph_show_loop(fx_rng: Generator) -> None:
-    pattern = example_pflow(fx_rng)
-    pattern.draw_graph(
-        show_loop=True,
-        node_distance=(0.7, 0.6),
-    )
-
-
-def test_draw_graph_save() -> None:
+def test_draw_pattern_xzcorrections_save() -> None:
     pattern = example_hadamard()
     with TemporaryDirectory() as dirname:
         filename = Path(dirname) / "image.png"
-        pattern.draw_graph(filename=filename)
+        pattern.draw_xzcorrections(filename=filename)
         assert filename.exists()
-
-
-def example_visualizer() -> tuple[GraphVisualizer, Pattern]:
-    pattern = example_hadamard()
-    og = pattern.extract_opengraph()
-    vis = GraphVisualizer(og)
-    return vis, pattern
-
-
-@pytest.mark.usefixtures("mock_plot")
-def test_graph_visualizer_without_plane() -> None:
-    vis, pattern = example_visualizer()
-    vis.visualize()
-    vis.visualize_from_pattern(pattern)
-
-
-@pytest.mark.usefixtures("mock_plot")
-@pytest.mark.parametrize("flow_from_pattern", [False, True])
-def test_draw_graph_without_flow(flow_from_pattern: bool) -> None:
-    pattern = Pattern(input_nodes=[0], cmds=[command.N(1), command.E((0, 1)), command.M(0), command.M(1)])
-    pattern.draw_graph(flow_from_pattern=flow_from_pattern)
 
 
 @pytest.mark.usefixtures("mock_plot")
 def test_large_node_number() -> None:
     pattern = Pattern(input_nodes=[100])
-    pattern.draw_graph()
-
-
-def test_determine_figsize_without_layers_or_pos() -> None:
-    vis, _pattern = example_visualizer()
-    with pytest.raises(ValueError):
-        vis.determine_figsize(None, None)
+    pattern.draw_flow()
 
 
 def test_edge_intersects_node_equals() -> None:
-    vis, _pattern = example_visualizer()
-    assert not vis._edge_intersects_node((0, 0), (0, 0), (0, 0))
+    assert not _edge_intersects_node((0, 0), (0, 0), (0, 0))
 
 
 @pytest.mark.usefixtures("mock_plot")
@@ -208,19 +197,51 @@ def test_custom_corrections() -> None:
         input_nodes=[0, 1, 2, 3],
         cmds=[command.M(0), command.M(1), command.X(2, {0}), command.Z(2, {0}), command.Z(3, {1})],
     )
-    og = pattern.extract_opengraph()
-    vis = GraphVisualizer(og)
-    vis.visualize_from_pattern(pattern)
-
-
-@pytest.mark.usefixtures("mock_plot")
-def test_empty_pattern() -> None:
-    pattern = Pattern()
-    pattern.draw_graph()
+    pattern.draw_xzcorrections()
 
 
 # Compare with baseline/test_draw_graph_reference.png
 # Update baseline by running: pytest --mpl-generate-path=tests/baseline
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_og_draw() -> Figure:
+    og = example_og()
+    og.draw(legend=False)
+    return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_causal_flow_draw() -> Figure:
+    og = example_og()
+    og.downcast_bloch().extract_causal_flow().draw(legend=False)
+    return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_gflow_draw() -> Figure:
+    og = example_og()
+    og.downcast_bloch().extract_gflow().draw(legend=False)
+    return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_pauli_flow_draw() -> Figure:
+    og = example_og()
+    og.infer_pauli_measurements().extract_pauli_flow().draw(legend=False)
+    return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_xzcorr_draw() -> Figure:
+    og = example_og()
+    og.downcast_bloch().extract_causal_flow().to_corrections().draw(legend=False)
+    return plt.gcf()
+
+
 @pytest.mark.usefixtures("mock_plot")
 @pytest.mark.parametrize("flow_and_not_pauli_presimulate", [False, True])
 @pytest.mark.mpl_image_compare
@@ -241,7 +262,7 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
     pattern.standardize()
-    pattern.draw_graph(
-        flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6), show_measurement_planes=True
+    pattern.draw_flow(
+        flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(1, 1), measurement_labels=True, legend=False
     )
     return plt.gcf()

@@ -190,7 +190,7 @@ def test_visualization() -> None:
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
-    pattern.draw_graph()
+    pattern.draw_xzcorrections()
 
 
 def test_simulation_exception(fx_rng: Generator) -> None:

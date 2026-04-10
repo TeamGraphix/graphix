@@ -367,6 +367,7 @@ class XZCorrections(Generic[_AM_co]):
         measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         node_distance: tuple[float, float] = (1, 1),
+        legend: bool = True,
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
@@ -383,6 +384,8 @@ class XZCorrections(Generic[_AM_co]):
             for nodes specified in the mapping.
         node_distance : tuple[float, float], default=(1, 1)
             Scaling factors (x_scale, y_scale) applied to node positions.
+        legend : bool, default=True
+            If ``True``, legend is shown.
         figsize : tuple[int, int] | None, default=None
             Figure dimensions (width, height) in inches. If ``None``, dimensions are
             determined automatically based on graph structure.
@@ -395,6 +398,7 @@ class XZCorrections(Generic[_AM_co]):
             measurement_labels=measurement_labels,
             node_labels=node_labels,
             node_distance=node_distance,
+            legend=legend,
             figsize=figsize,
             filename=filename,
         )
@@ -734,6 +738,7 @@ class PauliFlow(Generic[_AM_co]):
         measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         node_distance: tuple[float, float] = (1, 1),
+        legend: bool = True,
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
@@ -750,6 +755,8 @@ class PauliFlow(Generic[_AM_co]):
             for nodes specified in the mapping.
         node_distance : tuple[float, float], default=(1, 1)
             Scaling factors (x_scale, y_scale) applied to node positions.
+        legend : bool, default=True
+            If ``True``, legend is shown.
         figsize : tuple[int, int] | None, default=None
             Figure dimensions (width, height) in inches. If ``None``, dimensions are
             determined automatically based on graph structure.
@@ -762,6 +769,7 @@ class PauliFlow(Generic[_AM_co]):
             measurement_labels=measurement_labels,
             node_labels=node_labels,
             node_distance=node_distance,
+            legend=legend,
             figsize=figsize,
             filename=filename,
         )

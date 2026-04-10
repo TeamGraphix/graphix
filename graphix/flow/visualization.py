@@ -130,6 +130,8 @@ class GraphVisualizer:
         operators are displayed on their corresponding nodes.
     node_distance : tuple[float, float], default=(1, 1)
         Scaling factors (x_scale, y_scale) applied to node positions.
+    legend : bool, default=True
+        If ``True`` legend is shown.
     figsize : tuple[int, int] | None, default=None
         Figure dimensions (width, height) in inches. If ``None``, dimensions are
         determined automatically based on graph structure.
@@ -159,6 +161,7 @@ class GraphVisualizer:
     node_labels: bool | Mapping[int, str] = True
     local_clifford: Mapping[int, Clifford] | None = None
     node_distance: tuple[float, float] = (1, 1)
+    legend: bool = True
     figsize: tuple[int, int] | None = None
     filename: Path | None = None
     _source: _Source | None = None
@@ -170,6 +173,7 @@ class GraphVisualizer:
         measurement_labels: bool = False,
         node_labels: bool | Mapping[int, str] = True,
         node_distance: tuple[float, float] = (1, 1),
+        legend: bool = True,
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> GraphVisualizer:
@@ -182,6 +186,7 @@ class GraphVisualizer:
         measurement_labels : bool, default=False
         node_labels : bool | Mapping[int, str], default=True
         node_distance : tuple[float, float], default=(1, 1)
+        legend : bool, default=True
         figsize : tuple[int, int] | None, default=None
         filename : Path | None, default=None
 
@@ -200,6 +205,7 @@ class GraphVisualizer:
             measurement_labels=measurement_labels,
             node_labels=node_labels,
             node_distance=node_distance,
+            legend=legend,
             figsize=figsize,
             filename=filename,
             _source=_Source.OG,
@@ -213,6 +219,7 @@ class GraphVisualizer:
         node_labels: bool | Mapping[int, str] = True,
         local_clifford: Mapping[int, Clifford] | None = None,
         node_distance: tuple[float, float] = (1, 1),
+        legend: bool = True,
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> GraphVisualizer:
@@ -226,6 +233,7 @@ class GraphVisualizer:
         node_labels : bool | Mapping[int, str], default=True
         local_clifford : Mapping[int, Clifford] | None, default=None
         node_distance : tuple[float, float], default=(1, 1)
+        legend : bool, default=True
         figsize : tuple[int, int] | None, default=None
         filename : Path | None, default=None
 
@@ -263,6 +271,7 @@ class GraphVisualizer:
             node_labels=node_labels,
             local_clifford=local_clifford,
             node_distance=node_distance,
+            legend=legend,
             figsize=figsize,
             filename=filename,
             _source=_Source.Flow,
@@ -276,6 +285,7 @@ class GraphVisualizer:
         node_labels: bool | Mapping[int, str] = True,
         local_clifford: Mapping[int, Clifford] | None = None,
         node_distance: tuple[float, float] = (1, 1),
+        legend: bool = True,
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> GraphVisualizer:
@@ -289,6 +299,7 @@ class GraphVisualizer:
         node_labels : bool | Mapping[int, str], default=True
         local_clifford : Mapping[int, Clifford] | None, default=None
         node_distance : tuple[float, float], default=(1, 1)
+        legend : bool, default=True
         figsize : tuple[int, int] | None, default=None
         filename : Path | None, default=None
 
@@ -314,6 +325,7 @@ class GraphVisualizer:
             node_labels=node_labels,
             local_clifford=local_clifford,
             node_distance=node_distance,
+            legend=legend,
             figsize=figsize,
             filename=filename,
             _source=_Source.XZCorr,
@@ -335,7 +347,7 @@ class GraphVisualizer:
 
         self._draw_nodes()
 
-        if self.n_layers is not None:
+        if self.n_layers:
             plot_lims = self._draw_layers(plot_lims)
 
         if self.measurement_labels:
@@ -345,7 +357,8 @@ class GraphVisualizer:
             self._draw_local_clifford()
 
         self._set_plot_lims(plot_lims)
-        self._draw_legend()
+        if self.legend:
+            self._draw_legend()
 
         if self.filename is None:
             plt.show()
@@ -646,63 +659,70 @@ def _compute_positions_opengraph(og: OpenGraph[AbstractMeasurement]) -> dict[int
     layers: dict[int, int] = {}
     connected_components = list(nx.connected_components(og.graph))
 
+    n_outputs = len(og.output_nodes)
+    n_inputs = len(og.input_nodes)
+
+    oset = set(og.output_nodes)
+    iset = set(og.input_nodes)
+
+    def update_layers(
+        subgraph: nx.Graph[int],
+        initial_pos: dict[int, tuple[int, int]],
+        fixed_nodes: Sequence[int],
+        n: int,
+        offset: int,
+    ) -> None:
+        pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
+        # order the nodes based on the x-coordinate
+        order = sorted(pos, key=lambda x: pos[x][0])
+        order = [node for node in order if node not in fixed_nodes]
+        for i, node in enumerate(order[::-1]):
+            k = i // n + offset
+            layers[node] = k
+
     for component in connected_components:
         subgraph = og.graph.subgraph(component)
+        comp_set = set(component)
         initial_pos: dict[int, tuple[int, int]] = dict.fromkeys(component, (0, 0))
 
-        if len(set(og.output_nodes) & set(component)) == 0 and len(set(og.input_nodes) & set(component)) == 0:
+        n_comp_o = len(oset & comp_set)
+        n_comp_i = len(iset & comp_set)
+
+        if n_comp_o == 0 and n_comp_i == 0:
             pos = nx.spring_layout(subgraph)
             # order the nodes based on the x-coordinate
             order = sorted(pos, key=lambda x: pos[x][0])
             layers.update((node, k) for k, node in enumerate(order[::-1]))
 
-        elif len(set(og.output_nodes) & set(component)) > 0 and len(set(og.input_nodes) & set(component)) == 0:
-            fixed_nodes = list(set(og.output_nodes) & set(component))
+        elif n_comp_o > 0 and n_comp_i == 0:
+            fixed_nodes = list(oset & comp_set)
+            update_layers(subgraph, initial_pos, fixed_nodes, n=n_outputs, offset=1)
             for i, node in enumerate(fixed_nodes):
                 initial_pos[node] = (10, i)
                 layers[node] = 0
-            pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
-            # order the nodes based on the x-coordinate
-            order = sorted(pos, key=lambda x: pos[x][0])
-            order = [node for node in order if node not in fixed_nodes]
-            nv = len(og.output_nodes)
-            for i, node in enumerate(order[::-1]):
-                k = i // nv + 1
-                layers[node] = k
 
-        elif len(set(og.output_nodes) & set(component)) == 0 and len(set(og.input_nodes) & set(component)) > 0:
-            fixed_nodes = list(set(og.input_nodes) & set(component))
+        elif n_comp_o == 0 and n_comp_i > 0:
+            fixed_nodes = list(iset & comp_set)
+            update_layers(subgraph, initial_pos, fixed_nodes, n=n_inputs, offset=0)
             for i, node in enumerate(fixed_nodes):
                 initial_pos[node] = (-10, i)
-            pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
-            # order the nodes based on the x-coordinate
-            order = sorted(pos, key=lambda x: pos[x][0])
-            order = [node for node in order if node not in fixed_nodes]
-            nv = len(og.input_nodes)
-            for i, node in enumerate(order[::-1]):
-                k = i // nv
-                layers[node] = k
             layer_input = 0 if layers == {} else max(layers.values()) + 1
             for node in fixed_nodes:
                 layers[node] = layer_input
 
         else:
-            for i, node in enumerate(list(set(og.output_nodes) & set(component))):
+            o_comp_lst = list(oset & comp_set)
+            i_comp_lst = list(iset & comp_set)
+            for i, node in enumerate(o_comp_lst):
                 initial_pos[node] = (10, i)
                 layers[node] = 0
-            for i, node in enumerate(list(set(og.input_nodes) & set(component))):
+            for i, node in enumerate(i_comp_lst):
                 initial_pos[node] = (-10, i)
-            fixed_nodes = list(set(og.output_nodes) & set(component)) + list(set(og.input_nodes) & set(component))
-            pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
-            # order the nodes based on the x-coordinate
-            order = sorted(pos, key=lambda x: pos[x][0])
-            order = [node for node in order if node not in fixed_nodes]
-            nv = len(og.output_nodes)
-            for i, node in enumerate(order[::-1]):
-                k = i // nv + 1
-                layers[node] = k
+
+            fixed_nodes = o_comp_lst + i_comp_lst
+            update_layers(subgraph, initial_pos, fixed_nodes, n=n_outputs, offset=1)
             layer_input = max(layers.values()) + 1
-            for node in set(og.input_nodes) & set(component) - set(og.output_nodes):
+            for node in iset & comp_set - oset:
                 layers[node] = layer_input
 
     g_prime = og.graph.copy()
