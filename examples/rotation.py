@@ -7,7 +7,7 @@ In this example, we consider trivial problem of the rotation of two qubits in ``
 We show how transpiler (:class:`~graphix.transpiler.Circuit` class) can be used,
 and show the resulting meausrement pattern.
 
-In the next example, we describe our visualization tool :class:`~graphix.visualization.GraphVisualizer`
+In the next example, we describe our visualization tool :class:`~graphix.flow.visualization.GraphVisualizer`
 and how to understand the plot.
 
 First, let us import relevant modules:
