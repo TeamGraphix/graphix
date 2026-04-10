@@ -39,7 +39,7 @@ pattern.draw_flow(flow_from_pattern=False, measurement_labels=True)
 # next, show the gflow:
 pattern.remove_input_nodes()
 pattern.perform_pauli_measurements()
-pattern.draw_flow(flow_from_pattern=False, measurement_labels=True, node_distance=(1, 0.6))
+pattern.draw_flow(flow_from_pattern=False, measurement_labels=True)
 
 
 # %%
@@ -49,13 +49,13 @@ pattern.draw_flow(flow_from_pattern=False, measurement_labels=True, node_distanc
 #
 
 # node_distance argument specifies the scale of the node arrangement in x and y directions.
-pattern.draw_flow(flow_from_pattern=True, measurement_labels=True, node_distance=(0.7, 0.6))
+pattern.draw_flow(flow_from_pattern=True, measurement_labels=True)
 
 # %%
 # Instead of the measurement planes, we can show the local Clifford of the resource graph.
 # see *clifford.py* for the details of the indices of each single-qubit Clifford operators.
 # 6 is the Hadamard and 8 is the :math:`\sqrt{iY}` operator.
-pattern.draw_flow(flow_from_pattern=True, local_clifford=True, node_distance=(0.7, 0.6))
+pattern.draw_flow(flow_from_pattern=True, local_clifford=True)
 
 # %%
 # Visualize based on the graph
@@ -88,7 +88,7 @@ measurements = {
     3: Measurement.YZ(0),
 }
 og = OpenGraph(graph, inputs, outputs, measurements)
-cf = og.extract_causal_flow()
+cf = og.extract_gflow()
 cf.draw()
 
 # %%
