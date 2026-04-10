@@ -2,7 +2,7 @@
 Visualizing the patterns and flows
 ==================================
 
-:class:`~graphix.visualization.GraphVisualizer` tool offers a wide selection of
+:class:`~graphix.flow.visualization.GraphVisualizer` tool offers a wide selection of
 visualization methods for inspecting the causal structure of the graph associated
 with the pattern, graph or the (generalized-)flow.
 """
@@ -11,7 +11,7 @@ with the pattern, graph or the (generalized-)flow.
 # Causal flow
 # -----------
 # First, let us inspect the flow and gflow associated with the resource graph of a pattern.
-# simply call :meth:`~graphix.pattern.Pattern.draw_graph` method.
+# simply call :meth:`~graphix.pattern.Pattern.draw_flow` method.
 # Below we list the meaning of the node boundary and face colors.
 #
 # - Nodes with red boundaries are the *input nodes* where the computation starts.
@@ -33,13 +33,13 @@ circuit.cnot(2, 1)
 pattern = circuit.transpile().pattern
 # note that this visualization is not always consistent with the correction set of pattern,
 # since we find the correction sets with flow-finding algorithms.
-pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True)
+pattern.draw_flow(flow_from_pattern=False, measurement_labels=True)
 
 # %%
 # next, show the gflow:
 pattern.remove_input_nodes()
 pattern.perform_pauli_measurements()
-pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True, node_distance=(1, 0.6))
+pattern.draw_flow(flow_from_pattern=False, measurement_labels=True, node_distance=(1, 0.6))
 
 
 # %%
@@ -49,13 +49,13 @@ pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True, node_d
 #
 
 # node_distance argument specifies the scale of the node arrangement in x and y directions.
-pattern.draw_graph(flow_from_pattern=True, show_measurement_planes=True, node_distance=(0.7, 0.6))
+pattern.draw_flow(flow_from_pattern=True, measurement_labels=True, node_distance=(0.7, 0.6))
 
 # %%
 # Instead of the measurement planes, we can show the local Clifford of the resource graph.
 # see *clifford.py* for the details of the indices of each single-qubit Clifford operators.
 # 6 is the Hadamard and 8 is the :math:`\sqrt{iY}` operator.
-pattern.draw_graph(flow_from_pattern=True, show_local_clifford=True, node_distance=(0.7, 0.6))
+pattern.draw_flow(flow_from_pattern=True, local_clifford=True, node_distance=(0.7, 0.6))
 
 # %%
 # Visualize based on the graph
@@ -63,10 +63,10 @@ pattern.draw_graph(flow_from_pattern=True, show_local_clifford=True, node_distan
 # The visualizer also works without the pattern. Simply supply the graph.
 
 import networkx as nx
+from graphix.visualization import GraphVisualizer
 
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
-from graphix.visualization import GraphVisualizer
 
 # graph with gflow but no flow
 graph: nx.Graph[int] = nx.Graph([(1, 4), (1, 6), (2, 4), (2, 5), (2, 6), (3, 5), (3, 6)])
@@ -75,7 +75,7 @@ outputs = [4, 5, 6]
 measurements = {node: Measurement.XY(0) for node in graph.nodes() if node not in outputs}
 og = OpenGraph(graph, inputs, outputs, measurements)
 vis = GraphVisualizer(og)
-vis.visualize(show_measurement_planes=True)
+vis.visualize(measurement_labels=True)
 
 # %%
 
@@ -91,6 +91,6 @@ measurements = {
 }
 og = OpenGraph(graph, inputs, outputs, measurements)
 vis = GraphVisualizer(og)
-vis.visualize(show_measurement_planes=True)
+vis.visualize(measurement_labels=True)
 
 # %%
