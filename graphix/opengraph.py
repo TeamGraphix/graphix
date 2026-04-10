@@ -11,11 +11,13 @@ import networkx as nx
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
+from graphix.flow.visualization import GraphVisualizer
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.measurements import BlochMeasurement, Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
+    from pathlib import Path
 
     from graphix.flow.core import CausalFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
@@ -128,6 +130,46 @@ class OpenGraph(Generic[_AM_co]):
         if flow is not None:
             return flow.to_corrections().to_pattern()
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
+
+    def draw(
+        self,
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> None:
+        """Visualize the opengraph.
+
+        Parameters
+        ----------
+        pauli_measurements : bool, default=True
+            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
+        measurement_labels : bool, default=False
+            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+        node_labels : bool | Mapping[int, str], default=True
+            If ``True``, display numeric node labels. If a mapping, use custom labels
+            for nodes specified in the mapping.
+        node_distance : tuple[float, float], default=(1, 1)
+            Scaling factors (x_scale, y_scale) applied to node positions.
+        figsize : tuple[int, int] | None, default=None
+            Figure dimensions (width, height) in inches. If ``None``, dimensions are
+            determined automatically based on graph structure.
+        filename : Path | None, default=None
+            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        """
+        gv = GraphVisualizer.from_opengraph(
+            og=self,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
+            node_labels=node_labels,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+        )
+
+        gv.visualize()
 
     def map(self: OpenGraph[_A], f: Callable[[_A], _B]) -> OpenGraph[_B]:
         """Apply a function to every measurement of the open graph and return the resulting open graph.

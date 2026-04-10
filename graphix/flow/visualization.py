@@ -42,9 +42,11 @@ _T = TypeVar("_T")
 # Nodes
 DEFAULT_NODE_EC = "black"
 DEFAULT_NODE_FC = "white"
-INPUT_NODE_EC = "red"
 OUTPUT_NODE_FC = "lightgray"
 PAULI_NODE_FC = "lightblue"
+
+INPUT_NODE_MARKER = "s"
+DEFAULT_NODE_MARKER = "o"
 
 NODE_LABEL_FS = 12
 
@@ -93,8 +95,11 @@ class PlotLims:
 
 
 class _Source(Enum):
+    """Enumeration to indicate the possible sources of a ``GraphVisualizer``."""
+
     XZCorr = auto()
     Flow = auto()
+    OG = auto()
 
 
 @dataclass(frozen=True)
@@ -131,14 +136,15 @@ class GraphVisualizer:
     filename : Path | None, default=None
         File path to save the visualization. If ``None``, figure is displayed but not saved.
     _source : _Source | None, default=None
-        Internal metadata indicating the source of the graph (e.g., ``PauliFlow`` or
+        Internal metadata indicating the source of the graph (e.g., ``OpenGraph``, ``PauliFlow`` or
         ``XZCorrections``).
 
     Notes
     -----
     Instantiate this class via factory methods rather than direct construction:
-    - :meth:`from_xzcorrections` : Create from ``XZCorrections`` instance.
+    - :meth:`from_opengraph` : Create from ``OpenGraph`` instance.
     - :meth:`from_flow` : Create from ``PauliFlow`` instance.
+    - :meth:`from_xzcorrections` : Create from ``XZCorrections`` instance.
 
     Call :meth:`visualize` to generate and display the graph visualization.
     """
@@ -146,8 +152,8 @@ class GraphVisualizer:
     og: OpenGraph[AbstractMeasurement]
     pos: Mapping[int, _Point]
     edge_paths: Mapping[_Edge, _Path]
-    arrow_paths: Mapping[_Edge, Colored[_Path]]
-    n_layers: int
+    arrow_paths: Mapping[_Edge, Colored[_Path]] | None = None
+    n_layers: int | None = None
     pauli_measurements: bool = True
     measurement_labels: bool = False
     node_labels: bool | Mapping[int, str] = True
@@ -156,6 +162,48 @@ class GraphVisualizer:
     figsize: tuple[int, int] | None = None
     filename: Path | None = None
     _source: _Source | None = None
+
+    @staticmethod
+    def from_opengraph(
+        og: OpenGraph[AbstractMeasurement],
+        pauli_measurements: bool = True,
+        measurement_labels: bool = False,
+        node_labels: bool | Mapping[int, str] = True,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> GraphVisualizer:
+        """Create a ``GraphVisualizer`` from an ``OpenGraph`` instance.
+
+        Parameters
+        ----------
+        og : OpenGraph[AbstractMeasurement]
+        pauli_measurements : bool, default=True
+        measurement_labels : bool, default=False
+        node_labels : bool | Mapping[int, str], default=True
+        node_distance : tuple[float, float], default=(1, 1)
+        figsize : tuple[int, int] | None, default=None
+        filename : Path | None, default=None
+
+        Returns
+        -------
+        GraphVisualizer
+        """
+        pos = _compute_positions_opengraph(og)
+        edge_paths = _compute_edge_paths(og, pos)
+
+        return GraphVisualizer(
+            og=og,
+            pos=pos,
+            edge_paths=edge_paths,
+            pauli_measurements=pauli_measurements,
+            measurement_labels=measurement_labels,
+            node_labels=node_labels,
+            node_distance=node_distance,
+            figsize=figsize,
+            filename=filename,
+            _source=_Source.OG,
+        )
 
     @staticmethod
     def from_flow(
@@ -172,7 +220,7 @@ class GraphVisualizer:
 
         Parameters
         ----------
-        xz_corr : PauliFlow[AbstractMeasurement]
+        flow : PauliFlow[AbstractMeasurement]
         pauli_measurements : bool, default=True
         measurement_labels : bool, default=False
         node_labels : bool | Mapping[int, str], default=True
@@ -281,12 +329,20 @@ class GraphVisualizer:
         plt.figure(figsize=figsize)
 
         self._draw_edges()
-        self._draw_arrows()
+
+        if self.arrow_paths is not None:
+            self._draw_arrows()
+
         self._draw_nodes()
-        plot_lims = self._draw_layers(plot_lims)
+
+        if self.n_layers is not None:
+            plot_lims = self._draw_layers(plot_lims)
+
         if self.measurement_labels:
             self._draw_measurements_labels()
-        self._draw_local_clifford()  # Skipped if `self.local_clifford` is `None`.
+
+        if self.local_clifford is not None:
+            self._draw_local_clifford()
 
         self._set_plot_lims(plot_lims)
         self._draw_legend()
@@ -342,15 +398,15 @@ class GraphVisualizer:
         plt.ylim(plot_lims.ymin - offset, plot_lims.ymax + offset)
 
     def _draw_nodes(self) -> None:
-        """Draw graph nodes with colors indicating their role and measurement type.
+        """Draw graph nodes with style indicating their role and measurement type.
 
         Notes
         -----
-        Node colors are assigned as follows:
-        - Input nodes: default fill with input-colored edge.
-        - Output nodes: output-colored fill with default edge.
-        - Pauli measurement nodes (if ``self.show_pauli_measurement=True``): Pauli-colored fill.
-        - Other nodes: default fill and edge color.
+        Node styles are assigned as follows: and shapes
+        - Input nodes: input shape and default color.
+        - Output nodes: default shape and output-colored fill.
+        - Pauli measurement nodes (if ``self.show_pauli_measurement=True``): default shape and Pauli-measured-colored fill.
+        - Other nodes: default shape and color.
 
         See module-level Style constants for actual color values.
 
@@ -364,13 +420,14 @@ class GraphVisualizer:
         for node in self.og.graph.nodes():
             fc = DEFAULT_NODE_FC
             ec = DEFAULT_NODE_EC
+            marker = DEFAULT_NODE_MARKER
             if node in self.og.input_nodes:
-                ec = INPUT_NODE_EC
+                marker = INPUT_NODE_MARKER
             if node in self.og.output_nodes:
                 fc = OUTPUT_NODE_FC
             elif self.pauli_measurements and isinstance(self.og.measurements[node], PauliMeasurement):
                 fc = PAULI_NODE_FC
-            plt.scatter(*self.pos[node], edgecolor=ec, facecolor=fc, s=350, zorder=2)
+            plt.scatter(*self.pos[node], edgecolor=ec, facecolor=fc, s=350, zorder=2, marker=marker)
 
         labels = dict(self.node_labels) if isinstance(self.node_labels, Mapping) else None
         fontsize = NODE_LABEL_FS
@@ -389,6 +446,7 @@ class GraphVisualizer:
 
     def _draw_arrows(self) -> None:
         """Draw correction arrows on the plot."""
+        assert self.arrow_paths is not None
         for arrow, colored_path in self.arrow_paths.items():
             path = colored_path.value
             color = colored_path.color
@@ -434,6 +492,7 @@ class GraphVisualizer:
         All text elements use fixed point offsets (in display coordinates) to ensure
         consistent spacing relative to the plot, independent of y-axis scaling.
         """
+        assert self.n_layers is not None
         fig, ax = plt.gcf(), plt.gca()
         base = ax.transData
 
@@ -512,35 +571,151 @@ class GraphVisualizer:
 
     def _draw_local_clifford(self) -> None:
         """Add text labels indicating Clifford commands."""
-        if self.local_clifford is not None:
-            for node in self.local_clifford:
-                x, y = self.pos[node] + np.array([0.2, 0.2])
-                plt.text(x, y, f"{self.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
+        assert self.local_clifford is not None
+        for node in self.local_clifford:
+            x, y = self.pos[node] + np.array([0.2, 0.2])
+            plt.text(x, y, f"{self.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
 
     def _draw_legend(self) -> None:
         """Add legend to plot.
 
         Legend is customized depending on the object being plotted (flow or XZ-corections) indicated in ``self._source``.
         """
-        plt.scatter([], [], edgecolor=INPUT_NODE_EC, facecolor=DEFAULT_NODE_FC, s=150, zorder=2, label="Input nodes")
-        plt.scatter([], [], edgecolor=DEFAULT_NODE_EC, facecolor=OUTPUT_NODE_FC, s=150, zorder=2, label="Output nodes")
         plt.scatter(
-            [], [], edgecolor=DEFAULT_NODE_EC, facecolor=PAULI_NODE_FC, s=150, zorder=2, label="Pauli-measured nodes"
+            [],
+            [],
+            edgecolor=DEFAULT_NODE_EC,
+            facecolor=DEFAULT_NODE_FC,
+            s=150,
+            zorder=2,
+            label="Input nodes",
+            marker=INPUT_NODE_MARKER,
+        )
+        plt.scatter(
+            [],
+            [],
+            edgecolor=DEFAULT_NODE_EC,
+            facecolor=OUTPUT_NODE_FC,
+            s=150,
+            zorder=2,
+            label="Output nodes",
+            marker=DEFAULT_NODE_MARKER,
+        )
+        plt.scatter(
+            [],
+            [],
+            edgecolor=DEFAULT_NODE_EC,
+            facecolor=PAULI_NODE_FC,
+            s=150,
+            zorder=2,
+            label="Pauli-measured nodes",
+            marker=DEFAULT_NODE_MARKER,
         )
         plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
 
-        if self._source is not None:
-            match self._source:
-                case _Source.Flow:
-                    plt.plot([], [], color=FLOW_C, label="Correction function")
-                case _Source.XZCorr:
-                    plt.plot([], [], color=X_C, label="X corrections")
-                    plt.plot([], [], color=Z_C, label="Z corrections")
-                    plt.plot([], [], color=XZ_C, label="X and Z corrections")
-                case _:
-                    assert_never(self._source)
+        assert self._source is not None
+        match self._source:
+            case _Source.Flow:
+                plt.plot([], [], color=FLOW_C, label="Correction function")
+            case _Source.XZCorr:
+                plt.plot([], [], color=X_C, label="X corrections")
+                plt.plot([], [], color=Z_C, label="Z corrections")
+                plt.plot([], [], color=XZ_C, label="X and Z corrections")
+            case _Source.OG:
+                pass
+            case _:
+                assert_never(self._source)
 
         plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
+
+
+def _compute_positions_opengraph(og: OpenGraph[AbstractMeasurement]) -> dict[int, _Point]:
+    """Compute node positions for an open graph without partial order.
+
+    Parameters
+    ----------
+    obj : OpenGraph[AbstractMeasurement]
+
+    Returns
+    -------
+    dict[int, _Point]
+        Dictionary mapping node identifiers to (x, y) coordinates for visualization.
+        X-coordinates represent the layer in the partial order (higher x = earlier layer).
+        Y-coordinates represent the vertical position within start node chains.
+    """
+    layers: dict[int, int] = {}
+    connected_components = list(nx.connected_components(og.graph))
+
+    for component in connected_components:
+        subgraph = og.graph.subgraph(component)
+        initial_pos: dict[int, tuple[int, int]] = dict.fromkeys(component, (0, 0))
+
+        if len(set(og.output_nodes) & set(component)) == 0 and len(set(og.input_nodes) & set(component)) == 0:
+            pos = nx.spring_layout(subgraph)
+            # order the nodes based on the x-coordinate
+            order = sorted(pos, key=lambda x: pos[x][0])
+            layers.update((node, k) for k, node in enumerate(order[::-1]))
+
+        elif len(set(og.output_nodes) & set(component)) > 0 and len(set(og.input_nodes) & set(component)) == 0:
+            fixed_nodes = list(set(og.output_nodes) & set(component))
+            for i, node in enumerate(fixed_nodes):
+                initial_pos[node] = (10, i)
+                layers[node] = 0
+            pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
+            # order the nodes based on the x-coordinate
+            order = sorted(pos, key=lambda x: pos[x][0])
+            order = [node for node in order if node not in fixed_nodes]
+            nv = len(og.output_nodes)
+            for i, node in enumerate(order[::-1]):
+                k = i // nv + 1
+                layers[node] = k
+
+        elif len(set(og.output_nodes) & set(component)) == 0 and len(set(og.input_nodes) & set(component)) > 0:
+            fixed_nodes = list(set(og.input_nodes) & set(component))
+            for i, node in enumerate(fixed_nodes):
+                initial_pos[node] = (-10, i)
+            pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
+            # order the nodes based on the x-coordinate
+            order = sorted(pos, key=lambda x: pos[x][0])
+            order = [node for node in order if node not in fixed_nodes]
+            nv = len(og.input_nodes)
+            for i, node in enumerate(order[::-1]):
+                k = i // nv
+                layers[node] = k
+            layer_input = 0 if layers == {} else max(layers.values()) + 1
+            for node in fixed_nodes:
+                layers[node] = layer_input
+
+        else:
+            for i, node in enumerate(list(set(og.output_nodes) & set(component))):
+                initial_pos[node] = (10, i)
+                layers[node] = 0
+            for i, node in enumerate(list(set(og.input_nodes) & set(component))):
+                initial_pos[node] = (-10, i)
+            fixed_nodes = list(set(og.output_nodes) & set(component)) + list(set(og.input_nodes) & set(component))
+            pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
+            # order the nodes based on the x-coordinate
+            order = sorted(pos, key=lambda x: pos[x][0])
+            order = [node for node in order if node not in fixed_nodes]
+            nv = len(og.output_nodes)
+            for i, node in enumerate(order[::-1]):
+                k = i // nv + 1
+                layers[node] = k
+            layer_input = max(layers.values()) + 1
+            for node in set(og.input_nodes) & set(component) - set(og.output_nodes):
+                layers[node] = layer_input
+
+    g_prime = og.graph.copy()
+    g_prime.add_nodes_from(og.graph.nodes())
+    g_prime.add_edges_from(og.graph.edges())
+    l_max = max(layers.values())
+    l_reverse = {v: l_max - l for v, l in layers.items()}
+    nx.set_node_attributes(g_prime, l_reverse, name="subset")  # type: ignore[arg-type]
+    pos = nx.multipartite_layout(g_prime)
+    vert = list({pos[node][1] for node in og.graph.nodes()})
+    vert.sort()
+    index = {y: i for i, y in enumerate(vert)}
+    return {node: (l_max - layers[node], index[pos[node][1]]) for node in og.graph.nodes()}
 
 
 def _compute_positions_partial_order(

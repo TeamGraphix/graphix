@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
+from warnings import warn
 
 import networkx as nx
 from typing_extensions import assert_never
@@ -1639,17 +1640,22 @@ class Pattern:
                 try:
                     flow = pattern_std.extract_gflow()
                 except (FlowError, TypeError):
-                    print(
-                        "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made."
+                    warn(
+                        "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.", stacklevel=stacklevel
                     )
 
         if flow is None:
             og = self.extract_opengraph()
-            flow = og.find_causal_flow()
+            try:
+                bloch_case = og.downcast_bloch()
+            except TypeError:
+                pass
+            else:
+                flow = bloch_case.find_causal_flow()
             if flow is None:
                 flow = og.find_pauli_flow(stacklevel=stacklevel + 1)
-                if flow is None:
-                    raise PatternError("The pattern's open graph does not have Pauli flow.")
+            if flow is None:
+                raise PatternError("The pattern's open graph does not have Pauli flow.")
 
         lc = self.extract_clifford() if local_clifford else None
         gv = GraphVisualizer.from_flow(
