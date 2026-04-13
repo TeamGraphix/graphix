@@ -12,7 +12,7 @@ from graphix.circ_ext.compilation import cm_berg_pass, pexp_ladder_pass
 from graphix.circ_ext.extraction import CliffordMap, PauliExponential, PauliExponentialDAG, PauliString, extend_input
 from graphix.flow.core import PauliFlow
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
-from graphix.instruction import CNOT, RX, RY, RZ, H
+from graphix.instruction import CNOT, RX, RY, RZ, H, S
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
@@ -23,24 +23,6 @@ from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from numpy.random import PCG64
-
-try:
-    import stim
-    from graphix_stim_compiler import stim_tableau_to_cm
-
-    HAS_STIM = True
-except ImportError:
-    HAS_STIM = False
-
-    if TYPE_CHECKING:
-        import sys
-
-        # We skip type-checking the case where there is no pyzx, since
-        # pyright cannot figure out that tests are skipped in this
-        # case.
-        sys.exit(1)
-
-requires_stim = pytest.mark.skipif(not HAS_STIM, reason="stim and graphix-stim-compiler not available")
 
 
 class PauliExpTestCase(NamedTuple):
@@ -249,88 +231,191 @@ class TestCliffordMap:
         tab = cm.to_tableau()
         assert np.all(tab == tab_ref)
 
-
-def generate_stim_circuits() -> list[stim.Circuit]:
-    # We do the import in this function again because @pytest.mark.parametrize is executed at import time so the import fails before skipif can do anything if stim cannot be imported.
-    try:
-        import stim  # noqa: PLC0415
-    except ImportError:
-        return []
-
-    circuit_defs = [
-        "H 0",
-        "S 0",
-        "CNOT 0 1",
-        """
-        CNOT 0 1
-        H 0
-        H 1
-        CNOT 1 2
-        S 1
-        CNOT 0 2
-        H 2
-        S 2
-        """,
-    ]
-
-    return [stim.Circuit(defn.strip()) for defn in circuit_defs]
-
-
-@requires_stim
-class TestCliffordMapStim:
-    """Bundle Clifford map test depending on stim."""
-
-    def stim_to_clifford_circuit(self, stim_circuit: stim.Circuit) -> Circuit:
-
-        circuit = Circuit(stim_circuit.num_qubits)
-
-        # "stim.Circuit" has no attribute "__iter__"
-        # (but __len__ and __getitem__)
-        instruction: stim.CircuitInstruction
-        for instruction in stim_circuit:  # type: ignore[attr-defined]
-            match instruction.name:
-                case "CX":
-                    for control, target in instruction.target_groups():
-                        assert control.qubit_value is not None
-                        assert target.qubit_value is not None
-                        circuit.cnot(control.qubit_value, target.qubit_value)
-                case "H":
-                    for (qubit,) in instruction.target_groups():
-                        assert qubit.qubit_value is not None
-                        circuit.h(qubit.qubit_value)
-                case "S":
-                    for (qubit,) in instruction.target_groups():
-                        assert qubit.qubit_value is not None
-                        circuit.s(qubit.qubit_value)
-
-        return circuit
-
+    # The CliffordMap test cases were generated using conversion tools in the graphix-stim-compiler plugin and stim.Tableau.random.
     @pytest.mark.parametrize(
-        "stim_circuit",
-        generate_stim_circuits(),
+        ("qc_ref", "cm"),
+        [
+            (
+                Circuit(width=1, instr=[H(0)]),
+                CliffordMap(
+                    x_map={0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS)},
+                    z_map={0: PauliString(axes={0: Axis.X}, sign=Sign.PLUS)},
+                    input_nodes=[0],
+                    output_nodes=[0],
+                ),
+            ),
+            (
+                Circuit(width=1, instr=[S(0)]),
+                CliffordMap(
+                    x_map={0: PauliString(axes={0: Axis.Y}, sign=Sign.PLUS)},
+                    z_map={0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS)},
+                    input_nodes=[0],
+                    output_nodes=[0],
+                ),
+            ),
+            (
+                Circuit(width=2, instr=[CNOT(1, 0)]),
+                CliffordMap(
+                    x_map={
+                        0: PauliString(axes={0: Axis.X, 1: Axis.X}, sign=Sign.PLUS),
+                        1: PauliString(axes={1: Axis.X}, sign=Sign.PLUS),
+                    },
+                    z_map={
+                        0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS),
+                        1: PauliString(axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.PLUS),
+                    },
+                    input_nodes=[0, 1],
+                    output_nodes=[0, 1],
+                ),
+            ),
+            (
+                Circuit(width=3, instr=[CNOT(1, 0), H(0), H(1), CNOT(2, 1), S(1), CNOT(2, 0), H(2), S(2)]),
+                CliffordMap(
+                    x_map={
+                        0: PauliString(axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.PLUS),
+                        1: PauliString(axes={1: Axis.Z}, sign=Sign.PLUS),
+                        2: PauliString(axes={2: Axis.Z}, sign=Sign.PLUS),
+                    },
+                    z_map={
+                        0: PauliString(axes={0: Axis.X, 2: Axis.Z}, sign=Sign.PLUS),
+                        1: PauliString(axes={0: Axis.X, 1: Axis.Y}, sign=Sign.PLUS),
+                        2: PauliString(axes={0: Axis.Z, 1: Axis.Z, 2: Axis.Y}, sign=Sign.PLUS),
+                    },
+                    input_nodes=[0, 1, 2],
+                    output_nodes=[0, 1, 2],
+                ),
+            ),
+            (
+                Circuit(width=1, instr=[S(0), S(0), S(0)]),
+                CliffordMap(
+                    x_map={0: PauliString(axes={0: Axis.Y}, sign=Sign.MINUS)},
+                    z_map={0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS)},
+                    input_nodes=[0],
+                    output_nodes=[0],
+                ),
+            ),
+            (
+                Circuit(width=2, instr=[CNOT(1, 0), H(0), S(0), S(0), H(0), S(1), S(1)]),
+                CliffordMap(
+                    x_map={
+                        0: PauliString(axes={0: Axis.X, 1: Axis.X}, sign=Sign.MINUS),
+                        1: PauliString(axes={1: Axis.X}, sign=Sign.MINUS),
+                    },
+                    z_map={
+                        0: PauliString(axes={0: Axis.Z}, sign=Sign.MINUS),
+                        1: PauliString(axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.MINUS),
+                    },
+                    input_nodes=[0, 1],
+                    output_nodes=[0, 1],
+                ),
+            ),
+            (
+                Circuit(
+                    width=3,
+                    instr=[
+                        S(0),
+                        H(2),
+                        CNOT(2, 0),
+                        H(1),
+                        H(2),
+                        CNOT(0, 1),
+                        CNOT(0, 2),
+                        S(2),
+                        CNOT(2, 1),
+                        H(2),
+                        CNOT(1, 2),
+                        H(2),
+                        H(1),
+                        S(1),
+                        S(1),
+                        H(1),
+                        S(0),
+                        S(0),
+                        S(1),
+                        S(1),
+                    ],
+                ),
+                CliffordMap(
+                    x_map={
+                        0: PauliString(axes={0: Axis.Y, 1: Axis.Z, 2: Axis.X}, sign=Sign.PLUS),
+                        1: PauliString(axes={1: Axis.Z, 2: Axis.X}, sign=Sign.MINUS),
+                        2: PauliString(axes={0: Axis.Y, 1: Axis.Z}, sign=Sign.PLUS),
+                    },
+                    z_map={
+                        0: PauliString(axes={0: Axis.Z, 1: Axis.X, 2: Axis.Z}, sign=Sign.MINUS),
+                        1: PauliString(axes={0: Axis.X, 1: Axis.X, 2: Axis.X}, sign=Sign.PLUS),
+                        2: PauliString(axes={1: Axis.Y, 2: Axis.Y}, sign=Sign.PLUS),
+                    },
+                    input_nodes=[0, 1, 2],
+                    output_nodes=[0, 1, 2],
+                ),
+            ),
+            (
+                Circuit(
+                    width=4,
+                    instr=[
+                        CNOT(0, 3),
+                        CNOT(3, 0),
+                        CNOT(0, 3),
+                        S(0),
+                        H(0),
+                        S(0),
+                        H(2),
+                        CNOT(2, 0),
+                        H(1),
+                        H(3),
+                        CNOT(0, 1),
+                        CNOT(0, 3),
+                        S(1),
+                        S(2),
+                        S(3),
+                        CNOT(2, 1),
+                        CNOT(3, 1),
+                        S(3),
+                        H(3),
+                        CNOT(1, 2),
+                        CNOT(1, 3),
+                        CNOT(2, 3),
+                        CNOT(3, 2),
+                        CNOT(2, 3),
+                        S(2),
+                        S(3),
+                        H(3),
+                        S(3),
+                        H(0),
+                        S(0),
+                        S(0),
+                        H(0),
+                        S(0),
+                        S(0),
+                        S(1),
+                        S(1),
+                        S(2),
+                        S(2),
+                    ],
+                ),
+                CliffordMap(
+                    x_map={
+                        0: PauliString(axes={1: Axis.Y, 2: Axis.X, 3: Axis.Y}, sign=Sign.PLUS),
+                        1: PauliString(axes={1: Axis.Z, 2: Axis.Z, 3: Axis.Y}, sign=Sign.PLUS),
+                        2: PauliString(axes={0: Axis.Z, 1: Axis.Y, 2: Axis.X}, sign=Sign.MINUS),
+                        3: PauliString(axes={0: Axis.X, 1: Axis.Y, 2: Axis.Z, 3: Axis.X}, sign=Sign.PLUS),
+                    },
+                    z_map={
+                        0: PauliString(axes={0: Axis.X, 1: Axis.Z, 3: Axis.Y}, sign=Sign.PLUS),
+                        1: PauliString(axes={0: Axis.X, 1: Axis.Y, 2: Axis.Y, 3: Axis.Z}, sign=Sign.MINUS),
+                        2: PauliString(axes={1: Axis.Y, 2: Axis.Z, 3: Axis.X}, sign=Sign.MINUS),
+                        3: PauliString(axes={0: Axis.Y, 1: Axis.Z, 2: Axis.X, 3: Axis.X}, sign=Sign.PLUS),
+                    },
+                    input_nodes=[0, 1, 2, 3],
+                    output_nodes=[0, 1, 2, 3],
+                ),
+            ),
+        ],
     )
-    def test_cm_berg_pass(self, stim_circuit: stim.Circuit, fx_rng: Generator) -> None:
-        tab_stim = stim.Tableau.from_circuit(stim_circuit)
-        qc_ref = self.stim_to_clifford_circuit(stim_circuit)
+    def test_cm_berg_pass(self, qc_ref: Circuit, cm: CliffordMap, fx_rng: Generator) -> None:
 
-        cm = stim_tableau_to_cm(tab_stim)
-        qc = Circuit(stim_circuit.num_qubits)
-        cm_berg_pass(cm, qc)
-
-        s_test = qc.simulate_statevector(rng=fx_rng).statevec
-        s_ref = qc_ref.simulate_statevector(rng=fx_rng).statevec
-
-        assert s_test.isclose(s_ref)
-
-    @pytest.mark.parametrize("nqubits", range(1, 5))
-    def test_cm_berg_pass_random(self, nqubits: int, fx_rng: Generator) -> None:
-        # `stim.Tableau.random` does not support seeding
-        # https://github.com/quantumlib/Stim/issues/974
-        tab_stim = stim.Tableau.random(nqubits)
-        qc_ref = self.stim_to_clifford_circuit(tab_stim.to_circuit())
-
-        cm = stim_tableau_to_cm(tab_stim)
-        qc = Circuit(nqubits)
+        qc = Circuit(qc_ref.width)
         cm_berg_pass(cm, qc)
 
         s_test = qc.simulate_statevector(rng=fx_rng).statevec
@@ -357,18 +442,6 @@ class TestExtraction:
     @pytest.mark.parametrize(
         "test_case",
         [
-            OpenGraph(
-                graph=nx.Graph([(0, 1), (1, 20), (20, 30), (30, 4), (4, 5)]),
-                input_nodes=[0],
-                output_nodes=[5],
-                measurements={
-                    0: Measurement.XY(0.1),
-                    1: Measurement.XY(0.2),
-                    20: Measurement.XY(0.3),
-                    30: Measurement.XY(0.4),
-                    4: Measurement.XY(0.5),
-                },
-            ),
             OpenGraph(
                 graph=nx.Graph([(1, 3), (2, 4), (3, 4), (3, 5), (4, 6)]),
                 input_nodes=[1, 2],
@@ -438,9 +511,31 @@ class TestExtraction:
     )
     def test_extract_og(self, test_case: OpenGraph[Measurement], fx_rng: Generator) -> None:
         pattern = test_case.to_pattern()
-        # Calling `infer_pauli_measurements` is not necessary for the test to pass
-        # (and it should not be), but it suppresses the warnings.
-        circuit = pattern.extract_opengraph().infer_pauli_measurements().extract_circuit()
+        circuit = test_case.extract_circuit()
+
+        state = circuit.simulate_statevector(rng=fx_rng).statevec
+        state_ref = pattern.simulate_pattern(rng=fx_rng)
+        assert state.isclose(state_ref)
+
+    @pytest.mark.parametrize("infer_pauli", [True, False])
+    def test_extract_og_infer_pauli(self, infer_pauli: bool, fx_rng: Generator) -> None:
+        og: OpenGraph[Measurement] = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)]),
+            input_nodes=[0],
+            output_nodes=[5],
+            measurements={
+                0: Measurement.XY(0),
+                1: Measurement.XY(0),
+                2: Measurement.XY(0),
+                3: Measurement.XY(0),
+                4: Measurement.XY(0),
+            },
+        )
+        pattern = og.to_pattern()
+        if infer_pauli:
+            og = og.infer_pauli_measurements()
+
+        circuit = og.extract_circuit()
 
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_ref = pattern.simulate_pattern(rng=fx_rng)
