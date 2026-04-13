@@ -1,18 +1,18 @@
 # Lint/format
-mypy==1.19.1
+mypy==1.20.1
 pre-commit # for language-agnostic hooks
 pyright
-ruff==0.15.8
+ruff==0.15.10
 
 # Stubs
-types-networkx==3.6.1.20260321
+types-networkx==3.6.1.20260408
 types-psutil
 types-setuptools
 scipy-stubs
 
 # Tests
 # Keep in sync with CI
-nox==2026.2.9
+nox==2026.4.10
 psutil
 pytest
 pytest-benchmark
