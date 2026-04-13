@@ -520,15 +520,16 @@ class TestExtraction:
     @pytest.mark.parametrize("infer_pauli", [True, False])
     def test_extract_og_infer_pauli(self, infer_pauli: bool, fx_rng: Generator) -> None:
         og: OpenGraph[Measurement] = OpenGraph(
-            graph=nx.Graph([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)]),
-            input_nodes=[0],
-            output_nodes=[5],
+            graph=nx.Graph([(0, 2), (1, 3), (2, 3), (2, 4), (3, 5), (4, 5), (4, 6), (5, 7)]),
+            input_nodes=[0, 1],
+            output_nodes=[6, 7],
             measurements={
                 0: Measurement.XY(0),
                 1: Measurement.XY(0),
                 2: Measurement.XY(0),
                 3: Measurement.XY(0),
                 4: Measurement.XY(0),
+                5: Measurement.XY(0),
             },
         )
         pattern = og.to_pattern()
