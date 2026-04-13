@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from graphix import Pattern, command
-from graphix.measurements import Measurement
-from graphix.space_minimization import minimization_using_causal_flow, greedy_minimization_by_degree
+from graphix.space_minimization import greedy_minimization_by_degree, minimization_using_causal_flow
+
 
 def counter_example_issue_454(sz: int, depth: int) -> Pattern:
     block = Pattern(input_nodes=range(sz))
@@ -9,10 +11,11 @@ def counter_example_issue_454(sz: int, depth: int) -> Pattern:
         block.extend(command.E((j, sz + i)) for j in range(sz))
         block.extend(command.E((sz + j, sz + i)) for j in range(1, i))
     block.extend(command.M(i) for i in range(sz))
-    p, _ = block.compose(block, {i: o for i, o in zip(block.input_nodes, block.output_nodes, strict=True)})
+    p, _ = block.compose(block, dict(zip(block.input_nodes, block.output_nodes, strict=True)))
     for _ in range(depth):
-        p, _ = p.compose(block, {i: o for i, o in zip(block.input_nodes, p.output_nodes, strict=True)})
+        p, _ = p.compose(block, dict(zip(block.input_nodes, p.output_nodes, strict=True)))
     return p
+
 
 def test_minimize_space() -> None:
     p = counter_example_issue_454(sz=4, depth=3)
@@ -20,6 +23,7 @@ def test_minimize_space() -> None:
     p.minimize_space()
     after = p.max_space()
     assert after <= before
+
 
 def test_minimize_space_deprecated() -> None:
     p = counter_example_issue_454(sz=4, depth=3)
