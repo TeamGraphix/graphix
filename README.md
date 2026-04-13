@@ -79,13 +79,17 @@ state_out = pattern.simulate_pattern(backend="statevector")
 - For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
 - Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
 
-## Related packages
+## Graphix plugins
 
 - [graphix-stim-backend](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
 - [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
 - [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
 - [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
 - [graphix-qasm-parser](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit.
+- [`graphix-stim-compiler`](https://github.com/qat-inria/graphix-stim-compiler): `stim` backend for efficient compilation of Clifford maps.
+
+## Related packages
+
 - [swiflow](https://github.com/TeamGraphix/swiflow): rust-based implementation of flow-finding algorithms.
 - [graphqomb](https://github.com/TeamGraphix/graphqomb): modular graph state compiler for fault-tolerant MBQC and more.
 
