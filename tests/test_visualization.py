@@ -9,10 +9,10 @@ import networkx as nx
 import pytest
 
 from graphix import Circuit, Pattern, command
-from graphix.flow.visualization import _edge_intersects_node
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
+from graphix.visualization import _edge_intersects_node
 
 if TYPE_CHECKING:
     from collections.abc import Callable

@@ -41,10 +41,10 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderError,
     XZCorrectionsOrderErrorReason,
 )
-from graphix.flow.visualization import GraphVisualizer
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
+from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

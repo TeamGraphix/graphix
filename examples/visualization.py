@@ -2,7 +2,7 @@
 Visualizing the patterns and flows
 ==================================
 
-:class:`~graphix.flow.visualization.GraphVisualizer` tool offers a wide selection of
+:class:`~graphix.visualization.GraphVisualizer` tool offers a wide selection of
 visualization methods for inspecting the causal structure of the graph associated
 with the pattern, graph or the (generalized-)flow.
 """

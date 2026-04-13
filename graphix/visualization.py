@@ -195,6 +195,7 @@ class GraphVisualizer:
         GraphVisualizer
         """
         pos = _compute_positions_opengraph(og)
+        pos = _scale_positions(pos, node_distance)
         edge_paths = _compute_edge_paths(og, pos)
 
         return GraphVisualizer(
@@ -614,16 +615,17 @@ class GraphVisualizer:
             label="Output nodes",
             marker=DEFAULT_NODE_MARKER,
         )
-        plt.scatter(
-            [],
-            [],
-            edgecolor=DEFAULT_NODE_EC,
-            facecolor=PAULI_NODE_FC,
-            s=150,
-            zorder=2,
-            label="Pauli-measured nodes",
-            marker=DEFAULT_NODE_MARKER,
-        )
+        if self.pauli_measurements:
+            plt.scatter(
+                [],
+                [],
+                edgecolor=DEFAULT_NODE_EC,
+                facecolor=PAULI_NODE_FC,
+                s=150,
+                zorder=2,
+                label="Pauli-measured nodes",
+                marker=DEFAULT_NODE_MARKER,
+            )
         plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
 
         assert self._source is not None

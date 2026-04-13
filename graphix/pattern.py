@@ -24,7 +24,6 @@ from graphix import command, optimization
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind, Node
 from graphix.flow.exceptions import FlowError
-from graphix.flow.visualization import GraphVisualizer
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
@@ -34,6 +33,7 @@ from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevec
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
+from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Container, Iterator, Mapping
