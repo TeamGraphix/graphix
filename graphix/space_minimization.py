@@ -53,7 +53,7 @@ def pattern_max_space(pattern: Pattern) -> int:
 
     Returns
     -------
-    n_nodes : int
+    max_active : int
         Maximum number of nodes present in the graph during pattern execution.
     """
     num_active = len(pattern.input_nodes)
@@ -75,7 +75,7 @@ def standardized_pattern_max_space(pattern: StandardizedPattern) -> int:
 
     Returns
     -------
-    n_nodes : int
+    max_active : int
         Maximum number of nodes present in the graph during space-optimal
         pattern execution.
     """
@@ -269,6 +269,17 @@ def _update_dependency(measured: AbstractSet[Node], dependency: Mapping[Node, se
         s.difference_update(measured)
 
 
+def _set_of_undirected_edges(edges: Iterable[tuple[int, int]]) -> set[frozenset[int]]:
+    """Convert directed edges to a set of undirected edges.
+
+    Each edge is represented as a frozenset of its vertices so that ``(0, 1)``
+    and ``(1, 0)`` are treated as the same edge. See
+    :func:`tests.test_space_minimization.test_minimization_by_degree_edge_ordering`
+    for details.
+    """
+    return {frozenset(edge) for edge in edges}
+
+
 def greedy_minimization_by_degree(pattern: StandardizedPattern) -> tuple[tuple[Node, ...], bool] | None:
     """Choose greedily the nodes by minimal degree.
 
@@ -277,19 +288,19 @@ def greedy_minimization_by_degree(pattern: StandardizedPattern) -> tuple[tuple[N
     """
     graph = pattern.extract_graph()
     nodes = set(graph.nodes)
-    edges = set(graph.edges)
+    edges = _set_of_undirected_edges(graph.edges)
     not_measured = nodes - set(pattern.output_nodes)
     dependency = _extract_dependency(pattern)
     # keys() should be converted into `set` because it is transient.
     _update_dependency(set(pattern.results.keys()), dependency)
     meas_order = []
-    removable_edges: set[tuple[Node, Node]] = set()
+    removable_edges: set[frozenset[Node]] = set()
     while not_measured:
         min_edges = len(nodes) + 1
         next_node: Node | None = None
         for i in not_measured:
             if not dependency[i]:
-                connected_edges = set(graph.edges(i)) & edges
+                connected_edges = _set_of_undirected_edges(graph.edges(i)) & edges
                 if min_edges > len(connected_edges):
                     min_edges = len(connected_edges)
                     next_node = i
