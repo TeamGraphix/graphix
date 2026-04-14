@@ -1,0 +1,17 @@
+name: Set up uv
+description: Install the pinned version of uv and cache its package cache
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      shell: bash
+      run: pip install -r .github/uv-requirements.txt
+
+    - name: Cache uv packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          uv-${{ runner.os }}-
