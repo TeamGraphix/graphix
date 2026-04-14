@@ -1326,18 +1326,51 @@ class Pattern:
         reduced space requirement (memory space for classical simulation,
         and maximum simultaneously prepared qubits for quantum hardwares).
         """
-        if not self.is_standard():
-            self.standardize()
+        meas = self._unused_measurements()
+        pat = self._remove_unused_measurements()
+        if not pat.is_standard():
+            pat.standardize()
         meas_order = None
         try:
-            cf = self.extract_causal_flow()
+            cf = pat.extract_causal_flow()
         except FlowError:
             meas_order = None
         else:
             meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:])))
         if meas_order is None:
-            meas_order = self._measurement_order_space()
-        self._reorder_pattern(self.sort_measurement_commands(meas_order))
+            meas_order = pat._measurement_order_space()
+        pat._reorder_pattern(pat.sort_measurement_commands(meas_order))
+        pat.extend(meas)
+        self.__seq = new.__seq
+
+
+    def _unused_measurements(self) -> list[command.M]:
+        """Get the list of measurement commands that are not used for any correction.
+
+        Returns
+        -------
+        unused_measurements : list of command
+            list of measurement commands that are not used for any correction
+        """
+        dependencies = self._extract_dependency()
+        all_nodes = set(dependencies.keys())
+        used_nodes = {node for nodes in dependencies.values() for node in nodes}
+        unused_nodes = all_nodes - used_nodes
+        return [cmd for cmd in self if cmd.kind == CommandKind.M and cmd.node in unused_nodes]
+
+    def _remove_unused_measurements(self) -> Pattern:
+        """Remove unused measurement commands from the pattern.
+
+        Returns
+        -------
+        new_pattern : Pattern
+            new pattern with unused measurement commands removed
+        """
+        unused_measurements = self._unused_measurements()
+        new_seq = [cmd for cmd in self if cmd not in unused_measurements]
+        new_pattern = Pattern(input_nodes=self.input_nodes)
+        new_pattern.extend(new_seq)
+        return new_pattern
 
     def _reorder_pattern(self, meas_commands: list[command.M]) -> None:
         """Reorder the command sequence.
