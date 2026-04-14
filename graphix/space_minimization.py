@@ -269,17 +269,6 @@ def _update_dependency(measured: AbstractSet[Node], dependency: Mapping[Node, se
         s.difference_update(measured)
 
 
-def _set_of_undirected_edges(edges: Iterable[tuple[int, int]]) -> set[frozenset[int]]:
-    """Convert directed edges to a set of undirected edges.
-
-    Each edge is represented as a frozenset of its vertices so that ``(0, 1)``
-    and ``(1, 0)`` are treated as the same edge. See
-    :func:`tests.test_space_minimization.test_minimization_by_degree_edge_ordering`
-    for details.
-    """
-    return {frozenset(edge) for edge in edges}
-
-
 def greedy_minimization_by_degree(pattern: StandardizedPattern) -> tuple[tuple[Node, ...], bool] | None:
     """Choose greedily the nodes by minimal degree.
 
@@ -288,26 +277,15 @@ def greedy_minimization_by_degree(pattern: StandardizedPattern) -> tuple[tuple[N
     """
     graph = pattern.extract_graph()
     nodes = set(graph.nodes)
-    edges = _set_of_undirected_edges(graph.edges)
     not_measured = nodes - set(pattern.output_nodes)
     dependency = _extract_dependency(pattern)
     # keys() should be converted into `set` because it is transient.
     _update_dependency(set(pattern.results.keys()), dependency)
     meas_order = []
-    removable_edges: set[frozenset[Node]] = set()
     while not_measured:
-        min_edges = len(nodes) + 1
-        next_node: Node | None = None
-        for i in not_measured:
-            if not dependency[i]:
-                connected_edges = _set_of_undirected_edges(graph.edges(i)) & edges
-                if min_edges > len(connected_edges):
-                    min_edges = len(connected_edges)
-                    next_node = i
-                    removable_edges = connected_edges
-        assert next_node is not None
+        next_node = min((i for i in not_measured if not dependency[i]), key=graph.degree)
         meas_order.append(next_node)
         _update_dependency({next_node}, dependency)
         not_measured -= {next_node}
-        edges -= removable_edges
+        graph.remove_nodes_from({next_node})
     return tuple(meas_order), False
