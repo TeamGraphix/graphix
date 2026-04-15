@@ -90,6 +90,11 @@ def standardized_pattern_max_space(pattern: StandardizedPattern) -> int:
 
     This is equivalent to ``pattern.to_space_optimal_pattern().max_space()``.
 
+    Parameters
+    ----------
+    pattern: StandardizedPattern
+        The pattern.
+
     Returns
     -------
     max_active : int
@@ -124,7 +129,22 @@ def standardized_pattern_max_space(pattern: StandardizedPattern) -> int:
 
 
 def standardized_to_space_optimal_pattern(pattern: StandardizedPattern) -> Pattern:
-    """Return a pattern that is space-optimal for the given measurement order."""
+    """Return a pattern that is space-optimal for the given measurement order.
+
+    The source is a :class:`StandardizedPattern`, i.e., a pattern without
+    interleaving of commands of different kinds.
+
+    Parameters
+    ----------
+    pattern: StandardizedPattern
+        The pattern to optimize.
+
+    Returns
+    -------
+    Pattern
+        The pattern with optimal placement of ``N`` and ``E`` commands.
+
+    """
     target = graphix.Pattern(input_nodes=pattern.input_nodes)
     target.results = dict(pattern.results)
     initialized = set(pattern.input_nodes)
@@ -256,6 +276,11 @@ def _extract_dependency(pattern: StandardizedPattern) -> dict[Node, set[Node]]:
     """Get dependency (byproduct correction & dependent measurement) structure of nodes in the graph (resource) state, according to the pattern.
 
     This is used to determine the optimum measurement order.
+
+    Parameters
+    ----------
+    pattern: StandardizedPattern
+        The pattern to optimize.
 
     Returns
     -------
