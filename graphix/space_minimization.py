@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from dataclasses import dataclass
 from itertools import chain
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,27 @@ if TYPE_CHECKING:
     from graphix.optimization import StandardizedPattern
     from graphix.pattern import Pattern
 
-    SpaceMinimizationHeuristic = Callable[[StandardizedPattern], tuple[tuple[Node, ...], bool] | None]
+
+@dataclass(frozen=True, slots=True)
+class SpaceMinimizationHeuristicResult:
+    """The result of the application of a space minimization heuristic.
+
+    Attributes
+    ----------
+    new_order: tuple[Node, ...]
+        The new measurement order.
+
+    known_optimal: bool
+        ``True`` if the new measurement order is known to be optimal.
+        This will interrupt the search for a better heuristic.
+    """
+
+    new_order: tuple[Node, ...]
+    known_optimal: bool
+
+
+if TYPE_CHECKING:
+    SpaceMinimizationHeuristic = Callable[[StandardizedPattern], SpaceMinimizationHeuristicResult | None]
     """Define a space minimization heuristic: return a new measurement order or ``None`` if the heuristic cannot handle the given pattern.
 
     A space minimization heuristic provides a measurement order for a given pattern.
@@ -31,12 +52,8 @@ if TYPE_CHECKING:
 
     Returns
     -------
-    new_order: tuple[Node, ...]
-        The new measurement order.
-
-    known_optimal: bool
-        ``True`` if the new measurement order is known to be optimal.
-        This will interrupt the search for a better heuristic.
+    SpaceMinimizationHeuristicResult
+        The result of the application of the space minimization heuristic.
     """
 
 
@@ -165,7 +182,7 @@ def minimize_space(
     - If the above heuristic does not give a pattern with a smaller
       maximal space than the original pattern, then the original
       measurement order is unchanged. See
-      :func:`do_nothing_for_space_minimization`.
+      :func:`keep_measurement_order_unchanged`.
 
     Parameters
     ----------
@@ -175,7 +192,7 @@ def minimize_space(
     heuristics: Iterable[SpaceMinimizationHeuristic] | None = None
         The heuristics to try in order.
         By default:
-        ``[minimization_using_causal_flow, greedy_minimization_by_degree, do_nothing_for_space_minimization]``
+        ``[minimization_using_causal_flow, greedy_minimization_by_degree, keep_measurement_order_unchanged]``
 
     Returns
     -------
@@ -183,16 +200,15 @@ def minimize_space(
         The optimized pattern.
     """
     if heuristics is None:
-        heuristics = [minimization_using_causal_flow, greedy_minimization_by_degree, do_nothing_for_space_minimization]
+        heuristics = [minimization_using_causal_flow, greedy_minimization_by_degree, keep_measurement_order_unchanged]
     m_dict = {m.node: m for m in pattern.m_list}
     best_pattern_with_max_space: tuple[StandardizedPattern, int] | None = None
     for f in heuristics:
-        heuristics_result = f(pattern)
-        if heuristics_result is not None:
-            new_order, known_optimal = heuristics_result
-            new_m_list = tuple(m_dict[node] for node in new_order)
+        heuristic_result = f(pattern)
+        if heuristic_result is not None:
+            new_m_list = tuple(m_dict[node] for node in heuristic_result.new_order)
             tentative_pattern = dataclasses.replace(pattern, m_list=new_m_list)
-            if known_optimal:
+            if heuristic_result.known_optimal:
                 return tentative_pattern
             tentative_max_space = tentative_pattern.max_space()
             if best_pattern_with_max_space is not None:
@@ -205,7 +221,7 @@ def minimize_space(
     return best_pattern_with_max_space[0]
 
 
-def minimization_using_causal_flow(pattern: StandardizedPattern) -> tuple[tuple[Node, ...], bool] | None:
+def minimization_using_causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
     """Use the causal flow layer to minimize space.
 
     This minimization heuristic is optimal but requires the pattern to have a causal flow.
@@ -216,24 +232,24 @@ def minimization_using_causal_flow(pattern: StandardizedPattern) -> tuple[tuple[
         return None
     else:
         meas_order = tuple(chain(*reversed(cf.partial_order_layers[1:])))
-        return meas_order, True
+        return SpaceMinimizationHeuristicResult(meas_order, True)
 
 
-def do_nothing_for_space_minimization(pattern: StandardizedPattern) -> tuple[tuple[Node, ...], bool] | None:
-    """Leave the pattern unchanged.
+def keep_measurement_order_unchanged(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
+    """Leave the measurement order unchanged.
 
-    This minimization heuristic does not optimize anything so it
-    cannot return a pattern that has worse max space than the original
-    pattern.
+    Since this heuristic preserves the original measurement order, it
+    cannot return a pattern with worse max space than the original.
 
-    Usually, this heuristic is included in the list of the heuristic
+    Usually, this heuristic is included in the list of heuristics
     considered to ensure that the result of space minimization cannot
     have a worse max space than the original pattern.  This is the
     case by default, but the user can remove this heuristic from the
-    list to see the effect of the other heuristic even if they don't
+    list to see the effect of the other heuristics even if they don't
     reduce the max space of the pattern.
+
     """
-    return tuple(m.node for m in pattern.m_list), False
+    return SpaceMinimizationHeuristicResult(tuple(m.node for m in pattern.m_list), False)
 
 
 def _extract_dependency(pattern: StandardizedPattern) -> dict[Node, set[Node]]:
@@ -269,7 +285,7 @@ def _update_dependency(measured: AbstractSet[Node], dependency: Mapping[Node, se
         s.difference_update(measured)
 
 
-def greedy_minimization_by_degree(pattern: StandardizedPattern) -> tuple[tuple[Node, ...], bool] | None:
+def greedy_minimization_by_degree(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
     """Choose greedily the nodes by minimal degree.
 
     This minimization heuristic can worsen the max space in some
@@ -288,4 +304,4 @@ def greedy_minimization_by_degree(pattern: StandardizedPattern) -> tuple[tuple[N
         _update_dependency({next_node}, dependency)
         not_measured -= {next_node}
         graph.remove_nodes_from({next_node})
-    return tuple(meas_order), False
+    return SpaceMinimizationHeuristicResult(tuple(meas_order), False)

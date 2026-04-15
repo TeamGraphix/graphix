@@ -29,6 +29,6 @@ This module defines space minimization procedures for patterns.
 
 .. autofunction:: minimization_using_causal_flow
 
-.. autofunction:: do_nothing_for_space_minimization
+.. autofunction:: keep_measurement_order_unchanged
 
 .. autofunction:: greedy_minimization_by_degree

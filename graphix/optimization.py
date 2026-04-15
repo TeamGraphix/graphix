@@ -372,7 +372,7 @@ class StandardizedPattern(_StandardizedPattern):
         heuristics : Iterable[SpaceMinimizationHeuristic] | None = None
             The heuristics to try in order.
             By default:
-            ``[minimization_using_causal_flow, greedy_minimization_by_degree, do_nothing_for_space_minimization]``
+            ``[minimization_using_causal_flow, greedy_minimization_by_degree, keep_measurement_order_unchanged]``
 
         Returns
         -------

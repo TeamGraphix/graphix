@@ -1235,14 +1235,21 @@ class Pattern:
     ) -> Pattern:
         """Return a pattern that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
 
-        See :func:`graphix.space_minimization.minimize_space` for more information about the default heuristics.
+        See :func:`graphix.space_minimization.minimize_space` for more
+        information about the default heuristics.
+
+        To obtain a space-optimal pattern while preserving the
+        measurement order, use ``minimize_space([])``. This commutes
+        the ``N`` and ``E`` commands so that the pattern is
+        space-optimal among patterns with the same measurement order
+        (see :meth:`StandardizedPattern.to_space_optimal_pattern`).
 
         Parameters
         ----------
         heuristics : Iterable[SpaceMinimizationHeuristic] | None = None
             The heuristics to try in order.
             By default:
-            ``[minimization_using_causal_flow, greedy_minimization_by_degree, do_nothing_for_space_minimization]``
+            ``[minimization_using_causal_flow, greedy_minimization_by_degree, keep_measurement_order_unchanged]``
         copy : bool, optional
             If ``True``, the current pattern remains unchanged and a
             new pattern is returned. The default is ``False``, meaning
@@ -1252,6 +1259,7 @@ class Pattern:
         -------
         Pattern
             The optimized pattern. Equal to ``self`` if ``copy`` is ``False``.
+
         """
         new = optimization.StandardizedPattern.from_pattern(self).minimize_space(heuristics).to_space_optimal_pattern()
         if copy:

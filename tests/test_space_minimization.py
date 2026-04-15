@@ -28,7 +28,7 @@ def test_minimize_space() -> None:
 def test_minimize_space_deprecated() -> None:
     p = counter_example_issue_454(sz=4, depth=3)
     before = p.max_space()
-    # former heuristics, without `do_nothing_for_space_minimization`
+    # former heuristics, without `keep_measurement_order_unchanged`
     p.minimize_space([minimization_using_causal_flow, greedy_minimization_by_degree])
     after = p.max_space()
     assert after > before
