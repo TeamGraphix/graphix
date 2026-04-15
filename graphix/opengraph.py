@@ -17,11 +17,14 @@ from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
-    from pathlib import Path
+
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
 
     from graphix.flow.core import CausalFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
+    from graphix.visualization import DrawKwargs
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
 _AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
@@ -131,47 +134,15 @@ class OpenGraph(Generic[_AM_co]):
             return flow.to_corrections().to_pattern()
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
 
-    def draw(
-        self,
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
-    ) -> None:
+    def draw(self, **options: Unpack[DrawKwargs]) -> None:
         """Visualize the opengraph.
 
         Parameters
         ----------
-        pauli_measurements : bool, default=True
-            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
-        measurement_labels : bool, default=False
-            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
-        node_labels : bool | Mapping[int, str], default=True
-            If ``True``, display numeric node labels. If a mapping, use custom labels
-            for nodes specified in the mapping.
-        node_distance : tuple[float, float], default=(1, 1)
-            Scaling factors (x_scale, y_scale) applied to node positions.
-        legend : bool, default=True
-            If ``True``, legend is shown.
-        figsize : tuple[int, int] | None, default=None
-            Figure dimensions (width, height) in inches. If ``None``, dimensions are
-            determined automatically based on graph structure.
-        filename : Path | None, default=None
-            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        options : Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
         """
-        gv = GraphVisualizer.from_opengraph(
-            og=self,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
-        )
+        gv = GraphVisualizer.from_opengraph(og=self, **options)
 
         gv.visualize()
 

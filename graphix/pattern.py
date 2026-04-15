@@ -42,6 +42,9 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
+
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
@@ -49,6 +52,7 @@ if TYPE_CHECKING:
     from graphix.sim.tensornet import TensorNetworkBackend
     from graphix.simulator import _BackendLiteral
     from graphix.states import State
+    from graphix.visualization import DrawKwargs
 
 _BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
 
@@ -1529,17 +1533,11 @@ class Pattern:
 
     def draw_flow(
         self,
-        flow_from_pattern: bool = True,
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
-        local_clifford: bool = False,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
         *,
+        flow_from_pattern: bool = True,
+        local_clifford: bool = False,
         stacklevel: int = 1,
+        **options: Unpack[DrawKwargs],
     ) -> None:
         """Visualize the underlying graph of the pattern with its flow if it exists.
 
@@ -1547,25 +1545,13 @@ class Pattern:
         ----------
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
-        pauli_measurements : bool, default=True
-            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
-        measurement_labels : bool, default=False
-            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
-        node_labels : bool | Mapping[int, str], default=True
-            If ``True``, display numeric node labels. If a mapping, use custom labels
-            for nodes specified in the mapping.
-        local_clifford : Mapping[int, Clifford] | None, default=None
-            Mapping of node identifiers to local Clifford operators. If provided,
-            operators are displayed on their corresponding nodes.
-        node_distance : tuple[float, float], default=(1, 1)
-            Scaling factors (x_scale, y_scale) applied to node positions.
-        legend : bool, default=True
-            If ``True``, legend is shown.
-        figsize : tuple[int, int] | None, default=None
-            Figure dimensions (width, height) in inches. If ``None``, dimensions are
-            determined automatically based on graph structure.
-        filename : Path | None, default=None
-            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        local_clifford : bool, default=False
+            If ``True``, the local Clifford operators are printed.
+        options : Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Raises
         ------
@@ -1601,69 +1587,24 @@ class Pattern:
                 raise PatternError("The pattern's open graph does not have Pauli flow.")
 
         lc = self.extract_clifford() if local_clifford else None
-        gv = GraphVisualizer.from_flow(
-            flow=flow,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
-            local_clifford=lc,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
-        )
+        gv = GraphVisualizer.from_flow(flow=flow, local_clifford=lc, **options)
         gv.visualize()
 
-    def draw_xzcorrections(
-        self,
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
-        local_clifford: bool = False,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
-    ) -> None:
+    def draw_xzcorrections(self, *, local_clifford: bool = False, **options: Unpack[DrawKwargs]) -> None:
         """Visualize the underlying graph of the pattern with its XZ-corrections.
 
         This method calls :meth:`self.extract_xzcorrections`.
 
         Parameters
         ----------
-        pauli_measurements : bool, default=True
-            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
-        measurement_labels : bool, default=False
-            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
-        node_labels : bool | Mapping[int, str], default=True
-            If ``True``, display numeric node labels. If a mapping, use custom labels
-            for nodes specified in the mapping.
-        local_clifford : Mapping[int, Clifford] | None, default=None
-            Mapping of node identifiers to local Clifford operators. If provided,
-            operators are displayed on their corresponding nodes.
-        node_distance : tuple[float, float], default=(1, 1)
-            Scaling factors (x_scale, y_scale) applied to node positions.
-        legend : bool, default=True
-            If ``True``, legend is shown.
-        figsize : tuple[int, int] | None, default=None
-            Figure dimensions (width, height) in inches. If ``None``, dimensions are
-            determined automatically based on graph structure.
-        filename : Path | None, default=None
-            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        local_clifford: bool, default=False
+            If ``True``, the local Clifford operators are printed.
+        options: Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
         """
         xzcorrections = self.extract_xzcorrections()
         lc = self.extract_clifford() if local_clifford else None
-        gv = GraphVisualizer.from_xzcorrections(
-            xz_corr=xzcorrections,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
-            local_clifford=lc,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
-        )
+        gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, local_clifford=lc, **options)
         gv.visualize()
 
     def to_qasm3(self, filename: Path | str, input_state: dict[int, State] | State = BasicStates.PLUS) -> None:

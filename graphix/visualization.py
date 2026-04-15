@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar
 
 import matplotlib.transforms as mtransforms
 import networkx as nx
@@ -22,6 +23,9 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from pathlib import Path
     from typing import TypeAlias
+
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
 
     from graphix.clifford import Clifford
     from graphix.flow.core import CausalFlow, PauliFlow, XZCorrections
@@ -102,6 +106,54 @@ class _Source(Enum):
     OG = auto()
 
 
+class DrawKwargs(TypedDict, total=False):
+    """Common keyword arguments for graph visualization methods.
+
+    The keys correspond to the fields of :class:`VisualizationOptions`.
+    """
+
+    pauli_measurements: bool
+    measurement_labels: bool
+    node_labels: bool | Mapping[int, str]
+    node_distance: tuple[float, float]
+    legend: bool
+    figsize: tuple[int, int] | None
+    filename: Path | None
+
+
+@dataclass(frozen=True)
+class VisualizationOptions:
+    """Options controlling graph visualization.
+
+    Parameters
+    ----------
+    pauli_measurements : bool, default=True
+        If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
+    measurement_labels : bool, default=False
+        If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+    node_labels : bool | Mapping[int, str], default=True
+        If ``True``, display numeric node labels. If a mapping, use custom labels
+        for nodes specified in the mapping.
+    node_distance : tuple[float, float], default=(1, 1)
+        Scaling factors (x_scale, y_scale) applied to node positions.
+    legend : bool, default=True
+        If ``True``, legend is shown.
+    figsize : tuple[int, int] | None, default=None
+        Figure dimensions (width, height) in inches. If ``None``, dimensions are
+        determined automatically based on graph structure.
+    filename : Path | None, default=None
+        File path to save the visualization. If ``None``, figure is displayed but not saved.
+    """
+
+    pauli_measurements: bool = True
+    measurement_labels: bool = False
+    node_labels: bool | Mapping[int, str] = True
+    node_distance: tuple[float, float] = (1, 1)
+    legend: bool = True
+    figsize: tuple[int, int] | None = None
+    filename: Path | None = None
+
+
 @dataclass(frozen=True)
 class GraphVisualizer:
     """Visualizer for flows and XZ-correction structures.
@@ -118,25 +170,11 @@ class GraphVisualizer:
         Colored bezier curve paths for correction dependency arrows.
     n_layers : int
         Number of measurement layers in the partial order (determines horizontal extent).
-    pauli_measurements : bool, default=True
-        If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
-    measurement_labels : bool, default=False
-        If ``True``, measurement labels (planes and axis) are displayed in the visualization.
-    node_labels : bool | Mapping[int, str], default=True
-        If ``True``, display numeric node labels. If a mapping, use custom labels
-        for nodes specified in the mapping.
     local_clifford : Mapping[int, Clifford] | None, default=None
         Mapping of node identifiers to local Clifford operators. If provided,
         operators are displayed on their corresponding nodes.
-    node_distance : tuple[float, float], default=(1, 1)
-        Scaling factors (x_scale, y_scale) applied to node positions.
-    legend : bool, default=True
-        If ``True`` legend is shown.
-    figsize : tuple[int, int] | None, default=None
-        Figure dimensions (width, height) in inches. If ``None``, dimensions are
-        determined automatically based on graph structure.
-    filename : Path | None, default=None
-        File path to save the visualization. If ``None``, figure is displayed but not saved.
+    options : VisualizationOptions, default=VisualizationOptions()
+        Options controlling graph visualization.
     _source : _Source | None, default=None
         Internal metadata indicating the source of the graph (e.g., ``OpenGraph``, ``PauliFlow`` or
         ``XZCorrections``).
@@ -156,92 +194,69 @@ class GraphVisualizer:
     edge_paths: Mapping[_Edge, _Path]
     arrow_paths: Mapping[_Edge, Colored[_Path]] | None = None
     n_layers: int | None = None
-    pauli_measurements: bool = True
-    measurement_labels: bool = False
-    node_labels: bool | Mapping[int, str] = True
     local_clifford: Mapping[int, Clifford] | None = None
-    node_distance: tuple[float, float] = (1, 1)
-    legend: bool = True
-    figsize: tuple[int, int] | None = None
-    filename: Path | None = None
+    options: VisualizationOptions = dataclasses.field(default_factory=VisualizationOptions)
     _source: _Source | None = None
 
     @staticmethod
     def from_opengraph(
         og: OpenGraph[AbstractMeasurement],
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
+        # TO CHECK: The option `local_clifford` was omitted. Was it intentional?
+        local_clifford: Mapping[int, Clifford] | None = None,
+        **kwargs: Unpack[DrawKwargs],
     ) -> GraphVisualizer:
         """Create a ``GraphVisualizer`` from an ``OpenGraph`` instance.
 
         Parameters
         ----------
         og : OpenGraph[AbstractMeasurement]
-        pauli_measurements : bool, default=True
-        measurement_labels : bool, default=False
-        node_labels : bool | Mapping[int, str], default=True
-        node_distance : tuple[float, float], default=(1, 1)
-        legend : bool, default=True
-        figsize : tuple[int, int] | None, default=None
-        filename : Path | None, default=None
+        local_clifford : Mapping[int, Clifford] | None, default=None
+            Mapping of node identifiers to local Clifford operators. If provided,
+            operators are displayed on their corresponding nodes.
+        options: Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
 
         Returns
         -------
         GraphVisualizer
         """
+        options = VisualizationOptions(**kwargs)
         pos = _compute_positions_opengraph(og)
-        pos = _scale_positions(pos, node_distance)
+        pos = _scale_positions(pos, options.node_distance)
         edge_paths = _compute_edge_paths(og, pos)
 
         return GraphVisualizer(
             og=og,
             pos=pos,
             edge_paths=edge_paths,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
+            local_clifford=local_clifford,
+            options=options,
             _source=_Source.OG,
         )
 
     @staticmethod
     def from_flow(
         flow: PauliFlow[AbstractMeasurement],
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
         local_clifford: Mapping[int, Clifford] | None = None,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
+        **kwargs: Unpack[DrawKwargs],
     ) -> GraphVisualizer:
         """Create a ``GraphVisualizer`` from a ``PauliFlow`` instance.
 
         Parameters
         ----------
         flow : PauliFlow[AbstractMeasurement]
-        pauli_measurements : bool, default=True
-        measurement_labels : bool, default=False
-        node_labels : bool | Mapping[int, str], default=True
         local_clifford : Mapping[int, Clifford] | None, default=None
-        node_distance : tuple[float, float], default=(1, 1)
-        legend : bool, default=True
-        figsize : tuple[int, int] | None, default=None
-        filename : Path | None, default=None
+            Mapping of node identifiers to local Clifford operators. If provided,
+            operators are displayed on their corresponding nodes.
+        options: Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
 
         Returns
         -------
         GraphVisualizer
         """
+        options = VisualizationOptions(**kwargs)
+
         # We can't use functools.singledispatch here.
         # If we annotate the dispatch argument with CausalFlow[AbstractPlanarMeasurement]
         # compilation will fail because generic types are only known statically.
@@ -255,7 +270,7 @@ class GraphVisualizer:
             if isinstance(flow, CausalFlow)
             else _compute_positions_partial_order(flow)
         )
-        pos = _scale_positions(pos, node_distance)
+        pos = _scale_positions(pos, options.node_distance)
         edge_paths = _compute_edge_paths(flow.og, pos)
         corrections = _format_corrections_flow(flow)
         arrow_paths = _compute_arrow_paths(pos, flow.og.graph.edges(), corrections)
@@ -267,49 +282,35 @@ class GraphVisualizer:
             edge_paths=edge_paths,
             arrow_paths=arrow_paths,
             n_layers=n_layers,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
             local_clifford=local_clifford,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
+            options=options,
             _source=_Source.Flow,
         )
 
     @staticmethod
     def from_xzcorrections(
         xz_corr: XZCorrections[AbstractMeasurement],
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
         local_clifford: Mapping[int, Clifford] | None = None,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
+        **kwargs: Unpack[DrawKwargs],
     ) -> GraphVisualizer:
         """Create a ``GraphVisualizer`` from an ``XZCorrections`` instance.
 
         Parameters
         ----------
         xz_corr : XZCorrections[AbstractMeasurement]
-        pauli_measurements : bool, default=True
-        measurement_labels : bool, default=False
-        node_labels : bool | Mapping[int, str], default=True
         local_clifford : Mapping[int, Clifford] | None, default=None
-        node_distance : tuple[float, float], default=(1, 1)
-        legend : bool, default=True
-        figsize : tuple[int, int] | None, default=None
-        filename : Path | None, default=None
+            Mapping of node identifiers to local Clifford operators. If provided,
+            operators are displayed on their corresponding nodes.
+        options: Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
 
         Returns
         -------
         GraphVisualizer
         """
+        options = VisualizationOptions(**kwargs)
         pos = _compute_positions_partial_order(xz_corr)
-        pos = _scale_positions(pos, node_distance)
+        pos = _scale_positions(pos, options.node_distance)
         edge_paths = _compute_edge_paths(xz_corr.og, pos)
         corrections = _format_corrections_xz(xz_corr)
         arrow_paths = _compute_arrow_paths(pos, xz_corr.og.graph.edges(), corrections)
@@ -321,24 +322,18 @@ class GraphVisualizer:
             edge_paths=edge_paths,
             arrow_paths=arrow_paths,
             n_layers=n_layers,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
             local_clifford=local_clifford,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
+            options=options,
             _source=_Source.XZCorr,
         )
 
     def visualize(self) -> None:
         """Generate and display the complete graph visualization.
 
-        The figure is displayed via ``plt.show()`` or saved when ``self.filename`` has a non-null value.
+        The figure is displayed via ``plt.show()`` or saved when ``self.options.filename`` has a non-null value.
         """
         plot_lims = self._determine_plot_lims()
-        figsize = self.figsize or self._determine_figsize()
+        figsize = self.options.figsize or self._determine_figsize()
         plt.figure(figsize=figsize)
 
         self._draw_edges()
@@ -351,20 +346,20 @@ class GraphVisualizer:
         if self.n_layers:
             plot_lims = self._draw_layers(plot_lims)
 
-        if self.measurement_labels:
+        if self.options.measurement_labels:
             self._draw_measurements_labels()
 
         if self.local_clifford is not None:
             self._draw_local_clifford()
 
         self._set_plot_lims(plot_lims)
-        if self.legend:
+        if self.options.legend:
             self._draw_legend()
 
-        if self.filename is None:
+        if self.options.filename is None:
             plt.show()
         else:
-            plt.savefig(self.filename, bbox_inches="tight")
+            plt.savefig(self.options.filename, bbox_inches="tight")
 
     def _determine_figsize(self) -> _Point:
         """Determine figure size based on node positions and node distance.
@@ -381,7 +376,7 @@ class GraphVisualizer:
 
         width = len(x_pos) * 0.8
         height = len(y_pos)
-        return (width * self.node_distance[0], height * self.node_distance[1])
+        return (width * self.options.node_distance[0], height * self.options.node_distance[1])
 
     def _determine_plot_lims(self) -> PlotLims:
         """Determine plot axis limits based on node positions.
@@ -428,7 +423,7 @@ class GraphVisualizer:
         with the number of digits in the largest node index to prevent label overflow
         in graphs with many nodes (100+).
 
-        Node labels are obtained from the ``self.node_labels`` mapping if provided; otherwise
+        Node labels are obtained from the ``self.options.node_labels`` mapping if provided; otherwise
         ``networkx`` automatically generates numeric labels from node identifiers.
         """
         for node in self.og.graph.nodes():
@@ -439,11 +434,11 @@ class GraphVisualizer:
                 marker = INPUT_NODE_MARKER
             if node in self.og.output_nodes:
                 fc = OUTPUT_NODE_FC
-            elif self.pauli_measurements and isinstance(self.og.measurements[node], PauliMeasurement):
+            elif self.options.pauli_measurements and isinstance(self.og.measurements[node], PauliMeasurement):
                 fc = PAULI_NODE_FC
             plt.scatter(*self.pos[node], edgecolor=ec, facecolor=fc, s=350, zorder=2, marker=marker)
 
-        labels = dict(self.node_labels) if isinstance(self.node_labels, Mapping) else None
+        labels = dict(self.options.node_labels) if isinstance(self.options.node_labels, Mapping) else None
         fontsize = NODE_LABEL_FS
         if max(self.og.graph.nodes(), default=0) >= 100:
             fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
@@ -516,14 +511,14 @@ class GraphVisualizer:
 
         for layer in range(self.n_layers - 1):
             plt.axvline(
-                x=(layer + 0.5) * self.node_distance[0],
+                x=(layer + 0.5) * self.options.node_distance[0],
                 color=LAYER_C,
                 linestyle=":",
                 linewidth=0.9,
                 alpha=0.8,
             )
             plt.text(
-                layer * self.node_distance[0],
+                layer * self.options.node_distance[0],
                 plot_lims.ymin,
                 str(self.n_layers - 1 - layer),
                 ha="center",
@@ -535,7 +530,7 @@ class GraphVisualizer:
 
         # Add last label (layer 0)
         plt.text(
-            (self.n_layers - 1) * self.node_distance[0],
+            (self.n_layers - 1) * self.options.node_distance[0],
             plot_lims.ymin,
             str(0),
             ha="center",
@@ -550,7 +545,7 @@ class GraphVisualizer:
         if self.n_layers > 1:
             plt.annotate(
                 "",
-                xy=((self.n_layers - 1) * self.node_distance[0] + 0.3, plot_lims.ymin),
+                xy=((self.n_layers - 1) * self.options.node_distance[0] + 0.3, plot_lims.ymin),
                 xytext=(-0.3, plot_lims.ymin),
                 xycoords=base + offset,
                 textcoords=base + offset,
@@ -558,7 +553,7 @@ class GraphVisualizer:
             )
 
         offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
-        mid_x = (self.n_layers - 1) / 2 * self.node_distance[0]
+        mid_x = (self.n_layers - 1) / 2 * self.options.node_distance[0]
         plt.text(
             mid_x,
             plot_lims.ymin,
@@ -615,7 +610,7 @@ class GraphVisualizer:
             label="Output nodes",
             marker=DEFAULT_NODE_MARKER,
         )
-        if self.pauli_measurements:
+        if self.options.pauli_measurements:
             plt.scatter(
                 [],
                 [],

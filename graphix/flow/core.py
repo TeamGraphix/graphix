@@ -15,7 +15,6 @@ import networkx as nx
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
-# `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 import graphix.pattern
 from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponentialDAG, PauliString
 from graphix.command import E, M, N, X, Z
@@ -52,9 +51,13 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Self
 
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
+
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
+    from graphix.visualization import DrawKwargs
 
 TotalOrder = Sequence[int]
 
@@ -361,47 +364,15 @@ class XZCorrections(Generic[_AM_co]):
         """
         return xzcorr_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
 
-    def draw(
-        self,
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
-    ) -> None:
+    def draw(self, **options: Unpack[DrawKwargs]) -> None:
         """Visualize the opengraph, correction structure and partial order.
 
         Parameters
         ----------
-        pauli_measurements : bool, default=True
-            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
-        measurement_labels : bool, default=False
-            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
-        node_labels : bool | Mapping[int, str], default=True
-            If ``True``, display numeric node labels. If a mapping, use custom labels
-            for nodes specified in the mapping.
-        node_distance : tuple[float, float], default=(1, 1)
-            Scaling factors (x_scale, y_scale) applied to node positions.
-        legend : bool, default=True
-            If ``True``, legend is shown.
-        figsize : tuple[int, int] | None, default=None
-            Figure dimensions (width, height) in inches. If ``None``, dimensions are
-            determined automatically based on graph structure.
-        filename : Path | None, default=None
-            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        options: Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
         """
-        gv = GraphVisualizer.from_xzcorrections(
-            xz_corr=self,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
-        )
+        gv = GraphVisualizer.from_xzcorrections(xz_corr=self, **options)
 
         gv.visualize()
 
