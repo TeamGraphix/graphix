@@ -89,6 +89,6 @@ measurements = {
 }
 og = OpenGraph(graph, inputs, outputs, measurements)
 cf = og.extract_gflow()
-cf.draw()
+cf.draw(measurement_labels=True)
 
 # %%

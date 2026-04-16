@@ -1553,8 +1553,8 @@ class Pattern:
         ----------
         annotations : DrawAnnotations | None, default=DrawAnnotations.Flow
             Annotations to be shown.
-                - `DrawAnnotations.Flow` (default): show the pattern's flow if it exists.
-                - `DrawAnnotations.XZCorrections`: show the pattern's XZ-corrections.
+                - ``DrawAnnotations.Flow`` (default): show the pattern's flow if it exists.
+                - ``DrawAnnotations.XZCorrections``: show the pattern's XZ-corrections.
                 - ``None``: show the underlying open graph only.
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
