@@ -12,6 +12,7 @@ from graphix import Circuit, Pattern, command
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
+from graphix.pattern import DrawAnnotations
 from graphix.visualization import _edge_intersects_node
 
 if TYPE_CHECKING:
@@ -106,21 +107,21 @@ def example_pflow(rng: Generator) -> Pattern:
 @pytest.mark.parametrize("flow_from_pattern", [False, True])
 @pytest.mark.parametrize("measurement_labels", [False, True])
 @pytest.mark.parametrize("pauli_measurements", [False, True])
-@pytest.mark.parametrize("local_clifford", [False, True])
+@pytest.mark.parametrize("show_local_clifford", [False, True])
 def test_draw_pattern_flow(
     example: Callable[[Generator], Pattern],
     flow_from_pattern: bool,
-    local_clifford: bool,
+    show_local_clifford: bool,
     pauli_measurements: bool,
     measurement_labels: bool,
     fx_rng: Generator,
 ) -> None:
     pattern = example(fx_rng)
-    pattern.draw_flow(
+    pattern.draw(
         flow_from_pattern=flow_from_pattern,
         pauli_measurements=pauli_measurements,
         measurement_labels=measurement_labels,
-        local_clifford=local_clifford,
+        show_local_clifford=show_local_clifford,
         node_distance=(0.7, 0.6),
     )
     plt.close()
@@ -130,19 +131,20 @@ def test_draw_pattern_flow(
 @pytest.mark.parametrize("example", [example_flow, example_gflow, example_pflow])
 @pytest.mark.parametrize("measurement_labels", [False, True])
 @pytest.mark.parametrize("pauli_measurements", [False, True])
-@pytest.mark.parametrize("local_clifford", [False, True])
+@pytest.mark.parametrize("show_local_clifford", [False, True])
 def test_draw_pattern_xzcorrections(
     example: Callable[[Generator], Pattern],
-    local_clifford: bool,
+    show_local_clifford: bool,
     pauli_measurements: bool,
     measurement_labels: bool,
     fx_rng: Generator,
 ) -> None:
     pattern = example(fx_rng)
-    pattern.draw_xzcorrections(
+    pattern.draw(
+        annotations=DrawAnnotations.XZCorrections,
         pauli_measurements=pauli_measurements,
         measurement_labels=measurement_labels,
-        local_clifford=local_clifford,
+        show_local_clifford=show_local_clifford,
         node_distance=(0.7, 0.6),
     )
     plt.close()
@@ -165,14 +167,14 @@ def test_draw_pattern_xzcorrections_save() -> None:
     pattern = example_hadamard()
     with TemporaryDirectory() as dirname:
         filename = Path(dirname) / "image.png"
-        pattern.draw_xzcorrections(filename=filename)
+        pattern.draw(annotations=DrawAnnotations.XZCorrections, filename=filename)
         assert filename.exists()
 
 
 @pytest.mark.usefixtures("mock_plot")
 def test_large_node_number() -> None:
     pattern = Pattern(input_nodes=[100])
-    pattern.draw_flow()
+    pattern.draw()
 
 
 def test_edge_intersects_node_equals() -> None:
@@ -185,7 +187,16 @@ def test_custom_corrections() -> None:
         input_nodes=[0, 1, 2, 3],
         cmds=[command.M(0), command.M(1), command.X(2, {0}), command.Z(2, {0}), command.Z(3, {1})],
     )
-    pattern.draw_xzcorrections()
+    pattern.draw(annotations=DrawAnnotations.XZCorrections)
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_og() -> None:
+    pattern = Pattern(
+        input_nodes=[0, 1, 2, 3],
+        cmds=[command.M(0), command.M(1), command.X(2, {0}), command.Z(2, {0}), command.Z(3, {1})],
+    )
+    pattern.draw(annotations=None)
 
 
 # Compare with baseline/test_draw_graph_reference.png
@@ -250,7 +261,7 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
     pattern.standardize()
-    pattern.draw_flow(
+    pattern.draw(
         flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(1, 1), measurement_labels=True, legend=False
     )
     return plt.gcf()

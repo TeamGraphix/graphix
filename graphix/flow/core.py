@@ -48,7 +48,6 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
-    from pathlib import Path
     from typing import Self
 
     # Unpack introduced in Python 3.12
@@ -373,7 +372,6 @@ class XZCorrections(Generic[_AM_co]):
             Options controlling graph visualization. See :class:`VisualizationOptions`.
         """
         gv = GraphVisualizer.from_xzcorrections(xz_corr=self, **options)
-
         gv.visualize()
 
     def subs(self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> XZCorrections[_M]:
@@ -703,16 +701,7 @@ class PauliFlow(Generic[_AM_co]):
         """
         return flow_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
 
-    def draw(
-        self,
-        pauli_measurements: bool = True,
-        measurement_labels: bool = False,
-        node_labels: bool | Mapping[int, str] = True,
-        node_distance: tuple[float, float] = (1, 1),
-        legend: bool = True,
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
-    ) -> None:
+    def draw(self, **options: Unpack[DrawKwargs]) -> None:
         """Visualize the opengraph, correction structure and partial order.
 
         Parameters
@@ -734,17 +723,7 @@ class PauliFlow(Generic[_AM_co]):
         filename : Path | None, default=None
             File path to save the visualization. If ``None``, figure is displayed but not saved.
         """
-        gv = GraphVisualizer.from_flow(
-            flow=self,
-            pauli_measurements=pauli_measurements,
-            measurement_labels=measurement_labels,
-            node_labels=node_labels,
-            node_distance=node_distance,
-            legend=legend,
-            figsize=figsize,
-            filename=filename,
-        )
-
+        gv = GraphVisualizer.from_flow(flow=self, **options)
         gv.visualize()
 
     def subs(  # noqa: PYI019 Annotating with `Self` is not possible since `self` must be of parametric type `Measurement`.

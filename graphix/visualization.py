@@ -115,6 +115,7 @@ class DrawKwargs(TypedDict, total=False):
     pauli_measurements: bool
     measurement_labels: bool
     node_labels: bool | Mapping[int, str]
+    local_clifford: Mapping[int, Clifford] | None
     node_distance: tuple[float, float]
     legend: bool
     figsize: tuple[int, int] | None
@@ -134,6 +135,9 @@ class VisualizationOptions:
     node_labels : bool | Mapping[int, str], default=True
         If ``True``, display numeric node labels. If a mapping, use custom labels
         for nodes specified in the mapping.
+    local_clifford : Mapping[int, Clifford] | None, default=None
+        Mapping of node identifiers to local Clifford operators. If provided,
+        operators are displayed on their corresponding nodes.
     node_distance : tuple[float, float], default=(1, 1)
         Scaling factors (x_scale, y_scale) applied to node positions.
     legend : bool, default=True
@@ -148,6 +152,7 @@ class VisualizationOptions:
     pauli_measurements: bool = True
     measurement_labels: bool = False
     node_labels: bool | Mapping[int, str] = True
+    local_clifford: Mapping[int, Clifford] | None = None
     node_distance: tuple[float, float] = (1, 1)
     legend: bool = True
     figsize: tuple[int, int] | None = None
@@ -170,9 +175,6 @@ class GraphVisualizer:
         Colored bezier curve paths for correction dependency arrows.
     n_layers : int
         Number of measurement layers in the partial order (determines horizontal extent).
-    local_clifford : Mapping[int, Clifford] | None, default=None
-        Mapping of node identifiers to local Clifford operators. If provided,
-        operators are displayed on their corresponding nodes.
     options : VisualizationOptions, default=VisualizationOptions()
         Options controlling graph visualization.
     _source : _Source | None, default=None
@@ -194,15 +196,12 @@ class GraphVisualizer:
     edge_paths: Mapping[_Edge, _Path]
     arrow_paths: Mapping[_Edge, Colored[_Path]] | None = None
     n_layers: int | None = None
-    local_clifford: Mapping[int, Clifford] | None = None
     options: VisualizationOptions = dataclasses.field(default_factory=VisualizationOptions)
     _source: _Source | None = None
 
     @staticmethod
     def from_opengraph(
         og: OpenGraph[AbstractMeasurement],
-        # TO CHECK: The option `local_clifford` was omitted. Was it intentional?
-        local_clifford: Mapping[int, Clifford] | None = None,
         **kwargs: Unpack[DrawKwargs],
     ) -> GraphVisualizer:
         """Create a ``GraphVisualizer`` from an ``OpenGraph`` instance.
@@ -210,9 +209,6 @@ class GraphVisualizer:
         Parameters
         ----------
         og : OpenGraph[AbstractMeasurement]
-        local_clifford : Mapping[int, Clifford] | None, default=None
-            Mapping of node identifiers to local Clifford operators. If provided,
-            operators are displayed on their corresponding nodes.
         options: Unpack[DrawKwargs]
             Options controlling graph visualization. See :class:`VisualizationOptions`.
 
@@ -229,7 +225,6 @@ class GraphVisualizer:
             og=og,
             pos=pos,
             edge_paths=edge_paths,
-            local_clifford=local_clifford,
             options=options,
             _source=_Source.OG,
         )
@@ -237,7 +232,6 @@ class GraphVisualizer:
     @staticmethod
     def from_flow(
         flow: PauliFlow[AbstractMeasurement],
-        local_clifford: Mapping[int, Clifford] | None = None,
         **kwargs: Unpack[DrawKwargs],
     ) -> GraphVisualizer:
         """Create a ``GraphVisualizer`` from a ``PauliFlow`` instance.
@@ -245,9 +239,6 @@ class GraphVisualizer:
         Parameters
         ----------
         flow : PauliFlow[AbstractMeasurement]
-        local_clifford : Mapping[int, Clifford] | None, default=None
-            Mapping of node identifiers to local Clifford operators. If provided,
-            operators are displayed on their corresponding nodes.
         options: Unpack[DrawKwargs]
             Options controlling graph visualization. See :class:`VisualizationOptions`.
 
@@ -282,7 +273,6 @@ class GraphVisualizer:
             edge_paths=edge_paths,
             arrow_paths=arrow_paths,
             n_layers=n_layers,
-            local_clifford=local_clifford,
             options=options,
             _source=_Source.Flow,
         )
@@ -290,7 +280,6 @@ class GraphVisualizer:
     @staticmethod
     def from_xzcorrections(
         xz_corr: XZCorrections[AbstractMeasurement],
-        local_clifford: Mapping[int, Clifford] | None = None,
         **kwargs: Unpack[DrawKwargs],
     ) -> GraphVisualizer:
         """Create a ``GraphVisualizer`` from an ``XZCorrections`` instance.
@@ -298,9 +287,6 @@ class GraphVisualizer:
         Parameters
         ----------
         xz_corr : XZCorrections[AbstractMeasurement]
-        local_clifford : Mapping[int, Clifford] | None, default=None
-            Mapping of node identifiers to local Clifford operators. If provided,
-            operators are displayed on their corresponding nodes.
         options: Unpack[DrawKwargs]
             Options controlling graph visualization. See :class:`VisualizationOptions`.
 
@@ -322,7 +308,6 @@ class GraphVisualizer:
             edge_paths=edge_paths,
             arrow_paths=arrow_paths,
             n_layers=n_layers,
-            local_clifford=local_clifford,
             options=options,
             _source=_Source.XZCorr,
         )
@@ -349,7 +334,7 @@ class GraphVisualizer:
         if self.options.measurement_labels:
             self._draw_measurements_labels()
 
-        if self.local_clifford is not None:
+        if self.options.local_clifford is not None:
             self._draw_local_clifford()
 
         self._set_plot_lims(plot_lims)
@@ -580,10 +565,10 @@ class GraphVisualizer:
 
     def _draw_local_clifford(self) -> None:
         """Add text labels indicating Clifford commands."""
-        assert self.local_clifford is not None
-        for node in self.local_clifford:
+        assert self.options.local_clifford is not None
+        for node in self.options.local_clifford:
             x, y = self.pos[node] + np.array([0.2, 0.2])
-            plt.text(x, y, f"{self.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
+            plt.text(x, y, f"{self.options.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
 
     def _draw_legend(self) -> None:
         """Add legend to plot.

@@ -57,6 +57,13 @@ if TYPE_CHECKING:
 _BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
 
 
+class DrawAnnotations(Enum):
+    """Enumeration to indicate the possible annotations for `Pattern.draw`."""
+
+    Flow = enum.auto()
+    XZCorrections = enum.auto()
+
+
 class Pattern:
     """
     MBQC pattern class.
@@ -1531,21 +1538,27 @@ class Pattern:
                 warnings.warn("Pattern with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
                 return
 
-    def draw_flow(
+    def draw(
         self,
         *,
+        annotations: DrawAnnotations | None = DrawAnnotations.Flow,
         flow_from_pattern: bool = True,
-        local_clifford: bool = False,
+        show_local_clifford: bool = False,
         stacklevel: int = 1,
         **options: Unpack[DrawKwargs],
     ) -> None:
-        """Visualize the underlying graph of the pattern with its flow if it exists.
+        """Visualize the underlying graph of the pattern with annotations.
 
         Parameters
         ----------
+        annotations : DrawAnnotations | None, default=DrawAnnotations.Flow
+            Annotations to be shown.
+                - DrawAnnotations.Flow (default): show the pattern's flow if it exists.
+                - DrawAnnotations.XZCorrections: show the pattern's XZ-corrections.
+                - None: show the underlying open graph only.
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
-        local_clifford : bool, default=False
+        show_local_clifford : bool, default=False
             If ``True``, the local Clifford operators are printed.
         options : Unpack[DrawKwargs]
             Options controlling graph visualization. See :class:`VisualizationOptions`.
@@ -1557,54 +1570,56 @@ class Pattern:
         ------
         PatternError
             If the underlying opengraph does not have flow.
+
+        Notes
+        -----
+        If `flow_from_pattern==True` but the pattern is not compatible with a gflow, an attempt to be extract the flow from the underlying open graph will be made while warning the user.
         """
-        flow: PauliFlow[Measurement] | None = None
+        lc = self.extract_clifford() if show_local_clifford else None
+        options.setdefault("local_clifford", lc)
 
-        if flow_from_pattern:
-            pattern_std = optimization.StandardizedPattern.from_pattern(self)
-            try:
-                flow = pattern_std.extract_causal_flow()
-            except FlowError:
-                try:
-                    flow = pattern_std.extract_gflow()
-                except (FlowError, TypeError):
-                    warn(
-                        "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
-                        stacklevel=stacklevel,
-                    )
-
-        if flow is None:
+        if annotations is None:
             og = self.extract_opengraph()
-            try:
-                bloch_case = og.downcast_bloch()
-            except TypeError:
-                pass
-            else:
-                flow = bloch_case.find_causal_flow()
-            if flow is None:
-                flow = og.find_pauli_flow(stacklevel=stacklevel + 1)
-            if flow is None:
-                raise PatternError("The pattern's open graph does not have Pauli flow.")
+            gv = GraphVisualizer.from_opengraph(og=og, **options)
+        else:
+            match annotations:
+                case DrawAnnotations.Flow:
+                    flow: PauliFlow[Measurement] | None = None
 
-        lc = self.extract_clifford() if local_clifford else None
-        gv = GraphVisualizer.from_flow(flow=flow, local_clifford=lc, **options)
-        gv.visualize()
+                    if flow_from_pattern:
+                        pattern_std = optimization.StandardizedPattern.from_pattern(self)
+                        try:
+                            flow = pattern_std.extract_causal_flow()
+                        except FlowError:
+                            try:
+                                flow = pattern_std.extract_gflow()
+                            except (FlowError, TypeError):
+                                warn(
+                                    "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
+                                    stacklevel=stacklevel,
+                                )
 
-    def draw_xzcorrections(self, *, local_clifford: bool = False, **options: Unpack[DrawKwargs]) -> None:
-        """Visualize the underlying graph of the pattern with its XZ-corrections.
+                    if flow is None:
+                        og = self.extract_opengraph()
+                        try:
+                            bloch_case = og.downcast_bloch()
+                        except TypeError:
+                            pass
+                        else:
+                            flow = bloch_case.find_causal_flow()
+                        if flow is None:
+                            flow = og.find_pauli_flow(stacklevel=stacklevel + 1)
+                        if flow is None:
+                            raise PatternError(
+                                "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawAnnotations.XZCorrections`."
+                            )
 
-        This method calls :meth:`self.extract_xzcorrections`.
+                    gv = GraphVisualizer.from_flow(flow=flow, **options)
 
-        Parameters
-        ----------
-        local_clifford: bool, default=False
-            If ``True``, the local Clifford operators are printed.
-        options: Unpack[DrawKwargs]
-            Options controlling graph visualization. See :class:`VisualizationOptions`.
-        """
-        xzcorrections = self.extract_xzcorrections()
-        lc = self.extract_clifford() if local_clifford else None
-        gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, local_clifford=lc, **options)
+                case DrawAnnotations.XZCorrections:
+                    xzcorrections = self.extract_xzcorrections()
+                    gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, **options)
+
         gv.visualize()
 
     def to_qasm3(self, filename: Path | str, input_state: dict[int, State] | State = BasicStates.PLUS) -> None:

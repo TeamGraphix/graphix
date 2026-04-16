@@ -62,9 +62,7 @@ Pattern Manipulation
 
     .. automethod:: minimize_space
 
-    .. automethod:: draw_flow
-
-    .. automethod:: draw_xzcorrections
+    .. automethod:: draw
 
     .. automethod:: max_space
 

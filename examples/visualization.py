@@ -11,7 +11,7 @@ with the pattern, graph or the (generalized-)flow.
 # Causal flow
 # -----------
 # First, let us inspect the flow and gflow associated with the resource graph of a pattern.
-# simply call :meth:`~graphix.pattern.Pattern.draw_flow` method.
+# simply call :meth:`~graphix.pattern.Pattern.draw` method.
 # Below we list the meaning of the node boundary and face colors.
 #
 # - Nodes with red boundaries are the *input nodes* where the computation starts.
@@ -33,13 +33,13 @@ circuit.cnot(2, 1)
 pattern = circuit.transpile().pattern
 # note that this visualization is not always consistent with the correction set of pattern,
 # since we find the correction sets with flow-finding algorithms.
-pattern.draw_flow(flow_from_pattern=False, measurement_labels=True)
+pattern.draw(flow_from_pattern=False, measurement_labels=True)
 
 # %%
 # next, show the gflow:
 pattern.remove_input_nodes()
 pattern.perform_pauli_measurements()
-pattern.draw_flow(flow_from_pattern=False, measurement_labels=True)
+pattern.draw(flow_from_pattern=False, measurement_labels=True)
 
 
 # %%
@@ -49,13 +49,13 @@ pattern.draw_flow(flow_from_pattern=False, measurement_labels=True)
 #
 
 # node_distance argument specifies the scale of the node arrangement in x and y directions.
-pattern.draw_flow(flow_from_pattern=True, measurement_labels=True)
+pattern.draw(flow_from_pattern=True, measurement_labels=True)
 
 # %%
 # Instead of the measurement planes, we can show the local Clifford of the resource graph.
 # see *clifford.py* for the details of the indices of each single-qubit Clifford operators.
 # 6 is the Hadamard and 8 is the :math:`\sqrt{iY}` operator.
-pattern.draw_flow(flow_from_pattern=True, local_clifford=True)
+pattern.draw(flow_from_pattern=True, local_clifford=True)
 
 # %%
 # Visualize based on the graph
