@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from graphix import Pattern, command
-from graphix.space_minimization import greedy_minimization_by_degree, minimization_using_causal_flow
+from graphix.space_minimization import SpaceMinimizationHeuristics
 
 
 def counter_example_issue_454(sz: int, depth: int) -> Pattern:
@@ -29,7 +29,12 @@ def test_minimize_space_deprecated() -> None:
     p = counter_example_issue_454(sz=4, depth=3)
     before = p.max_space()
     # former heuristics, without `keep_measurement_order_unchanged`
-    p.minimize_space([minimization_using_causal_flow, greedy_minimization_by_degree])
+    p.minimize_space(
+        [
+            SpaceMinimizationHeuristics.causal_flow,
+            SpaceMinimizationHeuristics.greedy_degree,
+        ]
+    )
     after = p.max_space()
     assert after > before
 
@@ -76,5 +81,5 @@ def test_minimization_by_degree_edge_ordering() -> None:
     assert set(graph.edges()) == {(0, 2), (1, 2)}
     assert set(graph.edges(2)) == {(2, 0), (2, 1)}
 
-    p.minimize_space([greedy_minimization_by_degree])
+    p.minimize_space([SpaceMinimizationHeuristics.greedy_degree])
     assert p.max_space() == 2

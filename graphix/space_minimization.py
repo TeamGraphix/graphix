@@ -21,42 +21,6 @@ if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
 
-@dataclass(frozen=True, slots=True)
-class SpaceMinimizationHeuristicResult:
-    """The result of the application of a space minimization heuristic.
-
-    Attributes
-    ----------
-    new_order: tuple[Node, ...]
-        The new measurement order.
-
-    known_optimal: bool
-        ``True`` if the new measurement order is known to be optimal.
-        This will interrupt the search for a better heuristic.
-    """
-
-    new_order: tuple[Node, ...]
-    known_optimal: bool
-
-
-SpaceMinimizationHeuristic: TypeAlias = "Callable[[StandardizedPattern], SpaceMinimizationHeuristicResult | None]"
-"""Define a space minimization heuristic by returning a new measurement order or ``None`` if the heuristic cannot handle the given pattern.
-
-A space minimization heuristic provides a measurement order for a given pattern.
-See :const:`DEFAULT_HEURISTICS` for the default heuristics used for minimizing space.
-
-Parameters
-----------
-pattern: StandardizedPattern
-    The pattern to optimize for space.
-
-Returns
--------
-SpaceMinimizationHeuristicResult
-    The result of the application of the space minimization heuristic.
-"""
-
-
 def pattern_max_space(pattern: Pattern) -> int:
     """Compute the maximum number of nodes that must be present in the graph (graph space) during the execution of the pattern.
 
@@ -182,6 +146,122 @@ def standardized_to_space_optimal_pattern(pattern: StandardizedPattern) -> Patte
     return target
 
 
+@dataclass(frozen=True, slots=True)
+class SpaceMinimizationHeuristicResult:
+    """The result of the application of a space minimization heuristic.
+
+    Attributes
+    ----------
+    new_order: tuple[Node, ...]
+        The new measurement order.
+
+    known_optimal: bool
+        ``True`` if the new measurement order is known to be optimal.
+        This will interrupt the search for a better heuristic.
+    """
+
+    new_order: tuple[Node, ...]
+    known_optimal: bool
+
+
+SpaceMinimizationHeuristic: TypeAlias = "Callable[[StandardizedPattern], SpaceMinimizationHeuristicResult | None]"
+"""Define a space minimization heuristic by returning a new measurement order or ``None`` if the heuristic cannot handle the given pattern.
+
+A space minimization heuristic provides a measurement order for a given pattern.
+See :const:`DEFAULT_HEURISTICS` for the default heuristics used for minimizing space.
+
+Parameters
+----------
+pattern: StandardizedPattern
+    The pattern to optimize for space.
+
+Returns
+-------
+SpaceMinimizationHeuristicResult
+    The result of the application of the space minimization heuristic.
+"""
+
+
+class SpaceMinimizationHeuristics:
+    """Predefined heuristics."""
+
+    @staticmethod
+    def causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
+        """Use the causal flow layer to minimize space.
+
+        This minimization heuristic is optimal but requires the pattern to have a causal flow.
+        """
+        try:
+            cf = pattern.extract_causal_flow()
+        except FlowError:
+            return None
+        else:
+            meas_order = tuple(chain(*reversed(cf.partial_order_layers[1:])))
+            return SpaceMinimizationHeuristicResult(meas_order, True)
+
+    @staticmethod
+    def order_unchanged(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
+        """Leave the measurement order unchanged.
+
+        Since this heuristic preserves the original measurement order, it
+        cannot return a pattern with worse max space than the original.
+
+        Usually, this heuristic is included in the list of heuristics
+        considered to ensure that the result of space minimization cannot
+        have a worse max space than the original pattern.  This is the
+        case by default, but the user can remove this heuristic from the
+        list to see the effect of the other heuristics even if they don't
+        reduce the max space of the pattern.
+
+        """
+        return SpaceMinimizationHeuristicResult(tuple(m.node for m in pattern.m_list), False)
+
+    @staticmethod
+    def greedy_degree(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
+        """Choose greedily the nodes by minimal degree.
+
+        This minimization heuristic can improve but can also worsen the
+        max space in some situations.
+
+        """
+        graph = pattern.extract_graph()
+        nodes = set(graph.nodes)
+        not_measured = nodes - set(pattern.output_nodes)
+        dependency = _extract_dependency(pattern)
+        # keys() should be converted into `set` because it is transient.
+        _update_dependency(set(pattern.results.keys()), dependency)
+        meas_order = []
+        while not_measured:
+            next_node = min((i for i in not_measured if not dependency[i]), key=graph.degree)
+            meas_order.append(next_node)
+            _update_dependency({next_node}, dependency)
+            not_measured -= {next_node}
+            graph.remove_nodes_from({next_node})
+        return SpaceMinimizationHeuristicResult(tuple(meas_order), False)
+
+
+DEFAULT_HEURISTICS: tuple[SpaceMinimizationHeuristic, ...] = (
+    SpaceMinimizationHeuristics.causal_flow,
+    SpaceMinimizationHeuristics.greedy_degree,
+    SpaceMinimizationHeuristics.order_unchanged,
+)
+"""Default heuristics.
+
+By default, the following heuristics will be tried in that order:
+
+- :func:`causal_flow` gives an optimal measurement order, but only for
+  patterns with causal flow.
+
+- :func:`greedy_degree` can improve but can also worsen the max space
+  in some situations.
+
+- :func:`order_unchanged` ensures that if the previous heuristics
+  don't improve the max space, at least the resulting pattern cannot
+  have a worse max space than the original one.
+
+"""
+
+
 def minimize_space(
     pattern: StandardizedPattern, heuristics: Iterable[SpaceMinimizationHeuristic] | None = None
 ) -> StandardizedPattern:
@@ -191,18 +271,18 @@ def minimize_space(
 
     - If the pattern has a causal flow, then the layers of the flow
       are used to provide an optimal measurement order for the
-      pattern. See :func:`minimization_using_causal_flow`.
+      pattern. See :func:`causal_flow`.
 
     - If the pattern has no causal flow, then a greedy algorithm is
       applied to choose at each step to measure the node with the
       minimal degree.  This particular heuristic has no guarantee to
       produce an optimal pattern and can even increase the maximal
-      space. See :func:`greedy_minimization_by_degree`.
+      space. See :func:`greedy_degree`.
 
     - If the above heuristic does not give a pattern with a smaller
       maximal space than the original pattern, then the original
       measurement order is unchanged. See
-      :func:`keep_measurement_order_unchanged`.
+      :func:`order_unchanged`.
 
     Parameters
     ----------
@@ -238,37 +318,6 @@ def minimize_space(
     if best_pattern_with_max_space is None:
         return pattern
     return best_pattern_with_max_space[0]
-
-
-def minimization_using_causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
-    """Use the causal flow layer to minimize space.
-
-    This minimization heuristic is optimal but requires the pattern to have a causal flow.
-    """
-    try:
-        cf = pattern.extract_causal_flow()
-    except FlowError:
-        return None
-    else:
-        meas_order = tuple(chain(*reversed(cf.partial_order_layers[1:])))
-        return SpaceMinimizationHeuristicResult(meas_order, True)
-
-
-def keep_measurement_order_unchanged(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
-    """Leave the measurement order unchanged.
-
-    Since this heuristic preserves the original measurement order, it
-    cannot return a pattern with worse max space than the original.
-
-    Usually, this heuristic is included in the list of heuristics
-    considered to ensure that the result of space minimization cannot
-    have a worse max space than the original pattern.  This is the
-    case by default, but the user can remove this heuristic from the
-    list to see the effect of the other heuristics even if they don't
-    reduce the max space of the pattern.
-
-    """
-    return SpaceMinimizationHeuristicResult(tuple(m.node for m in pattern.m_list), False)
 
 
 def _extract_dependency(pattern: StandardizedPattern) -> dict[Node, set[Node]]:
@@ -307,45 +356,3 @@ def _update_dependency(measured: AbstractSet[Node], dependency: Mapping[Node, se
     """
     for s in dependency.values():
         s.difference_update(measured)
-
-
-def greedy_minimization_by_degree(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
-    """Choose greedily the nodes by minimal degree.
-
-    This minimization heuristic can improve but can also worsen the
-    max space in some situations.
-
-    """
-    graph = pattern.extract_graph()
-    nodes = set(graph.nodes)
-    not_measured = nodes - set(pattern.output_nodes)
-    dependency = _extract_dependency(pattern)
-    # keys() should be converted into `set` because it is transient.
-    _update_dependency(set(pattern.results.keys()), dependency)
-    meas_order = []
-    while not_measured:
-        next_node = min((i for i in not_measured if not dependency[i]), key=graph.degree)
-        meas_order.append(next_node)
-        _update_dependency({next_node}, dependency)
-        not_measured -= {next_node}
-        graph.remove_nodes_from({next_node})
-    return SpaceMinimizationHeuristicResult(tuple(meas_order), False)
-
-
-DEFAULT_HEURISTICS: tuple[SpaceMinimizationHeuristic, ...] = (minimization_using_causal_flow, greedy_minimization_by_degree, keep_measurement_order_unchanged)
-"""Default heuristics.
-
-By default, the following heuristics will be tried in that order:
-
-- :func:`minimization_using_causal_flow` gives an optimal measurement
-  order, but only for patterns with causal flow.
-
-- :func:`greedy_minimization_by_degree` can improve but can also
-  worsen the max space in some situations.
-
-- :func:`keep_measurement_order_unchanged` ensures that if the
-  previous heuristics don't improve the max space, at least the
-  resulting pattern cannot have a worse max space than the original
-  one.
-
-"""
