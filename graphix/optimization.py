@@ -369,10 +369,9 @@ class StandardizedPattern(_StandardizedPattern):
 
         Parameters
         ----------
-        heuristics : Iterable[SpaceMinimizationHeuristic] | None = None
+        heuristics : Iterable[~graphix.space_minimization.SpaceMinimizationHeuristic] | None = None
             The heuristics to try in order.
-            By default:
-            ``[minimization_using_causal_flow, greedy_minimization_by_degree, keep_measurement_order_unchanged]``
+            By default, :const:`~graphix.space_minimization.DEFAULT_HEURISTICS` is used.
 
         Returns
         -------
@@ -403,7 +402,7 @@ class StandardizedPattern(_StandardizedPattern):
         return standardized_to_space_optimal_pattern(self)
 
     def extract_opengraph(self) -> OpenGraph[Measurement]:
-        """Extract the underlying resource-state open graph from the pattern.
+        r"""Extract the underlying resource-state open graph from the pattern.
 
         Returns
         -------
@@ -412,7 +411,7 @@ class StandardizedPattern(_StandardizedPattern):
         Raises
         ------
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state.
 
         Notes
         -----
@@ -488,7 +487,7 @@ class StandardizedPattern(_StandardizedPattern):
         return generations[::-1]
 
     def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
-        """Extract the causal flow structure from the current measurement pattern.
+        r"""Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
 
@@ -505,7 +504,7 @@ class StandardizedPattern(_StandardizedPattern):
             - Is empty, or
             - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -540,7 +539,7 @@ class StandardizedPattern(_StandardizedPattern):
         return cf
 
     def extract_gflow(self) -> GFlow[BlochMeasurement]:
-        """Extract the generalized flow (gflow) structure from the current measurement pattern.
+        r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
 
@@ -557,7 +556,7 @@ class StandardizedPattern(_StandardizedPattern):
         TypeError
             If the pattern contains a Pauli measurement
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -586,7 +585,7 @@ class StandardizedPattern(_StandardizedPattern):
         return gf
 
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
-        """Extract the XZ-corrections from the current measurement pattern.
+        r"""Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
@@ -598,7 +597,7 @@ class StandardizedPattern(_StandardizedPattern):
         XZCorrectionsError
             If the extracted correction dictionaries are not well formed.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
         """
         x_corr: dict[int, set[int]] = {}
         z_corr: dict[int, set[int]] = {}

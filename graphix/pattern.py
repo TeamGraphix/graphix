@@ -1246,10 +1246,9 @@ class Pattern:
 
         Parameters
         ----------
-        heuristics : Iterable[SpaceMinimizationHeuristic] | None = None
+        heuristics : Iterable[~graphix.space_minimization.SpaceMinimizationHeuristic] | None = None
             The heuristics to try in order.
-            By default:
-            ``[minimization_using_causal_flow, greedy_minimization_by_degree, keep_measurement_order_unchanged]``
+            By default, :const:`~graphix.space_minimization.DEFAULT_HEURISTICS` is used.
         copy : bool, optional
             If ``True``, the current pattern remains unchanged and a
             new pattern is returned. The default is ``False``, meaning
