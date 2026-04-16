@@ -783,12 +783,12 @@ def _compute_positions_causal_flow(obj: CausalFlow[AbstractPlanarMeasurement]) -
     return {k: (x, y) for k, (x, y) in pos.items()}
 
 
-def _scale_positions(pos: Mapping[int, _Point], node_distance: tuple[float, float]) -> dict[int, _Point]:
+def _scale_positions(pos: dict[int, _Point], node_distance: tuple[float, float]) -> dict[int, _Point]:
     """Scale node positions by a distance factor.
 
     Parameters
     ----------
-    pos : Mapping[int, _Point]
+    pos : dict[int, _Point]
         Mapping of node identifiers to their (x, y) coordinates.
     node_distance : tuple[float, float]
         Scaling factors as (x_scale, y_scale) to apply to each position.
@@ -801,7 +801,7 @@ def _scale_positions(pos: Mapping[int, _Point], node_distance: tuple[float, floa
     """
     if node_distance != (1, 1):
         pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}
-    return dict(pos)  # To comply with mypy
+    return pos
 
 
 def _compute_edge_paths(og: OpenGraph[AbstractMeasurement], pos: Mapping[int, _Point]) -> dict[_Edge, _Path]:

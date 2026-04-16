@@ -1553,9 +1553,9 @@ class Pattern:
         ----------
         annotations : DrawAnnotations | None, default=DrawAnnotations.Flow
             Annotations to be shown.
-                - DrawAnnotations.Flow (default): show the pattern's flow if it exists.
-                - DrawAnnotations.XZCorrections: show the pattern's XZ-corrections.
-                - None: show the underlying open graph only.
+                - `DrawAnnotations.Flow` (default): show the pattern's flow if it exists.
+                - `DrawAnnotations.XZCorrections`: show the pattern's XZ-corrections.
+                - ``None``: show the underlying open graph only.
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
         show_local_clifford : bool, default=False
@@ -1573,7 +1573,7 @@ class Pattern:
 
         Notes
         -----
-        If `flow_from_pattern==True` but the pattern is not compatible with a gflow, an attempt to be extract the flow from the underlying open graph will be made while warning the user.
+        If ``flow_from_pattern==True`` but the pattern is not compatible with a gflow, an attempt to be extract the flow from the underlying open graph will be made while warning the user.
         """
         lc = self.extract_clifford() if show_local_clifford else None
         options.setdefault("local_clifford", lc)
