@@ -143,6 +143,7 @@ def standardized_to_space_optimal_pattern(pattern: StandardizedPattern) -> Patte
         if clifford_gate := pattern.c_dict.get(node):
             target.add(command.C(node, clifford_gate))
         done.add(node)
+    target.reorder_output_nodes(pattern.output_nodes)
     return target
 
 
