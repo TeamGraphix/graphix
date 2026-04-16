@@ -40,7 +40,7 @@ def er_to_circuit(
     pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
         Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
     cm_cp: Callable[[CliffordMap, Circuit], None] | None
-        Compilation pass to synthesize a Clifford map. If ``None`` (default), :func:`cm_berg_pass` is employed. This pass only handles unitaries so far (Clifford maps with the same number of input and ouptut nodes).
+        Compilation pass to synthesize a Clifford map. If ``None`` (default), :func:`cm_berg_pass` is employed. This pass only handles unitaries so far (Clifford maps with the same number of input and output nodes).
 
     Returns
     -------
@@ -212,7 +212,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     Notes
     -----
-    This pass only handles unitaries so far (Clifford maps with the same number of input and ouptut nodes).
+    This pass only handles unitaries so far (Clifford maps with the same number of input and output nodes).
 
     Gate set: H, S, CNOT, SWAP, X, Y, Z
 
@@ -237,7 +237,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     2. Use CNOT gates to reduce the XX block to a single pivot column.
 
-    3. Apply a SWAP gate to bring the pivot to the diagonal if neccesary.
+    3. Apply a SWAP gate to bring the pivot to the diagonal if necessary.
 
     4. Ensure the ZX and ZZ blocks of the tableau have the correct canonical form
     by redoing steps 1. and 2.
@@ -298,7 +298,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
     def do_step_2(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> int:
         col_idx_xx = np.flatnonzero(tab[row_idx, :n])
         while len(col_idx_xx) > 1:
-            for i in range(0, len(col_idx_xx) - 1, 2):  # itertools.batched only avaialble in Python 3.12+
+            for i in range(0, len(col_idx_xx) - 1, 2):  # itertools.batched only available in Python 3.12+
                 # Apply CNOTS to disjoint qubits in parallel
                 add_cnot(tab, instructions, qc=col_idx_xx[i], qt=col_idx_xx[i + 1])
             col_idx_xx = col_idx_xx[::2]
@@ -313,20 +313,19 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
     def add_s(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
-        tab[:, q + n] = tab[:, q] ^ tab[:, q + n]
+        tab[:, q + n] ^= tab[:, q]
         q = int(q)
         instructions.extend((S(q), Z(q)))  # We append Sdagger to get C instead of C^dagger
 
     def add_cnot(tab: MatGF2, instructions: list[Instruction], qc: Qubit, qt: Qubit) -> None:
-        tab[:, -1] ^= tab[:, qc] * tab[:, qt + n] * (tab[:, qt] ^ tab[:, qc + n] ^ 1)
+        tab[:, -1] ^= tab[:, qc] & tab[:, qt + n] & (tab[:, qt] ^ tab[:, qc + n] ^ 1)
         tab[:, qt] ^= tab[:, qc]
         tab[:, qc + n] ^= tab[:, qt + n]
         instructions.append(CNOT(control=int(qc), target=int(qt)))
 
     def add_swap(tab: MatGF2, instructions: list[Instruction], q0: Qubit, q1: Qubit) -> None:
         q0, q1 = int(q0), int(q1)  # Cast to `int` to avoid typing issues
-        for shift in [0, n]:
-            tab[:, [q0 + shift, q1 + shift]] = tab[:, [q1 + shift, q0 + shift]]
+        tab[:, [q0, q1, q0 + n, q1 + n]] = tab[:, [q1, q0, q1 + n, q0 + n]]
 
         instructions.append(SWAP((q0, q1)))
 
