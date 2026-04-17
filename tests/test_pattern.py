@@ -19,6 +19,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
+from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
@@ -69,7 +70,9 @@ class TestPattern:
         depth = 1
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
-
+        pattern = pattern.infer_pauli_measurements()
+        pattern.remove_input_nodes()
+        pattern.perform_pauli_measurements()
         pattern.standardize()
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
@@ -214,6 +217,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         assert pattern.is_standard()
+        pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert state_mbqc.isclose(state)
@@ -233,6 +237,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -252,6 +257,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         assert ignore_pauli_with_deps or not any(
             cmd.measurement.try_to_pauli() is not None for cmd in pattern if cmd.kind == CommandKind.M
@@ -288,10 +294,11 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         isolated_nodes = pattern.extract_isolated_nodes()
-        # 42-node is the isolated and output node.
-        isolated_nodes_ref = {42}
+        # 48-node is the isolated and output node.
+        isolated_nodes_ref = {48}
         assert isolated_nodes == isolated_nodes_ref
 
     def test_pauli_measurement_error(self, fx_rng: Generator) -> None:
@@ -332,9 +339,10 @@ class TestPattern:
         depth = 2
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize()
+        pattern.minimize_space()
         pattern1 = copy.deepcopy(pattern)
         pattern1.remove_input_nodes()
+        pattern1 = pattern1.infer_pauli_measurements()
         pattern1.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         state = pattern.simulate_pattern(rng=rng)
         state1 = pattern1.simulate_pattern(rng=rng)
@@ -348,6 +356,7 @@ class TestPattern:
         circuit = rand_circuit(nqubits, depth, rng, use_ccx=False)
         pattern = circuit.transpile().pattern
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         assert not pattern.results
         pattern.perform_pauli_measurements()
         assert pattern.results

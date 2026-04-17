@@ -17,6 +17,7 @@ from graphix.command import E
 from graphix.fundamentals import ANGLE_PI, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
+from graphix.optimization import StandardizedPattern
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
@@ -942,7 +943,7 @@ class TestOpenGraph:
         depth = 2
         circuit = rand_circuit(n_qubits, depth, fx_rng)
         pattern_ref = circuit.transpile().pattern
-        pattern = pattern_ref.extract_opengraph().to_pattern()
+        pattern = StandardizedPattern.from_pattern(pattern_ref.extract_opengraph().to_pattern()).to_space_optimal_pattern()
 
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
             alpha = 2 * ANGLE_PI * fx_rng.random()

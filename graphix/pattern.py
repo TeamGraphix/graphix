@@ -541,7 +541,7 @@ class Pattern:
         ----------
         method : str, optional
             'direct' shift_signals is executed on a conventional Pattern sequence.
-            'mc' shift_signals is done using the original algorithm on the measurement calculus paper.
+            'mc' shift_signals is done using the original algorithm in the measurement calculus paper.
 
         Returns
         -------

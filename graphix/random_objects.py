@@ -418,6 +418,7 @@ def rand_circuit(
         functools.partial(circuit.ry, angle=ANGLE_PI / 4),
         functools.partial(circuit.rz, angle=-ANGLE_PI / 4),
         functools.partial(circuit.rx, angle=-ANGLE_PI / 4),
+        functools.partial(circuit.j, angle=-ANGLE_PI / 4),
         circuit.h,
         circuit.s,
         circuit.x,
@@ -437,7 +438,7 @@ def rand_circuit(
         if use_ccx:
             for j, k, l in _gentriplet(nqubits, 2, rng):
                 circuit.ccx(j, k, l)
-        for j, k in _genpair(nqubits, 4, rng):
+        for j, k in _genpair(nqubits, 2, rng):
             circuit.swap(j, k)
         for j in range(nqubits):
             ind = rng.integers(len(gate_choice))
