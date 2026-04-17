@@ -398,6 +398,7 @@ class StandardizedPattern(_StandardizedPattern):
             if clifford_gate := self.c_dict.get(node):
                 pattern.add(command.C(node, clifford_gate))
             done.add(node)
+        pattern.reorder_output_nodes(self.output_nodes)
         return pattern
 
     def extract_opengraph(self) -> OpenGraph[Measurement]:
