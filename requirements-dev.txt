@@ -21,7 +21,7 @@ pytest-mock
 pytest-mpl
 
 # Optional dependencies
-qiskit>=1.0
+qiskit>=2.0,<2.4 # bug with mypy and qiskit==2.4
 qiskit_qasm3_import
 qiskit-aer
 
