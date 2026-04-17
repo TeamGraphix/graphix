@@ -999,6 +999,8 @@ class Circuit:
                     evolve_single(Ops.ry(instr.angle), instr.target)
                 case instruction.InstructionKind.RZ:
                     evolve_single(Ops.rz(instr.angle), instr.target)
+                case instruction.InstructionKind.J:
+                    evolve_single(Ops.j(instr.angle), instr.target)
                 case instruction.InstructionKind.RZZ:
                     evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
                 case instruction.InstructionKind.CCX:

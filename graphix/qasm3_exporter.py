@@ -84,6 +84,12 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
             return qasm3_gate_call(
                 instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
             )
+        case InstructionKind.J:
+            angle = angle_to_qasm3(instruction.angle)
+            target = qasm3_qubit(instruction.target)
+            p_gate = qasm3_gate_call("p", args=[angle], operands=[target])
+            h_gate = qasm3_gate_call("h", operands=[target])
+            return f"{p_gate};\n    {h_gate}"
         case InstructionKind.H | InstructionKind.S | InstructionKind.X | InstructionKind.Y | InstructionKind.Z:
             return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
         case InstructionKind.I:
