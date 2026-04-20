@@ -943,7 +943,9 @@ class TestOpenGraph:
         depth = 2
         circuit = rand_circuit(n_qubits, depth, fx_rng)
         pattern_ref = circuit.transpile().pattern
-        pattern = StandardizedPattern.from_pattern(pattern_ref.extract_opengraph().to_pattern()).to_space_optimal_pattern()
+        pattern = StandardizedPattern.from_pattern(
+            pattern_ref.extract_opengraph().to_pattern()
+        ).to_space_optimal_pattern()
 
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
             alpha = 2 * ANGLE_PI * fx_rng.random()

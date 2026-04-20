@@ -42,6 +42,7 @@ def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
     """
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
+    yield ""
     yield f"qubit[{circuit.width}] q;"
     if any(instr.kind == InstructionKind.M for instr in circuit.instruction):
         yield f"bit[{circuit.width}] b;"
@@ -85,11 +86,7 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
                 instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
             )
         case InstructionKind.J:
-            angle = angle_to_qasm3(instruction.angle)
-            target = qasm3_qubit(instruction.target)
-            p_gate = qasm3_gate_call("p", args=[angle], operands=[target])
-            h_gate = qasm3_gate_call("h", operands=[target])
-            return f"{p_gate};\n    {h_gate}"
+            raise ValueError("OpenQASM3 does not support J(alpha) instructions.")
         case InstructionKind.H | InstructionKind.S | InstructionKind.X | InstructionKind.Y | InstructionKind.Z:
             return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
         case InstructionKind.I:

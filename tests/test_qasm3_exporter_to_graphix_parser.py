@@ -42,7 +42,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     nqubits = 5
     depth = 4
     # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
-    check_round_trip(rand_circuit(nqubits, depth, rng, use_cz=False))
+    check_round_trip(rand_circuit(nqubits, depth, rng, use_j=False, use_cz=True))
 
 
 @pytest.mark.parametrize(
@@ -52,8 +52,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
         instruction.RZZ(target=0, control=1, angle=ANGLE_PI / 4),
         instruction.CNOT(target=0, control=1),
         instruction.SWAP(targets=(0, 1)),
-        # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
-        # instruction.CZ(targets=(0, 1)),
+        instruction.CZ(targets=(0, 1)),
         instruction.H(target=0),
         instruction.S(target=0),
         instruction.X(target=0),

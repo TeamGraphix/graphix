@@ -117,9 +117,10 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 5
     depth = 5
-    circuit = rand_circuit(nqubits, depth, rng=rng)
+    circuit = rand_circuit(nqubits, depth, rng=rng, use_j=False)
     pattern = circuit.transpile().pattern
     pattern.remove_input_nodes()
+    pattern = pattern.infer_pauli_measurements()
     pattern.perform_pauli_measurements()
     pattern.minimize_space()
 

@@ -21,7 +21,7 @@ from graphix.command import E, M, N, X, Z
 from graphix.flow.core import CausalFlow, _corrections_to_partial_order_layers
 from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import Instruction, InstructionKind, InstructionVisitor
-from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.ops import Ops
 from graphix.optimization import StandardizedPattern
@@ -959,7 +959,7 @@ class Circuit:
         else:
             backend.add_nodes(range(self.width), input_state)
 
-        classical_measures = []
+        classical_measures: list[Outcome] = []
 
         for i in range(len(self.instruction)):
             instr = self.instruction[i]

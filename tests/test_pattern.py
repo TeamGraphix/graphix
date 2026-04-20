@@ -714,6 +714,7 @@ class TestPattern:
         p2 = circuit_2.transpile().pattern  # inputs: [0]
 
         p, _ = p1.compose(p2, mapping={0: 1, 1: 2, 2: 3})
+        p = StandardizedPattern.from_pattern(p).to_space_optimal_pattern()
 
         circuit_12 = Circuit(1)
         circuit_12.h(0)
@@ -752,6 +753,7 @@ class TestPattern:
         circuit_1.rz(0, alpha)
         p1 = circuit_1.transpile().pattern
         p1.remove_input_nodes()
+        p1 = p1.infer_pauli_measurements()
         p1.perform_pauli_measurements()
 
         circuit_2 = Circuit(1)
@@ -879,10 +881,12 @@ class TestPattern:
         c.rz(0, 0.2)
         p = c.transpile().pattern
         p.remove_input_nodes()
+        p = p.infer_pauli_measurements()
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({2}), frozenset({0}))
 
         p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, Measurement.XY(0.3))])
+        p = p.infer_pauli_measurements()
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({2}))
 
@@ -1119,9 +1123,12 @@ class TestPattern:
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
-        for p in [p_ref, p_test]:
-            p.remove_input_nodes()
-            p.perform_pauli_measurements()
+        p_ref.remove_input_nodes()
+        p_test.remove_input_nodes()
+        p_ref = p_ref.infer_pauli_measurements()
+        p_test = p_test.infer_pauli_measurements()
+        p_ref.perform_pauli_measurements()
+        p_test.perform_pauli_measurements()
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)
