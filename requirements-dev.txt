@@ -2,7 +2,7 @@
 mypy==1.20.1
 pre-commit # for language-agnostic hooks
 pyright
-ruff==0.15.10
+ruff==0.15.11
 
 # Stubs
 types-networkx==3.6.1.20260408
