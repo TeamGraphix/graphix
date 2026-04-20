@@ -486,6 +486,7 @@ class TestPattern:
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         pattern.standardize()
         pattern.minimize_space()
