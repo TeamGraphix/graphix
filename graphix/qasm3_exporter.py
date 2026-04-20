@@ -42,7 +42,6 @@ def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
     """
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
-    yield ""
     yield f"qubit[{circuit.width}] q;"
     if any(instr.kind == InstructionKind.M for instr in circuit.instruction):
         yield f"bit[{circuit.width}] b;"
@@ -72,7 +71,23 @@ def angle_to_qasm3(angle: ParameterizedAngle) -> str:
 
 
 def instruction_to_qasm3(instruction: Instruction) -> str:
-    """Get the OpenQASM3 representation of a single circuit instruction."""
+    """Get the OpenQASM3 representation of a single circuit instruction.
+
+    Parameters
+    ----------
+    instruction : Instruction
+        The instruction to convert.
+
+    Returns
+    -------
+    str
+        The OpenQASM3 representation of the instruction.
+
+    Raises
+    ------
+    ValueError
+        If the instruction is not supported by OpenQASM3.
+    """
     match instruction.kind:
         case InstructionKind.M:
             if instruction.axis != Axis.Z:
