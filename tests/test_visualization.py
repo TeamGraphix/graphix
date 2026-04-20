@@ -124,6 +124,7 @@ def example_hadamard() -> Pattern:
 def example_local_clifford() -> Pattern:
     pattern = example_hadamard()
     pattern.remove_input_nodes()
+    pattern = pattern.infer_pauli_measurements()
     pattern.perform_pauli_measurements()
     return pattern
 
@@ -239,6 +240,7 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         pattern = pattern.to_bloch()
     else:
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
     pattern.standardize()
     pattern.draw_graph(
