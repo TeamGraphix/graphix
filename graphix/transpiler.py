@@ -17,7 +17,6 @@ from typing_extensions import assert_never, override
 
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
-from graphix.command import E, M, N, X, Z
 from graphix.flow.core import CausalFlow, _corrections_to_partial_order_layers
 from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import Instruction, InstructionKind, InstructionVisitor
@@ -32,7 +31,6 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.command import Command
     from graphix.fundamentals import ParameterizedAngle
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.pattern import Pattern
