@@ -123,8 +123,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     with the definition of an OpenGraph. For instance, if the final node on
     a qubit is measured, it will add two nodes behind it so that no output
     nodes are measured to satisfy the requirements of an open graph.
-        .. warning::
-            works with `pyzx==0.8.0` (see `requirements-dev.txt`). Other versions may not be compatible due to breaking changes in `pyzx`
+
     Example
     -------
     >>> import pyzx as zx
@@ -169,7 +168,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
 
         nbrs = list(g.neighbors(v))
         if len(nbrs) == 1:
-            measurements[nbrs[0]] = Measurement.YZ(-_checked_float(g.phase(v)))
+            measurements[nbrs[0]] = Measurement.YZ(_checked_float(g.phase(v)))
             g_nx.remove_node(v)
 
     next_id = max(g_nx.nodes) + 1
