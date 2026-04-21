@@ -123,3 +123,25 @@ def test_to_space_optimal_pattern(fx_rng: Generator) -> None:
     state = pattern.simulate_pattern(rng=fx_rng)
     state2 = pattern2.simulate_pattern(rng=fx_rng)
     assert state.isclose(state2)
+
+
+def test_bug_482() -> None:
+    input_pattern = Pattern(
+        input_nodes=[0, 1, 2],
+        cmds=[
+            N(3),
+            N(4),
+            E((0, 3)),
+            E((1, 3)),
+            E((3, 4)),
+            M(0, Measurement.XY(0)),
+            Z(1, {0}),
+            Z(4, {0}),
+            X(3, {0}),
+            M(3, Measurement.XY(0)),
+            X(4, {3}),
+        ],
+        output_nodes=[4, 1, 2],
+    )
+    output_pattern = StandardizedPattern.from_pattern(input_pattern).to_space_optimal_pattern()
+    assert input_pattern.output_nodes == output_pattern.output_nodes
