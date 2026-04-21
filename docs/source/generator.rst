@@ -16,6 +16,8 @@ Pattern Generation
 
     .. automethod:: simulate_statevector
 
+    .. automethod:: cz
+    
     .. automethod:: cnot
 
     .. automethod:: h
@@ -33,6 +35,8 @@ Pattern Generation
     .. automethod:: ry
 
     .. automethod:: rz
+
+    .. automethod:: j
 
     .. automethod:: ccx
 
