@@ -13,7 +13,6 @@ from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGra
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.measurements import BlochMeasurement, Measurement
-from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -142,6 +141,8 @@ class OpenGraph(Generic[_AM_co]):
         options : Unpack[DrawKwargs]
             Options controlling graph visualization. See :class:`VisualizationOptions`.
         """
+        from graphix.visualization import GraphVisualizer  # noqa: PLC0415  Avoid circular imports
+
         gv = GraphVisualizer.from_opengraph(og=self, **options)
 
         gv.visualize()
