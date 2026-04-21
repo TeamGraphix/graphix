@@ -37,7 +37,8 @@ if TYPE_CHECKING:
 
 
 def test_graph_equality(fx_rng: Generator) -> None:
-    seed = int.from_bytes(fx_rng.integers(0, 256, size=16, dtype=np.uint8).tobytes())
+    # No default value for `byteorder` in Python 3.10
+    seed = int.from_bytes(fx_rng.integers(0, 256, size=16, dtype=np.uint8).tobytes(), byteorder="big")
     g = clifford_t(4, 10, 0.1, seed=seed)
 
     og1 = from_pyzx_graph(g)
