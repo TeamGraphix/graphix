@@ -12,3 +12,8 @@ updates:
     directory: "/.github"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "qiskit"
+        # There is a bug with Mypy and Qiskit 2.4.0
+        # See https://github.com/python/mypy/issues/21263
+        versions: [ ">=2.4" ]
