@@ -291,8 +291,8 @@ def minimize_space(
         The pattern to optimize.
 
     heuristics : Iterable[SpaceMinimizationHeuristic] | None, default None
-        The heuristics to apply sequentially. Defaults to
-        :const:`~graphix.space_minimization.DEFAULT_HEURISTICS`.
+        The heuristics to apply sequentially.
+        Defaults to :const:`DEFAULT_HEURISTICS`.
 
     Returns
     -------
