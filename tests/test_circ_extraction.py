@@ -17,7 +17,6 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.random_objects import rand_circuit
-from graphix.sim.base_backend import NodeIndex
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
@@ -30,7 +29,7 @@ class PauliExpTestCase(NamedTuple):
     qc: Circuit
 
 
-class TestPauliExponential:
+class TestPauliExponentialDAG:
     # Angles of Pauli exponentials are in units of pi
     alpha = 0.3 * ANGLE_PI
 
@@ -107,9 +106,7 @@ class TestPauliExponential:
     )
     def test_to_circuit(self, test_case: PauliExpTestCase, fx_rng: Generator) -> None:
         qc = Circuit(len(test_case.pexp_dag.output_nodes))
-        outputs_mapping = NodeIndex()
-        outputs_mapping.extend(test_case.pexp_dag.output_nodes)
-        pexp_ladder_pass(test_case.pexp_dag.remap(outputs_mapping.index), qc)
+        pexp_ladder_pass(test_case.pexp_dag.remap(), qc)
         state = qc.simulate_statevector(rng=fx_rng).statevec
         state_ref = test_case.qc.simulate_statevector(rng=fx_rng).statevec
         assert state.isclose(state_ref)
@@ -123,17 +120,13 @@ class TestPauliExponential:
 
         pexp_dag_1 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_1)
         qc_1 = Circuit(2)
-        outputs_mapping_1 = NodeIndex()
-        outputs_mapping_1.extend(pexp_dag_1.output_nodes)
-        pexp_ladder_pass(pexp_dag_1.remap(outputs_mapping_1.index), qc_1)
+        pexp_ladder_pass(pexp_dag_1.remap(), qc_1)
         s_1 = qc_1.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
 
         pexp_dag_2 = PauliExponentialDAG(pauli_exponentials=pexp_map, partial_order_layers=pol, output_nodes=outputs_2)
         qc_2 = Circuit(2)
         qc_2.swap(0, 1)  # We must swap before and after the Pauli exponential!
-        outputs_mapping_2 = NodeIndex()
-        outputs_mapping_2.extend(pexp_dag_2.output_nodes)
-        pexp_ladder_pass(pexp_dag_2.remap(outputs_mapping_2.index), qc_2)
+        pexp_ladder_pass(pexp_dag_2.remap(), qc_2)
 
         s_2 = qc_2.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
         assert not s_1.isclose(s_2)
@@ -193,6 +186,25 @@ class TestPauliExponential:
 
         assert pexp_dag == pexp_dag_ref
 
+    def test_remap(self) -> None:
+        pexp_dag = PauliExponentialDAG(
+            pauli_exponentials={
+                0: PauliExponential(0.7, PauliString(dim=4, axes={1: Axis.X, 2: Axis.Z, 4: Axis.Z})),
+            },
+            partial_order_layers=[{1, 2, 3, 4}, {0}],
+            output_nodes=[2, 1, 3, 4],
+        )
+        pexp_dag_remap = pexp_dag.remap()
+
+        assert pexp_dag_remap == pexp_dag_remap.remap()  # Reampping twice gives the identity
+
+        outputs_map = {0: 2, 1: 1, 2: 3, 3: 4}
+
+        # We give a default value to `get` to comply with the type return type of outputs_mapping (int).
+        pexp_dag_original = pexp_dag_remap.remap(outputs_mapping=lambda x: outputs_map.get(x, 0))
+
+        assert pexp_dag_original == pexp_dag
+
 
 class TestCliffordMap:
     @pytest.mark.parametrize(
@@ -239,7 +251,7 @@ class TestCliffordMap:
         ],
     )
     def test_to_tableau(self, cm: CliffordMap, tab_ref: MatGF2) -> None:
-        tab = cm.to_tableau()
+        tab = cm.remap().to_tableau()
         assert np.all(tab == tab_ref)
 
     # The CliffordMap test cases were generated using conversion tools in the graphix-stim-compiler plugin and stim.Tableau.random.
@@ -433,6 +445,30 @@ class TestCliffordMap:
         s_ref = qc_ref.simulate_statevector(rng=fx_rng).statevec
 
         assert s_test.isclose(s_ref)
+
+    def test_remap(self) -> None:
+        cm = CliffordMap(
+            x_map={5: PauliString(dim=2, axes={7: Axis.Z}), 2: PauliString(dim=2, axes={3: Axis.Y})},
+            z_map={
+                5: PauliString(dim=2, axes={7: Axis.X, 3: Axis.Y}, sign=Sign.MINUS),
+                2: PauliString(dim=2, axes={7: Axis.Z, 3: Axis.Z}),
+            },
+            input_nodes=[5, 2],
+            output_nodes=[7, 3],
+        )
+        cm_remap = cm.remap()
+
+        assert cm_remap == cm_remap.remap()  # Reampping twice gives the identity
+
+        inputs_map = {0: 5, 1: 2}
+        outputs_map = {0: 7, 1: 3}
+
+        # We give a default value to `get` to comply with the type return type of inputs_mapping and outputs_mapping (int).
+        cm_original = cm_remap.remap(
+            inputs_mapping=lambda x: inputs_map.get(x, 0), outputs_mapping=lambda x: outputs_map.get(x, 0)
+        )
+
+        assert cm_original == cm
 
 
 class TestExtraction:

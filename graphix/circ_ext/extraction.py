@@ -11,6 +11,7 @@ from typing_extensions import Self  # Self introduced in 3.11
 from graphix._linalg import MatGF2
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
+from graphix.sim.base_backend import NodeIndex
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
@@ -57,7 +58,7 @@ class ExtractionResult:
 
         Parameters
         ----------
-        pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
+        pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None, default
             Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`graphix.circ_ext.compilation.pexp_ladder_pass` is employed.
         cm_cp: Callable[[CliffordMap, Circuit], None] | None
             Compilation pass to synthesize a Clifford map. If ``None`` (default), :func:`graphix.circ_ext.compilation.cm_berg_pass` is employed. This pass only handles unitaries so far (Clifford maps with the same number of input and output nodes).
@@ -289,13 +290,34 @@ class PauliExponentialDAG:
 
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
-        """Remap nodes to qubit indices.
+    def remap(self, outputs_mapping: Callable[[int], int] | None = None) -> Self:
+        """Relabel output node labels in the Pauli exponential DAG.
 
-        See documentation in :meth:`PauliString.remap` for additional information.
+        Parameters
+        ----------
+        outputs_mapping: Callable[[int], int] | None, default None
+            Mapping between output node labels of the original open graph and new custom labels. If ``None``, output nodes are mapped to their position in ``self.output_nodes``. This is the canonical mapping to qubit indices.
+
+        Returns
+        -------
+        PauliExponentialDAG
+            Pauli exponential DAG defined on new node labels.
+
+        See Also
+        --------
+        :meth:`PauliString.remap`
         """
+        if outputs_mapping is None:
+            outputs_nodeidx = NodeIndex()
+            outputs_nodeidx.extend(self.output_nodes)
+            outputs_mapping = outputs_nodeidx.index
+
+        output_nodes = [outputs_mapping(node) for node in self.output_nodes]
         pauli_exponentials = {node: pexp.remap(outputs_mapping) for node, pexp in self.pauli_exponentials.items()}
-        return replace(self, pauli_exponentials=pauli_exponentials)
+        partial_order_layers = [set(output_nodes), *self.partial_order_layers[1:]]
+        return type(self)(
+            pauli_exponentials=pauli_exponentials, partial_order_layers=partial_order_layers, output_nodes=output_nodes
+        )
 
 
 @dataclass(frozen=True)
@@ -356,24 +378,42 @@ class CliffordMap:
         x_map = clifford_x_map_from_focused_flow(flow)
         return CliffordMap(x_map, z_map, flow.og.input_nodes, flow.og.output_nodes)
 
-    def remap(self, inputs_mapping: Callable[[int], int], outputs_mapping: Callable[[int], int]) -> Self:
-        """Remap nodes to qubit indices.
+    def remap(
+        self, inputs_mapping: Callable[[int], int] | None = None, outputs_mapping: Callable[[int], int] | None = None
+    ) -> Self:
+        """Relabel input node and output node labels in the Clifford map.
 
         Parameters
         ----------
-        inputs_mapping: Callable[[int], int]
-            Mapping between input node numbers of the original MBQC pattern or open graph and qubit indices of a quantum circuit.
-        outputs_mapping: Callable[[int], int]
-            Mapping between output node numbers of the original MBQC pattern or open graph and qubit indices of a quantum circuit.
+        inputs_mapping: Callable[[int], int] | None, default None
+            Mapping between input node labels of the original open graph and new custom labels. If ``None``, input nodes are mapped to their position in ``self.input_nodes``. This is the canonical mapping to qubit indices of a quantum circuit.
+        outputs_mapping: Callable[[int], int] | None, default None
+            Mapping between output node labels of the original open graph and new custom labels. If ``None``, output nodes are mapped to their position in ``self.output_nodes``. This is the canonical mapping to qubit indices.
 
         Returns
         -------
         CliffordMap
-            Clifford map defined on qubit indices.
+            Clifford map defined on new node labels.
+
+        See Also
+        --------
+        :meth:`PauliString.remap`
         """
+        if inputs_mapping is None:
+            inputs_nodeidx = NodeIndex()
+            inputs_nodeidx.extend(self.input_nodes)
+            inputs_mapping = inputs_nodeidx.index
+
+        if outputs_mapping is None:
+            outputs_nodeidx = NodeIndex()
+            outputs_nodeidx.extend(self.output_nodes)
+            outputs_mapping = outputs_nodeidx.index
+
         x_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.x_map.items()}
         z_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
-        return replace(self, x_map=x_map, z_map=z_map)
+        input_nodes = [inputs_mapping(node) for node in self.input_nodes]
+        output_nodes = [outputs_mapping(node) for node in self.output_nodes]
+        return type(self)(x_map=x_map, z_map=z_map, input_nodes=input_nodes, output_nodes=output_nodes)
 
     def to_tableau(self) -> MatGF2:
         """Convert the CliffordMap into its binary tableau representation.
@@ -392,13 +432,6 @@ class CliffordMap:
         The sign of the Pauli string is stored in the final column
         (0 for ``Sign.PLUS`` and 1 for ``Sign.MINUS``).
 
-        Parameters
-        ----------
-        None
-            This method operates on the current CliffordMap instance. It
-            assumes the map has already been remapped such that input and
-            output nodes correspond to qubit indices.
-
         Returns
         -------
         MatGF2
@@ -410,11 +443,21 @@ class CliffordMap:
         NotImplementedError
             If the number of input nodes differs from the number of output
             nodes (i.e., the map is an isometry instead of a square Clifford).
+
+        Notes
+        -----
+        This method assumes the Clifford map has already been remapped such that input and
+        output nodes correspond to qubit indices. Use ``self.remap().to_tableau()`` to ensure
+        this is the case.
         """
         n = len(self.input_nodes)
         if n != len(self.output_nodes):
             raise NotImplementedError(
                 f"Isometries are not supported yet: # of inputs ({len(self.input_nodes)}) must be equal to the # of outputs ({len(self.output_nodes)})."
+            )
+        if self.input_nodes != self.output_nodes:
+            raise ValueError(
+                "Clifford map has not been remapped: `self.input_nodes != self.output_nodes`. Use self.remap().to_tableau() to map node labels to qubits."
             )
 
         tab = MatGF2(np.zeros((2 * n, 2 * n + 1)))

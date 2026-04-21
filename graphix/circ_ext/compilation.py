@@ -262,6 +262,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
         raise NotImplementedError(
             ":func:`cm_berg_pass` does not support circuit compilation if the number of input and output nodes is different (isometry)."
         )
+
     instructions: list[Instruction] = []
 
     def process_qubit(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
