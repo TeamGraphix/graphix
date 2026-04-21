@@ -363,15 +363,23 @@ class StandardizedPattern(_StandardizedPattern):
         return standardized_pattern_max_space(self)
 
     def minimize_space(self, heuristics: Iterable[SpaceMinimizationHeuristic] | None = None) -> StandardizedPattern:
-        """Return a pattern that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
+        """Return a pattern with an optimized measurement order that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
 
-        See :func:`graphix.space_minimization.minimize_space` for more information about the default heuristics.
+        Note that standardized patterns always have a maximal space
+        equal to the total number of nodes in the open graph, because
+        standardization requires the entire graph to be prepared
+        before measurement.
+
+        Space reduction is specifically realized when the optimized
+        order is applied via :meth:`to_space_optimal_pattern()`.
+
+        See :func:`graphix.space_minimization.minimize_space` for default heuristics.
 
         Parameters
         ----------
-        heuristics : Iterable[~graphix.space_minimization.SpaceMinimizationHeuristic] | None = None
-            The heuristics to try in order.
-            By default, :const:`~graphix.space_minimization.DEFAULT_HEURISTICS` is used.
+        heuristics : Iterable[~graphix.space_minimization.SpaceMinimizationHeuristic] | None, default None
+            The heuristics to apply sequentially. Defaults to
+            :const:`~graphix.space_minimization.DEFAULT_HEURISTICS`.
 
         Returns
         -------
@@ -396,7 +404,17 @@ class StandardizedPattern(_StandardizedPattern):
         return pattern
 
     def to_space_optimal_pattern(self) -> Pattern:
-        """Return a pattern that is space-optimal for the given measurement order."""
+        """Return a pattern that is space-optimal for the given measurement order.
+
+        This method treats the measurement order as fixed, performing
+        node preparations (``N``) and entanglements (``E``) as late as
+        possible to minimize space usage. While the resulting pattern
+        is guaranteed to be optimal for this specific order, the
+        method does not explore alternative orders.
+
+        To find an alternative measurement order that further reduces
+        space, use :meth:`minimize_space`.
+        """
         from graphix.space_minimization import standardized_to_space_optimal_pattern  # noqa: PLC0415
 
         return standardized_to_space_optimal_pattern(self)

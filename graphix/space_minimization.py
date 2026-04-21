@@ -266,7 +266,7 @@ By default, the following heuristics will be tried in that order:
 def minimize_space(
     pattern: StandardizedPattern, heuristics: Iterable[SpaceMinimizationHeuristic] | None = None
 ) -> StandardizedPattern:
-    """Return a pattern that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
+    """Return a pattern with an optimized measurement order that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
 
     The default heuristics are as follows:
 
