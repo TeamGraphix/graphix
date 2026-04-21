@@ -79,6 +79,8 @@ class PauliString:
 
     Attributes
     ----------
+    dim : int
+        Dimension of the Hilbert space on which the Pauli string acts.
     axes : Mapping[int, Axis]
         Mapping between nodes and the applied Pauli operator.
     sign : Sign
@@ -86,9 +88,10 @@ class PauliString:
 
     Notes
     -----
-    The identity operator is omitted in this representation, which means that in general it is not possible to infer the size of the Hilbert space from an instance of ``PauliString`` alone.
+    The identity operators in the Pauli string are omitted in ``axes``, but they can be inferred from the dimension of the Hilbert space ``dim``.
     """
 
+    dim: int
     axes: Mapping[int, Axis]
     sign: Sign = Sign.PLUS
 
@@ -117,6 +120,7 @@ class PauliString:
         [1] Simmons, 2021 (arXiv:2109.05654).
         """
         og = flow.og
+        dim = len(flow.og.output_nodes)
         c_set = set(flow.correction_function[node])
         odd_c_set = og.odd_neighbors(c_set)
         inter_c_odd_set = c_set & odd_c_set
@@ -151,7 +155,7 @@ class PauliString:
             nodes[cnode] = Axis.Y
         for cnode in z_corrections:
             nodes[cnode] = Axis.Z
-        return PauliString(nodes, Sign.minus_if(negative_sign))
+        return PauliString(dim, nodes, Sign.minus_if(negative_sign))
 
     def remap(self, outputs_mapping: Callable[[int], int]) -> PauliString:
         """Remap nodes to qubit indices.
@@ -167,7 +171,7 @@ class PauliString:
             Pauli string defined on qubit indices.
         """
         axes = {outputs_mapping(n): axis for n, axis in self.axes.items()}
-        return PauliString(axes, self.sign)
+        return PauliString(self.dim, axes, self.sign)
 
 
 @dataclass(frozen=True)
@@ -491,9 +495,10 @@ def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, 
     ----------
     [1] Simmons, 2021 (arXiv:2109.05654).
     """
+    dim = len(flow.og.output_nodes)
     # Nodes are either measured or outputs.
     return {
-        node: flow.pauli_strings[node] if node in flow.og.measurements else PauliString({node: Axis.Z})
+        node: flow.pauli_strings[node] if node in flow.og.measurements else PauliString(dim, {node: Axis.Z})
         for node in flow.og.input_nodes
     }
 

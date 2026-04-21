@@ -40,7 +40,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString({1: Axis.Z}, sign=Sign.MINUS)),
+                        0: PauliExponential(alpha / 2, PauliString(dim=1, axes={1: Axis.Z}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -50,7 +50,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString({1: Axis.X}, sign=Sign.MINUS)),
+                        0: PauliExponential(alpha / 2, PauliString(dim=1, axes={1: Axis.X}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -60,7 +60,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString({1: Axis.Y}, sign=Sign.MINUS)),
+                        0: PauliExponential(alpha / 2, PauliString(dim=1, axes={1: Axis.Y}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{1}, {0}],
                     output_nodes=[1],
@@ -70,9 +70,9 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.Z}, sign=Sign.MINUS)),
-                        1: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.X}, sign=Sign.MINUS)),
-                        2: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.Z}, sign=Sign.MINUS)),
+                        0: PauliExponential(ANGLE_PI / 4, PauliString(dim=1, axes={3: Axis.Z}, sign=Sign.MINUS)),
+                        1: PauliExponential(ANGLE_PI / 4, PauliString(dim=1, axes={3: Axis.X}, sign=Sign.MINUS)),
+                        2: PauliExponential(ANGLE_PI / 4, PauliString(dim=1, axes={3: Axis.Z}, sign=Sign.MINUS)),
                     },
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                     output_nodes=[3],
@@ -82,9 +82,11 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.X})),
-                        1: PauliExponential(ANGLE_PI / 4, PauliString({5: Axis.Z})),
-                        2: PauliExponential(ANGLE_PI / 4, PauliString({3: Axis.X, 5: Axis.Z}, Sign.MINUS)),
+                        0: PauliExponential(ANGLE_PI / 4, PauliString(dim=2, axes={3: Axis.X})),
+                        1: PauliExponential(ANGLE_PI / 4, PauliString(dim=2, axes={5: Axis.Z})),
+                        2: PauliExponential(
+                            ANGLE_PI / 4, PauliString(dim=2, axes={3: Axis.X, 5: Axis.Z}, sign=Sign.MINUS)
+                        ),
                     },
                     partial_order_layers=[{5, 3}, {2}, {0, 1}],
                     output_nodes=[5, 3],  # Node 5 -> qubit 0 (control), node 3 -> qubit 1 (target)
@@ -94,7 +96,7 @@ class TestPauliExponential:
             PauliExpTestCase(
                 PauliExponentialDAG(
                     pauli_exponentials={
-                        0: PauliExponential(alpha / 2, PauliString({1: Axis.X, 2: Axis.Z, 4: Axis.Z})),
+                        0: PauliExponential(alpha / 2, PauliString(dim=4, axes={1: Axis.X, 2: Axis.Z, 4: Axis.Z})),
                     },
                     partial_order_layers=[{1, 2, 3, 4}, {0}],
                     output_nodes=[2, 1, 3, 4],
@@ -113,7 +115,7 @@ class TestPauliExponential:
         assert state.isclose(state_ref)
 
     def test_to_circuit_outputs_order(self, fx_rng: Generator) -> None:
-        pexp_map = {2: PauliExponential(0.1, PauliString({1: Axis.X, 0: Axis.Z}))}
+        pexp_map = {2: PauliExponential(0.1, PauliString(dim=2, axes={1: Axis.X, 0: Axis.Z}))}
         pol = [{0, 1}, {2}]
 
         outputs_1 = [0, 1]
@@ -175,12 +177,14 @@ class TestPauliExponential:
 
         pexp_dag_ref = PauliExponentialDAG(
             pauli_exponentials={
-                0: PauliExponential(ANGLE_PI * 0.1 / 2, PauliString({6: Axis.X})),
-                1: PauliExponential(ANGLE_PI * 0.2 / 2, PauliString({6: Axis.Y, 5: Axis.Z})),
-                2: PauliExponential(ANGLE_PI * 0.3 / 2, PauliString({5: Axis.Y, 6: Axis.Z}, Sign.MINUS)),
-                3: PauliExponential(ANGLE_PI * 0.4 / 2, PauliString({5: Axis.X})),
+                0: PauliExponential(ANGLE_PI * 0.1 / 2, PauliString(dim=2, axes={6: Axis.X})),
+                1: PauliExponential(ANGLE_PI * 0.2 / 2, PauliString(dim=2, axes={6: Axis.Y, 5: Axis.Z})),
+                2: PauliExponential(
+                    ANGLE_PI * 0.3 / 2, PauliString(dim=2, axes={5: Axis.Y, 6: Axis.Z}, sign=Sign.MINUS)
+                ),
+                3: PauliExponential(ANGLE_PI * 0.4 / 2, PauliString(dim=2, axes={5: Axis.X})),
                 4: PauliExponential(
-                    0, PauliString({6: Axis.X})
+                    0, PauliString(dim=2, axes={6: Axis.X})
                 ),  # The angle is 0 (interpreted from the Pauli measurement).
             },
             partial_order_layers=flow.partial_order_layers,
@@ -196,8 +200,11 @@ class TestCliffordMap:
         [
             (
                 CliffordMap(
-                    x_map={0: PauliString({0: Axis.Z}), 1: PauliString({1: Axis.Y})},
-                    z_map={0: PauliString({0: Axis.X, 1: Axis.Y}, Sign.MINUS), 1: PauliString({0: Axis.Z, 1: Axis.Z})},
+                    x_map={0: PauliString(dim=2, axes={0: Axis.Z}), 1: PauliString(dim=2, axes={1: Axis.Y})},
+                    z_map={
+                        0: PauliString(dim=2, axes={0: Axis.X, 1: Axis.Y}, sign=Sign.MINUS),
+                        1: PauliString(dim=2, axes={0: Axis.Z, 1: Axis.Z}),
+                    },
                     input_nodes=[0, 1],
                     output_nodes=[0, 1],
                 ),
@@ -205,11 +212,15 @@ class TestCliffordMap:
             ),
             (
                 CliffordMap(
-                    x_map={0: PauliString({0: Axis.Z}), 1: PauliString({1: Axis.X}), 2: PauliString({2: Axis.Y})},
+                    x_map={
+                        0: PauliString(dim=3, axes={0: Axis.Z}),
+                        1: PauliString(dim=3, axes={1: Axis.X}),
+                        2: PauliString(dim=3, axes={2: Axis.Y}),
+                    },
                     z_map={
-                        0: PauliString({0: Axis.X, 1: Axis.X}),
-                        1: PauliString({0: Axis.Z, 1: Axis.Z}),
-                        2: PauliString({2: Axis.Z}),
+                        0: PauliString(dim=3, axes={0: Axis.X, 1: Axis.X}),
+                        1: PauliString(dim=3, axes={0: Axis.Z, 1: Axis.Z}),
+                        2: PauliString(dim=3, axes={2: Axis.Z}),
                     },
                     input_nodes=[0, 1, 2],
                     output_nodes=[0, 1, 2],
@@ -238,8 +249,8 @@ class TestCliffordMap:
             (
                 Circuit(width=1, instr=[H(0)]),
                 CliffordMap(
-                    x_map={0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS)},
-                    z_map={0: PauliString(axes={0: Axis.X}, sign=Sign.PLUS)},
+                    x_map={0: PauliString(dim=1, axes={0: Axis.Z}, sign=Sign.PLUS)},
+                    z_map={0: PauliString(dim=1, axes={0: Axis.X}, sign=Sign.PLUS)},
                     input_nodes=[0],
                     output_nodes=[0],
                 ),
@@ -247,8 +258,8 @@ class TestCliffordMap:
             (
                 Circuit(width=1, instr=[S(0)]),
                 CliffordMap(
-                    x_map={0: PauliString(axes={0: Axis.Y}, sign=Sign.PLUS)},
-                    z_map={0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS)},
+                    x_map={0: PauliString(dim=1, axes={0: Axis.Y}, sign=Sign.PLUS)},
+                    z_map={0: PauliString(dim=1, axes={0: Axis.Z}, sign=Sign.PLUS)},
                     input_nodes=[0],
                     output_nodes=[0],
                 ),
@@ -257,12 +268,12 @@ class TestCliffordMap:
                 Circuit(width=2, instr=[CNOT(1, 0)]),
                 CliffordMap(
                     x_map={
-                        0: PauliString(axes={0: Axis.X, 1: Axis.X}, sign=Sign.PLUS),
-                        1: PauliString(axes={1: Axis.X}, sign=Sign.PLUS),
+                        0: PauliString(dim=2, axes={0: Axis.X, 1: Axis.X}, sign=Sign.PLUS),
+                        1: PauliString(dim=2, axes={1: Axis.X}, sign=Sign.PLUS),
                     },
                     z_map={
-                        0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS),
-                        1: PauliString(axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.PLUS),
+                        0: PauliString(dim=2, axes={0: Axis.Z}, sign=Sign.PLUS),
+                        1: PauliString(dim=2, axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.PLUS),
                     },
                     input_nodes=[0, 1],
                     output_nodes=[0, 1],
@@ -272,14 +283,14 @@ class TestCliffordMap:
                 Circuit(width=3, instr=[CNOT(1, 0), H(0), H(1), CNOT(2, 1), S(1), CNOT(2, 0), H(2), S(2)]),
                 CliffordMap(
                     x_map={
-                        0: PauliString(axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.PLUS),
-                        1: PauliString(axes={1: Axis.Z}, sign=Sign.PLUS),
-                        2: PauliString(axes={2: Axis.Z}, sign=Sign.PLUS),
+                        0: PauliString(dim=3, axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.PLUS),
+                        1: PauliString(dim=3, axes={1: Axis.Z}, sign=Sign.PLUS),
+                        2: PauliString(dim=3, axes={2: Axis.Z}, sign=Sign.PLUS),
                     },
                     z_map={
-                        0: PauliString(axes={0: Axis.X, 2: Axis.Z}, sign=Sign.PLUS),
-                        1: PauliString(axes={0: Axis.X, 1: Axis.Y}, sign=Sign.PLUS),
-                        2: PauliString(axes={0: Axis.Z, 1: Axis.Z, 2: Axis.Y}, sign=Sign.PLUS),
+                        0: PauliString(dim=3, axes={0: Axis.X, 2: Axis.Z}, sign=Sign.PLUS),
+                        1: PauliString(dim=3, axes={0: Axis.X, 1: Axis.Y}, sign=Sign.PLUS),
+                        2: PauliString(dim=3, axes={0: Axis.Z, 1: Axis.Z, 2: Axis.Y}, sign=Sign.PLUS),
                     },
                     input_nodes=[0, 1, 2],
                     output_nodes=[0, 1, 2],
@@ -288,8 +299,8 @@ class TestCliffordMap:
             (
                 Circuit(width=1, instr=[S(0), S(0), S(0)]),
                 CliffordMap(
-                    x_map={0: PauliString(axes={0: Axis.Y}, sign=Sign.MINUS)},
-                    z_map={0: PauliString(axes={0: Axis.Z}, sign=Sign.PLUS)},
+                    x_map={0: PauliString(dim=1, axes={0: Axis.Y}, sign=Sign.MINUS)},
+                    z_map={0: PauliString(dim=1, axes={0: Axis.Z}, sign=Sign.PLUS)},
                     input_nodes=[0],
                     output_nodes=[0],
                 ),
@@ -298,12 +309,12 @@ class TestCliffordMap:
                 Circuit(width=2, instr=[CNOT(1, 0), H(0), S(0), S(0), H(0), S(1), S(1)]),
                 CliffordMap(
                     x_map={
-                        0: PauliString(axes={0: Axis.X, 1: Axis.X}, sign=Sign.MINUS),
-                        1: PauliString(axes={1: Axis.X}, sign=Sign.MINUS),
+                        0: PauliString(dim=2, axes={0: Axis.X, 1: Axis.X}, sign=Sign.MINUS),
+                        1: PauliString(dim=2, axes={1: Axis.X}, sign=Sign.MINUS),
                     },
                     z_map={
-                        0: PauliString(axes={0: Axis.Z}, sign=Sign.MINUS),
-                        1: PauliString(axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.MINUS),
+                        0: PauliString(dim=2, axes={0: Axis.Z}, sign=Sign.MINUS),
+                        1: PauliString(dim=2, axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.MINUS),
                     },
                     input_nodes=[0, 1],
                     output_nodes=[0, 1],
@@ -337,14 +348,14 @@ class TestCliffordMap:
                 ),
                 CliffordMap(
                     x_map={
-                        0: PauliString(axes={0: Axis.Y, 1: Axis.Z, 2: Axis.X}, sign=Sign.PLUS),
-                        1: PauliString(axes={1: Axis.Z, 2: Axis.X}, sign=Sign.MINUS),
-                        2: PauliString(axes={0: Axis.Y, 1: Axis.Z}, sign=Sign.PLUS),
+                        0: PauliString(dim=3, axes={0: Axis.Y, 1: Axis.Z, 2: Axis.X}, sign=Sign.PLUS),
+                        1: PauliString(dim=3, axes={1: Axis.Z, 2: Axis.X}, sign=Sign.MINUS),
+                        2: PauliString(dim=3, axes={0: Axis.Y, 1: Axis.Z}, sign=Sign.PLUS),
                     },
                     z_map={
-                        0: PauliString(axes={0: Axis.Z, 1: Axis.X, 2: Axis.Z}, sign=Sign.MINUS),
-                        1: PauliString(axes={0: Axis.X, 1: Axis.X, 2: Axis.X}, sign=Sign.PLUS),
-                        2: PauliString(axes={1: Axis.Y, 2: Axis.Y}, sign=Sign.PLUS),
+                        0: PauliString(dim=3, axes={0: Axis.Z, 1: Axis.X, 2: Axis.Z}, sign=Sign.MINUS),
+                        1: PauliString(dim=3, axes={0: Axis.X, 1: Axis.X, 2: Axis.X}, sign=Sign.PLUS),
+                        2: PauliString(dim=3, axes={1: Axis.Y, 2: Axis.Y}, sign=Sign.PLUS),
                     },
                     input_nodes=[0, 1, 2],
                     output_nodes=[0, 1, 2],
@@ -396,16 +407,16 @@ class TestCliffordMap:
                 ),
                 CliffordMap(
                     x_map={
-                        0: PauliString(axes={1: Axis.Y, 2: Axis.X, 3: Axis.Y}, sign=Sign.PLUS),
-                        1: PauliString(axes={1: Axis.Z, 2: Axis.Z, 3: Axis.Y}, sign=Sign.PLUS),
-                        2: PauliString(axes={0: Axis.Z, 1: Axis.Y, 2: Axis.X}, sign=Sign.MINUS),
-                        3: PauliString(axes={0: Axis.X, 1: Axis.Y, 2: Axis.Z, 3: Axis.X}, sign=Sign.PLUS),
+                        0: PauliString(dim=4, axes={1: Axis.Y, 2: Axis.X, 3: Axis.Y}, sign=Sign.PLUS),
+                        1: PauliString(dim=4, axes={1: Axis.Z, 2: Axis.Z, 3: Axis.Y}, sign=Sign.PLUS),
+                        2: PauliString(dim=4, axes={0: Axis.Z, 1: Axis.Y, 2: Axis.X}, sign=Sign.MINUS),
+                        3: PauliString(dim=4, axes={0: Axis.X, 1: Axis.Y, 2: Axis.Z, 3: Axis.X}, sign=Sign.PLUS),
                     },
                     z_map={
-                        0: PauliString(axes={0: Axis.X, 1: Axis.Z, 3: Axis.Y}, sign=Sign.PLUS),
-                        1: PauliString(axes={0: Axis.X, 1: Axis.Y, 2: Axis.Y, 3: Axis.Z}, sign=Sign.MINUS),
-                        2: PauliString(axes={1: Axis.Y, 2: Axis.Z, 3: Axis.X}, sign=Sign.MINUS),
-                        3: PauliString(axes={0: Axis.Y, 1: Axis.Z, 2: Axis.X, 3: Axis.X}, sign=Sign.PLUS),
+                        0: PauliString(dim=4, axes={0: Axis.X, 1: Axis.Z, 3: Axis.Y}, sign=Sign.PLUS),
+                        1: PauliString(dim=4, axes={0: Axis.X, 1: Axis.Y, 2: Axis.Y, 3: Axis.Z}, sign=Sign.MINUS),
+                        2: PauliString(dim=4, axes={1: Axis.Y, 2: Axis.Z, 3: Axis.X}, sign=Sign.MINUS),
+                        3: PauliString(dim=4, axes={0: Axis.Y, 1: Axis.Z, 2: Axis.X, 3: Axis.X}, sign=Sign.PLUS),
                     },
                     input_nodes=[0, 1, 2, 3],
                     output_nodes=[0, 1, 2, 3],
