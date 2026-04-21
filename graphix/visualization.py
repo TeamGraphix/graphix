@@ -1,4 +1,4 @@
-"""Functions to visualize PauliFlow and XZCorrections objects."""
+"""Functions to visualize graph-based objects: open graphs, flows and XZ-corrections."""
 
 from __future__ import annotations
 
