@@ -14,11 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `instruction.J` class.
 - #479: Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
 
+- #454, #481: New space minimization API that allows users to select or define custom heuristics.
+
 ### Fixed
+
+- #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
 
 ### Changed
 
 - #479: Method `Pattern.draw_graph` subsumed by two different methods: `Pattern.draw_flow` and `Pattern.draw_xzcorrections`.
+
+- #452: Use `uv` for dependency management
 
 ## [0.3.5] - 2026-03-26
 
