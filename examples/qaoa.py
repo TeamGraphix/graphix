@@ -34,7 +34,7 @@ for v in g.nodes:
 pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
-pattern.draw_graph(flow_from_pattern=False)
+pattern.draw(flow_from_pattern=False)
 
 
 # %%
@@ -42,7 +42,7 @@ pattern.draw_graph(flow_from_pattern=False)
 
 pattern.remove_input_nodes()
 pattern.perform_pauli_measurements()
-pattern.draw_graph(flow_from_pattern=False)
+pattern.draw(flow_from_pattern=False)
 
 # %%
 # finally, simulate the QAOA circuit
