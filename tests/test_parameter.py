@@ -9,7 +9,7 @@ import pytest
 import graphix.command
 from graphix.measurements import Measurement
 from graphix.parameter import Placeholder, PlaceholderOperationError
-from graphix.pattern import Pattern
+from graphix.pattern import DrawAnnotations, Pattern
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
@@ -25,7 +25,7 @@ def test_pattern_affine_operations() -> None:
     assert alpha + 1 + 1 == alpha + 2
     assert alpha + alpha == 2 * alpha
     assert alpha - alpha == 0
-    assert alpha / 2 == 0.5 * alpha  # noqa: RUF069
+    assert alpha / 2 == 0.5 * alpha
     assert -alpha + alpha == 0
     beta = Placeholder("beta")
     with pytest.raises(PlaceholderOperationError):
@@ -190,7 +190,7 @@ def test_visualization() -> None:
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
-    pattern.draw_graph()
+    pattern.draw(annotations=DrawAnnotations.XZCorrections)
 
 
 def test_simulation_exception(fx_rng: Generator) -> None:

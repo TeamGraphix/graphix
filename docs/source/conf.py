@@ -14,7 +14,7 @@ import sys
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "graphix"
-copyright = "2022, Team Graphix"
+copyright = "2022 -- 2026, Team Graphix"
 author = "Shinichi Sunami"
 
 # -- General configuration ---------------------------------------------------
@@ -94,3 +94,12 @@ sphinx_gallery_conf = {
 }
 
 suppress_warnings = ["config.cache"]
+
+mathjax3_config = {
+    "loader": {"load": ["[tex]/braket"]},
+    "tex": {"packages": {"[+]": ["braket"]}},
+}
+# For LaTeX/PDF output:
+latex_elements = {
+    "preamble": r"\usepackage{braket}",
+}

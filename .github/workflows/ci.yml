@@ -25,16 +25,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Fetch all, necessary to find tags and branches
+          fetch-depth: 0 # Fetch all, necessary to find tags and branches
           fetch-tags: true
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
+      - name: Setup uv
+        uses: ./.github/actions/setup-uv
 
-      - run: python -m pip install --upgrade pip
-
-      - name: Setup nox
-        run: pip install -c requirements-dev.txt nox
-
-      - run: nox --python ${{ matrix.python }}
+      - name: Run nox
+        run: uv run --extra dev nox -db uv --python ${{ matrix.python }}
