@@ -23,6 +23,7 @@ from typing_extensions import assert_never
 from graphix import command, optimization
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind, Node
+from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
