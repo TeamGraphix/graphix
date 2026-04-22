@@ -6,7 +6,7 @@ import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar, Literal, SupportsFloat
+from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat
 
 # Self introduced in Python 3.11
 # override introduced in Python 3.12
@@ -292,28 +292,34 @@ class RZ(_KindChecker, BaseInstruction):
 
 InstructionWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
 
+if TYPE_CHECKING:
+    Instruction = InstructionWithoutRZZ | RZZ
+else:
 
-class Instruction:
-    """Grouping of all instructions for namespace exposure.
+    class Instruction:
+        """Grouping of all instructions for namespace exposure.
 
-    Notes
-    -----
-    This class is not meant to be instantiated, but rather serves as a namespace for all instructions except RZZ.
-    The type alias for "any command" is :data:`InstructionKind`.
-    """
+        Notes
+        -----
+        This class is not meant to be instantiated, but rather serves as a namespace for all instructions except RZZ.
+        The type alias for "any command" is :data:`InstructionKind`.
+        """
 
-    CCX = CCX
-    RZZ = RZZ
-    CNOT = CNOT
-    CZ = CZ
-    SWAP = SWAP
-    H = H
-    S = S
-    X = X
-    Y = Y
-    Z = Z
-    I = I
-    M = M
-    RX = RX
-    RY = RY
-    RZ = RZ
+        CCX = CCX
+        RZZ = RZZ
+        CNOT = CNOT
+        CZ = CZ
+        SWAP = SWAP
+        H = H
+        S = S
+        X = X
+        Y = Y
+        Z = Z
+        I = I
+        M = M
+        RX = RX
+        RY = RY
+        RZ = RZ
+
+        def __init__(self) -> None:
+            raise TypeError("Command is a namespace, not a class.")
