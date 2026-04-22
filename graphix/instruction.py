@@ -291,4 +291,29 @@ class RZ(_KindChecker, BaseInstruction):
 
 
 InstructionWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
-Instruction = InstructionWithoutRZZ | RZZ
+
+
+class Instruction:
+    """Grouping of all instructions for namespace exposure.
+
+    Notes
+    -----
+    This class is not meant to be instantiated, but rather serves as a namespace for all instructions except RZZ.
+    The type alias for "any command" is :data:`InstructionKind`.
+    """
+
+    CCX = CCX
+    RZZ = RZZ
+    CNOT = CNOT
+    CZ = CZ
+    SWAP = SWAP
+    H = H
+    S = S
+    X = X
+    Y = Y
+    Z = Z
+    I = I
+    M = M
+    RX = RX
+    RY = RY
+    RZ = RZ

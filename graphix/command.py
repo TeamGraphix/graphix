@@ -237,5 +237,23 @@ class T(_KindChecker, BaseCommand):
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
 
-Command = N | M | E | C | X | Z | S | T
+class Command:
+    """Grouping of all commands for namespace exposure.
+
+    Notes
+    -----
+    This class is not meant to be instantiated, but rather serves as a namespace for all command types.
+    The type alias for "any command" is :data:`CommandKind`.
+    """
+
+    N = N
+    M = M
+    E = E
+    C = C
+    X = X
+    Z = Z
+    S = S
+    T = T
+
+
 Correction = X | Z
