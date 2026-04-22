@@ -78,15 +78,15 @@ class InstructionVisitor:
     - ``visit_axis``: rewrite axes.
     """
 
-    def visit_qubit(self, qubit: int) -> int:  # noqa: PLR6301
+    def visit_qubit(self, qubit: int) -> int:
         """Rewrite a qubit index."""
         return qubit
 
-    def visit_angle(self, angle: ParameterizedAngle) -> ParameterizedAngle:  # noqa: PLR6301
+    def visit_angle(self, angle: ParameterizedAngle) -> ParameterizedAngle:
         """Rewrite an angle."""
         return angle
 
-    def visit_axis(self, axis: Axis) -> Axis:  # noqa: PLR6301
+    def visit_axis(self, axis: Axis) -> Axis:
         """Rewrite an axis."""
         return axis
 

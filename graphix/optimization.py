@@ -198,12 +198,12 @@ class StandardizedPattern(_StandardizedPattern):
                         if new_cmd is None:
                             new_cmd = copy(cmd)
                         # The original domain should not be mutated
-                        new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
+                        new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt
                     if s_domain_opt := x_dict.pop(cmd.node, None):
                         if new_cmd is None:
                             new_cmd = copy(cmd)
                         # The original domain should not be mutated
-                        new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
+                        new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt
                     if new_cmd is None:
                         m_list.append(cmd)
                     else:
