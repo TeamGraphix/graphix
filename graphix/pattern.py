@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
+from warnings import warn
 
 import networkx as nx
 from typing_extensions import assert_never
@@ -41,15 +42,27 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.flow.core import CausalFlow, GFlow, XZCorrections
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
+
+    from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import TensorNetworkBackend
     from graphix.simulator import _BackendLiteral
+    from graphix.space_minimization import SpaceMinimizationHeuristic
     from graphix.states import State
+    from graphix.visualization import DrawKwargs
 
 _BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
+
+
+class DrawAnnotations(Enum):
+    """Enumeration to indicate the possible annotations for `Pattern.draw`."""
+
+    Flow = enum.auto()
+    XZCorrections = enum.auto()
 
 
 class Pattern:
@@ -929,45 +942,6 @@ class Pattern:
             pos += 1
         return signal_dict
 
-    def _extract_dependency(self) -> dict[int, set[int]]:
-        """Get dependency (byproduct correction & dependent measurement) structure of nodes in the graph (resource) state, according to the pattern.
-
-        This is used to determine the optimum measurement order.
-
-        Returns
-        -------
-        dependency : dict of set
-            index is node number. all nodes in the each set must be measured before measuring
-        """
-        nodes = self.extract_nodes()
-        dependency: dict[int, set[int]] = {i: set() for i in nodes}
-        for cmd in self.__seq:
-            match cmd.kind:
-                case CommandKind.M:
-                    dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
-                case CommandKind.X | CommandKind.Z:
-                    dependency[cmd.node] |= cmd.domain
-        return dependency
-
-    @staticmethod
-    def update_dependency(measured: AbstractSet[int], dependency: dict[int, set[int]]) -> None:
-        """Remove measured nodes from the 'dependency'.
-
-        Parameters
-        ----------
-        measured: set of int
-            measured nodes.
-        dependency: dict of set
-            which is produced by `_extract_dependency`
-
-        Returns
-        -------
-        dependency: dict of set
-            updated dependency information
-        """
-        for i in dependency:
-            dependency[i] -= measured
-
     def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
         """Extract the measurement order of the pattern in the form of layers.
 
@@ -1076,56 +1050,6 @@ class Pattern:
         """
         partial_order_layers = self.extract_partial_order_layers()
         return list(itertools.chain(*reversed(partial_order_layers[1:])))
-
-    @staticmethod
-    def connected_edges(node: int, edges: set[tuple[int, int]]) -> set[tuple[int, int]]:
-        """Search not activated edges connected to the specified node.
-
-        Returns
-        -------
-        connected: set of tuple
-                set of connected edges
-        """
-        connected = set()
-        for edge in edges:
-            if edge[0] == node or edge[1] == node:
-                connected |= {edge}
-        return connected
-
-    def _measurement_order_space(self) -> list[int]:
-        """Determine measurement order that heuristically optimises the max_space of a pattern.
-
-        Returns
-        -------
-        meas_order: list of int
-            sub-optimal measurement order for classical simulation
-        """
-        graph = self.extract_graph()
-        nodes = set(graph.nodes)
-        edges = set(graph.edges)
-        not_measured = nodes - set(self.output_nodes)
-        dependency = self._extract_dependency()
-        self.update_dependency(self.results.keys(), dependency)
-        meas_order = []
-        removable_edges = set()
-        while not_measured:
-            min_edges = len(nodes) + 1
-            next_node = -1
-            for i in not_measured:
-                if not dependency[i]:
-                    connected_edges = self.connected_edges(i, edges)
-                    if min_edges > len(connected_edges):
-                        min_edges = len(connected_edges)
-                        next_node = i
-                        removable_edges = connected_edges
-            if not (next_node > -1):
-                print(next_node)
-            assert next_node > -1
-            meas_order.append(next_node)
-            self.update_dependency({next_node}, dependency)
-            not_measured -= {next_node}
-            edges -= removable_edges
-        return meas_order
 
     def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M]:
         """Convert measurement order to sequence of measurement commands.
@@ -1319,25 +1243,41 @@ class Pattern:
         meas_order = self._measurement_order_depth()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
-    def minimize_space(self) -> None:
-        """Optimize the pattern to minimize the max_space property of the pattern.
+    def minimize_space(
+        self, heuristics: Iterable[SpaceMinimizationHeuristic] | None = None, *, copy: bool = False
+    ) -> Pattern:
+        """Return a pattern that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
 
-        The optimized pattern has significantly
-        reduced space requirement (memory space for classical simulation,
-        and maximum simultaneously prepared qubits for quantum hardwares).
+        See :func:`graphix.space_minimization.minimize_space` for more
+        information about the default heuristics.
+
+        To obtain a space-optimal pattern while preserving the
+        measurement order, use ``minimize_space([])``. This commutes
+        the ``N`` and ``E`` commands so that the pattern is
+        space-optimal among patterns with the same measurement order
+        (see :meth:`StandardizedPattern.to_space_optimal_pattern`).
+
+        Parameters
+        ----------
+        heuristics : Iterable[~graphix.space_minimization.SpaceMinimizationHeuristic] | None = None
+            The heuristics to try in order.
+            By default, :const:`~graphix.space_minimization.DEFAULT_HEURISTICS` is used.
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Pattern
+            The optimized pattern. Equal to ``self`` if ``copy`` is ``False``.
+
         """
-        if not self.is_standard():
-            self.standardize()
-        meas_order = None
-        try:
-            cf = self.extract_causal_flow()
-        except FlowError:
-            meas_order = None
-        else:
-            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:])))
-        if meas_order is None:
-            meas_order = self._measurement_order_space()
-        self._reorder_pattern(self.sort_measurement_commands(meas_order))
+        new = optimization.StandardizedPattern.from_pattern(self).minimize_space(heuristics).to_space_optimal_pattern()
+        if copy:
+            return new
+        self.__seq = new.__seq
+        return self
 
     def _reorder_pattern(self, meas_commands: list[command.M]) -> None:
         """Reorder the command sequence.
@@ -1363,16 +1303,9 @@ class Pattern:
         n_nodes : int
             max number of nodes present in the graph during pattern execution.
         """
-        nodes = len(self.input_nodes)
-        max_nodes = nodes
-        for cmd in self.__seq:
-            match cmd.kind:
-                case CommandKind.N:
-                    nodes += 1
-                case CommandKind.M:
-                    nodes -= 1
-            max_nodes = max(nodes, max_nodes)
-        return max_nodes
+        from graphix.space_minimization import pattern_max_space  # noqa: PLC0415
+
+        return pattern_max_space(self)
 
     def space_list(self) -> list[int]:
         """Return the list of the number of nodes present in the graph (space) during each step of execution of the pattern (for N and M commands).
@@ -1526,65 +1459,89 @@ class Pattern:
                 warnings.warn("Pattern with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
                 return
 
-    def draw_graph(
+    def draw(
         self,
+        *,
+        annotations: DrawAnnotations | None = DrawAnnotations.Flow,
         flow_from_pattern: bool = True,
-        show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
-        show_measurement_planes: bool = False,
-        show_loop: bool = True,
-        node_distance: tuple[float, float] = (1, 1),
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
+        stacklevel: int = 1,
+        **options: Unpack[DrawKwargs],
     ) -> None:
-        """Visualize the underlying graph of the pattern with flow or gflow structure.
+        """Visualize the underlying graph of the pattern with annotations.
 
         Parameters
         ----------
-        flow_from_pattern : bool
-            If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
-        show_local_clifford : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, measurement planes are displayed adjacent to the nodes.
-        show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to True.
-        node_distance : tuple
-            Distance multiplication factor between nodes for x and y directions.
-        figsize : tuple
-            Figure size of the plot.
-        filename : Path | None
-            If not None, filename of the png file to save the plot. If None, the plot is not saved.
-            Default in None.
+        annotations : DrawAnnotations | None, default=DrawAnnotations.Flow
+            Annotations to be shown.
+                - ``DrawAnnotations.Flow`` (default): show the pattern's flow if it exists.
+                - ``DrawAnnotations.XZCorrections``: show the pattern's XZ-corrections.
+                - ``None``: show the underlying open graph only.
+        flow_from_pattern : bool, default=True
+            If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
+        show_local_clifford : bool, default=False
+            If ``True``, the local Clifford operators are printed.
+        options : Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Raises
+        ------
+        PatternError
+            If the underlying opengraph does not have flow.
+
+        Notes
+        -----
+        If ``flow_from_pattern==True`` but the pattern is not compatible with a gflow, an attempt to be extract the flow from the underlying open graph will be made while warning the user.
         """
-        og = self.extract_opengraph()
-        local_clifford = self.extract_clifford()
+        lc = self.extract_clifford() if show_local_clifford else None
+        options.setdefault("local_clifford", lc)
 
-        vis = GraphVisualizer(og, local_clifford)
-
-        if flow_from_pattern:
-            vis.visualize_from_pattern(
-                pattern=self.copy(),
-                show_pauli_measurement=show_pauli_measurement,
-                show_local_clifford=show_local_clifford,
-                show_measurement_planes=show_measurement_planes,
-                show_loop=show_loop,
-                node_distance=node_distance,
-                figsize=figsize,
-                filename=filename,
-            )
+        if annotations is None:
+            og = self.extract_opengraph()
+            gv = GraphVisualizer.from_opengraph(og=og, **options)
         else:
-            vis.visualize(
-                show_pauli_measurement=show_pauli_measurement,
-                show_local_clifford=show_local_clifford,
-                show_measurement_planes=show_measurement_planes,
-                show_loop=show_loop,
-                node_distance=node_distance,
-                figsize=figsize,
-                filename=filename,
-            )
+            match annotations:
+                case DrawAnnotations.Flow:
+                    flow: PauliFlow[Measurement] | None = None
+
+                    if flow_from_pattern:
+                        pattern_std = optimization.StandardizedPattern.from_pattern(self)
+                        try:
+                            flow = pattern_std.extract_causal_flow()
+                        except FlowError:
+                            try:
+                                flow = pattern_std.extract_gflow()
+                            except (FlowError, TypeError):
+                                warn(
+                                    "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
+                                    stacklevel=stacklevel,
+                                )
+
+                    if flow is None:
+                        og = self.extract_opengraph()
+                        try:
+                            bloch_case = og.downcast_bloch()
+                        except TypeError:
+                            pass
+                        else:
+                            flow = bloch_case.find_causal_flow()
+                        if flow is None:
+                            flow = og.find_pauli_flow(stacklevel=stacklevel + 1)
+                        if flow is None:
+                            raise PatternError(
+                                "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawAnnotations.XZCorrections`."
+                            )
+
+                    gv = GraphVisualizer.from_flow(flow=flow, **options)
+
+                case DrawAnnotations.XZCorrections:
+                    xzcorrections = self.extract_xzcorrections()
+                    gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, **options)
+
+        gv.visualize()
 
     def to_qasm3(self, filename: Path | str, input_state: dict[int, State] | State = BasicStates.PLUS) -> None:
         """Export measurement pattern to OpenQASM 3.0 file.
