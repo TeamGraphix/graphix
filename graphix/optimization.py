@@ -779,7 +779,7 @@ def remove_useless_domains(pattern: Pattern) -> Pattern:
 
 def single_qubit_domains(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where domains contains at most one qubit."""
-    from graphix.pattern import Pattern  # noqa: PLC0415
+    from graphix import Pattern  # noqa: PLC0415
 
     new_pattern = Pattern(input_nodes=pattern.input_nodes)
     new_pattern.results = pattern.results
