@@ -16,9 +16,8 @@ from graphix.measurements import BlochMeasurement, Measurement
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
-    from graphix.flow.core import CausalFlow, GFlow, PauliFlow
+    from graphix import CausalFlow, GFlow, Pattern, PauliFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
-    from graphix.pattern import Pattern
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
 _AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
