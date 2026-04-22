@@ -479,7 +479,7 @@ class OpenGraph(Generic[_AM_co]):
         ----------
         [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
-        from graphix.flow.core import GFlow  # noqa: PLC0415
+        from graphix import GFlow  # noqa: PLC0415
 
         aog = PlanarAlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
