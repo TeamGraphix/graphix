@@ -94,3 +94,12 @@ sphinx_gallery_conf = {
 }
 
 suppress_warnings = ["config.cache"]
+
+mathjax3_config = {
+    "loader": {"load": ["[tex]/braket"]},
+    "tex": {"packages": {"[+]": ["braket"]}},
+}
+# For LaTeX/PDF output:
+latex_elements = {
+    "preamble": r"\usepackage{braket}",
+}
