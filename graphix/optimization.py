@@ -348,7 +348,7 @@ class StandardizedPattern(_StandardizedPattern):
 
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""
-        from graphix.pattern import Pattern  # noqa: PLC0415
+        from graphix import Pattern  # noqa: PLC0415
 
         pattern = Pattern(input_nodes=self.input_nodes)
         pattern.results = dict(self.results)
