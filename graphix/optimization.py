@@ -710,7 +710,7 @@ def _update_corrections(node: Node, domain: AbstractSet[Node], correction: dict[
 
 def incorporate_pauli_results(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
-    from graphix.pattern import Pattern  # noqa: PLC0415
+    from graphix import Pattern  # noqa: PLC0415
 
     result = Pattern(input_nodes=pattern.input_nodes)
     for cmd in pattern:
