@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #479: Method `Pattern.draw_graph` subsumed by two different methods: `Pattern.draw_flow` and `Pattern.draw_xzcorrections`.
 
+- #452: Use `uv` for dependency management
+
 ## [0.3.5] - 2026-03-26
 
 ### Added
