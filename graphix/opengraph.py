@@ -533,7 +533,7 @@ class OpenGraph(Generic[_AM_co]):
         >>> str(og.infer_pauli_measurements().extract_pauli_flow())
         'p(0) = {1}, p(1) = {2}; {0, 1} < {2}'
         """
-        from graphix.flow.core import PauliFlow  # noqa: PLC0415
+        from graphix import PauliFlow  # noqa: PLC0415
 
         self._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
         aog = AlgebraicOpenGraph(self)
