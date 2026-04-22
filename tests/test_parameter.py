@@ -9,7 +9,7 @@ import pytest
 import graphix.command
 from graphix.measurements import Measurement
 from graphix.parameter import Placeholder, PlaceholderOperationError
-from graphix.pattern import Pattern
+from graphix.pattern import DrawAnnotations, Pattern
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
@@ -190,7 +190,7 @@ def test_visualization() -> None:
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
-    pattern.draw_graph()
+    pattern.draw(annotations=DrawAnnotations.XZCorrections)
 
 
 def test_simulation_exception(fx_rng: Generator) -> None:
