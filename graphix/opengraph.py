@@ -18,6 +18,9 @@ if TYPE_CHECKING:
 
     from graphix import CausalFlow, GFlow, Pattern, PauliFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
+    from graphix.visualization import DrawKwargs
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
 _AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
@@ -126,6 +129,20 @@ class OpenGraph(Generic[_AM_co]):
         if flow is not None:
             return flow.to_corrections().to_pattern()
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
+
+    def draw(self, **options: Unpack[DrawKwargs]) -> None:
+        """Visualize the opengraph.
+
+        Parameters
+        ----------
+        options : Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
+        """
+        from graphix.visualization import GraphVisualizer  # noqa: PLC0415  Avoid circular imports
+
+        gv = GraphVisualizer.from_opengraph(og=self, **options)
+
+        gv.visualize()
 
     def map(self: OpenGraph[_A], f: Callable[[_A], _B]) -> OpenGraph[_B]:
         """Apply a function to every measurement of the open graph and return the resulting open graph.

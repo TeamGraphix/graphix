@@ -60,7 +60,7 @@ Note again that we started with :math:`|+\rangle` state so the answer is correct
 
 We can use the in-built visualization tool to view the pattern,
 
->>> pattern.draw_graph()
+>>> pattern.draw()
 
 
 
