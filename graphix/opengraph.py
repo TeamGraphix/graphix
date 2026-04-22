@@ -16,10 +16,11 @@ from graphix.measurements import BlochMeasurement, Measurement
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
-    from graphix import CausalFlow, GFlow, Pattern, PauliFlow
-    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
+
+    from graphix import CausalFlow, GFlow, Pattern, PauliFlow
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.visualization import DrawKwargs
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
