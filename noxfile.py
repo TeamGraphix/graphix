@@ -15,11 +15,13 @@ from packaging.version import Version
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+nox.options.default_venv_backend = "uv|virtualenv"
+
 PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
 
 def install_pytest(session: Session) -> None:
-    """Install pytest when requirements-dev.txt is not installed."""
+    """Install pytest when the dev extra is not installed."""
     session.install("pytest", "pytest-mock", "pytest-benchmark", "pytest-mpl", "psutil")
 
 
@@ -136,9 +138,9 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
             if package.branch is None:
-                session.run("git", "clone", package.repository)
+                session.run("git", "clone", package.repository, external=True)
             else:
-                session.run("git", "clone", "-b", package.branch, package.repository)
+                session.run("git", "clone", "-b", package.branch, package.repository, external=True)
             with session.cd(dirname):
                 session.install(package.install_target)
         # Note that `session.cd` is used as a context manager above,
@@ -148,7 +150,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         # so that we run the test with the current graphix codebase,
         # even if another graphix version has been pinned in the
         # reverse dependendy.
-        session.install(".")
+        session.install(".[dev]")
         # Use `session.cd` as a context manager again to ensure that the
         # working directory is restored afterward. This is important
         # because Windows cannot delete a temporary directory while it

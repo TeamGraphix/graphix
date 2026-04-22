@@ -443,7 +443,7 @@ class DenseState(ABC):
             (control, target) qubit indices
         """
 
-    def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
+    def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:  # noqa: ARG002
         """Apply noise.
 
         The default implementation of this method raises
@@ -617,7 +617,7 @@ class Backend(Generic[_StateT_co]):
         Previously existing nodes remain unchanged.
         """
 
-    def apply_noise(self, cmd: ApplyNoise) -> None:  # noqa: ARG002,PLR6301
+    def apply_noise(self, cmd: ApplyNoise) -> None:  # noqa: ARG002
         """Apply noise.
 
         The default implementation of this method raises
