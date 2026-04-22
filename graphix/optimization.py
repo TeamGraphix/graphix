@@ -757,7 +757,7 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
 
 def remove_useless_domains(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where measurement domains that are not used given the specific measurement angles and planes are removed."""
-    from graphix.pattern import Pattern  # noqa: PLC0415
+    from graphix import Pattern  # noqa: PLC0415
 
     new_pattern = Pattern(input_nodes=pattern.input_nodes)
     new_pattern.results = pattern.results
