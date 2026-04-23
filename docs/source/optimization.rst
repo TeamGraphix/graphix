@@ -6,14 +6,13 @@ Optimization passes
 
 This module defines some optimization passes for patterns.
 
-.. currentmodule:: graphix.optimization
+.. automodule:: graphix.optimization
+    :members:
 
-.. autofunction:: standardize
+:mod:`graphix.space_minimization` module
+++++++++++++++++++++++++++++++++++++++++
 
-.. autoclass:: StandardizedPattern
+This module defines space minimization procedures for patterns.
 
-.. autofunction:: incorporate_pauli_results
-
-.. autofunction:: remove_useless_domains
-
-.. autofunction:: single_qubit_domains
+.. automodule:: graphix.space_minimization
+    :members:

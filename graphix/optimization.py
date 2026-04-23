@@ -27,6 +27,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
+from graphix.space_minimization import minimize_space, standardized_pattern_max_space
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from typing import Self
 
     from graphix import Pattern
+    from graphix.space_minimization import SpaceMinimizationHeuristic
 
 
 def standardize(pattern: Pattern) -> Pattern:
@@ -346,6 +348,45 @@ class StandardizedPattern(_StandardizedPattern):
             {node: expand_domain(domain) for node, domain in self.x_dict.items()},
         )
 
+    def max_space(self) -> int:
+        """Compute the maximum number of nodes that must be present in the graph (graph space) during the execution of the space-optimal pattern for the given measurement order.
+
+        This is equivalent to ``to_space_optimal_pattern().max_space()``.
+
+        Returns
+        -------
+        n_nodes : int
+            Maximum number of nodes present in the graph during space-optimal
+            pattern execution.
+        """
+        return standardized_pattern_max_space(self)
+
+    def minimize_space(self, heuristics: Iterable[SpaceMinimizationHeuristic] | None = None) -> StandardizedPattern:
+        """Return a pattern with an optimized measurement order that reduces the maximal space, i.e. the number of qubits simultaneously required to execute the pattern.
+
+        Note that standardized patterns always have a maximal space
+        equal to the total number of nodes in the open graph, because
+        standardization requires the entire graph to be prepared
+        before measurement.
+
+        Space reduction is specifically realized when the optimized
+        order is applied via :meth:`to_space_optimal_pattern()`.
+
+        See :func:`graphix.space_minimization.minimize_space` for default heuristics.
+
+        Parameters
+        ----------
+        heuristics : Iterable[~graphix.space_minimization.SpaceMinimizationHeuristic] | None, default None
+            The heuristics to apply sequentially. Defaults to
+            :const:`~graphix.space_minimization.DEFAULT_HEURISTICS`.
+
+        Returns
+        -------
+        StandardizedPattern
+            The optimized pattern.
+        """
+        return minimize_space(self, heuristics)
+
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""
         from graphix import Pattern  # noqa: PLC0415
@@ -364,48 +405,23 @@ class StandardizedPattern(_StandardizedPattern):
         return pattern
 
     def to_space_optimal_pattern(self) -> Pattern:
-        """Return a pattern that is space-optimal for the given measurement order."""
-        from graphix.pattern import Pattern  # noqa: PLC0415
+        """Return a pattern that is space-optimal for the given measurement order.
 
-        pattern = Pattern(input_nodes=self.input_nodes)
-        pattern.results = dict(self.results)
-        active = set(self.input_nodes)
-        done: set[Node] = set()
-        n_dict = {n.node: n for n in self.n_list}
-        graph = self.extract_graph()
+        This method treats the measurement order as fixed, performing
+        node preparations (``N``) and entanglements (``E``) as late as
+        possible to minimize space usage. While the resulting pattern
+        is guaranteed to be optimal for this specific order, the
+        method does not explore alternative orders.
 
-        def ensure_active(node: Node) -> None:
-            """Initialize node in pattern if it has not been initialized before."""
-            if node not in active:
-                pattern.add(n_dict[node])
-                active.add(node)
+        To find an alternative measurement order that further reduces
+        space, use :meth:`minimize_space`.
+        """
+        from graphix.space_minimization import standardized_to_space_optimal_pattern  # noqa: PLC0415
 
-        def ensure_neighborhood(node: Node) -> None:
-            """Initialize and entangle the inactive nodes in the neighbourhood of ``node``."""
-            ensure_active(node)
-            for neighbor in graph.neighbors(node):
-                if neighbor not in done:
-                    ensure_active(neighbor)
-                    pattern.add(command.E((node, neighbor)))
-
-        for m in self.m_list:
-            ensure_neighborhood(m.node)
-            pattern.add(m)
-            done.add(m.node)
-        for node in self.output_nodes:
-            ensure_neighborhood(node)
-            if domain := self.z_dict.get(node):
-                pattern.add(command.Z(node, set(domain)))
-            if domain := self.x_dict.get(node):
-                pattern.add(command.X(node, set(domain)))
-            if clifford_gate := self.c_dict.get(node):
-                pattern.add(command.C(node, clifford_gate))
-            done.add(node)
-        pattern.reorder_output_nodes(self.output_nodes)
-        return pattern
+        return standardized_to_space_optimal_pattern(self)
 
     def extract_opengraph(self) -> OpenGraph[Measurement]:
-        """Extract the underlying resource-state open graph from the pattern.
+        r"""Extract the underlying resource-state open graph from the pattern.
 
         Returns
         -------
@@ -414,7 +430,7 @@ class StandardizedPattern(_StandardizedPattern):
         Raises
         ------
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state.
 
         Notes
         -----
@@ -490,7 +506,7 @@ class StandardizedPattern(_StandardizedPattern):
         return generations[::-1]
 
     def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
-        """Extract the causal flow structure from the current measurement pattern.
+        r"""Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
 
@@ -507,7 +523,7 @@ class StandardizedPattern(_StandardizedPattern):
             - Is empty, or
             - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -542,7 +558,7 @@ class StandardizedPattern(_StandardizedPattern):
         return cf
 
     def extract_gflow(self) -> GFlow[BlochMeasurement]:
-        """Extract the generalized flow (gflow) structure from the current measurement pattern.
+        r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
 
@@ -559,7 +575,7 @@ class StandardizedPattern(_StandardizedPattern):
         TypeError
             If the pattern contains a Pauli measurement
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -588,7 +604,7 @@ class StandardizedPattern(_StandardizedPattern):
         return gf
 
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
-        """Extract the XZ-corrections from the current measurement pattern.
+        r"""Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
@@ -600,7 +616,7 @@ class StandardizedPattern(_StandardizedPattern):
         XZCorrectionsError
             If the extracted correction dictionaries are not well formed.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
         """
         x_corr: dict[int, set[int]] = {}
         z_corr: dict[int, set[int]] = {}
