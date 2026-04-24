@@ -479,7 +479,6 @@ class Circuit:
         f: CausalFlow[BlochMeasurement] = CausalFlow(og, x_corrections, partial_order_layers)
         pattern = StandardizedPattern.from_pattern(f.to_corrections().to_pattern()).to_space_optimal_pattern()
         pattern.extend(classical_outputs.values())
-        pattern = pattern.infer_pauli_measurements()
         return TranspileResult(pattern, tuple(classical_outputs.keys()))
 
     def simulate_statevector(
