@@ -108,7 +108,7 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend"),
+        ReverseDependency("https://github.com/emlynsg/graphix-stim-backend", branch="jcz"),
         ReverseDependency(
             "https://github.com/TeamGraphix/graphix-symbolic",
         ),
