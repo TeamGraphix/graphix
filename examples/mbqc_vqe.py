@@ -33,6 +33,7 @@ from scipy.optimize import minimize
 from graphix import Circuit
 from graphix.parameter import Placeholder
 from graphix.simulator import PatternSimulator
+from graphix.transpiler import transpile_swaps
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -89,6 +90,7 @@ class MBQCVQE:
     # Function to build the MBQC pattern
     def build_mbqc_pattern(self, params: Iterable[ParameterizedAngle]) -> Pattern:
         circuit = build_vqe_circuit(self.n_qubits, params)
+        circuit = transpile_swaps(circuit).circuit
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
