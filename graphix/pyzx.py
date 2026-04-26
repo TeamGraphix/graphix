@@ -32,7 +32,6 @@ def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
     return Fraction(angle)
 
 
-# TODO: Adapt to new OpenGraph API
 def to_pyzx_graph(og: OpenGraph[BlochMeasurement]) -> BaseGraph[int, tuple[int, int]]:
     """Return a :mod:`pyzx` graph corresponding to the open graph.
 
@@ -47,11 +46,6 @@ def to_pyzx_graph(og: OpenGraph[BlochMeasurement]) -> BaseGraph[int, tuple[int, 
     >>> og = OpenGraph(g, inputs, outputs, measurements)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
-    if zx.__version__ != "0.9.0":
-        warnings.warn(
-            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.9.0 due to possible breaking changes in `pyzx`.",
-            stacklevel=1,
-        )
     g = Graph()
 
     # Add vertices into the graph and set their type
