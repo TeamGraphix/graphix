@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from graphix._version import __version__  # or wherever your version lives
 from graphix.branch_selector import BranchSelector, ConstBranchSelector, FixedBranchSelector, RandomBranchSelector
+from graphix.channels import KrausChannel
 from graphix.clifford import Clifford
 from graphix.command import Command
 from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
@@ -12,7 +13,6 @@ from graphix.graphsim import GraphState
 from graphix.instruction import Instruction
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.noise_models import DepolarisingNoiseModel, NoiseModel
-from graphix.noise_models.noise_model import KrausChannel
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
