@@ -177,9 +177,9 @@ print(f"Analytical solution: {analytical_solution}")
 # Compare performances between using parameterized circuits (with placeholders) or not
 
 mbqc_vqe = MBQCVQEWithPlaceholders(n_qubits, hamiltonian)
-time_with_placeholders = timeit(compute, number=2)
+time_with_placeholders = timeit(compute, number=1)
 print(f"Time with placeholders: {time_with_placeholders}")
 
 mbqc_vqe = MBQCVQE(n_qubits, hamiltonian)
-time_without_placeholders = timeit(compute, number=2)
+time_without_placeholders = timeit(compute, number=1)
 print(f"Time without placeholders: {time_without_placeholders}")
