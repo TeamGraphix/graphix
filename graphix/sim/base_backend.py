@@ -105,6 +105,11 @@ def kron(a: Matrix, b: Matrix) -> Matrix:
         b_o = b.astype(np.object_, copy=False)
         return np.kron(a_o, b_o)
 
+    if np.object_ in (a.dtype, b.dtype):
+        a_o = a.astype(np.object_, copy=False)
+        b_o = b.astype(np.object_, copy=False)
+        return np.kron(a.astype(np.object_, copy=False), b.astype(np.object_, copy=False))
+
     raise TypeError("Operands should have the same type.")
 
 
