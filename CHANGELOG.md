@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - #484: J & CZ transpilation.
-  - Replaced `Circuit.transpile()` with a new approach based on J & CZ decomposition.
+  - Replaced `Circuit.transpile()` with a new approach based decomposing circuits into J & CZ gates.
   - Added `instruction.J` class.
 - #479: Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
 
