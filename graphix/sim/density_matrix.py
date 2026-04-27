@@ -137,6 +137,7 @@ class DensityMatrix(DenseState):
             - A multi-qubit state vector of dimension :math:`2^n` initializes the new nodes jointly.
             - A density matrix must have shape :math:`2^n \times 2^n`,
               and is used to jointly initialize the new nodes.
+            - The type of nodes to be added is inferred from the type of the existing ``DensityMatrix``.
 
         Notes
         -----
