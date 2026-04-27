@@ -171,6 +171,8 @@ class Statevec(DenseState):
         Previously existing nodes remain unchanged.
         """
         sv_to_add = Statevec(nqubit=nqubit, data=data)
+        if self.psi.dtype == np.object_ and sv_to_add.psi.dtype != np.object_:
+            sv_to_add.psi = sv_to_add.psi.astype(np.object_, copy=False)
         self.tensor(sv_to_add)
 
     @override
