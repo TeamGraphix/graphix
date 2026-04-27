@@ -15,8 +15,9 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 from graphix import Circuit
+from graphix.transpiler import transpile_swaps
 
-n = 100
+n = 50
 print(f"{n}-qubit GHZ state generation")
 circuit = Circuit(n)
 
@@ -32,7 +33,7 @@ for i in range(1, n):
 # %%
 # Transpile into pattern
 
-pattern = circuit.transpile().pattern
+pattern = transpile_swaps(circuit).circuit.transpile().pattern
 pattern.standardize()
 
 graph = pattern.extract_graph()

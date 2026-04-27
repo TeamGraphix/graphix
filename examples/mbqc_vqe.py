@@ -160,7 +160,7 @@ initial_params = rng.random(n_qubits * 3)
 # %%
 # Perform the optimization using COBYLA
 def compute() -> OptimizeResult:
-    return minimize(cost_function, initial_params, method="COBYLA", options={"maxiter": 40})
+    return minimize(cost_function, initial_params, method="COBYLA", options={"maxiter": 20})
 
 
 result = compute()
