@@ -6,7 +6,6 @@ OpenGraph class because we want :mod:`pyzx` to be an optional dependency.
 
 from __future__ import annotations
 
-import warnings
 from fractions import Fraction
 from typing import TYPE_CHECKING, SupportsFloat
 
