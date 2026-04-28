@@ -9,9 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #476 Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
+
+### Fixed
+
+### Changed
+
 - #479: Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
 
 - #454, #481: New space minimization API that allows users to select or define custom heuristics.
+
+- #476
+  - Added new field `dim` to `PauliString` to represent the dimension of the Hilbert space.
+  - Define `PauliString` on qubit indices and remove all `remap` methods.
+  - Represent `x_map` and `z_map` attributes of `CliffordMap` as sequences of `PauliString` instead of mappings.
 
 ### Fixed
 

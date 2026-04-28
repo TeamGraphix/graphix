@@ -5,14 +5,22 @@ from __future__ import annotations
 from itertools import chain, pairwise
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.sim.base_backend import NodeIndex
+from graphix.instruction import CNOT, SWAP, H, S, X, Y, Z
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import TypeAlias
 
+    from graphix._linalg import MatGF2
     from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponential, PauliExponentialDAG
+    from graphix.instruction import Instruction
+
+    # NOTE: This alias could be defined at the level of graphix.instruction, and treat all qubit indices as `Qubit`. This change would affect many files in the codebase, so as a temporary solution `Qubit` is casted to `int` in this module.
+    Qubit: TypeAlias = int | np.int_
 
 
 def er_to_circuit(
@@ -22,7 +30,7 @@ def er_to_circuit(
 ) -> Circuit:
     """Convert a circuit extraction result into a quantum circuit representation.
 
-    This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) in the extraction result. It performs a validation check to ensure that the output nodes of both components are identical and it maps the output node numbers to qubit indices.
+    This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) in the extraction result. It performs a validation check to ensure that the output nodes of both components are identical.
 
     Parameters
     ----------
@@ -31,7 +39,7 @@ def er_to_circuit(
     pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
         Compilation pass to synthesize a Pauli exponential DAG. If ``None`` (default), :func:`pexp_ladder_pass` is employed.
     cm_cp: Callable[[CliffordMap, Circuit], None] | None
-        Compilation pass to synthesize a Clifford map. If ``None`` (default), a ``ValueError`` is raised since there is still no default pass for Clifford map integrated in Graphix.
+        Compilation pass to synthesize a Clifford map. If ``None`` (default), :func:`cm_berg_pass` is employed. This pass only handles unitaries so far (Clifford maps with the same number of input and output nodes).
 
     Returns
     -------
@@ -51,32 +59,25 @@ def er_to_circuit(
         pexp_cp = pexp_ladder_pass
 
     if cm_cp is None:
-        raise ValueError(
-            "Clifford-map pass is missing: there is still no default pass for Clifford map integrated in Graphix. You may use graphix-stim-compiler plugin."
-        )
+        cm_cp = cm_berg_pass
 
     n_qubits = len(er.pexp_dag.output_nodes)
     circuit = Circuit(n_qubits)
-    outputs_mapping = NodeIndex()
-    outputs_mapping.extend(er.pexp_dag.output_nodes)
 
-    inputs_mapping = NodeIndex()
-    inputs_mapping.extend(er.clifford_map.input_nodes)
-
-    cm_cp(er.clifford_map.remap(inputs_mapping.index, outputs_mapping.index), circuit)
-    pexp_cp(er.pexp_dag.remap(outputs_mapping.index), circuit)
+    cm_cp(er.clifford_map, circuit)
+    pexp_cp(er.pexp_dag, circuit)
     return circuit
 
 
 def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     r"""Add a Pauli exponential DAG to a circuit by using a ladder decomposition.
 
-    The input circuit is modified in-place. This function assumes that the Pauli exponential DAG has been remapped, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
+    The input circuit is modified in-place.
 
     Parameters
     ----------
     pexp_dag: PauliExponentialDAG
-        The Pauli exponential rotation to be added to the circuit. Its Pauli strings are assumed to be defined on qubit indices.
+        The Pauli exponential rotation to be added to the circuit. Its Pauli strings are defined on qubit indices.
     circuit : Circuit
         The circuit to which the operation is added. The input circuit is assumed to be compatible with ``pexp_dag.output_nodes``.
 
@@ -106,15 +107,11 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
             The Pauli exponential to add.
         circuit : Circuit
             The quantum circuit to which the Pauli exponential is added.
-
-        Notes
-        -----
-        It is assumed that the ``x``, ``y``, and ``z`` node sets of the Pauli string in the exponential are well-formed, i.e., contain valid qubit indices and are pairwise disjoint.
         """
         if pexp.angle == 0:  # No rotation
             return
 
-        # We assume that nodes in the Pauli strings have been mapped to qubits.
+        # Pauli strings are defined on qubit indices.
         # The order on which we iterate over the modified qubits does not matter.
         modified_qubits = list(pexp.pauli_string.axes)
         angle = -2 * pexp.angle * pexp.pauli_string.sign
@@ -181,3 +178,167 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     for node in chain(*reversed(pexp_dag.partial_order_layers[1:])):
         pexp = pexp_dag.pauli_exponentials[node]
         add_pexp(pexp, circuit)
+
+
+def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
+    r"""Add a Clifford map to a circuit by using an adaptation of van den Berg's sweeping algorithm introduced in Ref. [1].
+
+    The input circuit is modified in-place.
+
+    Parameters
+    ----------
+    clifford_map: CliffordMap
+        The Clifford map to be transpiled.
+    circuit : Circuit
+        The circuit to which the operation is added. The input circuit is assumed to be compatible with
+        ``CliffordMap.input_nodes`` and ``CliffordMap.output_nodes``.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``len(clifford_map.input_nodes) != len(clifford_map.output_nodes)``.
+    AssertionError
+        If an unexpected pivot position is encountered during Step 4.
+
+    Notes
+    -----
+    This pass only handles unitaries so far (Clifford maps with the same number of input and output nodes).
+
+    Gate set: H, S, CNOT, SWAP, X, Y, Z
+
+    This function converts a ``CliffordMap`` into a sequence of quantum
+    gate instructions by operating on its binary tableau representation.
+    The synthesis proceeds qubit-by-qubit, applying a sequence of local
+    transformations (H, S, CNOT, and SWAP gates) to reduce the
+    tableau into a canonical form. The resulting sequence represents the
+    adjoint of the input Clifford map, therefore it's appended in reverse
+    order (and exchanging S by Sdagger) to the provided ``Circuit``.
+
+    The synthesis applies a series of steps on every qubit subtableau:
+
+    .. math::
+
+    T_q = \begin{pmatrix}
+        XX & XZ \\
+        ZX & ZZ
+    \end{pmatrix}
+
+    1. Clear elements in the XZ-block by applying single-qubit gates (H or S).
+
+    2. Use CNOT gates to reduce the XX block to a single pivot column.
+
+    3. Apply a SWAP gate to bring the pivot to the diagonal if necessary.
+
+    4. Ensure the ZX and ZZ blocks of the tableau have the correct canonical form
+    by redoing steps 1. and 2.
+
+    After processing all qubits, a final sign correction step applies
+    Pauli gates (X, Y, Z) to fix phase bits in the tableau.
+
+    The generated instructions are accumulated during the forward pass
+    and then appended to the circuit in reverse order to yield the
+    correct overall transformation.
+
+    For the mapping between tableau updates and Clifford gates (H, S, CNOT) see [2].
+
+    References
+    ----------
+    [1] Van Den Berg, 2021. A simple method for sampling random Clifford operators (arxiv:2008.06011).
+    [2] Aaronson, Gottesman, (2004). Improved Simulation of Stabilizer Circuits (arXiv:quant-ph/0406196).
+    """
+    tab = clifford_map.to_tableau()
+    n = len(clifford_map.output_nodes)
+    if len(clifford_map.input_nodes) != n:
+        raise NotImplementedError(
+            ":func:`cm_berg_pass` does not support circuit compilation if the number of input and output nodes is different (isometry)."
+        )
+
+    instructions: list[Instruction] = []
+
+    def process_qubit(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
+        """Bring to canonical form two tableau rows corresponding to qubit ``q``."""
+        # Step 1
+        do_step_1(tab, instructions, row_idx=q)
+
+        # Step 2
+        pivot = do_step_2(tab, instructions, row_idx=q)
+
+        # Step 3
+        if pivot != q:
+            add_swap(tab, instructions, q, pivot)
+
+        # Step 4
+        col_idx_z = np.flatnonzero(tab[q + n, :-1])  # ZX and ZZ blocks of qubit q, without sign.
+        if not (len(col_idx_z) == 1 and col_idx_z[0] == q + n):
+            # ZX and ZZ blocks don't have the canonical form.
+            add_h(tab, instructions, q)
+            do_step_1(tab, instructions, row_idx=q + n)
+            pivot = do_step_2(tab, instructions, row_idx=q + n)
+            if pivot != q:
+                raise AssertionError(
+                    f"Pivot in block ZZ should be at q = {q}. This error probably means that `CliffordMap` doesn't describe a valid Clifford operation. All Pauli strings must commute, except for `x_map[q]` anticommuting with `z_map[q]` for each q."
+                )
+            add_h(tab, instructions, q)
+
+    def do_step_1(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> None:
+        col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])  # Don't take the sign column
+        for j in col_idx_zx:
+            # Each iteration sets the element `tab[row_idx, n+j]` to 0.
+            add_s(tab, instructions, int(j)) if tab[row_idx, j] else add_h(tab, instructions, int(j))
+
+    def do_step_2(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> int:
+        col_idx_xx = np.flatnonzero(tab[row_idx, :n])
+        while len(col_idx_xx) > 1:
+            for i in range(0, len(col_idx_xx) - 1, 2):  # itertools.batched only available in Python 3.12+
+                # Apply CNOTS to disjoint qubits in parallel
+                add_cnot(tab, instructions, qc=col_idx_xx[i], qt=col_idx_xx[i + 1])
+            col_idx_xx = col_idx_xx[::2]
+
+        return int(col_idx_xx[0])  # Return pivot
+
+    def add_h(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
+        q = int(q)  # Cast to `int` to avoid typing issues
+        tab[:, -1] ^= tab[:, q] & tab[:, q + n]
+        tab[:, [q, q + n]] = tab[:, [q + n, q]]  # The usual tuple assignment `a, b = b, a` does not work here.
+        instructions.append(H(q))
+
+    def add_s(tab: MatGF2, instructions: list[Instruction], q: Qubit) -> None:
+        tab[:, -1] ^= tab[:, q] & tab[:, q + n]
+        tab[:, q + n] ^= tab[:, q]
+        q = int(q)
+        instructions.extend((S(q), Z(q)))  # We append Sdagger to get C instead of C^dagger
+
+    def add_cnot(tab: MatGF2, instructions: list[Instruction], qc: Qubit, qt: Qubit) -> None:
+        tab[:, -1] ^= tab[:, qc] & tab[:, qt + n] & (tab[:, qt] ^ tab[:, qc + n] ^ 1)
+        tab[:, qt] ^= tab[:, qc]
+        tab[:, qc + n] ^= tab[:, qt + n]
+        instructions.append(CNOT(control=int(qc), target=int(qt)))
+
+    def add_swap(tab: MatGF2, instructions: list[Instruction], q0: Qubit, q1: Qubit) -> None:
+        q0, q1 = int(q0), int(q1)  # Cast to `int` to avoid typing issues
+        tab[:, [q0, q1, q0 + n, q1 + n]] = tab[:, [q1, q0, q1 + n, q0 + n]]
+
+        instructions.append(SWAP((q0, q1)))
+
+    def correct_signs(tab: MatGF2, instructions: list[Instruction]) -> None:
+        for q in range(n):
+            sign_xz = tab[q, -1], tab[q + n, -1]
+            match sign_xz:
+                case (0, 1):
+                    instructions.append(X(q))
+                case (1, 1):
+                    instructions.append(Y(q))
+                case (1, 0):
+                    instructions.append(Z(q))
+
+            # The tableau sign column should be set to 0, but we don't need to do it since it's the last step.
+            # tab[q, -1], tab[q + n, -1] = 0, 0
+
+    for q in range(n):
+        process_qubit(tab, instructions, q)
+
+    correct_signs(tab, instructions)
+
+    # Append instructions in reverse order to get C instead of Cdagger
+    for instr in instructions[::-1]:
+        circuit.add(instr)
