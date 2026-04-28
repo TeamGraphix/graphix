@@ -15,7 +15,7 @@ import networkx as nx
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
-from graphix import command
+from graphix import Pattern, command
 from graphix.clifford import Clifford, Domains
 from graphix.command import CommandKind, Node
 from graphix.flow._partial_order import compute_topological_generations
@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Self
 
-    from graphix import Pattern
     from graphix.space_minimization import SpaceMinimizationHeuristic
 
 
@@ -389,8 +388,6 @@ class StandardizedPattern(_StandardizedPattern):
 
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""
-        from graphix import Pattern  # noqa: PLC0415
-
         pattern = Pattern(input_nodes=self.input_nodes)
         pattern.results = dict(self.results)
         pattern.extend(
@@ -726,8 +723,6 @@ def _update_corrections(node: Node, domain: AbstractSet[Node], correction: dict[
 
 def incorporate_pauli_results(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
-    from graphix import Pattern  # noqa: PLC0415
-
     result = Pattern(input_nodes=pattern.input_nodes)
     for cmd in pattern:
         match cmd.kind:
@@ -773,8 +768,6 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
 
 def remove_useless_domains(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where measurement domains that are not used given the specific measurement angles and planes are removed."""
-    from graphix import Pattern  # noqa: PLC0415
-
     new_pattern = Pattern(input_nodes=pattern.input_nodes)
     new_pattern.results = pattern.results
     for cmd in pattern:
@@ -795,8 +788,6 @@ def remove_useless_domains(pattern: Pattern) -> Pattern:
 
 def single_qubit_domains(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where domains contains at most one qubit."""
-    from graphix import Pattern  # noqa: PLC0415
-
     new_pattern = Pattern(input_nodes=pattern.input_nodes)
     new_pattern.results = pattern.results
 
