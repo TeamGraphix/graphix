@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #476
   - Added new field `dim` to `PauliString` to represent the dimension of the Hilbert space.
-  - Methods `CliffordMap.remap` and `PauliExponentialDAG.remap` have a `None` parameter by default in which case the mapping to qubit indices is managed automatically. Input node and output node lists are also relabeled.
+  - Define `PauliString` on qubit indices and remove all `remap` methods.
+  - Represent `x_map` and `z_map` attributes of `CliffordMap` as sequences of `PauliString` instead of mappings.
 
 ### Fixed
 
