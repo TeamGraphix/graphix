@@ -6,7 +6,6 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import numpy as np
-from typing_extensions import Self  # Self introduced in 3.11
 
 from graphix._linalg import MatGF2
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
@@ -76,14 +75,14 @@ class ExtractionResult:
 
 @dataclass(frozen=True)
 class PauliString:
-    """Dataclass representing a Pauli string over a set of MBQC nodes.
+    """Dataclass representing a Pauli string.
 
     Attributes
     ----------
     dim : int
         Dimension of the Hilbert space on which the Pauli string acts.
     axes : Mapping[int, Axis]
-        Mapping between nodes and the applied Pauli operator.
+        Mapping between qubit indices and the applied Pauli operator.
     sign : Sign
         Phase of the Pauli string.
 
@@ -110,7 +109,7 @@ class PauliString:
         Returns
         -------
         PauliString
-            Primary extraction string associated to the input measured nodes.
+            Primary extraction string associated to the input measured nodes. The Pauli string is defined over qubit indices corresponding to positions in ``output_nodes``.
 
         Notes
         -----
@@ -148,36 +147,23 @@ class PauliString:
         # One phase flip if measured on the YZ plane.
         negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
 
-        nodes = {}
+        axes_dict: dict[int, Axis] = {}
+        output_to_qubit_mapping = NodeIndex()
+        output_to_qubit_mapping.extend(og.output_nodes)
+
         # Sets `x_corrections`, `y_corrections` and `z_corrections` are disjoint.
-        for cnode in x_corrections:
-            nodes[cnode] = Axis.X
-        for cnode in y_corrections:
-            nodes[cnode] = Axis.Y
-        for cnode in z_corrections:
-            nodes[cnode] = Axis.Z
-        return PauliString(dim, nodes, Sign.minus_if(negative_sign))
+        corrections = (x_corrections, y_corrections, z_corrections)
+        for correction, axis in zip(corrections, Axis, strict=True):
+            for cnode in correction:
+                qubit = output_to_qubit_mapping.index(cnode)
+                axes_dict[qubit] = axis
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> PauliString:
-        """Remap nodes to qubit indices.
-
-        Parameters
-        ----------
-        outputs_mapping: Callable[[int], int]
-            Mapping between node numbers of the original MBQC pattern or open graph and qubit indices of a quantum circuit.
-
-        Returns
-        -------
-        PauliString
-            Pauli string defined on qubit indices.
-        """
-        axes = {outputs_mapping(n): axis for n, axis in self.axes.items()}
-        return PauliString(self.dim, axes, self.sign)
+        return PauliString(dim, axes_dict, Sign.minus_if(negative_sign))
 
 
 @dataclass(frozen=True)
 class PauliExponential:
-    r"""Dataclass representing a Pauli exponential over a set of MBQC nodes.
+    r"""Dataclass representing a Pauli exponential.
 
     A Pauli exponential corresponds to the unitary operator
 
@@ -192,7 +178,7 @@ class PauliExponential:
     angle : ParameterizedAngle
         The Pauli exponential angle :math:`\alpha` in units of :math:`\pi`. When extracted from a corrected node, it corresponds to the node's measurement divided by two.
     pauli_string : PauliString
-        The signed Pauli string :math:`P` specifying the tensor product of Pauli operators acting on the corresponding MBQC nodes.
+        The signed Pauli string :math:`P` specifying the tensor product of Pauli operators acting on qubit indices.
     """
 
     angle: ParameterizedAngle
@@ -229,13 +215,6 @@ class PauliExponential:
 
         return PauliExponential(angle, pauli_string)
 
-    def remap(self, outputs_mapping: Callable[[int], int]) -> Self:
-        """Remap nodes to qubit indices.
-
-        See documentation in :meth:`PauliString.remap` for additional information.
-        """
-        return replace(self, pauli_string=self.pauli_string.remap(outputs_mapping))
-
 
 @dataclass(frozen=True)
 class PauliExponentialDAG:
@@ -253,6 +232,9 @@ class PauliExponentialDAG:
     Notes
     -----
     See Definition 3.3 in Ref. [1].
+
+    The Pauli strings in the Pauli exponentials are defined on qubit indices
+    which correspond to the indices of the sequence ``output_nodes``.
 
     References
     ----------
@@ -290,48 +272,38 @@ class PauliExponentialDAG:
 
         return PauliExponentialDAG(pauli_strings, flow.partial_order_layers, flow.og.output_nodes)
 
-    def remap(self, outputs_mapping: Callable[[int], int] | None = None) -> Self:
-        """Relabel output node labels in the Pauli exponential DAG.
-
-        Parameters
-        ----------
-        outputs_mapping: Callable[[int], int] | None, default None
-            Mapping between output node labels of the original open graph and new custom labels. If ``None``, output nodes are mapped to their position in ``self.output_nodes``. This is the canonical mapping to qubit indices.
-
-        Returns
-        -------
-        PauliExponentialDAG
-            Pauli exponential DAG defined on new node labels.
-
-        See Also
-        --------
-        :meth:`PauliString.remap`
-        """
-        if outputs_mapping is None:
-            outputs_nodeidx = NodeIndex()
-            outputs_nodeidx.extend(self.output_nodes)
-            outputs_mapping = outputs_nodeidx.index
-
-        output_nodes = [outputs_mapping(node) for node in self.output_nodes]
-        pauli_exponentials = {node: pexp.remap(outputs_mapping) for node, pexp in self.pauli_exponentials.items()}
-        partial_order_layers = [set(output_nodes), *self.partial_order_layers[1:]]
-        return type(self)(
-            pauli_exponentials=pauli_exponentials, partial_order_layers=partial_order_layers, output_nodes=output_nodes
-        )
-
 
 @dataclass(frozen=True)
 class CliffordMap:
-    """Dataclass to represent a Clifford map.
+    r"""Dataclass to represent a Clifford map.
 
-    A Clifford map describes a linear transformation between the space of input qubits and the space of output qubits. It is encoded as a map from the Pauli-group generators (X and Z) over the input nodes to Pauli strings over the output nodes.
+    A Clifford map encodes the action of a Clifford operator on Pauli generators.
+    It describes how single-qubit Pauli operators on the input qubits are mapped,
+    under conjugation, to Pauli strings on the output qubits.
+
+    For each input qubit :math:`i`, the map specifies:
+
+    .. math::
+
+        P_i = C X_i C^\dagger
+
+    .. math::
+
+        P_i = C Z_i C^\dagger
+
+    where the resulting operators :math:`P_i` are Pauli strings over the output qubits.
+
+    The sequences ``input_nodes`` and ``output_nodes`` define the correspondence
+    between qubit indices and node labels in the input and output spaces.
 
     Attributes
     ----------
-    x_map: Mapping[int, PauliString]
-        Map for the X generators. ``keys`` correspond to input nodes and ``values`` to their corresponding Pauli string over the outputs nodes.
-    z_map: Mapping[int, PauliString]
-        Map for the Z generators. ``keys`` correspond to input nodes and ``values`` to their corresponding Pauli string over the outputs nodes.
+    x_map: Sequence[PauliString]
+        Images of the :math:`X` generators. The :math:`i`-th element is the Pauli
+        string corresponding to :math:`C X_i C^\dagger`.
+    z_map: Sequence[PauliString]
+        Images of the :math:`Z` generators. The :math:`i`-th element is the Pauli
+        string corresponding to :math:`C Z_i C^\dagger`.
     input_nodes: Sequence[int]
         Sequence of inputs nodes.
     output_nodes: Sequence[int]
@@ -341,13 +313,15 @@ class CliffordMap:
     -----
     See Definition 3.3 in Ref. [1].
 
+    Elements of ``x_map`` and ``z_map`` are in one-to-one correspondance with ``input_nodes``. Each Pauli string is defined over qubit indices corresponding to positions in ``output_nodes``.
+
     References
     ----------
     [1] Simmons, 2021 (arXiv:2109.05654).
     """
 
-    x_map: Mapping[int, PauliString]
-    z_map: Mapping[int, PauliString]
+    x_map: Sequence[PauliString]
+    z_map: Sequence[PauliString]
     input_nodes: Sequence[int]
     output_nodes: Sequence[int]
 
@@ -378,43 +352,6 @@ class CliffordMap:
         x_map = clifford_x_map_from_focused_flow(flow)
         return CliffordMap(x_map, z_map, flow.og.input_nodes, flow.og.output_nodes)
 
-    def remap(
-        self, inputs_mapping: Callable[[int], int] | None = None, outputs_mapping: Callable[[int], int] | None = None
-    ) -> Self:
-        """Relabel input node and output node labels in the Clifford map.
-
-        Parameters
-        ----------
-        inputs_mapping: Callable[[int], int] | None, default None
-            Mapping between input node labels of the original open graph and new custom labels. If ``None``, input nodes are mapped to their position in ``self.input_nodes``. This is the canonical mapping to qubit indices of a quantum circuit.
-        outputs_mapping: Callable[[int], int] | None, default None
-            Mapping between output node labels of the original open graph and new custom labels. If ``None``, output nodes are mapped to their position in ``self.output_nodes``. This is the canonical mapping to qubit indices.
-
-        Returns
-        -------
-        CliffordMap
-            Clifford map defined on new node labels.
-
-        See Also
-        --------
-        :meth:`PauliString.remap`
-        """
-        if inputs_mapping is None:
-            inputs_nodeidx = NodeIndex()
-            inputs_nodeidx.extend(self.input_nodes)
-            inputs_mapping = inputs_nodeidx.index
-
-        if outputs_mapping is None:
-            outputs_nodeidx = NodeIndex()
-            outputs_nodeidx.extend(self.output_nodes)
-            outputs_mapping = outputs_nodeidx.index
-
-        x_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.x_map.items()}
-        z_map = {inputs_mapping(node): ps.remap(outputs_mapping) for node, ps in self.z_map.items()}
-        input_nodes = [inputs_mapping(node) for node in self.input_nodes]
-        output_nodes = [outputs_mapping(node) for node in self.output_nodes]
-        return type(self)(x_map=x_map, z_map=z_map, input_nodes=input_nodes, output_nodes=output_nodes)
-
     def to_tableau(self) -> MatGF2:
         """Convert the CliffordMap into its binary tableau representation.
 
@@ -443,27 +380,17 @@ class CliffordMap:
         NotImplementedError
             If the number of input nodes differs from the number of output
             nodes (i.e., the map is an isometry instead of a square Clifford).
-
-        Notes
-        -----
-        This method assumes the Clifford map has already been remapped such that input and
-        output nodes correspond to qubit indices. Use ``self.remap().to_tableau()`` to ensure
-        this is the case.
         """
         n = len(self.input_nodes)
         if n != len(self.output_nodes):
             raise NotImplementedError(
                 f"Isometries are not supported yet: # of inputs ({len(self.input_nodes)}) must be equal to the # of outputs ({len(self.output_nodes)})."
             )
-        if self.input_nodes != self.output_nodes:
-            raise ValueError(
-                "Clifford map has not been remapped: `self.input_nodes != self.output_nodes`. Use self.remap().to_tableau() to map node labels to qubits."
-            )
 
         tab = MatGF2(np.zeros((2 * n, 2 * n + 1)))
 
         for mapping, shift in (self.x_map, 0), (self.z_map, n):
-            for i, ps in mapping.items():  # Clifford map has been remap so keys correspond to qubits.
+            for i, ps in enumerate(mapping):  # Indices in the Clifford map correspond to qubits (0 to n-1).
                 for j, ax in ps.axes.items():
                     if ax in {Axis.X, Axis.Y}:
                         tab[i + shift, j] = 1
@@ -515,8 +442,8 @@ def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], di
     return replace(og, graph=graph, input_nodes=new_input_nodes[::-1], measurements=measurements), ancillary_inputs_map
 
 
-def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, PauliString]:
-    """Extract a map between Z over the input nodes and Pauli strings over the output nodes from a focused Pauli flow.
+def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[PauliString, ...]:
+    r"""Extract the images of the Z generators of a Clifford map from a focused Pauli flow.
 
     If the input node is a measured node, the resulting Pauli string is given by the correction set. If the input node is also an output node, the resulting Pauli string is Z (representing the identity map).
 
@@ -527,8 +454,9 @@ def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, 
 
     Returns
     -------
-    dict[int, PauliString]
-        Map between input nodes (``keys``) and Pauli strings over the output nodes (``values``).
+    tuple[PauliString,...]
+        Images of the :math:`Z` generators. The :math:`i`-th element is the Pauli string
+        corresponding to :math:`C Z_i C^\dagger`, where :math:`C` is the Clifford map.
 
     Notes
     -----
@@ -539,15 +467,19 @@ def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> dict[int, 
     [1] Simmons, 2021 (arXiv:2109.05654).
     """
     dim = len(flow.og.output_nodes)
-    # Nodes are either measured or outputs.
-    return {
-        node: flow.pauli_strings[node] if node in flow.og.measurements else PauliString(dim, {node: Axis.Z})
+    output_to_qubit_mapping = NodeIndex()
+    output_to_qubit_mapping.extend(flow.og.output_nodes)
+    # Input nodes are either measured or outputs.
+    return tuple(
+        flow.pauli_strings[node]
+        if node in flow.og.measurements
+        else PauliString(dim, {output_to_qubit_mapping.index(node): Axis.Z})
         for node in flow.og.input_nodes
-    }
+    )
 
 
-def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> Mapping[int, PauliString]:
-    """Extract a map between X over the input nodes and Pauli strings over the output nodes from a focused Pauli flow.
+def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[PauliString, ...]:
+    r"""Extract the images of the X generators of a Clifford map from a focused Pauli flow.
 
     The resulting Pauli string is given by the correction set of a focused flow of the extended open graph.
 
@@ -558,8 +490,9 @@ def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> Mapping[in
 
     Returns
     -------
-    dict[int, PauliString]
-        Map between input nodes (``keys``) and Pauli strings over the output nodes (``values``).
+    tuple[PauliString,...]
+        Images of the :math:`X` generators. The :math:`i`-th element is the Pauli string
+        corresponding to :math:`C X_i C^\dagger`, where :math:`C` is the Clifford map.
 
     Notes
     -----
@@ -582,4 +515,4 @@ def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> Mapping[in
     # It's better to call the `PauliString` constructor instead of the cached property `flow_extended.pauli_strings` since the latter will compute a `PauliString` for _every_ node in the correction function and we just need it for the input nodes.
     x_map_ancillas = {node: PauliString.from_measured_node(flow_extended, node) for node in og_extended.input_nodes}
 
-    return {input_node: x_map_ancillas[ancillary_inputs_map[input_node]] for input_node in og.input_nodes}
+    return tuple(x_map_ancillas[ancillary_inputs_map[input_node]] for input_node in og.input_nodes)

@@ -9,7 +9,6 @@ import numpy as np
 
 from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import CNOT, SWAP, H, S, X, Y, Z
-from graphix.sim.base_backend import NodeIndex
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -31,7 +30,7 @@ def er_to_circuit(
 ) -> Circuit:
     """Convert a circuit extraction result into a quantum circuit representation.
 
-    This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) in the extraction result. It performs a validation check to ensure that the output nodes of both components are identical and it maps the output node numbers to qubit indices.
+    This method synthesizes a circuit by sequentially applying the Clifford map and the Pauli exponential DAG (Directed Acyclic Graph) in the extraction result. It performs a validation check to ensure that the output nodes of both components are identical.
 
     Parameters
     ----------
@@ -64,26 +63,21 @@ def er_to_circuit(
 
     n_qubits = len(er.pexp_dag.output_nodes)
     circuit = Circuit(n_qubits)
-    outputs_mapping = NodeIndex()
-    outputs_mapping.extend(er.pexp_dag.output_nodes)
 
-    inputs_mapping = NodeIndex()
-    inputs_mapping.extend(er.clifford_map.input_nodes)
-
-    cm_cp(er.clifford_map.remap(inputs_mapping.index, outputs_mapping.index), circuit)
-    pexp_cp(er.pexp_dag.remap(outputs_mapping.index), circuit)
+    cm_cp(er.clifford_map, circuit)
+    pexp_cp(er.pexp_dag, circuit)
     return circuit
 
 
 def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
     r"""Add a Pauli exponential DAG to a circuit by using a ladder decomposition.
 
-    The input circuit is modified in-place. This function assumes that the Pauli exponential DAG has been remapped, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
+    The input circuit is modified in-place.
 
     Parameters
     ----------
     pexp_dag: PauliExponentialDAG
-        The Pauli exponential rotation to be added to the circuit. Its Pauli strings are assumed to be defined on qubit indices.
+        The Pauli exponential rotation to be added to the circuit. Its Pauli strings are defined on qubit indices.
     circuit : Circuit
         The circuit to which the operation is added. The input circuit is assumed to be compatible with ``pexp_dag.output_nodes``.
 
@@ -113,15 +107,11 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
             The Pauli exponential to add.
         circuit : Circuit
             The quantum circuit to which the Pauli exponential is added.
-
-        Notes
-        -----
-        It is assumed that the ``x``, ``y``, and ``z`` node sets of the Pauli string in the exponential are well-formed, i.e., contain valid qubit indices and are pairwise disjoint.
         """
         if pexp.angle == 0:  # No rotation
             return
 
-        # We assume that nodes in the Pauli strings have been mapped to qubits.
+        # Pauli strings are defined on qubit indices.
         # The order on which we iterate over the modified qubits does not matter.
         modified_qubits = list(pexp.pauli_string.axes)
         angle = -2 * pexp.angle * pexp.pauli_string.sign
@@ -193,12 +183,12 @@ def pexp_ladder_pass(pexp_dag: PauliExponentialDAG, circuit: Circuit) -> None:
 def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
     r"""Add a Clifford map to a circuit by using an adaptation of van den Berg's sweeping algorithm introduced in Ref. [1].
 
-    The input circuit is modified in-place. This function assumes that the Clifford Map has been remap, i.e., its Pauli strings are defined on qubit indices instead of output nodes. See :meth:`PauliString.remap` for additional information.
+    The input circuit is modified in-place.
 
     Parameters
     ----------
     clifford_map: CliffordMap
-        The Clifford map to be transpiled. Its Pauli strings are assumed to be defined on qubit indices.
+        The Clifford map to be transpiled.
     circuit : Circuit
         The circuit to which the operation is added. The input circuit is assumed to be compatible with
         ``CliffordMap.input_nodes`` and ``CliffordMap.output_nodes``.
