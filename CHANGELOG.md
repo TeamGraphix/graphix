@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #484: J & CZ transpilation.
   - Replaced `Circuit.transpile()` with a new approach based decomposing circuits into J & CZ gates.
+  - Added `Circuit.transpile_to_cflow()` to produce `CausalFlow` using the same decomposition.
   - Added `instruction.J` class.
+  
 - #479: Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
 
 - #454, #481: New space minimization API that allows users to select or define custom heuristics.
