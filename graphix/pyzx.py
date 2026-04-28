@@ -6,7 +6,6 @@ OpenGraph class because we want :mod:`pyzx` to be an optional dependency.
 
 from __future__ import annotations
 
-import warnings
 from fractions import Fraction
 from typing import TYPE_CHECKING, SupportsFloat
 
@@ -32,7 +31,6 @@ def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
     return Fraction(angle)
 
 
-# TODO: Adapt to new OpenGraph API
 def to_pyzx_graph(og: OpenGraph[BlochMeasurement]) -> BaseGraph[int, tuple[int, int]]:
     """Return a :mod:`pyzx` graph corresponding to the open graph.
 
@@ -47,11 +45,6 @@ def to_pyzx_graph(og: OpenGraph[BlochMeasurement]) -> BaseGraph[int, tuple[int, 
     >>> og = OpenGraph(g, inputs, outputs, measurements)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
-    if zx.__version__ != "0.9.0":
-        warnings.warn(
-            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.9.0 due to possible breaking changes in `pyzx`.",
-            stacklevel=1,
-        )
     g = Graph()
 
     # Add vertices into the graph and set their type
@@ -123,8 +116,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     with the definition of an OpenGraph. For instance, if the final node on
     a qubit is measured, it will add two nodes behind it so that no output
     nodes are measured to satisfy the requirements of an open graph.
-        .. warning::
-            works with `pyzx==0.8.0` (see `pyproject.toml`). Other versions may not be compatible due to breaking changes in `pyzx`
+
     Example
     -------
     >>> import pyzx as zx
@@ -169,7 +161,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
 
         nbrs = list(g.neighbors(v))
         if len(nbrs) == 1:
-            measurements[nbrs[0]] = Measurement.YZ(-_checked_float(g.phase(v)))
+            measurements[nbrs[0]] = Measurement.YZ(_checked_float(g.phase(v)))
             g_nx.remove_node(v)
 
     next_id = max(g_nx.nodes) + 1

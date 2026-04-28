@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -11,6 +10,10 @@ from numpy.random import PCG64, Generator
 from graphix.fundamentals import ANGLE_PI
 from graphix.random_objects import rand_circuit
 from graphix.transpiler import Circuit
+
+if TYPE_CHECKING:
+    from graphix import Pattern
+    from graphix.sim.statevec import Statevec
 
 try:
     import pyzx as zx
@@ -31,12 +34,12 @@ except ImportError:
 
 if TYPE_CHECKING:
     from pyzx.graph.base import BaseGraph
-SEED = 123
 
 
-def test_graph_equality() -> None:
-    random.seed(SEED)
-    g = clifford_t(4, 10, 0.1)
+def test_graph_equality(fx_rng: Generator) -> None:
+    # No default value for `byteorder` in Python 3.10
+    seed = int.from_bytes(fx_rng.integers(0, 256, size=16, dtype=np.uint8).tobytes(), byteorder="big")
+    g = clifford_t(4, 10, 0.1, seed=seed)
 
     og1 = from_pyzx_graph(g)
 
@@ -74,26 +77,35 @@ def test_random_clifford_t() -> None:
         assert_reconstructed_pyzx_graph_equal(g)
 
 
-@pytest.mark.parametrize("jumps", range(1, 11))
-def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
-    rng = Generator(fx_bg.jumped(jumps))
-    nqubits = 5
-    depth = 5
-    circuit = rand_circuit(nqubits, depth, rng)
-    pattern = circuit.transpile().pattern
-    opengraph = pattern.extract_opengraph()
-    zx_graph = to_pyzx_graph(opengraph.to_bloch())
-    opengraph2 = from_pyzx_graph(zx_graph)
-    pattern2 = opengraph2.to_pattern().infer_pauli_measurements()
+def simulate_pattern(pattern: Pattern, rng: Generator) -> Statevec:
     pattern.remove_input_nodes()
     pattern.perform_pauli_measurements()
     pattern.minimize_space()
-    state = pattern.simulate_pattern(rng=rng)
-    pattern2.remove_input_nodes()
-    pattern2.perform_pauli_measurements()
-    pattern2.minimize_space()
-    state2 = pattern2.simulate_pattern(rng=rng)
-    assert state.isclose(state2)
+    return pattern.simulate_pattern(rng=rng)
+
+
+def check_round_trip(pattern: Pattern, rng: Generator, full_reduce: bool) -> bool:
+    opengraph = pattern.extract_opengraph()
+    zx_graph = to_pyzx_graph(opengraph.to_bloch())
+    if full_reduce:
+        zx_graph.normalize()
+        zx.simplify.full_reduce(zx_graph)
+    opengraph2 = from_pyzx_graph(zx_graph)
+    pattern2 = opengraph2.infer_pauli_measurements().to_pattern()
+    state = simulate_pattern(pattern, rng)
+    state2 = simulate_pattern(pattern2, rng)
+    return state.isclose(state2)
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+@pytest.mark.parametrize("full_reduce", [False, True])
+def test_random_circuit(fx_bg: PCG64, jumps: int, full_reduce: bool) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 5
+    depth = 5
+    circuit = rand_circuit(nqubits, depth, rng, use_rzz=True)
+    pattern = circuit.transpile().pattern
+    assert check_round_trip(pattern, rng, full_reduce)
 
 
 def test_rz(fx_rng: Generator) -> None:
@@ -110,23 +122,10 @@ def test_rz(fx_rng: Generator) -> None:
     assert state_zx.isclose(state)
 
 
-@pytest.mark.xfail(reason="Issue #235: still to be fixed!")
-def test_full_reduce_toffoli(fx_rng: Generator) -> None:
-    c = Circuit(3)
-    c.ccx(0, 1, 2)
-    p = c.transpile().pattern
-    og = p.extract_opengraph()
-    pyg = to_pyzx_graph(og.to_bloch())
-    pyg.normalize()
-    pyg_copy = deepcopy(pyg)
-    zx.simplify.full_reduce(pyg)
-    pyg.normalize()
-    t = zx.tensorfy(pyg)
-    t2 = zx.tensorfy(pyg_copy)
-    assert zx.compare_tensors(t, t2)
-    og2 = from_pyzx_graph(pyg).infer_pauli_measurements()
-    p2 = og2.to_pattern()
-    s = p.simulate_pattern(rng=fx_rng)
-    s2 = p2.simulate_pattern(rng=fx_rng)
-    print(s.fidelity(s2))
-    assert s.isclose(s2)
+@pytest.mark.parametrize("full_reduce", [False, True])
+def test_ccx(fx_rng: Generator, full_reduce: bool) -> None:
+    # Issue #235
+    circuit = Circuit(3)
+    circuit.ccx(0, 1, 2)
+    pattern = circuit.transpile().pattern
+    assert check_round_trip(pattern, fx_rng, full_reduce)

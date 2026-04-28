@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
 
+- #235, #489: Correct sign for `YZ` measurements in `from_pyzx_graph`. ZX diagrams are now correctly converted into open graphs, even if they are reduced.
+
 ### Changed
 
 - #479: Method `Pattern.draw_graph` subsumed by two different methods: `Pattern.draw_flow` and `Pattern.draw_xzcorrections`.

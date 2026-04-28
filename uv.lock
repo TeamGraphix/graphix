@@ -877,6 +877,21 @@ wheels = [
 ]
 
 [[package]]
+name = "galois"
+version = "0.4.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numba" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/13/54/ede3562049f1bb7f9546cbd86af8794b49733a835b0d1c40fedfbbcdbcc5/galois-0.4.10.tar.gz", hash = "sha256:94a371c995193a66798fceb079320dff154c21a0e3e0de388c06ba26f8eb574a", size = 7401288, upload-time = "2026-01-02T02:59:04.569Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/16/91e376aa4cad58203448510c907c267cce524d1fd2dd7f9f875f75b8584e/galois-0.4.10-py3-none-any.whl", hash = "sha256:9badf669915c92d9f298c7799cadad112baa21f53d816f427f55c4ec6ee9a2dc", size = 4196886, upload-time = "2026-01-02T02:59:02.332Z" },
+]
+
+[[package]]
 name = "graphix"
 source = { editable = "." }
 dependencies = [
@@ -958,7 +973,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-mock", marker = "extra == 'dev'" },
     { name = "pytest-mpl", marker = "extra == 'dev'" },
-    { name = "pyzx", marker = "extra == 'extra'", specifier = "==0.9.0" },
+    { name = "pyzx", marker = "extra == 'extra'", specifier = ">=0.10.0" },
     { name = "qiskit", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "qiskit-aer", marker = "extra == 'dev'" },
     { name = "qiskit-qasm3-import", marker = "extra == 'dev'" },
@@ -2413,9 +2428,10 @@ wheels = [
 
 [[package]]
 name = "pyzx"
-version = "0.9.0"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "galois" },
     { name = "ipywidgets" },
     { name = "lark" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -2424,9 +2440,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a6/22/b37c477bf79249bd2655267de071cb6ab7dbfe39579cfaeb6c3e99e26667/pyzx-0.9.0.tar.gz", hash = "sha256:9e1f4c7e490c6862750a0a0021d1c830eaff948185240eb88b4902105f7e27df", size = 327849, upload-time = "2025-01-30T20:35:59.942Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/46/413f9d406656172f57680aa2b6eb854f9878f6726cc023942e69b1fbca0e/pyzx-0.10.0.tar.gz", hash = "sha256:54beddf2299da53533325dc3c501c05412a10e30ee84315c8bd025e232254aa9", size = 415826, upload-time = "2026-03-12T14:33:01.657Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/21/78/9b1a64fa38f79d9f93289ed405c880da992ce106236a62bebf700a30100e/pyzx-0.9.0-py3-none-any.whl", hash = "sha256:13211a5922b1b79460c22e7cb685448261145e90bf30a29616f8058982a47b3f", size = 358711, upload-time = "2025-01-30T20:35:57.123Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/63/5b0bbca31337b0eb806eb316bc7e21a16be83097a671206e97d4dd30038f/pyzx-0.10.0-py3-none-any.whl", hash = "sha256:b941ed8490618dcbe68dc3194f1930e01b4968de75551b70c40c78f8ad6b58d9", size = 455055, upload-time = "2026-03-12T14:33:00.156Z" },
 ]
 
 [[package]]
