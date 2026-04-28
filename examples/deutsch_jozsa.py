@@ -74,6 +74,7 @@ print(pattern.to_ascii(left_to_right=True, limit=15))
 # Now we preprocess all Pauli measurements, which requires that we move inputs to N commands
 
 pattern.remove_input_nodes()
+pattern = pattern.infer_pauli_measurements()
 pattern.perform_pauli_measurements()
 print(
     pattern.to_ascii(
