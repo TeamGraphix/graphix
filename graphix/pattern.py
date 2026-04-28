@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 _BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
 
 
-class DrawAnnotations(Enum):
+class DrawPatternAnnotations(Enum):
     """Enumeration to indicate the possible annotations for `Pattern.draw`."""
 
     Flow = enum.auto()
@@ -1462,7 +1462,7 @@ class Pattern:
     def draw(
         self,
         *,
-        annotations: DrawAnnotations | None = DrawAnnotations.Flow,
+        annotations: DrawPatternAnnotations | None = DrawPatternAnnotations.Flow,
         flow_from_pattern: bool = True,
         show_local_clifford: bool = False,
         stacklevel: int = 1,
@@ -1472,10 +1472,10 @@ class Pattern:
 
         Parameters
         ----------
-        annotations : DrawAnnotations | None, default=DrawAnnotations.Flow
+        annotations : DrawPatternAnnotations | None, default=DrawPatternAnnotations.Flow
             Annotations to be shown.
-                - ``DrawAnnotations.Flow`` (default): show the pattern's flow if it exists.
-                - ``DrawAnnotations.XZCorrections``: show the pattern's XZ-corrections.
+                - ``DrawPatternAnnotations.Flow`` (default): show the pattern's flow if it exists.
+                - ``DrawPatternAnnotations.XZCorrections``: show the pattern's XZ-corrections.
                 - ``None``: show the underlying open graph only.
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
@@ -1504,7 +1504,7 @@ class Pattern:
             gv = GraphVisualizer.from_opengraph(og=og, **options)
         else:
             match annotations:
-                case DrawAnnotations.Flow:
+                case DrawPatternAnnotations.Flow:
                     flow: PauliFlow[Measurement] | None = None
 
                     if flow_from_pattern:
@@ -1532,12 +1532,12 @@ class Pattern:
                             flow = og.find_pauli_flow(stacklevel=stacklevel + 1)
                         if flow is None:
                             raise PatternError(
-                                "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawAnnotations.XZCorrections`."
+                                "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawPatternAnnotations.XZCorrections`."
                             )
 
                     gv = GraphVisualizer.from_flow(flow=flow, **options)
 
-                case DrawAnnotations.XZCorrections:
+                case DrawPatternAnnotations.XZCorrections:
                     xzcorrections = self.extract_xzcorrections()
                     gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, **options)
 

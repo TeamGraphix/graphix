@@ -12,7 +12,7 @@ from graphix import Circuit, Pattern, command
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
-from graphix.pattern import DrawAnnotations
+from graphix.pattern import DrawPatternAnnotations
 from graphix.visualization import _edge_intersects_node
 
 if TYPE_CHECKING:
@@ -141,7 +141,7 @@ def test_draw_pattern_xzcorrections(
 ) -> None:
     pattern = example(fx_rng)
     pattern.draw(
-        annotations=DrawAnnotations.XZCorrections,
+        annotations=DrawPatternAnnotations.XZCorrections,
         pauli_measurements=pauli_measurements,
         measurement_labels=measurement_labels,
         show_local_clifford=show_local_clifford,
@@ -167,7 +167,7 @@ def test_draw_pattern_xzcorrections_save() -> None:
     pattern = example_hadamard()
     with TemporaryDirectory() as dirname:
         filename = Path(dirname) / "image.png"
-        pattern.draw(annotations=DrawAnnotations.XZCorrections, filename=filename)
+        pattern.draw(annotations=DrawPatternAnnotations.XZCorrections, filename=filename)
         assert filename.exists()
 
 
@@ -187,7 +187,7 @@ def test_custom_corrections() -> None:
         input_nodes=[0, 1, 2, 3],
         cmds=[command.M(0), command.M(1), command.X(2, {0}), command.Z(2, {0}), command.Z(3, {1})],
     )
-    pattern.draw(annotations=DrawAnnotations.XZCorrections)
+    pattern.draw(annotations=DrawPatternAnnotations.XZCorrections)
 
 
 @pytest.mark.usefixtures("mock_plot")
