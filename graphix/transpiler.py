@@ -7,7 +7,9 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, SupportsFloat, Generic, TypeVar
+
+import networkx as nx
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -15,37 +17,51 @@ from typing_extensions import assert_never, override
 
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
-from graphix.command import E, M, N, X, Z
+from graphix.flow.core import CausalFlow, _corrections_to_partial_order_layers
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.instruction import Instruction, InstructionKind, InstructionVisitor, InstructionWithoutRZZ
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.instruction import Instruction, InstructionKind, InstructionVisitor
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
+from graphix.opengraph import OpenGraph
 from graphix.ops import Ops
-from graphix.pattern import Pattern
+from graphix.optimization import StandardizedPattern
 from graphix.sim.statevec import Statevec, StatevectorBackend
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+    from collections.abc import Callable, Iterable, Mapping, Sequence
 
     from numpy.random import Generator
 
-    from graphix.command import Command
     from graphix.fundamentals import ParameterizedAngle
     from graphix.parameter import ExpressionOrFloat, Parameter
+    from graphix.pattern import Pattern
     from graphix.sim import Data
     from graphix.sim.base_backend import Matrix
 
+_R = TypeVar("_R", bound="Pattern | CausalFlow[BlochMeasurement]")
+_CO = TypeVar("_CO", bound="tuple[int, ...] | dict[int, command.M]")
 
 @dataclass
-class TranspileResult:
+class TranspileResult(Generic[_R, _CO]):
     """
     The result of a transpilation.
 
-    pattern : :class:`graphix.pattern.Pattern` object
-    classical_outputs : tuple[int,...], index of nodes measured with *M* gates
+    pattern : :class:`graphix.pattern.Pattern` or :class:`graphix.flow.core.CausalFlow` object
+    classical_outputs : tuple[int, ...] | dict[int, command.M], index of nodes measured with *M* gates, with associated M commands as dictionary.
     """
+    result: _R
+    classical_outputs: _CO
 
-    pattern: Pattern
-    classical_outputs: tuple[int, ...]
+    @property
+    def pattern(self) -> Pattern:
+        if not isinstance(self.result, Pattern):
+            raise AttributeError("result is not a Pattern; use `.flow` or `.result`")
+        return self.result
+
+    @property
+    def flow(self) -> CausalFlow[BlochMeasurement]:
+        if not isinstance(self.result, CausalFlow):
+            raise AttributeError("result is not a CausalFlow; use `.pattern` or `.result`")
+        return self.result
 
 
 @dataclass
@@ -143,6 +159,8 @@ class Circuit:
                 self.ry(instr.target, instr.angle)
             case InstructionKind.RZ:
                 self.rz(instr.target, instr.angle)
+            case InstructionKind.J:
+                self.j(instr.target, instr.angle)
             case _:
                 assert_never(instr.kind)
 
@@ -294,6 +312,19 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
+    def j(self, qubit: int, angle: ParameterizedAngle) -> None:
+        """Apply a J rotation gate.
+
+        Parameters
+        ----------
+        qubit : int
+            target qubit
+        angle : ParameterizedAngle
+            rotation angle in units of π
+        """
+        assert qubit in self.active_qubits
+        self.instruction.append(instruction.J(target=qubit, angle=angle))
+
     def r(self, qubit: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a rotation gate on the given axis.
 
@@ -387,559 +418,82 @@ class Circuit:
         self.instruction.append(instruction.M(target=qubit, axis=axis))
         self.active_qubits.remove(qubit)
 
-    def transpile(self) -> TranspileResult:
-        """Transpile the circuit to a pattern.
-
-        Returns
-        -------
-        result : :class:`TranspileResult` object
-        """
-        n_node = self.width
-        out: list[int | None] = list(range(self.width))
-        pattern = Pattern(input_nodes=list(range(self.width)))
-        classical_outputs = []
-        for instr in _transpile_rzz(self.instruction):
-            match instr.kind:
-                case instruction.InstructionKind.CZ:
-                    target0 = _check_target(out, instr.targets[0])
-                    target1 = _check_target(out, instr.targets[1])
-                    seq = self._cz_command(target0, target1)
-                    pattern.extend(seq)
-                case instruction.InstructionKind.CNOT:
-                    ancilla = [n_node, n_node + 1]
-                    control = _check_target(out, instr.control)
-                    target = _check_target(out, instr.target)
-                    out[instr.control], out[instr.target], seq = self._cnot_command(control, target, ancilla)
-                    pattern.extend(seq)
-                    n_node += 2
-                case instruction.InstructionKind.SWAP:
-                    target0 = _check_target(out, instr.targets[0])
-                    target1 = _check_target(out, instr.targets[1])
-                    out[instr.targets[0]], out[instr.targets[1]] = (
-                        target1,
-                        target0,
-                    )
-                case instruction.InstructionKind.I:
-                    pass
-                case instruction.InstructionKind.H:
-                    single_ancilla = n_node
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._h_command(target, single_ancilla)
-                    pattern.extend(seq)
-                    n_node += 1
-                case instruction.InstructionKind.S:
-                    ancilla = [n_node, n_node + 1]
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._s_command(target, ancilla)
-                    pattern.extend(seq)
-                    n_node += 2
-                case instruction.InstructionKind.X:
-                    ancilla = [n_node, n_node + 1]
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._x_command(target, ancilla)
-                    pattern.extend(seq)
-                    n_node += 2
-                case instruction.InstructionKind.Y:
-                    ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._y_command(target, ancilla)
-                    pattern.extend(seq)
-                    n_node += 4
-                case instruction.InstructionKind.Z:
-                    ancilla = [n_node, n_node + 1]
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._z_command(target, ancilla)
-                    pattern.extend(seq)
-                    n_node += 2
-                case instruction.InstructionKind.RX:
-                    ancilla = [n_node, n_node + 1]
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._rx_command(target, ancilla, instr.angle)
-                    pattern.extend(seq)
-                    n_node += 2
-                case instruction.InstructionKind.RY:
-                    ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._ry_command(target, ancilla, instr.angle)
-                    pattern.extend(seq)
-                    n_node += 4
-                case instruction.InstructionKind.RZ:
-                    ancilla = [n_node, n_node + 1]
-                    target = _check_target(out, instr.target)
-                    out[instr.target], seq = self._rz_command(target, ancilla, instr.angle)
-                    pattern.extend(seq)
-                    n_node += 2
-                case instruction.InstructionKind.CCX:
-                    ancilla = [n_node + i for i in range(18)]
-                    control0 = _check_target(out, instr.controls[0])
-                    control1 = _check_target(out, instr.controls[1])
-                    target = _check_target(out, instr.target)
-                    (
-                        out[instr.controls[0]],
-                        out[instr.controls[1]],
-                        out[instr.target],
-                        seq,
-                    ) = self._ccx_command(
-                        control0,
-                        control1,
-                        target,
-                        ancilla,
-                    )
-                    pattern.extend(seq)
-                    n_node += 18
-                case instruction.InstructionKind.M:
-                    target = _check_target(out, instr.target)
-                    seq = self._m_command(target, instr.axis)
-                    pattern.extend(seq)
-                    classical_outputs.append(target)
-                    out[instr.target] = None
-                case _:
-                    assert_never(instr.kind)
-        output_nodes = [node for node in out if node is not None]
-        pattern.reorder_output_nodes(output_nodes)
-        return TranspileResult(pattern, tuple(classical_outputs))
-
-    @classmethod
-    def _cnot_command(
-        cls, control_node: int, target_node: int, ancilla: Sequence[int]
-    ) -> tuple[int, int, list[command.Command]]:
-        """MBQC commands for CNOT gate.
+    def transpile_to_cflow(self) -> TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]]:
+        """Transpile a circuit via J-∧z decomposition to a causal flow.
 
         Parameters
         ----------
-        control_node : int
-            control node on graph
-        target : int
-            target node on graph
-        ancilla : list of two ints
-            ancilla node indices to be added to graph
+            self: the circuit to transpile.
 
         Returns
         -------
-        control_out : int
-            control node on graph after the gate
-        target_out : int
-            target node on graph after the gate
-        commands : list
-            list of MBQC commands
+            the result of the transpilation: a causal flow and classical outputs.
+
+        Raises
+        ------
+            IllformedCircuitError: if the pattern is ill-formed (operation on already measured node)
+            CircuitWithMeasurementError: if the circuit contains measurements.
+
         """
-        assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.extend(
-            (
-                E(nodes=(target_node, ancilla[0])),
-                E(nodes=(control_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                M(node=target_node),
-                M(node=ancilla[0], s_domain={target_node}),
-                X(node=ancilla[1], domain={ancilla[0]}),
-                Z(node=ancilla[1], domain={target_node}),
-                Z(node=control_node, domain={target_node}),
-            )
+        indices: list[int | None] = list(range(self.width))
+        n_nodes = self.width
+        measurements: dict[int, BlochMeasurement] = {}
+        classical_outputs: dict[int, command.M] = {}
+        inputs = list(range(n_nodes))
+        graph: nx.Graph[int] = nx.Graph()  # In future change to OpenGraph not nx
+        graph.add_nodes_from(inputs)
+        x_corrections: dict[int, set[int]] = {}
+        for instr in self.instruction:
+            if instr.kind == InstructionKind.M:
+                target = indices[instr.target]
+                if target is None:
+                    raise IllformedCircuitError
+                classical_outputs[target] = command.M(target, PauliMeasurement(instr.axis))
+                indices[instr.target] = None
+                continue
+            for instr_jcz in instruction_to_jcz(instr):
+                if instr_jcz.kind == InstructionKind.J:
+                    target = indices[instr_jcz.target]
+                    if target is None:
+                        raise IllformedCircuitError
+                    graph.add_edge(target, n_nodes)  # Also adds nodes
+                    measurements[target] = Measurement.XY(normalize_angle(-instr_jcz.angle))
+                    indices[instr_jcz.target] = n_nodes
+                    x_corrections[target] = {n_nodes}  # X correction on ancilla
+                    n_nodes += 1
+                    continue
+                if instr_jcz.kind == InstructionKind.CZ:
+                    t0, t1 = instr_jcz.targets
+                    i0, i1 = indices[t0], indices[t1]
+                    if i0 is None or i1 is None:
+                        raise IllformedCircuitError
+                    # If edge exists, remove it; else, add it
+                    if graph.has_edge(i0, i1):
+                        graph.remove_edge(i0, i1)
+                    else:
+                        graph.add_edge(i0, i1)
+                    continue
+                assert_never(instr_jcz.kind)
+        outputs = [i for i in indices if i is not None]
+        outputs.extend(classical_outputs.keys())
+        og = OpenGraph(
+            graph=graph,
+            input_nodes=inputs,
+            output_nodes=outputs,
+            measurements=measurements,
         )
-        return control_node, ancilla[1], seq
+        z_corrections: dict[int, set[int]] = {}
+        for node, correctors in x_corrections.items():
+            (corrector,) = correctors
+            z_targets = set(graph.neighbors(corrector)) - {node}
+            if z_targets:
+                z_corrections[node] = z_targets
+        partial_order_layers = _corrections_to_partial_order_layers(og, x_corrections, z_corrections)
+        f: CausalFlow[BlochMeasurement] = CausalFlow(og, x_corrections, partial_order_layers)
+        return TranspileResult(f, classical_outputs)
 
-    @classmethod
-    def _cz_command(cls, target_1: int, target_2: int) -> list[Command]:
-        """MBQC commands for CZ gate.
-
-        Parameters
-        ----------
-        target_1 : int
-            target node on graph
-        target_2 : int
-            other target node on graph
-
-        Returns
-        -------
-        commands : list
-            list of MBQC commands
-        """
-        return [E(nodes=(target_1, target_2))]
-
-    @classmethod
-    def _m_command(cls, input_node: int, axis: Axis) -> list[Command]:
-        """MBQC commands for measuring qubit.
-
-        Parameters
-        ----------
-        input_node : int
-            target node on graph
-        axis : Axis
-            measurement basis
-
-        Returns
-        -------
-        commands : list
-            list of MBQC commands
-        """
-        # `measurement.angle` and `M.angle` are both expressed in units of π.
-        return [M(input_node, PauliMeasurement(axis))]
-
-    @classmethod
-    def _h_command(cls, input_node: int, ancilla: int) -> tuple[int, list[Command]]:
-        """MBQC commands for Hadamard gate.
-
-        Parameters
-        ----------
-        input_node : int
-            target node on graph
-        ancilla : int
-            ancilla node index to be added
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        seq: list[Command] = [N(node=ancilla)]
-        seq.extend((E(nodes=(input_node, ancilla)), M(node=input_node), X(node=ancilla, domain={input_node})))
-        return ancilla, seq
-
-    @classmethod
-    def _s_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for S gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : list of two ints
-            ancilla node indices to be added to graph
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), command.N(node=ancilla[1])]
-        seq.extend(
-            (
-                E(nodes=(input_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                M(input_node, -Measurement.Y),
-                M(node=ancilla[0], s_domain={input_node}),
-                X(node=ancilla[1], domain={ancilla[0]}),
-                Z(node=ancilla[1], domain={input_node}),
-            )
-        )
-        return ancilla[1], seq
-
-    @classmethod
-    def _x_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Pauli X gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : list of two ints
-            ancilla node indices to be added to graph
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.extend(
-            (
-                E(nodes=(input_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                M(node=input_node),
-                M(ancilla[0], -Measurement.X, s_domain={input_node}),
-                X(node=ancilla[1], domain={ancilla[0]}),
-                Z(node=ancilla[1], domain={input_node}),
-            )
-        )
-        return ancilla[1], seq
-
-    @classmethod
-    def _y_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Pauli Y gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : list of four ints
-            ancilla node indices to be added to graph
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 4
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
-        seq.extend(
-            (
-                E(nodes=(input_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                E(nodes=(ancilla[1], ancilla[2])),
-                E(nodes=(ancilla[2], ancilla[3])),
-                M(input_node, Measurement.Y),
-                M(ancilla[0], -Measurement.X, s_domain={input_node}),
-                M(ancilla[1], -Measurement.Y, s_domain={ancilla[0]}, t_domain={input_node}),
-                M(node=ancilla[2], s_domain={ancilla[1]}, t_domain={ancilla[0]}),
-                X(node=ancilla[3], domain={ancilla[2]}),
-                Z(node=ancilla[3], domain={ancilla[1]}),
-            )
-        )
-        return ancilla[3], seq
-
-    @classmethod
-    def _z_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Pauli Z gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : list of two ints
-            ancilla node indices to be added to graph
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.extend(
-            (
-                E(nodes=(input_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                M(input_node, -Measurement.X),
-                M(node=ancilla[0], s_domain={input_node}),
-                X(node=ancilla[1], domain={ancilla[0]}),
-                Z(node=ancilla[1], domain={input_node}),
-            )
-        )
-        return ancilla[1], seq
-
-    @classmethod
-    def _rx_command(
-        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
-    ) -> tuple[int, list[command.Command]]:
-        """MBQC commands for X rotation gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : list of two ints
-            ancilla node indices to be added to graph
-        angle : ParameterizedAngle
-            measurement angle in units of π
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.extend(
-            (
-                E(nodes=(input_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                M(node=input_node),
-                M(ancilla[0], Measurement.XY(-angle), s_domain={input_node}),
-                X(node=ancilla[1], domain={ancilla[0]}),
-                Z(node=ancilla[1], domain={input_node}),
-            )
-        )
-        return ancilla[1], seq
-
-    @classmethod
-    def _ry_command(
-        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
-    ) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Y rotation gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : list of four ints
-            ancilla node indices to be added to graph
-        angle : ParameterizedAngle
-            rotation angle in units of π
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 4
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
-        seq.extend(
-            (
-                E(nodes=(input_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                E(nodes=(ancilla[1], ancilla[2])),
-                E(nodes=(ancilla[2], ancilla[3])),
-                M(input_node, Measurement.Y),
-                M(ancilla[0], Measurement.XY(-angle), s_domain={input_node}),
-                M(ancilla[1], -Measurement.Y, s_domain={ancilla[0]}, t_domain={input_node}),
-                M(node=ancilla[2], s_domain={ancilla[1]}, t_domain={ancilla[0]}),
-                X(node=ancilla[3], domain={ancilla[2]}),
-                Z(node=ancilla[3], domain={ancilla[1]}),
-            )
-        )
-        return ancilla[3], seq
-
-    @classmethod
-    def _rz_command(
-        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
-    ) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Z rotation gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : list of two ints
-            ancilla node indices to be added to graph
-        angle : ParameterizedAngle
-            measurement angle in units of π
-
-        Returns
-        -------
-        out_node : int
-            node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 2
-        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]  # assign new qubit labels
-        seq.extend(
-            (
-                E(nodes=(input_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                M(input_node, Measurement.XY(-angle)),
-                M(node=ancilla[0], s_domain={input_node}),
-                X(node=ancilla[1], domain={ancilla[0]}),
-                Z(node=ancilla[1], domain={input_node}),
-            )
-        )
-        return ancilla[1], seq
-
-    @classmethod
-    def _ccx_command(
-        cls,
-        control_node1: int,
-        control_node2: int,
-        target_node: int,
-        ancilla: Sequence[int],
-    ) -> tuple[int, int, int, list[command.Command]]:
-        """MBQC commands for CCX gate.
-
-        Parameters
-        ----------
-        control_node1 : int
-            first control node on graph
-        control_node2 : int
-            second control node on graph
-        target_node : int
-            target node on graph
-        ancilla : list of int
-            ancilla node indices to be added to graph
-
-        Returns
-        -------
-        control_out1 : int
-            first control node on graph after the gate
-        control_out2 : int
-            second control node on graph after the gate
-        target_out : int
-            target node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 18
-        seq: list[Command] = [N(node=ancilla[i]) for i in range(18)]  # assign new qubit labels
-        seq.extend(
-            (
-                E(nodes=(target_node, ancilla[0])),
-                E(nodes=(ancilla[0], ancilla[1])),
-                E(nodes=(ancilla[1], ancilla[2])),
-                E(nodes=(ancilla[1], control_node2)),
-                E(nodes=(control_node1, ancilla[14])),
-                E(nodes=(ancilla[2], ancilla[3])),
-                E(nodes=(ancilla[14], ancilla[4])),
-                E(nodes=(ancilla[3], ancilla[5])),
-                E(nodes=(ancilla[3], ancilla[4])),
-                E(nodes=(ancilla[5], ancilla[6])),
-                E(nodes=(control_node2, ancilla[6])),
-                E(nodes=(control_node2, ancilla[9])),
-                E(nodes=(ancilla[6], ancilla[7])),
-                E(nodes=(ancilla[9], ancilla[4])),
-                E(nodes=(ancilla[9], ancilla[10])),
-                E(nodes=(ancilla[7], ancilla[8])),
-                E(nodes=(ancilla[10], ancilla[11])),
-                E(nodes=(ancilla[4], ancilla[8])),
-                E(nodes=(ancilla[4], ancilla[11])),
-                E(nodes=(ancilla[4], ancilla[16])),
-                E(nodes=(ancilla[8], ancilla[12])),
-                E(nodes=(ancilla[11], ancilla[15])),
-                E(nodes=(ancilla[12], ancilla[13])),
-                E(nodes=(ancilla[16], ancilla[17])),
-                M(node=target_node),
-                M(node=ancilla[0], s_domain={target_node}),
-                M(node=ancilla[1], s_domain={ancilla[0]}, t_domain={target_node}),
-                M(node=control_node1),
-                M(ancilla[2], Measurement.XY(-7 * ANGLE_PI / 4), s_domain={ancilla[1]}, t_domain={ancilla[0]}),
-                M(node=ancilla[14], s_domain={control_node1}),
-                M(node=ancilla[3], s_domain={ancilla[2]}, t_domain={ancilla[1], ancilla[14]}),
-                M(ancilla[5], Measurement.XY(-ANGLE_PI / 4), s_domain={ancilla[3]}, t_domain={ancilla[2]}),
-                M(control_node2, Measurement.XY(-ANGLE_PI / 4), t_domain={ancilla[5], ancilla[0]}),
-                M(node=ancilla[6], s_domain={ancilla[5]}, t_domain={ancilla[3]}),
-                M(node=ancilla[9], s_domain={control_node2}, t_domain={ancilla[14]}),
-                M(ancilla[7], Measurement.XY(-7 * ANGLE_PI / 4), s_domain={ancilla[6]}, t_domain={ancilla[5]}),
-                M(ancilla[10], Measurement.XY(-7 * ANGLE_PI / 4), s_domain={ancilla[9]}, t_domain={control_node2}),
-                M(
-                    ancilla[4],
-                    Measurement.XY(-ANGLE_PI / 4),
-                    s_domain={ancilla[14]},
-                    t_domain={control_node1, control_node2, ancilla[2], ancilla[7], ancilla[10]},
-                ),
-                M(node=ancilla[8], s_domain={ancilla[7]}, t_domain={ancilla[14], ancilla[6]}),
-                M(node=ancilla[11], s_domain={ancilla[10]}, t_domain={ancilla[9], ancilla[14]}),
-                M(ancilla[12], Measurement.XY(-ANGLE_PI / 4), s_domain={ancilla[8]}, t_domain={ancilla[7]}),
-                M(
-                    node=ancilla[16],
-                    s_domain={ancilla[4]},
-                    t_domain={ancilla[14]},
-                ),
-                X(node=ancilla[17], domain={ancilla[16]}),
-                X(node=ancilla[15], domain={ancilla[11]}),
-                X(node=ancilla[13], domain={ancilla[12]}),
-                Z(node=ancilla[17], domain={ancilla[4]}),
-                Z(node=ancilla[15], domain={ancilla[10]}),
-                Z(node=ancilla[13], domain={ancilla[8]}),
-            )
-        )
-        return ancilla[17], ancilla[15], ancilla[13], seq
+    def transpile(self) -> TranspileResult[Pattern, tuple[int, ...]]:
+        return _transpile_cflow_to_pattern(self.transpile_to_cflow())
 
     def simulate_statevector(
         self,
@@ -975,7 +529,7 @@ class Circuit:
         else:
             backend.add_nodes(range(self.width), input_state)
 
-        classical_measures = []
+        classical_measures: list[Outcome] = []
 
         for i in range(len(self.instruction)):
             instr = self.instruction[i]
@@ -1015,6 +569,8 @@ class Circuit:
                     evolve_single(Ops.ry(instr.angle), instr.target)
                 case instruction.InstructionKind.RZ:
                     evolve_single(Ops.rz(instr.angle), instr.target)
+                case instruction.InstructionKind.J:
+                    evolve_single(Ops.j(instr.angle), instr.target)
                 case instruction.InstructionKind.RZZ:
                     evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
                 case instruction.InstructionKind.CCX:
@@ -1085,14 +641,287 @@ class Circuit:
         return circuit
 
 
-def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[InstructionWithoutRZZ]:
-    for instr in instructions:
-        if instr.kind == InstructionKind.RZZ:
-            yield instruction.CNOT(control=instr.control, target=instr.target)
-            yield instruction.RZ(target=instr.target, angle=instr.angle)
-            yield instruction.CNOT(control=instr.control, target=instr.target)
-        else:
-            yield instr
+def decompose_rzz(instr: instruction.RZZ) -> list[instruction.CNOT | instruction.RZ]:
+    """Return a decomposition of RZZ(α) gate as CNOT(control, target)·Rz(target, α)·CNOT(control, target).
+
+    Parameters
+    ----------
+        instr: the RZZ instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [
+        instruction.CNOT(target=instr.target, control=instr.control),
+        instruction.RZ(instr.target, instr.angle),
+        instruction.CNOT(target=instr.target, control=instr.control),
+    ]
+
+
+def decompose_ccx(
+    instr: instruction.CCX,
+) -> list[instruction.H | instruction.CNOT | instruction.RZ]:
+    """Return a decomposition of the CCX gate into H, CNOT, T and T-dagger gates.
+
+    This decomposition of the Toffoli gate can be found in
+    Michael A. Nielsen and Isaac L. Chuang,
+    Quantum Computation and Quantum Information,
+    Cambridge University Press, 2000
+    (p. 182 in the 10th Anniversary Edition).
+
+    Parameters
+    ----------
+        instr: the CCX instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [
+        instruction.H(instr.target),
+        instruction.CNOT(control=instr.controls[1], target=instr.target),
+        instruction.RZ(instr.target, -ANGLE_PI / 4),
+        instruction.CNOT(control=instr.controls[0], target=instr.target),
+        instruction.RZ(instr.target, ANGLE_PI / 4),
+        instruction.CNOT(control=instr.controls[1], target=instr.target),
+        instruction.RZ(instr.target, -ANGLE_PI / 4),
+        instruction.CNOT(control=instr.controls[0], target=instr.target),
+        instruction.RZ(instr.controls[1], -ANGLE_PI / 4),
+        instruction.RZ(instr.target, ANGLE_PI / 4),
+        instruction.CNOT(control=instr.controls[0], target=instr.controls[1]),
+        instruction.H(instr.target),
+        instruction.RZ(instr.controls[1], -ANGLE_PI / 4),
+        instruction.CNOT(control=instr.controls[0], target=instr.controls[1]),
+        instruction.RZ(instr.controls[0], ANGLE_PI / 4),
+        instruction.RZ(instr.controls[1], ANGLE_PI / 2),
+    ]
+
+
+def decompose_cnot(instr: instruction.CNOT) -> list[instruction.H | instruction.CZ]:
+    """Return a decomposition of the CNOT gate as H·∧z·H.
+
+    Vincent Danos, Elham Kashefi, Prakash Panangaden, The Measurement Calculus, 2007.
+
+    Parameters
+    ----------
+        instr: the CNOT instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [
+        instruction.H(instr.target),
+        instruction.CZ((instr.control, instr.target)),
+        instruction.H(instr.target),
+    ]
+
+
+def decompose_swap(instr: instruction.SWAP) -> list[instruction.CNOT]:
+    """Return a decomposition of the SWAP gate as CNOT(0, 1)·CNOT(1, 0)·CNOT(0, 1).
+
+    Michael A. Nielsen and Isaac L. Chuang,
+    Quantum Computation and Quantum Information,
+    Cambridge University Press, 2000
+    (p. 23 in the 10th Anniversary Edition).
+
+    Parameters
+    ----------
+        instr: the SWAP instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [
+        instruction.CNOT(control=instr.targets[0], target=instr.targets[1]),
+        instruction.CNOT(control=instr.targets[1], target=instr.targets[0]),
+        instruction.CNOT(control=instr.targets[0], target=instr.targets[1]),
+    ]
+
+
+def decompose_y(instr: instruction.Y) -> list[instruction.X | instruction.Z]:
+    """Return a decomposition of the Y gate as X·Z.
+
+    Parameters
+    ----------
+        instr: the Y instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return list(reversed([instruction.X(instr.target), instruction.Z(instr.target)]))
+
+
+def decompose_rx(instr: instruction.RX) -> list[instruction.J]:
+    """Return a J decomposition of the RX gate.
+
+    The Rx(α) gate is decomposed into J(α)·H (that is to say, J(α)·J(0)).
+    Vincent Danos, Elham Kashefi, Prakash Panangaden, The Measurement Calculus, 2007.
+
+    Parameters
+    ----------
+        instr: the RX instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [instruction.J(target=instr.target, angle=angle) for angle in reversed((instr.angle, 0))]
+
+
+def decompose_ry(instr: instruction.RY) -> list[instruction.J]:
+    """Return a J decomposition of the RY gate.
+
+    The Ry(α) gate is decomposed into J(0)·J(π/2)·J(α)·J(-π/2).
+    Vincent Danos, Elham Kashefi, Prakash Panangaden, Robust and parsimonious realisations of unitaries in the one-way
+    model, 2004.
+
+    Parameters
+    ----------
+        instr: the RY instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [
+        instruction.J(target=instr.target, angle=angle)
+        for angle in reversed((0, ANGLE_PI / 2, instr.angle, -ANGLE_PI / 2))
+    ]
+
+
+def decompose_rz(instr: instruction.RZ) -> list[instruction.J]:
+    """Return a J decomposition of the RZ gate.
+
+    The Rz(α) gate is decomposed into H·J(α) (that is to say, J(0)·J(α)).
+    Vincent Danos, Elham Kashefi, Prakash Panangaden, The Measurement Calculus, 2007.
+
+    Parameters
+    ----------
+        instr: the RZ instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [instruction.J(target=instr.target, angle=angle) for angle in reversed((0, instr.angle))]
+
+
+def instruction_to_jcz(instr: Instruction) -> Sequence[instruction.J | instruction.CZ]:
+    """Return a J-∧z decomposition of the instruction.
+
+    Parameters
+    ----------
+        instr: the instruction to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    # Use == for mypy
+    if instr.kind == InstructionKind.J:
+        return [instr]
+    if instr.kind == InstructionKind.CZ:
+        return [instr]
+    if instr.kind == InstructionKind.I:
+        return []
+    if instr.kind == InstructionKind.H:
+        return [instruction.J(instr.target, 0)]
+    if instr.kind == InstructionKind.S:
+        return instruction_to_jcz(instruction.RZ(instr.target, ANGLE_PI / 2))
+    if instr.kind == InstructionKind.X:
+        return instruction_to_jcz(instruction.RX(instr.target, ANGLE_PI))
+    if instr.kind == InstructionKind.Y:
+        return instruction_list_to_jcz(decompose_y(instr))
+    if instr.kind == InstructionKind.Z:
+        return instruction_to_jcz(instruction.RZ(instr.target, ANGLE_PI))
+    if instr.kind == InstructionKind.RX:
+        return decompose_rx(instr)
+    if instr.kind == InstructionKind.RY:
+        return decompose_ry(instr)
+    if instr.kind == InstructionKind.RZ:
+        return decompose_rz(instr)
+    if instr.kind == InstructionKind.CCX:
+        return instruction_list_to_jcz(decompose_ccx(instr))
+    if instr.kind == InstructionKind.RZZ:
+        return instruction_list_to_jcz(decompose_rzz(instr))
+    if instr.kind == InstructionKind.CNOT:
+        return instruction_list_to_jcz(decompose_cnot(instr))
+    if instr.kind == InstructionKind.SWAP:
+        return instruction_list_to_jcz(decompose_swap(instr))
+    if instr.kind == InstructionKind.M:
+        raise ValueError("Measurement instructions cannot be decomposed into J and CZ gates.")
+    assert_never(instr.kind)
+
+
+def instruction_list_to_jcz(
+    instrs: Iterable[Instruction],
+) -> list[instruction.J | instruction.CZ]:
+    """Return a J-∧z decomposition of the sequence of instructions.
+
+    Parameters
+    ----------
+        instrs: the instruction sequence to decompose.
+
+    Returns
+    -------
+        the decomposition.
+
+    """
+    return [jcz_instr for instr in instrs for jcz_instr in instruction_to_jcz(instr)]
+
+
+def j_commands(current_node: int, next_node: int, angle: ParameterizedAngle) -> list[command.Command]:
+    """Return the MBQC pattern commands for a J gate.
+
+    Parameters
+    ----------
+        current_node: the current node.
+        next_node: the next node.
+        angle: the angle of the J gate.
+
+    Returns
+    -------
+        the MBQC pattern commands for a J gate as a list
+
+    """
+    return [
+        command.N(node=next_node),
+        command.E(nodes=(current_node, next_node)),
+        command.M(current_node, Measurement.XY(angle)),
+        command.X(node=next_node, domain={current_node}),
+    ]
+
+
+def normalize_angle(angle: ParameterizedAngle) -> ParameterizedAngle:
+    r"""Return an equivalent angle in range :math:`[0, 2 \cdot \pi)` if ``angle`` is instantiated.
+
+    Parameters
+    ----------
+    angle: ParameterizedAngle
+        An angle.
+
+    Returns
+    -------
+    ParameterizedAngle
+        An equivalent angle in range :math:`[0, 2 \cdot \pi)` if ``angle`` is instantiated.
+        If ``angle`` is parameterized, ``angle`` is returned unchanged.
+    """
+    if isinstance(angle, float):
+        return angle % (2 * ANGLE_PI)
+    return angle
 
 
 @dataclass(frozen=True)
@@ -1152,3 +981,41 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
             if instr.kind == InstructionKind.M:
                 visitor.qubits[instr.target] = None
     return TranspileSwapsResult(new_circuit, tuple(visitor.qubits))
+
+
+def _transpile_cflow_to_pattern(tr: TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]]) -> TranspileResult[Pattern, tuple[int, ...]]:
+    pattern = StandardizedPattern.from_pattern(tr.flow.to_corrections().to_pattern()).to_space_optimal_pattern()
+    pattern.extend(tr.classical_outputs.values())
+    return TranspileResult(pattern, tuple(tr.classical_outputs.keys()))
+
+
+class IllformedCircuitError(Exception):
+    """Raised if the circuit is ill-formed."""
+
+    def __init__(self) -> None:
+        """Build the exception."""
+        super().__init__("Ill-formed pattern")
+
+
+class CircuitWithMeasurementError(Exception):
+    """Raised if the circuit contains measurements."""
+
+    def __init__(self) -> None:
+        """Build the exception."""
+        super().__init__("Circuits containing measurements are not supported by the transpiler.")
+
+
+class InternalInstructionError(Exception):
+    """Raised if the circuit contains internal _XC or _ZC instructions."""
+
+    def __init__(self, instr: instruction.Instruction) -> None:
+        """Build the exception."""
+        super().__init__(f"Internal instruction: {instr}")
+
+
+class MeasurementsNoPreproceddedError(Exception):
+    """Raised if the circuit contains measurements that have not been preprocessed before the transpile step."""
+
+    def __init__(self) -> None:
+        """Build the exception."""
+        super().__init__("Circuits containing measurements were incorrectly passed to the transpiler.")

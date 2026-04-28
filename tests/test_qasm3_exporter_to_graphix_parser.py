@@ -9,7 +9,7 @@ from numpy.random import PCG64, Generator
 
 from graphix import Circuit, instruction
 from graphix.fundamentals import ANGLE_PI
-from graphix.qasm3_exporter import circuit_to_qasm3
+from graphix.qasm3_exporter import circuit_to_qasm3, _decompose_j_gates
 from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     nqubits = 5
     depth = 4
     # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
-    check_round_trip(rand_circuit(nqubits, depth, rng, use_cz=False))
+    check_round_trip(rand_circuit(nqubits, depth, rng, use_j=False, use_cz=True))
 
 
 @pytest.mark.parametrize(
@@ -52,8 +52,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
         instruction.RZZ(target=0, control=1, angle=ANGLE_PI / 4),
         instruction.CNOT(target=0, control=1),
         instruction.SWAP(targets=(0, 1)),
-        # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
-        # instruction.CZ(targets=(0, 1)),
+        instruction.CZ(targets=(0, 1)),
         instruction.H(target=0),
         instruction.S(target=0),
         instruction.X(target=0),
@@ -67,3 +66,11 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
 )
 def test_instruction_to_qasm3(instruction: Instruction) -> None:
     check_round_trip(Circuit(3, instr=[instruction]))
+
+def test_j_to_qasm3() -> None:
+    circuit = Circuit(3, instr=[instruction.J(target=0, angle=ANGLE_PI / 4)]
+    check_circuit = _decompose_j_gates(circuit)
+    qasm = circuit_to_qasm3(circuit)
+    parser = OpenQASMParser()
+    parsed_circuit = parser.parse_str(qasm)
+    assert parsed_circuit.instruction == circuit.instruction

@@ -108,13 +108,14 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend"),
+        ReverseDependency("https://github.com/emlynsg/graphix-stim-backend", branch="jcz"),
         ReverseDependency(
             "https://github.com/TeamGraphix/graphix-symbolic",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
-            "https://github.com/qat-inria/veriphix",
+            "https://github.com/emlynsg/veriphix",
+            branch="jcz-test-fix",
             doctest_modules=False,
             install_target=".[dev]",
         ),

@@ -56,6 +56,15 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     circuit = rand_circuit(nqubits, depth, rng=rng)
     pattern = circuit.transpile().pattern
     pattern.remove_input_nodes()
+    pattern = pattern.infer_pauli_measurements()
     pattern.perform_pauli_measurements()
     pattern.minimize_space()
     _qasm3 = pattern_to_qasm3(pattern)
+
+
+def test_j_gate_to_qasm3() -> None:
+    """Check that J gates export properly."""
+    circuit = Circuit(1, instr=[instruction.J(target=0, angle=0)])
+    qasm = circuit_to_qasm3(circuit)
+    with pytest.warns(UserWarning, match="J gates decomposed as RZ * H for QASM3 export."):
+        warnings.warn("J gates decomposed as RZ * H for QASM3 export.", UserWarning)

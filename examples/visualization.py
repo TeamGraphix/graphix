@@ -38,6 +38,7 @@ pattern.draw(flow_from_pattern=False, measurement_labels=True)
 # %%
 # next, show the gflow:
 pattern.remove_input_nodes()
+pattern = pattern.infer_pauli_measurements()
 pattern.perform_pauli_measurements()
 pattern.draw(flow_from_pattern=False, measurement_labels=True)
 

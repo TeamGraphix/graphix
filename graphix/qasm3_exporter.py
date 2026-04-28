@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
+import warnings
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
+from graphix import instruction
 from graphix._version import version
 from graphix.command import CommandKind
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane
@@ -40,6 +41,7 @@ def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
     Iterator[str]
         The OpenQASM 3.0 lines that represent the circuit.
     """
+    circuit = _decompose_j_gates(circuit)
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
     yield f"qubit[{circuit.width}] q;"
@@ -71,7 +73,23 @@ def angle_to_qasm3(angle: ParameterizedAngle) -> str:
 
 
 def instruction_to_qasm3(instruction: Instruction) -> str:
-    """Get the OpenQASM3 representation of a single circuit instruction."""
+    """Get the OpenQASM3 representation of a single circuit instruction.
+
+    Parameters
+    ----------
+    instruction : Instruction
+        The instruction to convert.
+
+    Returns
+    -------
+    str
+        The OpenQASM3 representation of the instruction.
+
+    Raises
+    ------
+    ValueError
+        If the instruction is not supported by OpenQASM3.
+    """
     match instruction.kind:
         case InstructionKind.M:
             if instruction.axis != Axis.Z:
@@ -83,6 +101,10 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
             angle = angle_to_qasm3(instruction.angle)
             return qasm3_gate_call(
                 instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
+            )
+        case InstructionKind.J:
+            raise ValueError(
+                "J gate should have been removed by `_decompose_j_gates`."
             )
         case InstructionKind.H | InstructionKind.S | InstructionKind.X | InstructionKind.Y | InstructionKind.Z:
             return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
@@ -251,3 +273,23 @@ def domain_to_qasm3_lines(domain: Iterable[int], cmd: str) -> Iterator[str]:
     yield f"if ({condition}) {{\n"
     yield f"  {cmd};\n"
     yield "}\n"
+
+
+def _decompose_j_gates(circuit: Circuit) -> Circuit:
+    """Decompose J(alpha) into RZ(alpha) then H, up to global phase.
+    """
+    if not any(instr.kind == InstructionKind.J for instr in circuit.instruction):
+        return circuit
+    warnings.warn(
+        "J gates decomposed as RZ * H for QASM3 export.",
+        stacklevel=3,
+    )
+    new_circuit = Circuit(circuit.width)
+    for instr in circuit.instruction:
+        if instr.kind == InstructionKind.J:
+            # circuit time order: RZ first, H second (J = H * RZ)
+            new_circuit.add(instruction.RZ(target=instr.target, angle=instr.angle))
+            new_circuit.add(instruction.H(target=instr.target))
+        else:
+            new_circuit.add(instr)
+    return new_circuit

@@ -165,6 +165,7 @@ class Statevec(DenseState):
             - A single-qubit state vector will be broadcast to all nodes.
             - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
               initializes the new nodes jointly.
+            - The type of nodes to be added is inferred from the type of the existing ``Statevec``.
 
         Notes
         -----
@@ -301,6 +302,8 @@ class Statevec(DenseState):
         psi_other = other.psi.flatten()
 
         total_num = len(self.dims()) + len(other.dims())
+        if self.psi.dtype == np.object_ and other.psi.dtype != np.object_:
+            other.psi = other.psi.astype(np.object_, copy=False)
         self.psi = kron(psi_self, psi_other).reshape((2,) * total_num)
 
     def cnot(self, qubits: tuple[int, int]) -> None:

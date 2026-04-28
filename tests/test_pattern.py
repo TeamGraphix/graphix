@@ -19,6 +19,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
+from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
@@ -69,7 +70,9 @@ class TestPattern:
         depth = 1
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
-
+        pattern = pattern.infer_pauli_measurements()
+        pattern.remove_input_nodes()
+        pattern.perform_pauli_measurements()
         pattern.standardize()
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
@@ -214,6 +217,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         assert pattern.is_standard()
+        pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert state_mbqc.isclose(state)
@@ -233,6 +237,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -252,6 +257,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         assert ignore_pauli_with_deps or not any(
             cmd.measurement.try_to_pauli() is not None for cmd in pattern if cmd.kind == CommandKind.M
@@ -288,10 +294,11 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         isolated_nodes = pattern.extract_isolated_nodes()
-        # 42-node is the isolated and output node.
-        isolated_nodes_ref = {42}
+        # 48-node is the isolated and output node.
+        isolated_nodes_ref = {48}
         assert isolated_nodes == isolated_nodes_ref
 
     def test_pauli_measurement_error(self, fx_rng: Generator) -> None:
@@ -332,9 +339,10 @@ class TestPattern:
         depth = 2
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize()
+        pattern.minimize_space()
         pattern1 = copy.deepcopy(pattern)
         pattern1.remove_input_nodes()
+        pattern1 = pattern1.infer_pauli_measurements()
         pattern1.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         state = pattern.simulate_pattern(rng=rng)
         state1 = pattern1.simulate_pattern(rng=rng)
@@ -348,6 +356,7 @@ class TestPattern:
         circuit = rand_circuit(nqubits, depth, rng, use_ccx=False)
         pattern = circuit.transpile().pattern
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         assert not pattern.results
         pattern.perform_pauli_measurements()
         assert pattern.results
@@ -477,6 +486,7 @@ class TestPattern:
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         pattern.standardize()
         pattern.minimize_space()
@@ -704,6 +714,7 @@ class TestPattern:
         p2 = circuit_2.transpile().pattern  # inputs: [0]
 
         p, _ = p1.compose(p2, mapping={0: 1, 1: 2, 2: 3})
+        p = StandardizedPattern.from_pattern(p).to_space_optimal_pattern()
 
         circuit_12 = Circuit(1)
         circuit_12.h(0)
@@ -742,6 +753,7 @@ class TestPattern:
         circuit_1.rz(0, alpha)
         p1 = circuit_1.transpile().pattern
         p1.remove_input_nodes()
+        p1 = p1.infer_pauli_measurements()
         p1.perform_pauli_measurements()
 
         circuit_2 = Circuit(1)
@@ -869,10 +881,12 @@ class TestPattern:
         c.rz(0, 0.2)
         p = c.transpile().pattern
         p.remove_input_nodes()
+        p = p.infer_pauli_measurements()
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({2}), frozenset({0}))
 
         p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, Measurement.XY(0.3))])
+        p = p.infer_pauli_measurements()
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({2}))
 
@@ -1109,9 +1123,12 @@ class TestPattern:
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
-        for p in [p_ref, p_test]:
-            p.remove_input_nodes()
-            p.perform_pauli_measurements()
+        p_ref.remove_input_nodes()
+        p_test.remove_input_nodes()
+        p_ref = p_ref.infer_pauli_measurements()
+        p_test = p_test.infer_pauli_measurements()
+        p_ref.perform_pauli_measurements()
+        p_test.perform_pauli_measurements()
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)

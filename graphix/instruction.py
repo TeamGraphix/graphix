@@ -49,6 +49,7 @@ class InstructionKind(Enum):
     X = enum.auto()
     Y = enum.auto()
     Z = enum.auto()
+    J = enum.auto()
     I = enum.auto()
     M = enum.auto()
     RX = enum.auto()
@@ -290,5 +291,18 @@ class RZ(_KindChecker, BaseInstruction):
         return RZ(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
 
 
-InstructionWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
+@dataclass(repr=False)
+class J(_KindChecker, BaseInstruction):
+    """J circuit instruction."""
+
+    target: int
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
+
+    @override
+    def visit(self, visitor: InstructionVisitor) -> J:
+        return J(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
+
+
+InstructionWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
 Instruction = InstructionWithoutRZZ | RZZ
