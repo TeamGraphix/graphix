@@ -90,7 +90,7 @@ sphinx_gallery_conf = {
     "gallery_dirs": ["gallery"],
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
-    "parallel": False,
+    "parallel": True,
 }
 
 suppress_warnings = ["config.cache"]

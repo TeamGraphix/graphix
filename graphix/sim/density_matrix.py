@@ -144,8 +144,6 @@ class DensityMatrix(DenseState):
         Previously existing nodes remain unchanged.
         """
         dm_to_add = DensityMatrix(nqubit=nqubit, data=data)
-        if self.rho.dtype == np.object_ and dm_to_add.rho.dtype != np.object_:
-            dm_to_add.rho = dm_to_add.rho.astype(np.object_, copy=False)
         self.tensor(dm_to_add)
 
     @override
@@ -262,6 +260,8 @@ class DensityMatrix(DenseState):
         """
         if not isinstance(other, DensityMatrix):
             other = DensityMatrix(other)
+        if self.rho.dtype == np.object_ and other.rho.dtype != np.object_:
+            other.rho = other.rho.astype(np.object_, copy=False)
         self.rho = kron(self.rho, other.rho)
 
     def cnot(self, edge: tuple[int, int]) -> None:
