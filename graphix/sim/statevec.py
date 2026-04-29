@@ -302,8 +302,8 @@ class Statevec(DenseState):
         psi_other = other.psi.flatten()
 
         total_num = len(self.dims()) + len(other.dims())
-        if self.psi.dtype == np.object_ and other.psi.dtype != np.object_:
-            other.psi = other.psi.astype(np.object_, copy=False)
+        if psi_self.dtype == np.object_ and psi_other.dtype != np.object_:
+            psi_other = psi_other.astype(np.object_, copy=False)
         self.psi = kron(psi_self, psi_other).reshape((2,) * total_num)
 
     def cnot(self, qubits: tuple[int, int]) -> None:
