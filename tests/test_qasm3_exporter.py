@@ -8,8 +8,6 @@ See Also
 
 from __future__ import annotations
 
-import warnings
-
 import pytest
 from numpy.random import PCG64, Generator
 
@@ -66,7 +64,6 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
 
 def test_j_gate_to_qasm3() -> None:
     """Check that J gates export properly."""
-    circuit = Circuit(1, instr=[instruction.J(target=0, angle=0)])
-    with pytest.warns(UserWarning, match="J gates decomposed as RZ * H for QASM3 export."):
+    circuit = Circuit(1, instr=[instruction.J(target=0, angle=0.0)])
+    with pytest.warns(UserWarning, match=r"J gates decomposed as RZ \* H for QASM3 export\."):
         circuit_to_qasm3(circuit)
-        warnings.warn("J gates decomposed as RZ * H for QASM3 export.", UserWarning, stacklevel=2)

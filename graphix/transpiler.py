@@ -15,7 +15,8 @@ import networkx as nx
 # override introduced in Python 3.12
 from typing_extensions import assert_never, override
 
-from graphix import Pattern, command, instruction, parameter
+import graphix.pattern
+from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.flow.core import CausalFlow, _corrections_to_partial_order_layers
 from graphix.fundamentals import ANGLE_PI, Axis
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 
     from graphix.fundamentals import ParameterizedAngle
     from graphix.parameter import ExpressionOrFloat, Parameter
+    from graphix.pattern import Pattern
     from graphix.sim import Data
     from graphix.sim.base_backend import Matrix
 
@@ -59,9 +61,9 @@ class TranspileResult(Generic[_R, _CO]):
 
         Raises
         ------
-            TypeError: if the TranspileResult stores a flow instead.\
+            TypeError: if the TranspileResult stores a flow instead.
         """
-        if not isinstance(self.result, Pattern):
+        if not isinstance(self.result, graphix.pattern.Pattern):
             raise TypeError("result is not a Pattern; use `.flow` or `.result`")
         return self.result
 

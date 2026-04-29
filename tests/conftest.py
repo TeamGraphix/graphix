@@ -14,11 +14,11 @@ import matplotlib.pyplot as plt
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix import Circuit
+import graphix.transpiler
 from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
-    from graphix import Pattern
+    from graphix import Circuit, Pattern
 
 SEED = 25
 DEPTH = 1
@@ -36,7 +36,7 @@ def fx_bg() -> PCG64:
 
 @pytest.fixture
 def hadamardpattern() -> Pattern:
-    circ = Circuit(1)
+    circ = graphix.transpiler.Circuit(1)
     circ.h(0)
     return circ.transpile().pattern
 

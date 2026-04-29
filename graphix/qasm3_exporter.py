@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
+import graphix.transpiler
 from graphix import instruction
 from graphix._version import version
 from graphix.command import CommandKind
@@ -15,13 +16,13 @@ from graphix.fundamentals import Axis, ParameterizedAngle, Plane
 from graphix.instruction import Instruction, InstructionKind
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.states import BasicStates, State
-from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from graphix import Pattern
     from graphix.command import Command
+    from graphix.transpiler import Circuit
 
 
 def circuit_to_qasm3(circuit: Circuit) -> str:
@@ -283,7 +284,7 @@ def _decompose_j_gates(circuit: Circuit) -> Circuit:
         "J gates decomposed as RZ * H for QASM3 export.",
         stacklevel=3,
     )
-    new_circuit = Circuit(circuit.width)
+    new_circuit = graphix.transpiler.Circuit(circuit.width)
     for instr in circuit.instruction:
         if instr.kind == InstructionKind.J:
             # circuit time order: RZ first, H second (J = H * RZ)
