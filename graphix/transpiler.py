@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsFloat, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar
 
 import networkx as nx
 
@@ -15,7 +15,7 @@ import networkx as nx
 # override introduced in Python 3.12
 from typing_extensions import assert_never, override
 
-from graphix import command, instruction, parameter
+from graphix import Pattern, command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.flow.core import CausalFlow, _corrections_to_partial_order_layers
 from graphix.fundamentals import ANGLE_PI, Axis
@@ -33,12 +33,12 @@ if TYPE_CHECKING:
 
     from graphix.fundamentals import ParameterizedAngle
     from graphix.parameter import ExpressionOrFloat, Parameter
-    from graphix.pattern import Pattern
     from graphix.sim import Data
     from graphix.sim.base_backend import Matrix
 
 _R = TypeVar("_R", bound="Pattern | CausalFlow[BlochMeasurement]")
 _CO = TypeVar("_CO", bound="tuple[int, ...] | dict[int, command.M]")
+
 
 @dataclass
 class TranspileResult(Generic[_R, _CO]):
@@ -47,20 +47,34 @@ class TranspileResult(Generic[_R, _CO]):
 
     pattern : :class:`graphix.pattern.Pattern` or :class:`graphix.flow.core.CausalFlow` object
     classical_outputs : tuple[int, ...] | dict[int, command.M], index of nodes measured with *M* gates, with associated M commands as dictionary.
+
     """
+
     result: _R
     classical_outputs: _CO
 
     @property
     def pattern(self) -> Pattern:
+        """Return pattern from TranspileResult if any.
+
+        Raises
+        ------
+            TypeError: if the TranspileResult stores a flow instead.\
+        """
         if not isinstance(self.result, Pattern):
-            raise AttributeError("result is not a Pattern; use `.flow` or `.result`")
+            raise TypeError("result is not a Pattern; use `.flow` or `.result`")
         return self.result
 
     @property
     def flow(self) -> CausalFlow[BlochMeasurement]:
+        """Return causal flow from TranspileResult if any.
+
+        Raises
+        ------
+            TypeError: if the TranspileResult stores a pattern instead.
+        """
         if not isinstance(self.result, CausalFlow):
-            raise AttributeError("result is not a CausalFlow; use `.pattern` or `.result`")
+            raise TypeError("result is not a CausalFlow; use `.pattern` or `.result`")
         return self.result
 
 
@@ -493,6 +507,16 @@ class Circuit:
         return TranspileResult(f, classical_outputs)
 
     def transpile(self) -> TranspileResult[Pattern, tuple[int, ...]]:
+        """Transpile a circuit via J-∧z decomposition to a pattern.
+
+        Parameters
+        ----------
+            self: the circuit to transpile.
+
+        Returns
+        -------
+            the result of the transpilation: a pattern and classical outputs.
+        """
         return _transpile_cflow_to_pattern(self.transpile_to_cflow())
 
     def simulate_statevector(
@@ -983,7 +1007,9 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
     return TranspileSwapsResult(new_circuit, tuple(visitor.qubits))
 
 
-def _transpile_cflow_to_pattern(tr: TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]]) -> TranspileResult[Pattern, tuple[int, ...]]:
+def _transpile_cflow_to_pattern(
+    tr: TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]],
+) -> TranspileResult[Pattern, tuple[int, ...]]:
     pattern = StandardizedPattern.from_pattern(tr.flow.to_corrections().to_pattern()).to_space_optimal_pattern()
     pattern.extend(tr.classical_outputs.values())
     return TranspileResult(pattern, tuple(tr.classical_outputs.keys()))

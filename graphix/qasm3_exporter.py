@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 import warnings
+from typing import TYPE_CHECKING
+
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
@@ -14,11 +15,12 @@ from graphix.fundamentals import Axis, ParameterizedAngle, Plane
 from graphix.instruction import Instruction, InstructionKind
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.states import BasicStates, State
+from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from graphix import Circuit, Pattern
+    from graphix import Pattern
     from graphix.command import Command
 
 
@@ -103,9 +105,7 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
                 instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
             )
         case InstructionKind.J:
-            raise ValueError(
-                "J gate should have been removed by `_decompose_j_gates`."
-            )
+            raise ValueError("J gate should have been removed by `_decompose_j_gates`.")
         case InstructionKind.H | InstructionKind.S | InstructionKind.X | InstructionKind.Y | InstructionKind.Z:
             return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
         case InstructionKind.I:
@@ -276,8 +276,7 @@ def domain_to_qasm3_lines(domain: Iterable[int], cmd: str) -> Iterator[str]:
 
 
 def _decompose_j_gates(circuit: Circuit) -> Circuit:
-    """Decompose J(alpha) into RZ(alpha) then H, up to global phase.
-    """
+    """Decompose J(alpha) into RZ(alpha) then H, up to global phase."""
     if not any(instr.kind == InstructionKind.J for instr in circuit.instruction):
         return circuit
     warnings.warn(
