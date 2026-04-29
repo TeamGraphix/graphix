@@ -17,6 +17,7 @@ Pattern Generation
     .. automethod:: simulate_statevector
 
     .. automethod:: cz
+
     .. automethod:: cnot
 
     .. automethod:: h

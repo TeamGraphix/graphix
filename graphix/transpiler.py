@@ -448,8 +448,6 @@ class Circuit:
         Raises
         ------
             IllformedCircuitError: if the pattern is ill-formed (operation on already measured node)
-            CircuitWithMeasurementError: if the circuit contains measurements.
-
         """
         indices: list[int | None] = list(range(self.width))
         n_nodes = self.width
@@ -1023,27 +1021,3 @@ class IllformedCircuitError(Exception):
     def __init__(self) -> None:
         """Build the exception."""
         super().__init__("Ill-formed pattern")
-
-
-class CircuitWithMeasurementError(Exception):
-    """Raised if the circuit contains measurements."""
-
-    def __init__(self) -> None:
-        """Build the exception."""
-        super().__init__("Circuits containing measurements are not supported by the transpiler.")
-
-
-class InternalInstructionError(Exception):
-    """Raised if the circuit contains internal _XC or _ZC instructions."""
-
-    def __init__(self, instr: instruction.Instruction) -> None:
-        """Build the exception."""
-        super().__init__(f"Internal instruction: {instr}")
-
-
-class MeasurementsNoPreproceddedError(Exception):
-    """Raised if the circuit contains measurements that have not been preprocessed before the transpile step."""
-
-    def __init__(self) -> None:
-        """Build the exception."""
-        super().__init__("Circuits containing measurements were incorrectly passed to the transpiler.")

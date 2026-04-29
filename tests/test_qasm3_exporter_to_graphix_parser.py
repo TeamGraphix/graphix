@@ -31,9 +31,10 @@ except ImportError:
 
 def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
+    check_circuit = _decompose_j_gates(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.instruction
+    assert parsed_circuit.instruction == check_circuit.instruction
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -42,7 +43,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     nqubits = 5
     depth = 4
     # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
-    check_round_trip(rand_circuit(nqubits, depth, rng, use_j=False, use_cz=True))
+    check_round_trip(rand_circuit(nqubits, depth, rng, use_j=True, use_cz=True))
 
 
 @pytest.mark.parametrize(
