@@ -327,6 +327,7 @@ class InstructionWithoutRZZ:
     RX: TypeAlias = RX
     RY: TypeAlias = RY
     RZ: TypeAlias = RZ
+    J: TypeAlias = J
 
     def __init__(self) -> None:
         raise TypeError("InstructionWithoutRZZ is a namespace, not a class.")
@@ -348,5 +349,5 @@ class Instruction(InstructionWithoutRZZ):
 
 
 if TYPE_CHECKING:
-    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
+    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
     InstructionType = InstructionTypeWithoutRZZ | RZZ

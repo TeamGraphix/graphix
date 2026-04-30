@@ -19,7 +19,7 @@ from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.flow.core import CausalFlow, _corrections_to_partial_order_layers
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.instruction import Instruction, InstructionKind, InstructionVisitor
+from graphix.instruction import InstructionKind, InstructionVisitor
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.ops import Ops
@@ -31,9 +31,8 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.command import CommandType
     from graphix.fundamentals import ParameterizedAngle
-    from graphix.instruction import InstructionType, InstructionTypeWithoutRZZ
+    from graphix.instruction import InstructionType
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.pattern import Pattern
     from graphix.sim import Data
