@@ -807,8 +807,8 @@ class PauliFlow(Generic[_AM_co]):
         return True
 
     @cached_property
-    def pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
-        """Compute the Pauli strings associated with each node in the correction function.
+    def extraction_pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
+        """Compute the extraction Pauli strings associated with each node in the correction function.
 
         This property requires the flow to be focused.
 
