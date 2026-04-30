@@ -47,7 +47,7 @@ class TranspileResult(Generic[_R, _CO]):
     """
     The result of a transpilation.
 
-    pattern : :class:`graphix.pattern.Pattern` or :class:`graphix.flow.core.CausalFlow` object
+    result : :class:`graphix.pattern.Pattern` or :class:`graphix.flow.core.CausalFlow` object
     classical_outputs : tuple[int, ...] | dict[int, command.M], index of nodes measured with *M* gates, with associated M commands as dictionary.
 
     """
