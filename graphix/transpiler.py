@@ -31,7 +31,9 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.command import CommandType
     from graphix.fundamentals import ParameterizedAngle
+    from graphix.instruction import InstructionType, InstructionTypeWithoutRZZ
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.pattern import Pattern
     from graphix.sim import Data
@@ -108,9 +110,9 @@ class Circuit:
         List containing the gate sequence applied.
     """
 
-    instruction: list[Instruction]
+    instruction: list[InstructionType]
 
-    def __init__(self, width: int, instr: Iterable[Instruction] | None = None) -> None:
+    def __init__(self, width: int, instr: Iterable[InstructionType] | None = None) -> None:
         """
         Construct a circuit.
 
@@ -118,7 +120,7 @@ class Circuit:
         ----------
         width : int
             number of logical qubits for the gate network
-        instr : list[instruction.Instruction] | None
+        instr : list[instruction.InstructionType] | None
             Optional. List of initial instructions.
         """
         self.width = width
@@ -127,7 +129,7 @@ class Circuit:
         if instr is not None:
             self.extend(instr)
 
-    def add(self, instr: Instruction) -> None:
+    def add(self, instr: InstructionType) -> None:
         """Add an instruction to the circuit."""
         match instr.kind:
             case InstructionKind.CCX:
@@ -165,7 +167,7 @@ class Circuit:
             case _:
                 assert_never(instr.kind)
 
-    def extend(self, instrs: Iterable[Instruction]) -> None:
+    def extend(self, instrs: Iterable[InstructionType]) -> None:
         """Add instructions to the circuit."""
         for instr in instrs:
             self.add(instr)
@@ -836,7 +838,7 @@ def decompose_rz(instr: instruction.RZ) -> Iterator[instruction.J]:
     yield instruction.J(target=instr.target, angle=0)
 
 
-def instructions_to_jcz(instrs: Iterable[Instruction]) -> Iterator[instruction.J | instruction.CZ | instruction.M]:
+def instructions_to_jcz(instrs: Iterable[InstructionType]) -> Iterator[instruction.J | instruction.CZ | instruction.M]:
     """Yield a J-∧z decomposition of the instruction.
 
     Parameters

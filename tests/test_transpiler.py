@@ -20,10 +20,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import TypeAlias
 
-    from graphix.instruction import Instruction
+    from graphix.instruction import InstructionType
     from graphix.measurements import Outcome
 
-    InstructionTestCase: TypeAlias = Callable[[Generator], Instruction]
+    InstructionTestCase: TypeAlias = Callable[[Generator], InstructionType]
 
 INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
     lambda _rng: instruction.CCX(0, (1, 2)),

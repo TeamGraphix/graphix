@@ -6,7 +6,7 @@ import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar, Literal, SupportsFloat
+from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias
 
 # Self introduced in Python 3.11
 # override introduced in Python 3.12
@@ -304,5 +304,49 @@ class J(_KindChecker, BaseInstruction):
         return J(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
 
 
-InstructionWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
-Instruction = InstructionWithoutRZZ | RZZ
+class InstructionWithoutRZZ:
+    """Grouping of all instructions except RZZ for namespace exposure.
+
+    Notes
+    -----
+    This class is not meant to be instantiated, but rather serves as a namespace for all instructions except RZZ.
+    The type alias for "any command" is :data:`InstructionKind`.
+    """
+
+    CCX: TypeAlias = CCX
+    CNOT: TypeAlias = CNOT
+    CZ: TypeAlias = CZ
+    SWAP: TypeAlias = SWAP
+    H: TypeAlias = H
+    S: TypeAlias = S
+    X: TypeAlias = X
+    Y: TypeAlias = Y
+    Z: TypeAlias = Z
+    I: TypeAlias = I
+    M: TypeAlias = M
+    RX: TypeAlias = RX
+    RY: TypeAlias = RY
+    RZ: TypeAlias = RZ
+
+    def __init__(self) -> None:
+        raise TypeError("InstructionWithoutRZZ is a namespace, not a class.")
+
+
+class Instruction(InstructionWithoutRZZ):
+    """Grouping of all instructions for namespace exposure.
+
+    Notes
+    -----
+    This class is not meant to be instantiated, but rather serves as a namespace for all instructions except RZZ.
+    The type alias for "any command" is :data:`InstructionKind`.
+    """
+
+    RZZ: TypeAlias = RZZ
+
+    def __init__(self) -> None:
+        raise TypeError("Instruction is a namespace, not a class.")
+
+
+if TYPE_CHECKING:
+    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
+    InstructionType = InstructionTypeWithoutRZZ | RZZ

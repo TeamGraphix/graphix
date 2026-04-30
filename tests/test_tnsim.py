@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +11,7 @@ from quimb.tensor import Tensor
 
 from graphix.branch_selector import RandomBranchSelector
 from graphix.clifford import Clifford
-from graphix.command import C, Command, E, X, Z
+from graphix.command import C, E, X, Z
 from graphix.fundamentals import ANGLE_PI
 from graphix.ops import Ops
 from graphix.random_objects import rand_circuit
@@ -18,6 +19,9 @@ from graphix.sim.statevec import Statevec
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
+
+if TYPE_CHECKING:
+    from graphix.command import CommandType
 
 
 def random_op(sites: int, rng: Generator) -> npt.NDArray[np.complex128]:
@@ -71,7 +75,7 @@ class TestTN:
 
     def test_apply_one_site_operator(self, fx_rng: Generator) -> None:
         clifford = Clifford(fx_rng.integers(len(Clifford)))
-        cmds: list[Command] = [
+        cmds: list[CommandType] = [
             X(node=0, domain={15}),
             Z(node=0, domain={15}),
             C(node=0, clifford=clifford),

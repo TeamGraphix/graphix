@@ -11,7 +11,7 @@ from numpy.random import PCG64, Generator
 
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.clifford import Clifford
-from graphix.command import C, Command, CommandKind, E, M, N, X, Z
+from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.flow.core import XZCorrections
 from graphix.flow.exceptions import (
     FlowError,
@@ -32,6 +32,7 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from graphix.command import CommandType
     from graphix.simulator import _BackendLiteral
 
 
@@ -532,12 +533,12 @@ class TestPattern:
     def test_compose_1(self) -> None:
         i1_lst = [0]
         o1_lst = [1]
-        cmds1: list[Command] = [N(1), E((0, 1)), M(0), Z(1, {0}), X(1, {0})]
+        cmds1: list[CommandType] = [N(1), E((0, 1)), M(0), Z(1, {0}), X(1, {0})]
         p1 = Pattern(input_nodes=i1_lst, output_nodes=o1_lst, cmds=cmds1)
 
         i2_lst = [0]
         o2_lst = [2]
-        cmds2: list[Command] = [N(2), E((0, 2)), M(0), Z(2, {0}), X(2, {0})]
+        cmds2: list[CommandType] = [N(2), E((0, 2)), M(0), Z(2, {0}), X(2, {0})]
         p2 = Pattern(input_nodes=i2_lst, output_nodes=o2_lst, cmds=cmds2)
 
         mapping = {0: 1, 2: 5}
@@ -545,7 +546,18 @@ class TestPattern:
 
         i_lst = [0]
         o_lst = [5]
-        cmds: list[Command] = [N(1), E((0, 1)), M(0), Z(1, {0}), X(1, {0}), N(5), E((1, 5)), M(1), Z(5, {1}), X(5, {1})]
+        cmds: list[CommandType] = [
+            N(1),
+            E((0, 1)),
+            M(0),
+            Z(1, {0}),
+            X(1, {0}),
+            N(5),
+            E((1, 5)),
+            M(1),
+            Z(5, {1}),
+            X(5, {1}),
+        ]
         p = Pattern(input_nodes=i_lst, output_nodes=o_lst, cmds=cmds)
 
         assert pc == p
@@ -572,7 +584,7 @@ class TestPattern:
     def test_compose_2(self) -> None:
         i1 = [1, 4]
         o1 = [4]
-        cmds1: list[Command] = [
+        cmds1: list[CommandType] = [
             N(0),
             N(2),
             N(3),
@@ -589,7 +601,7 @@ class TestPattern:
 
         i2 = [0, 3]
         o2 = [3]
-        cmds2: list[Command] = [N(1), N(2), M(1), M(2), M(0, t_domain={1}, s_domain={2}), Z(3, {1, 0}), X(3, {2})]
+        cmds2: list[CommandType] = [N(1), N(2), M(1), M(2), M(0, t_domain={1}, s_domain={2}), Z(3, {1, 0}), X(3, {2})]
         p2 = Pattern(cmds=cmds2, input_nodes=i2, output_nodes=o2)
 
         mapping = {0: 4, 3: 100}
@@ -597,7 +609,7 @@ class TestPattern:
 
         i = [1, 4, 100]
         o = [100]
-        cmds: list[Command] = [
+        cmds: list[CommandType] = [
             N(0),
             N(2),
             N(3),
@@ -626,7 +638,7 @@ class TestPattern:
     def test_compose_3(self) -> None:
         i1 = [0, 1, 2, 3]
         o1 = [0, 1, 2, 3]
-        cmds1: list[Command] = [
+        cmds1: list[CommandType] = [
             E((0, 1)),
             E((1, 2)),
             E((2, 3)),
@@ -637,7 +649,7 @@ class TestPattern:
 
         i2 = [0, 1]
         o2 = [2, 3]
-        cmds2: list[Command] = [N(2), N(3), E((0, 1)), E((0, 2)), E((1, 3)), M(0), M(1), X(2, {0}), Z(3, {1})]
+        cmds2: list[CommandType] = [N(2), N(3), E((0, 1)), E((0, 2)), E((1, 3)), M(0), M(1), X(2, {0}), Z(3, {1})]
         p2 = Pattern(cmds=cmds2, input_nodes=i2, output_nodes=o2)
 
         mapping_1 = {0: 1, 1: 2, 2: 100, 3: 101}
@@ -665,7 +677,7 @@ class TestPattern:
         o = [0, 3, 100, 101]
         o_1 = [0, 100, 101, 3]
         o_2 = [0, 101, 100, 3]
-        cmds: list[Command] = [
+        cmds: list[CommandType] = [
             E((0, 1)),
             E((1, 2)),
             E((2, 3)),
@@ -681,7 +693,7 @@ class TestPattern:
             X(100, {1}),
             Z(101, {2}),
         ]
-        cmds_2: list[Command] = [
+        cmds_2: list[CommandType] = [
             E((0, 1)),
             E((1, 2)),
             E((2, 3)),

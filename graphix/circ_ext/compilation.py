@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from graphix._linalg import MatGF2
     from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponential, PauliExponentialDAG
-    from graphix.instruction import Instruction
+    from graphix.instruction import InstructionType
 
 
 def er_to_circuit(
@@ -249,9 +249,9 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
             ":func:`cm_berg_pass` does not support circuit compilation if the number of input and output nodes is different (isometry)."
         )
 
-    instructions: list[Instruction] = []
+    instructions: list[InstructionType] = []
 
-    def process_qubit(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
+    def process_qubit(tab: MatGF2, instructions: list[InstructionType], q: int) -> None:
         """Bring to canonical form two tableau rows corresponding to qubit ``q``."""
         # Step 1
         do_step_1(tab, instructions, row_idx=q)
@@ -276,13 +276,13 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
                 )
             add_h(tab, instructions, q)
 
-    def do_step_1(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> None:
+    def do_step_1(tab: MatGF2, instructions: list[InstructionType], row_idx: int) -> None:
         col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])  # Don't take the sign column
         for j in col_idx_zx:
             # Each iteration sets the element `tab[row_idx, n+j]` to 0.
             add_s(tab, instructions, int(j)) if tab[row_idx, j] else add_h(tab, instructions, int(j))
 
-    def do_step_2(tab: MatGF2, instructions: list[Instruction], row_idx: int) -> int:
+    def do_step_2(tab: MatGF2, instructions: list[InstructionType], row_idx: int) -> int:
         col_idx_xx = np.flatnonzero(tab[row_idx, :n])
         while len(col_idx_xx) > 1:
             for i in range(0, len(col_idx_xx) - 1, 2):  # itertools.batched only available in Python 3.12+
@@ -292,31 +292,31 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
 
         return int(col_idx_xx[0])  # Return pivot
 
-    def add_h(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
+    def add_h(tab: MatGF2, instructions: list[InstructionType], q: int) -> None:
         q = int(q)  # Cast to `int` to avoid typing issues
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, [q, q + n]] = tab[:, [q + n, q]]  # The usual tuple assignment `a, b = b, a` does not work here.
         instructions.append(H(q))
 
-    def add_s(tab: MatGF2, instructions: list[Instruction], q: int) -> None:
+    def add_s(tab: MatGF2, instructions: list[InstructionType], q: int) -> None:
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, q + n] ^= tab[:, q]
         q = int(q)
         instructions.extend((S(q), Z(q)))  # We append Sdagger to get C instead of C^dagger
 
-    def add_cnot(tab: MatGF2, instructions: list[Instruction], qc: int, qt: int) -> None:
+    def add_cnot(tab: MatGF2, instructions: list[InstructionType], qc: int, qt: int) -> None:
         tab[:, -1] ^= tab[:, qc] & tab[:, qt + n] & (tab[:, qt] ^ tab[:, qc + n] ^ 1)
         tab[:, qt] ^= tab[:, qc]
         tab[:, qc + n] ^= tab[:, qt + n]
         instructions.append(CNOT(control=int(qc), target=int(qt)))
 
-    def add_swap(tab: MatGF2, instructions: list[Instruction], q0: int, q1: int) -> None:
+    def add_swap(tab: MatGF2, instructions: list[InstructionType], q0: int, q1: int) -> None:
         q0, q1 = int(q0), int(q1)  # Cast to `int` to avoid typing issues
         tab[:, [q0, q1, q0 + n, q1 + n]] = tab[:, [q1, q0, q1 + n, q0 + n]]
 
         instructions.append(SWAP((q0, q1)))
 
-    def correct_signs(tab: MatGF2, instructions: list[Instruction]) -> None:
+    def correct_signs(tab: MatGF2, instructions: list[InstructionType]) -> None:
         for q in range(n):
             sign_xz = tab[q, -1], tab[q + n, -1]
             match sign_xz:

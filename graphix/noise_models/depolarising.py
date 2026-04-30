@@ -9,7 +9,7 @@ import typing_extensions
 from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
 from graphix.command import BaseM, CommandKind
 from graphix.measurements import toggle_outcome
-from graphix.noise_models.noise_model import ApplyNoise, CommandOrNoise, Noise, NoiseModel
+from graphix.noise_models.noise_model import ApplyNoise, Noise, NoiseModel
 from graphix.rng import ensure_rng
 from graphix.utils import Probability
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.measurements import Outcome
+    from graphix.noise_models.noise_model import CommandOrNoise
 
 
 class DepolarisingNoise(Noise):

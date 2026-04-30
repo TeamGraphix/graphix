@@ -22,7 +22,7 @@ from typing_extensions import assert_never
 
 from graphix import command, optimization
 from graphix.clifford import Clifford
-from graphix.command import Command, CommandKind, Node
+from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
@@ -32,6 +32,7 @@ from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevec
 from graphix.simulator import PatternSimulator
+from graphix.space_minimization import pattern_max_space
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
@@ -45,7 +46,9 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.command import CommandType
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
+    from graphix.optimization import StandardizedPattern
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
@@ -58,7 +61,7 @@ if TYPE_CHECKING:
 _BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
 
 
-class DrawAnnotations(Enum):
+class DrawPatternAnnotations(Enum):
     """Enumeration to indicate the possible annotations for `Pattern.draw`."""
 
     Flow = enum.auto()
@@ -95,12 +98,12 @@ class Pattern:
     """
 
     results: dict[int, Outcome]
-    __seq: list[Command]
+    __seq: list[CommandType]
 
     def __init__(
         self,
         input_nodes: Iterable[int] | None = None,
-        cmds: Iterable[Command] | None = None,
+        cmds: Iterable[CommandType] | None = None,
         output_nodes: Iterable[int] | None = None,
     ) -> None:
         """
@@ -110,7 +113,7 @@ class Pattern:
         ----------
         input_nodes : Iterable[int] | None
             Optional. List of input qubits.
-        cmds : Iterable[Command] | None
+        cmds : Iterable[CommandType] | None
             Optional. List of initial commands.
         output_nodes : Iterable[int] | None
             Optional. List of output qubits.
@@ -132,14 +135,14 @@ class Pattern:
         if output_nodes is not None:
             self.reorder_output_nodes(output_nodes)
 
-    def add(self, cmd: Command) -> None:
+    def add(self, cmd: CommandType) -> None:
         """Add command to the end of the pattern.
 
-        An MBQC command is an instance of :class:`graphix.command.Command`.
+        An MBQC command is an instance of :class:`graphix.command.CommandType`.
 
         Parameters
         ----------
-        cmd : :class:`graphix.command.Command`
+        cmd : :class:`graphix.command.CommandType`
             MBQC command.
         """
         match cmd.kind:
@@ -151,7 +154,7 @@ class Pattern:
                     self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, *cmds: Command | Iterable[Command]) -> None:
+    def extend(self, *cmds: CommandType | Iterable[CommandType]) -> None:
         """Add sequences of commands.
 
         :param cmds: sequences of commands
@@ -169,7 +172,7 @@ class Pattern:
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds: list[Command], input_nodes: list[int] | None = None) -> None:
+    def replace(self, cmds: list[CommandType], input_nodes: list[int] | None = None) -> None:
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands
@@ -283,7 +286,7 @@ class Pattern:
         else:
             outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
-        def update_command(cmd: Command) -> Command:
+        def update_command(cmd: CommandType) -> CommandType:
             # Shallow copy is enough since the mutable attributes of cmd_new susceptible to change are reassigned
             cmd_new = copy.copy(cmd)
 
@@ -323,11 +326,11 @@ class Pattern:
         """Return the length of command sequence."""
         return len(self.__seq)
 
-    def __iter__(self) -> Iterator[Command]:
+    def __iter__(self) -> Iterator[CommandType]:
         """Iterate over commands."""
         return iter(self.__seq)
 
-    def __getitem__(self, index: int) -> Command:
+    def __getitem__(self, index: int) -> CommandType:
         """Get the command at a given index."""
         return self.__seq[index]
 
@@ -1305,8 +1308,6 @@ class Pattern:
         n_nodes : int
             max number of nodes present in the graph during pattern execution.
         """
-        from graphix.space_minimization import pattern_max_space  # noqa: PLC0415
-
         return pattern_max_space(self)
 
     def space_list(self) -> list[int]:
@@ -1464,7 +1465,7 @@ class Pattern:
     def draw(
         self,
         *,
-        annotations: DrawAnnotations | None = DrawAnnotations.Flow,
+        annotations: DrawPatternAnnotations | None = DrawPatternAnnotations.Flow,
         flow_from_pattern: bool = True,
         show_local_clifford: bool = False,
         stacklevel: int = 1,
@@ -1474,10 +1475,10 @@ class Pattern:
 
         Parameters
         ----------
-        annotations : DrawAnnotations | None, default=DrawAnnotations.Flow
+        annotations : DrawPatternAnnotations | None, default=DrawPatternAnnotations.Flow
             Annotations to be shown.
-                - ``DrawAnnotations.Flow`` (default): show the pattern's flow if it exists.
-                - ``DrawAnnotations.XZCorrections``: show the pattern's XZ-corrections.
+                - ``DrawPatternAnnotations.Flow`` (default): show the pattern's flow if it exists.
+                - ``DrawPatternAnnotations.XZCorrections``: show the pattern's XZ-corrections.
                 - ``None``: show the underlying open graph only.
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
@@ -1506,7 +1507,7 @@ class Pattern:
             gv = GraphVisualizer.from_opengraph(og=og, **options)
         else:
             match annotations:
-                case DrawAnnotations.Flow:
+                case DrawPatternAnnotations.Flow:
                     flow: PauliFlow[Measurement] | None = None
 
                     if flow_from_pattern:
@@ -1534,12 +1535,12 @@ class Pattern:
                             flow = og.find_pauli_flow(stacklevel=stacklevel + 1)
                         if flow is None:
                             raise PatternError(
-                                "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawAnnotations.XZCorrections`."
+                                "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawPatternAnnotations.XZCorrections`."
                             )
 
                     gv = GraphVisualizer.from_flow(flow=flow, **options)
 
-                case DrawAnnotations.XZCorrections:
+                case DrawPatternAnnotations.XZCorrections:
                     xzcorrections = self.extract_xzcorrections()
                     gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, **options)
 
@@ -1612,13 +1613,13 @@ class Pattern:
         active = set(self.input_nodes)
         measured = set(self.results)
 
-        def check_active(cmd: Command, node: int) -> None:
+        def check_active(cmd: CommandType, node: int) -> None:
             if node in measured:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.AlreadyMeasured)
             if node not in active:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetActive)
 
-        def check_measured(cmd: Command, node: int) -> None:
+        def check_measured(cmd: CommandType, node: int) -> None:
             if node not in measured:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetMeasured)
 
@@ -1805,7 +1806,7 @@ class RunnabilityErrorReason(Enum):
 class RunnabilityError(PatternError):
     """Error raised by :method:`Pattern.check_runnability`."""
 
-    cmd: Command
+    cmd: CommandType
     node: int
     reason: RunnabilityErrorReason
 
@@ -1916,7 +1917,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
 
     # update command sequence
     vops = graph_state.extract_vops()
-    new_seq: list[Command] = []
+    new_seq: list[CommandType] = []
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
@@ -1936,7 +1937,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, sta
     return pat
 
 
-def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(pattern: StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters

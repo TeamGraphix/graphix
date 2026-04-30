@@ -13,7 +13,7 @@ from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
-    from graphix.instruction import Instruction
+    from graphix.instruction import InstructionType
 
 try:
     from graphix_qasm_parser import OpenQASMParser  # type: ignore[import-not-found, unused-ignore]
@@ -66,7 +66,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
         instruction.J(target=0, angle=ANGLE_PI / 4),
     ],
 )
-def test_instruction_to_qasm3(instruction: Instruction) -> None:
+def test_instruction_to_qasm3(instruction: InstructionType) -> None:
     check_round_trip(Circuit(3, instr=[instruction]))
 
 

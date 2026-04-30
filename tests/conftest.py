@@ -18,7 +18,8 @@ import graphix.transpiler
 from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
-    from graphix import Circuit, Pattern
+    from graphix.pattern import Pattern
+    from graphix.transpiler import Circuit
 
 SEED = 25
 DEPTH = 1

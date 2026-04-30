@@ -137,12 +137,12 @@ def affine_expression_to_str(expr: AffineExpression, output: OutputFormat) -> st
     return result
 
 
-def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
+def command_to_str(cmd: command.CommandType, output: OutputFormat) -> str:
     """Return the string representation of a command according to the given format.
 
     Parameters
     ----------
-    cmd: Command
+    cmd: CommandType
         The command to pretty print.
     output: OutputFormat
         The expected format.
