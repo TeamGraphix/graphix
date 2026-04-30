@@ -22,7 +22,7 @@ from typing_extensions import assert_never
 
 from graphix import command, optimization
 from graphix.clifford import Clifford
-from graphix.command import CommandKind, CommandType, Node
+from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.command import CommandType
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
     from graphix.optimization import StandardizedPattern
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter

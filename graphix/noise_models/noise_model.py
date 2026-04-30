@@ -16,14 +16,16 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 # override introduced in Python 3.12
 from typing_extensions import override
 
-from graphix.command import BaseM, CommandKind, CommandType, Node, _KindChecker
+from graphix.command import BaseM, CommandKind, Node, _KindChecker
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from typing import TypeAlias
 
     from numpy.random import Generator
 
     from graphix.channels import KrausChannel
+    from graphix.command import CommandType
     from graphix.measurements import Outcome
 
 
@@ -66,7 +68,8 @@ class ApplyNoise(_KindChecker):
     domain: set[Node] | None = None
 
 
-CommandOrNoise = CommandType | ApplyNoise
+if TYPE_CHECKING:
+    CommandOrNoise: TypeAlias = CommandType | ApplyNoise
 
 
 class NoiseModel(ABC):

@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 from typing_extensions import assert_never
 
 from graphix._version import version
-from graphix.command import CommandKind, CommandType
+from graphix.command import CommandKind
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane
-from graphix.instruction import InstructionKind, InstructionType
+from graphix.instruction import InstructionKind
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.states import BasicStates, State
 
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from graphix import Circuit, Pattern
+    from graphix.command import CommandType
+    from graphix.instruction import InstructionType
 
 
 def circuit_to_qasm3(circuit: Circuit) -> str:

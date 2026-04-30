@@ -6,7 +6,7 @@ import dataclasses
 import enum
 import logging
 from enum import Enum
-from typing import ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias
 
 from graphix import utils
 from graphix.clifford import Clifford, Domains
@@ -14,7 +14,7 @@ from graphix.measurements import Measurement
 from graphix.repr_mixins import DataclassReprMixin
 from graphix.states import BasicStates, State
 
-Node = int
+Node: TypeAlias = int
 
 logger = logging.getLogger(__name__)
 
@@ -237,17 +237,7 @@ class T(_KindChecker, BaseCommand):
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
 
-CommandType = N | M | E | C | X | Z | S | T
-
-
-class _CommandMeta(type):
-    _members: ClassVar[tuple[type, ...]] = ()
-
-    def __instancecheck__(cls, obj: object) -> bool:
-        return isinstance(obj, cls._members)
-
-
-class Command(metaclass=_CommandMeta):
+class Command:
     """Grouping of all commands for namespace exposure.
 
     Notes
@@ -256,18 +246,19 @@ class Command(metaclass=_CommandMeta):
     The type alias for "any command" is :data:`CommandKind`.
     """
 
-    N: type[N] = N
-    M: type[M] = M
-    E: type[E] = E
-    C: type[C] = C
-    X: type[X] = X
-    Z: type[Z] = Z
-    S: type[S] = S
-    T: type[T] = T
-    _members: ClassVar[tuple[type, ...]] = (N, M, E, C, X, Z, S, T)
+    N: TypeAlias = N
+    M: TypeAlias = M
+    E: TypeAlias = E
+    C: TypeAlias = C
+    X: TypeAlias = X
+    Z: TypeAlias = Z
+    S: TypeAlias = S
+    T: TypeAlias = T
 
     def __init__(self) -> None:
         raise TypeError("Command is a namespace, not a class.")
 
 
-Correction = X | Z
+if TYPE_CHECKING:
+    CommandType: TypeAlias = N | M | E | C | X | Z | S | T
+    Correction: TypeAlias = X | Z

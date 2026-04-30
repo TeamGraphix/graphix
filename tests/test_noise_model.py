@@ -9,7 +9,6 @@ from graphix import Pattern
 from graphix.command import CommandKind, M, N
 from graphix.noise_models import (
     ApplyNoise,
-    CommandOrNoise,
     ComposeNoiseModel,
     DepolarisingNoise,
     DepolarisingNoiseModel,
@@ -22,6 +21,8 @@ from graphix.simulator import DefaultMeasureMethod
 
 if TYPE_CHECKING:
     from numpy.random import Generator
+
+    from graphix.noise_models import CommandOrNoise
 
 
 def test_noiseless_noise_model_transpile(fx_rng: Generator) -> None:

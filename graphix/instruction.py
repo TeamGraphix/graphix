@@ -6,7 +6,7 @@ import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar, Literal, SupportsFloat
+from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias
 
 # Self introduced in Python 3.11
 # override introduced in Python 3.12
@@ -290,18 +290,7 @@ class RZ(_KindChecker, BaseInstruction):
         return RZ(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
 
 
-InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
-InstructionType = InstructionTypeWithoutRZZ | RZZ
-
-
-class _InstructionMeta(type):
-    _members: ClassVar[tuple[type, ...]] = ()
-
-    def __instancecheck__(cls, obj: object) -> bool:
-        return isinstance(obj, cls._members)
-
-
-class InstructionWithoutRZZ(metaclass=_InstructionMeta):
+class InstructionWithoutRZZ:
     """Grouping of all instructions except RZZ for namespace exposure.
 
     Notes
@@ -310,21 +299,20 @@ class InstructionWithoutRZZ(metaclass=_InstructionMeta):
     The type alias for "any command" is :data:`InstructionKind`.
     """
 
-    CCX: type[CCX] = CCX
-    CNOT: type[CNOT] = CNOT
-    CZ: type[CZ] = CZ
-    SWAP: type[SWAP] = SWAP
-    H: type[H] = H
-    S: type[S] = S
-    X: type[X] = X
-    Y: type[Y] = Y
-    Z: type[Z] = Z
-    I: type[I] = I
-    M: type[M] = M
-    RX: type[RX] = RX
-    RY: type[RY] = RY
-    RZ: type[RZ] = RZ
-    _members: ClassVar[tuple[type, ...]] = (CCX, CNOT, CZ, SWAP, H, S, X, Y, Z, I, M, RX, RY, RZ)
+    CCX: TypeAlias = CCX
+    CNOT: TypeAlias = CNOT
+    CZ: TypeAlias = CZ
+    SWAP: TypeAlias = SWAP
+    H: TypeAlias = H
+    S: TypeAlias = S
+    X: TypeAlias = X
+    Y: TypeAlias = Y
+    Z: TypeAlias = Z
+    I: TypeAlias = I
+    M: TypeAlias = M
+    RX: TypeAlias = RX
+    RY: TypeAlias = RY
+    RZ: TypeAlias = RZ
 
     def __init__(self) -> None:
         raise TypeError("InstructionWithoutRZZ is a namespace, not a class.")
@@ -340,7 +328,11 @@ class Instruction(InstructionWithoutRZZ):
     """
 
     RZZ: type[RZZ] = RZZ
-    _members: ClassVar[tuple[type, ...]] = (*InstructionWithoutRZZ._members, RZZ)
 
     def __init__(self) -> None:
         raise TypeError("Instruction is a namespace, not a class.")
+
+
+if TYPE_CHECKING:
+    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
+    InstructionType = InstructionTypeWithoutRZZ | RZZ

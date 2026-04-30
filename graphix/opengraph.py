@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from typing_extensions import Unpack
 
     from graphix import CausalFlow, Pattern
-    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.circ_ext.extraction import CliffordMap, PauliExponentialDAG
     from graphix.flow.core import CausalFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter

@@ -29,7 +29,6 @@ __all__ = [
     "Axis",
     "BasicStates",
     "BlochMeasurement",
-    "BranchSelector",
     "CausalFlow",
     "Circuit",
     "Clifford",

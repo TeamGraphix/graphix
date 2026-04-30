@@ -11,7 +11,7 @@ from numpy.random import PCG64, Generator
 
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.clifford import Clifford
-from graphix.command import C, CommandKind, CommandType, E, M, N, X, Z
+from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.flow.core import XZCorrections
 from graphix.flow.exceptions import (
     FlowError,
@@ -31,6 +31,7 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from graphix.command import CommandType
     from graphix.simulator import _BackendLiteral
 
 

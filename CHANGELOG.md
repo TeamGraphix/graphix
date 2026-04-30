@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- #490: Exposed more common classes and methods to top level `__init__.py`.
+
 - #479: Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
 
 - #454, #481: New space minimization API that allows users to select or define custom heuristics.

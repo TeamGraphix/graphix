@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from numpy.random import PCG64, Generator
 
 from graphix.clifford import Clifford
-from graphix.command import C, CommandKind, CommandType, E, M, N, X, Z
+from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
 from graphix.optimization import StandardizedPattern, incorporate_pauli_results, remove_useless_domains
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
+
+if TYPE_CHECKING:
+    from graphix.command import CommandType
 
 
 def test_standardize_clifford_entanglement(fx_rng: Generator) -> None:

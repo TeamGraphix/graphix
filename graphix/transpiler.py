@@ -15,14 +15,9 @@ from typing_extensions import assert_never, override
 
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
-from graphix.command import CommandType, E, M, N, X, Z
+from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.instruction import (
-    InstructionKind,
-    InstructionType,
-    InstructionTypeWithoutRZZ,
-    InstructionVisitor,
-)
+from graphix.instruction import InstructionKind, InstructionVisitor
 from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
 from graphix.pattern import Pattern
@@ -33,7 +28,9 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.command import CommandType
     from graphix.fundamentals import ParameterizedAngle
+    from graphix.instruction import InstructionType, InstructionTypeWithoutRZZ
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.sim import Data
     from graphix.sim.base_backend import Matrix
