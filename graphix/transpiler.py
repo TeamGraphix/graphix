@@ -447,7 +447,7 @@ class Circuit:
         measurements: dict[int, BlochMeasurement] = {}
         classical_outputs: dict[int, command.M] = {}
         inputs = list(range(n_nodes))
-        graph: nx.Graph[int] = nx.Graph()  # In future change to OpenGraph not nx
+        graph: nx.Graph[int] = nx.Graph()
         graph.add_nodes_from(inputs)
         x_corrections: dict[int, set[int]] = {}
         for instr in self.instruction:
