@@ -56,15 +56,8 @@ class TranspileResult(Generic[_R, _CO]):
     classical_outputs: _CO
 
     @property
-    def pattern(self) -> Pattern:
-        """Return pattern from TranspileResult if any.
-
-        Raises
-        ------
-            TypeError: if the TranspileResult stores a flow instead.
-        """
-        if not isinstance(self.result, graphix.pattern.Pattern):
-            raise TypeError("result is not a Pattern; use `.flow` or `.result`")
+    def pattern(self: TranspileResult[Pattern, _CO]) -> Pattern:
+        """Return pattern from `TranspileResult` if any."""
         return self.result
 
     @property
