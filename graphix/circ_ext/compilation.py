@@ -10,7 +10,6 @@ import numpy as np
 from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import CNOT, SWAP, H, S, X, Y, Z
 from graphix.transpiler import Circuit
-from graphix.instruction import Instruction
 
 if TYPE_CHECKING:
     from collections.abc import Callable
