@@ -22,9 +22,7 @@ if TYPE_CHECKING:
 
     from graphix import CausalFlow, Pattern
     from graphix.circ_ext.extraction import CliffordMap, PauliExponentialDAG
-    from graphix.flow.core import CausalFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
-    from graphix.pattern import Pattern
     from graphix.transpiler import Circuit
     from graphix.visualization import DrawKwargs
 
