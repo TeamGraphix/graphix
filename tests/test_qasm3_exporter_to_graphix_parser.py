@@ -31,9 +31,10 @@ except ImportError:
 
 def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
+    check_circuit = circuit.transpile_j_to_rzh()
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.instruction
+    assert parsed_circuit.instruction == check_circuit.instruction
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -74,6 +75,10 @@ def test_j_to_qasm3() -> None:
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.instruction
+    assert parsed_circuit.instruction == circuit.transpile_j_to_rzh().instruction
+
+
+def test_j_to_qasm3_failure() -> None:
+    circuit = Circuit(3, instr=[instruction.J(target=0, angle=ANGLE_PI / 4)])
     with pytest.raises(ValueError):
         circuit_to_qasm3(circuit, transpile=False)

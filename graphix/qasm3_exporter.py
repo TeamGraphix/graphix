@@ -32,7 +32,7 @@ def circuit_to_qasm3(circuit: Circuit, transpile: bool = True) -> str:
     """
     if transpile:
         circuit = circuit.transpile_j_to_rzh().transpile_measurements_to_z_axis()
-    return "\n".join(circuit_to_qasm3_lines(circuit))
+    return "\n".join(circuit_to_qasm3_lines(circuit, transpile))
 
 
 def circuit_to_qasm3_lines(circuit: Circuit, transpile: bool = True) -> Iterator[str]:
