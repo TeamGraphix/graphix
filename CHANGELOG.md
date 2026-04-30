@@ -13,12 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced `Circuit.transpile()` with a new approach based decomposing circuits into J & CZ gates.
   - Added `Circuit.transpile_to_cflow()` to produce `CausalFlow` using the same decomposition.
   - Added `instruction.J` class.
+  - Added `Circuit.transpile_j_to_rzh()` method to prepare circuits with J gates for export to OpenQASM.
 
 - #476 Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
 
 ### Fixed
 
 ### Changed
+
+- #484: Added `transpile` argument to `qasm3_exporter.circuit_to_qasm3` and `qasm3_exporter.circuit_to_qasm3_lines`, which defaults to true and applies `Circuit.transpile_j_to_rzh` and `Circuit.transpile_measurements_to_z_axis` methods.
 
 - #479: Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
 

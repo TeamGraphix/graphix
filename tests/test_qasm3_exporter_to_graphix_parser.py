@@ -31,10 +31,9 @@ except ImportError:
 
 def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
-    check_circuit = circuit.transpile_j_to_rzh()
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == check_circuit.instruction
+    assert parsed_circuit.instruction == circuit.instruction
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -43,7 +42,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     nqubits = 5
     depth = 4
     # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
-    check_round_trip(rand_circuit(nqubits, depth, rng, use_j=True, use_cz=True).transpile_j_to_rzh())
+    check_round_trip(rand_circuit(nqubits, depth, rng, use_j=True, use_cz=True))
 
 
 @pytest.mark.parametrize(
@@ -63,6 +62,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
         instruction.RX(target=0, angle=ANGLE_PI / 4),
         instruction.RY(target=0, angle=ANGLE_PI / 4),
         instruction.RZ(target=0, angle=ANGLE_PI / 4),
+        instruction.J(target=0, angle=ANGLE_PI / 4),
     ],
 )
 def test_instruction_to_qasm3(instruction: Instruction) -> None:
@@ -70,8 +70,11 @@ def test_instruction_to_qasm3(instruction: Instruction) -> None:
 
 
 def test_j_to_qasm3() -> None:
-    circuit = Circuit(3, instr=[instruction.J(target=0, angle=ANGLE_PI / 4)]).transpile_j_to_rzh()
+    circuit = Circuit(3, instr=[instruction.J(target=0, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
     assert parsed_circuit.instruction == circuit.instruction
+    with pytest.raises(ValueError):
+        circuit_to_qasm3(circuit, transpile=False)
+

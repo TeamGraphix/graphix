@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from graphix.transpiler import Circuit
 
 
-def circuit_to_qasm3(circuit: Circuit) -> str:
+def circuit_to_qasm3(circuit: Circuit, transpile: bool = True) -> str:
     """Export circuit instructions to OpenQASM 3.0 representation.
 
     Returns
@@ -30,10 +30,12 @@ def circuit_to_qasm3(circuit: Circuit) -> str:
     str
         The OpenQASM 3.0 string representation of the circuit.
     """
+    if transpile:
+        circuit = circuit.transpile_j_to_rzh().transpile_measurements_to_z_axis()
     return "\n".join(circuit_to_qasm3_lines(circuit))
 
 
-def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
+def circuit_to_qasm3_lines(circuit: Circuit, transpile: bool = True) -> Iterator[str]:
     """Export circuit instructions to line-by-line OpenQASM 3.0 representation.
 
     Returns
@@ -41,6 +43,8 @@ def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
     Iterator[str]
         The OpenQASM 3.0 lines that represent the circuit.
     """
+    if transpile:
+        circuit = circuit.transpile_j_to_rzh().transpile_measurements_to_z_axis()
     if any(instr.kind == InstructionKind.J for instr in circuit.instruction):
         raise ValueError("J gates must be decomposed before QASM3 export using `Circuit.transpile_j_to_rzh`.")
     yield "OPENQASM 3;"
