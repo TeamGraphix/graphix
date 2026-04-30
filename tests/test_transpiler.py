@@ -49,6 +49,7 @@ class TestTranspilerUnitGates:
     def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
         circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
+        circuit.transpile_to_cflow().flow.check_well_formed()
         flow = pattern.to_bloch().extract_causal_flow()
         flow.check_well_formed()
 
@@ -58,16 +59,6 @@ class TestTranspilerUnitGates:
         rng = Generator(fx_bg.jumped(jumps))
         circuit = Circuit(3, instr=[instruction(rng)])
         pattern = circuit.transpile().pattern
-        input_state = rand_state_vector(3, rng=rng)
-        state = circuit.simulate_statevector(input_state=input_state).statevec
-        state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
-        assert state_mbqc.isclose(state)
-
-    def test_simple(self) -> None:
-        rng = np.random.default_rng(420)
-        circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
-        pattern = circuit.transpile().pattern
-        pattern.minimize_space()
         input_state = rand_state_vector(3, rng=rng)
         state = circuit.simulate_statevector(input_state=input_state).statevec
         state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
@@ -175,6 +166,21 @@ class TestTranspilerUnitGates:
         assert state.isclose(state2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_transpile_j_to_rzh(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 3
+        depth = 2
+        circuit = rand_circuit(nqubits, depth, rng, use_j=True, use_ccx=True, use_rzz=True)
+        circuit.j(0, 0.5)  # Ensure that there is at least one J instruction
+        assert any(instr.kind == InstructionKind.J for instr in circuit.instruction)
+        circuit2 = circuit.transpile_j_to_rzh()
+        assert not any(instr.kind == InstructionKind.J for instr in circuit2.instruction)
+        state = circuit.simulate_statevector(rng=rng).statevec
+        state2 = circuit2.simulate_statevector(rng=rng).statevec
+        print(state.fidelity(state2))
+        assert state.fidelity(state2) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("outcome", [0, 1])
     def test_transpile_swaps_with_measurements(self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
@@ -199,7 +205,7 @@ class TestTranspilerUnitGates:
         state2.swap((0, 1))
         assert state.isclose(state2)
 
-    def test_cz_ccx(self) -> None:
+    def test_cz_ccx(self, fx_rng: Generator) -> None:
         """Test case reported in issue #2.
 
         https://github.com/qat-inria/graphix-jcz-transpiler/issues/2
@@ -207,9 +213,9 @@ class TestTranspilerUnitGates:
         circuit = Circuit(width=3)
         circuit.cz(2, 0)
         circuit.ccx(0, 1, 2)
-        ref_state = circuit.simulate_statevector().statevec
+        ref_state = circuit.simulate_statevector(rng=fx_rng).statevec
         pattern = circuit.transpile().pattern
-        state = pattern.simulate_pattern()
+        state = pattern.simulate_pattern(rng=fx_rng)
         assert state.isclose(ref_state)
 
     def test_ccx_decomposition(self) -> None:
@@ -223,12 +229,12 @@ class TestTranspilerUnitGates:
         state2 = circuit2.simulate_statevector().statevec
         assert state.isclose(state2)
 
-    def test_cnot_cz(self) -> None:
+    def test_cnot_cz(self, fx_rng: Generator) -> None:
         """Test regression about output node reordering."""
         circuit = Circuit(width=3, instr=[instruction.CNOT(0, 1), instruction.CZ((0, 1))])
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate_statevector(rng=fx_rng).statevec
         pattern = circuit.transpile().pattern
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert state.isclose(state_mbqc)
 
     @pytest.mark.parametrize("jumps", range(1, 6))

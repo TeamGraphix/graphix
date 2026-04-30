@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
 
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
-import graphix.transpiler
-from graphix import instruction
 from graphix._version import version
 from graphix.command import CommandKind
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane
@@ -44,7 +41,8 @@ def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
     Iterator[str]
         The OpenQASM 3.0 lines that represent the circuit.
     """
-    circuit = _decompose_j_gates(circuit)
+    if any(instr.kind == InstructionKind.J for instr in circuit.instruction):
+        raise ValueError("J gates must be decomposed before QASM3 export using `Circuit.transpile_j_to_rzh`.")
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
     yield f"qubit[{circuit.width}] q;"
@@ -274,22 +272,3 @@ def domain_to_qasm3_lines(domain: Iterable[int], cmd: str) -> Iterator[str]:
     yield f"if ({condition}) {{\n"
     yield f"  {cmd};\n"
     yield "}\n"
-
-
-def _decompose_j_gates(circuit: Circuit) -> Circuit:
-    """Decompose J(alpha) into RZ(alpha) then H, up to global phase."""
-    if not any(instr.kind == InstructionKind.J for instr in circuit.instruction):
-        return circuit
-    warnings.warn(
-        "J gates decomposed as RZ * H for QASM3 export.",
-        stacklevel=3,
-    )
-    new_circuit = graphix.transpiler.Circuit(circuit.width)
-    for instr in circuit.instruction:
-        if instr.kind == InstructionKind.J:
-            # circuit time order: RZ first, H second (J = H * RZ)
-            new_circuit.add(instruction.RZ(target=instr.target, angle=instr.angle))
-            new_circuit.add(instruction.H(target=instr.target))
-        else:
-            new_circuit.add(instr)
-    return new_circuit

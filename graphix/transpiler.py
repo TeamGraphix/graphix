@@ -15,7 +15,6 @@ import networkx as nx
 # override introduced in Python 3.12
 from typing_extensions import assert_never, override
 
-import graphix.pattern
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.flow.core import CausalFlow, _corrections_to_partial_order_layers
@@ -28,7 +27,7 @@ from graphix.optimization import StandardizedPattern
 from graphix.sim.statevec import Statevec, StatevectorBackend
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 
     from numpy.random import Generator
 
@@ -61,15 +60,8 @@ class TranspileResult(Generic[_R, _CO]):
         return self.result
 
     @property
-    def flow(self) -> CausalFlow[BlochMeasurement]:
-        """Return causal flow from TranspileResult if any.
-
-        Raises
-        ------
-            TypeError: if the TranspileResult stores a pattern instead.
-        """
-        if not isinstance(self.result, CausalFlow):
-            raise TypeError("result is not a CausalFlow; use `.pattern` or `.result`")
+    def flow(self: TranspileResult[CausalFlow[BlochMeasurement], _CO]) -> CausalFlow[BlochMeasurement]:
+        """Return causal flow from TranspileResult if any."""
         return self.result
 
 
@@ -450,27 +442,27 @@ class Circuit:
         graph: nx.Graph[int] = nx.Graph()
         graph.add_nodes_from(inputs)
         x_corrections: dict[int, set[int]] = {}
-        for instr in self.instruction:
-            if instr.kind == InstructionKind.M:
-                target = indices[instr.target]
-                if target is None:
-                    raise IllformedCircuitError
-                classical_outputs[target] = command.M(target, PauliMeasurement(instr.axis))
-                indices[instr.target] = None
-                continue
-            for instr_jcz in instruction_to_jcz(instr):
-                if instr_jcz.kind == InstructionKind.J:
-                    target = indices[instr_jcz.target]
+        for instr in instructions_to_jcz(self.instruction):
+            match instr.kind:
+                case InstructionKind.M:
+                    target = indices[instr.target]
+                    if target is None:
+                        raise IllformedCircuitError
+                    classical_outputs[target] = command.M(target, PauliMeasurement(instr.axis))
+                    indices[instr.target] = None
+                    continue
+                case InstructionKind.J:
+                    target = indices[instr.target]
                     if target is None:
                         raise IllformedCircuitError
                     graph.add_edge(target, n_nodes)  # Also adds nodes
-                    measurements[target] = Measurement.XY(normalize_angle(-instr_jcz.angle))
-                    indices[instr_jcz.target] = n_nodes
+                    measurements[target] = Measurement.XY(normalize_angle(-instr.angle))
+                    indices[instr.target] = n_nodes
                     x_corrections[target] = {n_nodes}  # X correction on ancilla
                     n_nodes += 1
                     continue
-                if instr_jcz.kind == InstructionKind.CZ:
-                    t0, t1 = instr_jcz.targets
+                case InstructionKind.CZ:
+                    t0, t1 = instr.targets
                     i0, i1 = indices[t0], indices[t1]
                     if i0 is None or i1 is None:
                         raise IllformedCircuitError
@@ -480,9 +472,10 @@ class Circuit:
                     else:
                         graph.add_edge(i0, i1)
                     continue
-                assert_never(instr_jcz.kind)
+                case _:
+                    assert_never(instr.kind)
         outputs = [i for i in indices if i is not None]
-        outputs.extend(classical_outputs.keys())
+        outputs.extend(classical_outputs.keys())  # Necessary for flow-finding step
         og = OpenGraph(
             graph=graph,
             input_nodes=inputs,
@@ -657,9 +650,21 @@ class Circuit:
                 circuit.add(instr)
         return circuit
 
+    def transpile_j_to_rzh(self) -> Circuit:
+        """Return an equivalent circuit where all J gates have been replaced with RZ and H gates."""
+        new_circuit = Circuit(self.width)
+        for instr in self.instruction:
+            match instr.kind:
+                case InstructionKind.J:
+                    new_circuit.add(instruction.RZ(target=instr.target, angle=instr.angle))
+                    new_circuit.add(instruction.H(target=instr.target))
+                case _:
+                    new_circuit.add(instr)
+        return new_circuit
 
-def decompose_rzz(instr: instruction.RZZ) -> list[instruction.CNOT | instruction.RZ]:
-    """Return a decomposition of RZZ(α) gate as CNOT(control, target)·Rz(target, α)·CNOT(control, target).
+
+def decompose_rzz(instr: instruction.RZZ) -> Iterator[instruction.CNOT | instruction.RZ]:
+    """Yield a decomposition of RZZ(α) gate as CNOT(control, target)·Rz(target, α)·CNOT(control, target).
 
     Parameters
     ----------
@@ -670,17 +675,15 @@ def decompose_rzz(instr: instruction.RZZ) -> list[instruction.CNOT | instruction
         the decomposition.
 
     """
-    return [
-        instruction.CNOT(target=instr.target, control=instr.control),
-        instruction.RZ(instr.target, instr.angle),
-        instruction.CNOT(target=instr.target, control=instr.control),
-    ]
+    yield instruction.CNOT(target=instr.target, control=instr.control)
+    yield instruction.RZ(instr.target, instr.angle)
+    yield instruction.CNOT(target=instr.target, control=instr.control)
 
 
 def decompose_ccx(
     instr: instruction.CCX,
-) -> list[instruction.H | instruction.CNOT | instruction.RZ]:
-    """Return a decomposition of the CCX gate into H, CNOT, T and T-dagger gates.
+) -> Iterator[instruction.H | instruction.CNOT | instruction.RZ]:
+    """Yield a decomposition of the CCX gate into H, CNOT, T and T-dagger gates.
 
     This decomposition of the Toffoli gate can be found in
     Michael A. Nielsen and Isaac L. Chuang,
@@ -697,28 +700,27 @@ def decompose_ccx(
         the decomposition.
 
     """
-    return [
-        instruction.H(instr.target),
-        instruction.CNOT(control=instr.controls[1], target=instr.target),
-        instruction.RZ(instr.target, -ANGLE_PI / 4),
-        instruction.CNOT(control=instr.controls[0], target=instr.target),
-        instruction.RZ(instr.target, ANGLE_PI / 4),
-        instruction.CNOT(control=instr.controls[1], target=instr.target),
-        instruction.RZ(instr.target, -ANGLE_PI / 4),
-        instruction.CNOT(control=instr.controls[0], target=instr.target),
-        instruction.RZ(instr.controls[1], -ANGLE_PI / 4),
-        instruction.RZ(instr.target, ANGLE_PI / 4),
-        instruction.CNOT(control=instr.controls[0], target=instr.controls[1]),
-        instruction.H(instr.target),
-        instruction.RZ(instr.controls[1], -ANGLE_PI / 4),
-        instruction.CNOT(control=instr.controls[0], target=instr.controls[1]),
-        instruction.RZ(instr.controls[0], ANGLE_PI / 4),
-        instruction.RZ(instr.controls[1], ANGLE_PI / 2),
-    ]
+    c0, c1, t = instr.controls[0], instr.controls[1], instr.target
+    yield instruction.H(t)
+    yield instruction.CNOT(control=c1, target=t)
+    yield instruction.RZ(t, -ANGLE_PI / 4)
+    yield instruction.CNOT(control=c0, target=t)
+    yield instruction.RZ(t, ANGLE_PI / 4)
+    yield instruction.CNOT(control=c1, target=t)
+    yield instruction.RZ(t, -ANGLE_PI / 4)
+    yield instruction.CNOT(control=c0, target=t)
+    yield instruction.RZ(c1, -ANGLE_PI / 4)
+    yield instruction.RZ(t, ANGLE_PI / 4)
+    yield instruction.CNOT(control=c0, target=c1)
+    yield instruction.H(t)
+    yield instruction.RZ(c1, -ANGLE_PI / 4)
+    yield instruction.CNOT(control=c0, target=c1)
+    yield instruction.RZ(c0, ANGLE_PI / 4)
+    yield instruction.RZ(c1, ANGLE_PI / 2)
 
 
-def decompose_cnot(instr: instruction.CNOT) -> list[instruction.H | instruction.CZ]:
-    """Return a decomposition of the CNOT gate as H·∧z·H.
+def decompose_cnot(instr: instruction.CNOT) -> Iterator[instruction.H | instruction.CZ]:
+    """Yield a decomposition of the CNOT gate as H·∧z·H.
 
     Vincent Danos, Elham Kashefi, Prakash Panangaden, The Measurement Calculus, 2007.
 
@@ -731,15 +733,13 @@ def decompose_cnot(instr: instruction.CNOT) -> list[instruction.H | instruction.
         the decomposition.
 
     """
-    return [
-        instruction.H(instr.target),
-        instruction.CZ((instr.control, instr.target)),
-        instruction.H(instr.target),
-    ]
+    yield instruction.H(instr.target)
+    yield instruction.CZ((instr.control, instr.target))
+    yield instruction.H(instr.target)
 
 
-def decompose_swap(instr: instruction.SWAP) -> list[instruction.CNOT]:
-    """Return a decomposition of the SWAP gate as CNOT(0, 1)·CNOT(1, 0)·CNOT(0, 1).
+def decompose_swap(instr: instruction.SWAP) -> Iterator[instruction.CNOT]:
+    """Yield a decomposition of the SWAP gate as CNOT(0, 1)·CNOT(1, 0)·CNOT(0, 1).
 
     Michael A. Nielsen and Isaac L. Chuang,
     Quantum Computation and Quantum Information,
@@ -755,14 +755,12 @@ def decompose_swap(instr: instruction.SWAP) -> list[instruction.CNOT]:
         the decomposition.
 
     """
-    return [
-        instruction.CNOT(control=instr.targets[0], target=instr.targets[1]),
-        instruction.CNOT(control=instr.targets[1], target=instr.targets[0]),
-        instruction.CNOT(control=instr.targets[0], target=instr.targets[1]),
-    ]
+    yield instruction.CNOT(control=instr.targets[0], target=instr.targets[1])
+    yield instruction.CNOT(control=instr.targets[1], target=instr.targets[0])
+    yield instruction.CNOT(control=instr.targets[0], target=instr.targets[1])
 
 
-def decompose_y(instr: instruction.Y) -> list[instruction.X | instruction.Z]:
+def decompose_y(instr: instruction.Y) -> Iterator[instruction.X | instruction.Z]:
     """Return a decomposition of the Y gate as X·Z.
 
     Parameters
@@ -774,11 +772,12 @@ def decompose_y(instr: instruction.Y) -> list[instruction.X | instruction.Z]:
         the decomposition.
 
     """
-    return list(reversed([instruction.X(instr.target), instruction.Z(instr.target)]))
+    yield instruction.Z(instr.target)
+    yield instruction.X(instr.target)
 
 
-def decompose_rx(instr: instruction.RX) -> list[instruction.J]:
-    """Return a J decomposition of the RX gate.
+def decompose_rx(instr: instruction.RX) -> Iterator[instruction.J]:
+    """Yield a J decomposition of the RX gate.
 
     The Rx(α) gate is decomposed into J(α)·H (that is to say, J(α)·J(0)).
     Vincent Danos, Elham Kashefi, Prakash Panangaden, The Measurement Calculus, 2007.
@@ -792,11 +791,12 @@ def decompose_rx(instr: instruction.RX) -> list[instruction.J]:
         the decomposition.
 
     """
-    return [instruction.J(target=instr.target, angle=angle) for angle in reversed((instr.angle, 0))]
+    yield instruction.J(instr.target, 0)
+    yield instruction.J(instr.target, instr.angle)
 
 
-def decompose_ry(instr: instruction.RY) -> list[instruction.J]:
-    """Return a J decomposition of the RY gate.
+def decompose_ry(instr: instruction.RY) -> Iterator[instruction.J]:
+    """Yield a J decomposition of the RY gate.
 
     The Ry(α) gate is decomposed into J(0)·J(π/2)·J(α)·J(-π/2).
     Vincent Danos, Elham Kashefi, Prakash Panangaden, Robust and parsimonious realisations of unitaries in the one-way
@@ -811,14 +811,14 @@ def decompose_ry(instr: instruction.RY) -> list[instruction.J]:
         the decomposition.
 
     """
-    return [
-        instruction.J(target=instr.target, angle=angle)
-        for angle in reversed((0, ANGLE_PI / 2, instr.angle, -ANGLE_PI / 2))
-    ]
+    yield instruction.J(target=instr.target, angle=-ANGLE_PI / 2)
+    yield instruction.J(target=instr.target, angle=instr.angle)
+    yield instruction.J(target=instr.target, angle=ANGLE_PI / 2)
+    yield instruction.J(target=instr.target, angle=0)
 
 
-def decompose_rz(instr: instruction.RZ) -> list[instruction.J]:
-    """Return a J decomposition of the RZ gate.
+def decompose_rz(instr: instruction.RZ) -> Iterator[instruction.J]:
+    """Yield a J decomposition of the RZ gate.
 
     The Rz(α) gate is decomposed into H·J(α) (that is to say, J(0)·J(α)).
     Vincent Danos, Elham Kashefi, Prakash Panangaden, The Measurement Calculus, 2007.
@@ -832,11 +832,12 @@ def decompose_rz(instr: instruction.RZ) -> list[instruction.J]:
         the decomposition.
 
     """
-    return [instruction.J(target=instr.target, angle=angle) for angle in reversed((0, instr.angle))]
+    yield instruction.J(target=instr.target, angle=instr.angle)
+    yield instruction.J(target=instr.target, angle=0)
 
 
-def instruction_to_jcz(instr: Instruction) -> Sequence[instruction.J | instruction.CZ]:
-    """Return a J-∧z decomposition of the instruction.
+def instructions_to_jcz(instrs: Iterable[Instruction]) -> Iterator[instruction.J | instruction.CZ | instruction.M]:
+    """Yield a J-∧z decomposition of the instruction.
 
     Parameters
     ----------
@@ -847,79 +848,38 @@ def instruction_to_jcz(instr: Instruction) -> Sequence[instruction.J | instructi
         the decomposition.
 
     """
-    # Use == for mypy
-    if instr.kind == InstructionKind.J:
-        return [instr]
-    if instr.kind == InstructionKind.CZ:
-        return [instr]
-    if instr.kind == InstructionKind.I:
-        return []
-    if instr.kind == InstructionKind.H:
-        return [instruction.J(instr.target, 0)]
-    if instr.kind == InstructionKind.S:
-        return instruction_to_jcz(instruction.RZ(instr.target, ANGLE_PI / 2))
-    if instr.kind == InstructionKind.X:
-        return instruction_to_jcz(instruction.RX(instr.target, ANGLE_PI))
-    if instr.kind == InstructionKind.Y:
-        return instruction_list_to_jcz(decompose_y(instr))
-    if instr.kind == InstructionKind.Z:
-        return instruction_to_jcz(instruction.RZ(instr.target, ANGLE_PI))
-    if instr.kind == InstructionKind.RX:
-        return decompose_rx(instr)
-    if instr.kind == InstructionKind.RY:
-        return decompose_ry(instr)
-    if instr.kind == InstructionKind.RZ:
-        return decompose_rz(instr)
-    if instr.kind == InstructionKind.CCX:
-        return instruction_list_to_jcz(decompose_ccx(instr))
-    if instr.kind == InstructionKind.RZZ:
-        return instruction_list_to_jcz(decompose_rzz(instr))
-    if instr.kind == InstructionKind.CNOT:
-        return instruction_list_to_jcz(decompose_cnot(instr))
-    if instr.kind == InstructionKind.SWAP:
-        return instruction_list_to_jcz(decompose_swap(instr))
-    if instr.kind == InstructionKind.M:
-        raise ValueError("Measurement instructions cannot be decomposed into J and CZ gates.")
-    assert_never(instr.kind)
-
-
-def instruction_list_to_jcz(
-    instrs: Iterable[Instruction],
-) -> list[instruction.J | instruction.CZ]:
-    """Return a J-∧z decomposition of the sequence of instructions.
-
-    Parameters
-    ----------
-        instrs: the instruction sequence to decompose.
-
-    Returns
-    -------
-        the decomposition.
-
-    """
-    return [jcz_instr for instr in instrs for jcz_instr in instruction_to_jcz(instr)]
-
-
-def j_commands(current_node: int, next_node: int, angle: ParameterizedAngle) -> list[command.Command]:
-    """Return the MBQC pattern commands for a J gate.
-
-    Parameters
-    ----------
-        current_node: the current node.
-        next_node: the next node.
-        angle: the angle of the J gate.
-
-    Returns
-    -------
-        the MBQC pattern commands for a J gate as a list
-
-    """
-    return [
-        command.N(node=next_node),
-        command.E(nodes=(current_node, next_node)),
-        command.M(current_node, Measurement.XY(angle)),
-        command.X(node=next_node, domain={current_node}),
-    ]
+    for instr in instrs:
+        match instr.kind:
+            case InstructionKind.J | InstructionKind.CZ | InstructionKind.M:
+                yield instr
+            case InstructionKind.I:
+                return
+            case InstructionKind.H:
+                yield instruction.J(instr.target, 0)
+            case InstructionKind.S:
+                yield from decompose_rz(instruction.RZ(instr.target, ANGLE_PI / 2))
+            case InstructionKind.X:
+                yield from decompose_rx(instruction.RX(instr.target, ANGLE_PI))
+            case InstructionKind.Y:
+                yield from instructions_to_jcz(decompose_y(instr))
+            case InstructionKind.Z:
+                yield from decompose_rz(instruction.RZ(instr.target, ANGLE_PI))
+            case InstructionKind.RX:
+                yield from decompose_rx(instr)
+            case InstructionKind.RY:
+                yield from decompose_ry(instr)
+            case InstructionKind.RZ:
+                yield from decompose_rz(instr)
+            case InstructionKind.CCX:
+                yield from instructions_to_jcz(decompose_ccx(instr))
+            case InstructionKind.RZZ:
+                yield from instructions_to_jcz(decompose_rzz(instr))
+            case InstructionKind.CNOT:
+                yield from instructions_to_jcz(decompose_cnot(instr))
+            case InstructionKind.SWAP:
+                yield from instructions_to_jcz(decompose_swap(instr))
+            case _:
+                assert_never(instr.kind)
 
 
 def normalize_angle(angle: ParameterizedAngle) -> ParameterizedAngle:

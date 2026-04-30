@@ -332,6 +332,7 @@ class TestTN:
         pattern.standardize()
         pattern.shift_signals()
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         state = circuit.simulate_statevector().statevec
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
@@ -351,6 +352,7 @@ class TestTN:
         pattern.standardize()
         pattern.shift_signals()
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         state = circuit.simulate_statevector().statevec
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", rng=fx_rng)
@@ -400,6 +402,7 @@ class TestTN:
         pattern.standardize()
         pattern.shift_signals()
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         state = circuit.simulate_statevector().statevec
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)

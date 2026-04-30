@@ -119,7 +119,7 @@ def test_flow_pretty_print_random(
     flow_extractor: Callable[[OpenGraph[Measurement]], PauliFlow[Measurement]],
 ) -> None:
     rng = Generator(fx_bg.jumped(jumps))
-    rand_og = rand_circuit(5, 5, rng=rng).transpile().pattern.extract_opengraph()
+    rand_og = rand_circuit(5, 5, rng=rng).transpile().pattern.infer_pauli_measurements().extract_opengraph()
     flow = flow_extractor(rand_og)
 
     flow.to_ascii()

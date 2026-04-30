@@ -157,6 +157,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -379,9 +380,12 @@ class TestPattern:
         pattern1.remove_input_nodes()
         assert not pattern.results
         assert not pattern1.results
+        pattern = pattern.infer_pauli_measurements()
         pattern.perform_pauli_measurements()
+        pattern1 = pattern1.infer_pauli_measurements()
         pattern1.perform_pauli_measurements()
         composed_pattern.remove_input_nodes()
+        composed_pattern = composed_pattern.infer_pauli_measurements()
         composed_pattern.perform_pauli_measurements()
         assert abs(len(composed_pattern.results) - len(pattern.results) - len(pattern1.results)) <= 2
 
@@ -1010,6 +1014,8 @@ class TestPattern:
 
         p_ref.remove_input_nodes()
         p_test.remove_input_nodes()
+        p_ref = p_ref.infer_pauli_measurements()
+        p_test = p_test.infer_pauli_measurements()
         p_ref.perform_pauli_measurements()
         p_test.perform_pauli_measurements()
 
@@ -1029,6 +1035,8 @@ class TestPattern:
 
         p_ref.remove_input_nodes()
         p_test.remove_input_nodes()
+        p_ref = p_ref.infer_pauli_measurements()
+        p_test = p_test.infer_pauli_measurements()
         p_ref.perform_pauli_measurements()
         p_test.perform_pauli_measurements()
 
