@@ -77,4 +77,3 @@ def test_j_to_qasm3() -> None:
     assert parsed_circuit.instruction == circuit.instruction
     with pytest.raises(ValueError):
         circuit_to_qasm3(circuit, transpile=False)
-
