@@ -327,7 +327,7 @@ class Instruction(InstructionWithoutRZZ):
     The type alias for "any command" is :data:`InstructionKind`.
     """
 
-    RZZ: type[RZZ] = RZZ
+    RZZ: TypeAlias = RZZ
 
     def __init__(self) -> None:
         raise TypeError("Instruction is a namespace, not a class.")
