@@ -1,13 +1,23 @@
 """Remove Pauli measurements.
 
-This module implements the algorithm described in [BMBdF+21], Theorem
-4.12 in Section 4.3: Removing Clifford vertices.
+This module provides procedures for pushing Pauli measurements in
+front of a pattern and for subsequently removing them from the
+pattern.
+
+Pauli pushing uses commutation rules of Pauli measurements to move
+them before other measurements while appropriately shifting their
+signals, so that all Pauli measurements end up with empty
+domains. This step is required before the actual removal can be
+performed.
+
+For the removal itself, this module implements the algorithm described
+in [BMBdF+21], Theorem 4.12 (Section 4.3: Removing Clifford
+vertices).
 
 [BMBdF+21] Miriam Backens, Hector Miller-Bakewell, Giovanni de Felice,
-Leo Lobski, and John van de Wetering, There and back again: A circuit
-extraction tale, Quantum, 2021,
-https://doi.org/10.22331/q-2021-03-25-421
-
+           Leo Lobski, and John van de Wetering,
+           There and back again: A circuit extraction tale, Quantum, 2021,
+           https://doi.org/10.22331/q-2021-03-25-421
 """
 
 from __future__ import annotations
@@ -464,8 +474,8 @@ def _map_domain(node_map: Mapping[Node, Node], domain: set[Node]) -> set[Node]:
 def remove_pauli_measurements(pattern: StandardizedPattern, *, stacklevel: int = 1) -> StandardizedPattern:
     """Remove non-input Pauli measurements from the given pattern.
 
-    This function implements the algorithm described in Theorem 4.12
-    in Section 4.3: Removing Clifford vertices [BMBdF+21].
+    This function implements the algorithm described in [BMBdF+21],
+    Theorem 4.12 (Section 4.3: Removing Clifford vertices).
 
     This function removes all non-input Y and Z measured nodes and all
     non-input X measured nodes connected to any other internal vertex.
