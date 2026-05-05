@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
     Graph: TypeAlias = nx.Graph[int]
 else:
+    # The type is quoted because we don't need to import `nx`.
     Graph = "nx.Graph"
 
 
