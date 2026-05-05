@@ -18,10 +18,11 @@ if TYPE_CHECKING:
 
     from graphix.command import Node
     from graphix.pattern import Pattern
+    from graphix.remove_pauli_measurements import Graph
 
 
 def opengraph_lemma_2_31(measurements: Mapping[Node, Measurement]) -> OpenGraph[Measurement]:
-    graph = nx.Graph(
+    graph: Graph = nx.Graph(
         [
             (0, 1),
             (0, 2),
@@ -35,7 +36,7 @@ def opengraph_lemma_2_31(measurements: Mapping[Node, Measurement]) -> OpenGraph[
 
 
 def opengraph_lemma_2_32(measurements: Mapping[Node, Measurement]) -> OpenGraph[Measurement]:
-    graph = nx.Graph(
+    graph: Graph = nx.Graph(
         [
             (0, 1),
             (0, 2),
@@ -68,7 +69,7 @@ def test_local_complement(fx_rng: Generator, measured_set: AbstractSet[int]) -> 
     remove_pauli_measurements.local_complement(0)
     standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
     og2 = standardized_pattern2.extract_opengraph()
-    expected_graph = nx.Graph(
+    expected_graph: Graph = nx.Graph(
         [
             (0, 1),
             (0, 2),
@@ -92,7 +93,7 @@ def test_pivot_vertices(fx_rng: Generator, measured_set: AbstractSet[int]) -> No
     remove_pauli_measurements.pivot_vertices(0, 1)
     standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
     og2 = standardized_pattern2.extract_opengraph()
-    expected_graph = nx.Graph(
+    expected_graph: Graph = nx.Graph(
         [
             (0, 1),
             (0, 2),

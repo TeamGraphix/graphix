@@ -101,8 +101,8 @@ class PauliPushingCut:
 
         shifted_domains: dict[int, set[int]] = {}
 
-        pauli_measurements = []
-        non_pauli_measurements = []
+        pauli_measurements: list[Command.M] = []
+        non_pauli_measurements: list[Command.M] = []
         for cmd in pattern.m_list:
             s_domain = _expand_domain(shifted_domains, cmd.s_domain)
             t_domain = _expand_domain(shifted_domains, cmd.t_domain)
