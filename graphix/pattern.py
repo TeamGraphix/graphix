@@ -1682,7 +1682,7 @@ class Pattern:
 
         for cmd in self:
             if cmd.kind == CommandKind.M:
-                new_pattern.add(command.M(cmd.node, f(cmd.measurement), cmd.s_domain, cmd.t_domain))
+                new_pattern.add(cmd.map(f))
             else:
                 new_pattern.add(cmd)
 
@@ -1770,6 +1770,47 @@ class Pattern:
         standardized_pattern = optimization.StandardizedPattern.from_pattern(self).perform_pauli_pushing(
             leave_nodes, stacklevel=stacklevel + 1
         )
+        pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
+        if copy:
+            return pattern
+        self.__seq = pattern.__seq
+        return self
+
+    def remove_pauli_measurements(
+        self, *, copy: bool = False, standardize: bool = False, stacklevel: int = 1
+    ) -> Pattern:
+        """Remove non-input Pauli measurements from the given pattern.
+
+        See :func:`~remove_pauli_measurements.remove_pauli_measurements` for more information.
+
+        Parameters
+        ----------
+        pattern: StandardizedPattern
+            Standardized pattern to optimize.
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+        standardize: bool, optional
+            If ``True``, the pattern is returned in standardized form.
+            The default is ``False``: the nodes are prepared on a
+            need-by-need basis, minimizing space usage.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        StandardizedPattern
+                The pattern in which Pauli measurements have been moved
+                before the other measurements. If ``copy`` is ``False``,
+                the result is ``self``.
+
+        """
+        from graphix.remove_pauli_measurements import remove_pauli_measurements  # noqa: PLC0415
+
+        standardized_pattern = optimization.StandardizedPattern.from_pattern(self)
+        standardized_pattern = remove_pauli_measurements(standardized_pattern, stacklevel=stacklevel + 1)
         pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
         if copy:
             return pattern

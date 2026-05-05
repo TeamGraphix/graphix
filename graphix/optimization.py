@@ -13,8 +13,6 @@ from warnings import warn
 import networkx as nx
 
 # assert_never added in Python 3.11
-from typing_extensions import assert_never
-
 from graphix import command
 from graphix.clifford import Clifford, Domains
 from graphix.command import CommandKind, Node
@@ -238,9 +236,9 @@ class StandardizedPattern(_StandardizedPattern):
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
 
-        Returns
-        -------
-        graph_state: nx.Graph
+        >        Returns
+                -------
+                graph_state: nx.Graph
         """
         graph: nx.Graph[int] = nx.Graph()
         graph.add_nodes_from(self.input_nodes)
@@ -250,8 +248,14 @@ class StandardizedPattern(_StandardizedPattern):
             graph.add_edge(u, v)
         return graph
 
-    def perform_pauli_pushing(self, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1) -> Self:
+    def perform_pauli_pushing(
+        self, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1
+    ) -> StandardizedPattern:
         """Move Pauli measurements before the other measurements.
+
+        If you need to recover the cut between Pauli measurements and
+        non-Pauli measurements or the shifted signal, you can use
+        :meth:`~graphix.remove_pauli_measurements.PauliPushingCut.from_standardized_pattern` instead.
 
         Parameters
         ----------
@@ -267,90 +271,13 @@ class StandardizedPattern(_StandardizedPattern):
         Pattern
             The pattern in which Pauli measurements have been moved
             before the other measurements.
+
         """
-        self._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
+        from graphix.remove_pauli_measurements import PauliPushingCut  # noqa: PLC0415
 
-        if leave_nodes:
-            leave_non_pauli_nodes = [
-                cmd.node
-                for cmd in self.m_list
-                if not isinstance(cmd.measurement, PauliMeasurement) and cmd.node in leave_nodes
-            ]
-            if leave_non_pauli_nodes:
-                warn(
-                    f"`leave_nodes` contains nodes that are not Pauli: {leave_non_pauli_nodes}. The constraint has no effect on these nodes.",
-                    stacklevel=stacklevel + 1,
-                )
-
-        shift_domains: dict[int, set[int]] = {}
-
-        def expand_domain(domain: AbstractSet[int]) -> set[int]:
-            """Merge previously shifted domains into ``domain``.
-
-            Parameters
-            ----------
-            domain : set[int]
-                Domain to update with any accumulated shift information.
-            """
-            new_domain = set(domain)
-            for node in domain & shift_domains.keys():
-                new_domain ^= shift_domains[node]
-            return new_domain
-
-        pauli_list = []
-        non_pauli_list = []
-        for cmd in self.m_list:
-            s_domain = expand_domain(cmd.s_domain)
-            t_domain = expand_domain(cmd.t_domain)
-            if not isinstance(cmd.measurement, PauliMeasurement) or (leave_nodes and cmd.node in leave_nodes):
-                non_pauli_list.append(
-                    command.M(node=cmd.node, measurement=cmd.measurement, s_domain=s_domain, t_domain=t_domain)
-                )
-            else:
-                match cmd.measurement.axis:
-                    case Axis.X:
-                        # M^X X^s Z^t = M^{XY,0} X^s Z^t
-                        #             = M^{XY,(-1)^s·0+tπ}
-                        #             = S^t M^X
-                        # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
-                        #                = M^{XY,(-1)^s·π+tπ}
-                        #                = S^t M^{-X}
-                        shift_domains[cmd.node] = t_domain
-                    case Axis.Y:
-                        # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
-                        #             = M^{XY,(-1)^s·π/2+tπ}
-                        #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
-                        #             = S^{s+t} M^Y
-                        # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
-                        #                = M^{XY,(-1)^s·(-π/2)+tπ}
-                        #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
-                        #                = S^{s+t} M^{-Y}
-                        shift_domains[cmd.node] = s_domain ^ t_domain
-                    case Axis.Z:
-                        # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
-                        #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
-                        #             = M^{XZ,(-1)^t·sπ}
-                        #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
-                        #             = S^s M^Z
-                        # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
-                        #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
-                        #                = M^{XZ,(s+1)π}
-                        #                = S^s M^{-Z}
-                        shift_domains[cmd.node] = s_domain
-                    case _:
-                        assert_never(cmd.measurement.axis)
-                pauli_list.append(command.M(node=cmd.node, measurement=cmd.measurement))
-        return self.__class__(
-            self.input_nodes,
-            self.output_nodes,
-            self.results,
-            self.n_list,
-            self.e_set,
-            pauli_list + non_pauli_list,
-            self.c_dict,
-            {node: expand_domain(domain) for node, domain in self.z_dict.items()},
-            {node: expand_domain(domain) for node, domain in self.x_dict.items()},
-        )
+        return PauliPushingCut.from_standardized_pattern(
+            self, leave_nodes, stacklevel=stacklevel + 1
+        ).to_standardized_pattern()
 
     def max_space(self) -> int:
         """Compute the maximum number of nodes that must be present in the graph (graph space) during the execution of the space-optimal pattern for the given measurement order.
@@ -642,6 +569,36 @@ class StandardizedPattern(_StandardizedPattern):
         return XZCorrections.from_measured_nodes_mapping(
             og, x_corr, z_corr
         )  # Raises a `XZCorrectionsError` if the input dictionaries are not well formed.
+
+    def map(self, f: Callable[[Measurement], Measurement]) -> StandardizedPattern:
+        """Return a pattern where the function ``f`` has been applied to each measurement.
+
+        Parameters
+        ----------
+        f: Callable[[Measurement], Measurement]
+            Function applied to each measurement.
+
+        Returns
+        -------
+        StandardizedPattern
+            The resulting pattern.
+        """
+        m_list = tuple(cmd_m.map(f) for cmd_m in self.m_list)
+        return StandardizedPattern(
+            self.input_nodes,
+            self.output_nodes,
+            self.results,
+            self.n_list,
+            self.e_set,
+            m_list,
+            self.c_dict,
+            self.z_dict,
+            self.x_dict,
+        )
+
+    def to_bloch(self) -> StandardizedPattern:
+        """Return an equivalent pattern in which all measurements are represented as Bloch measurements."""
+        return self.map(lambda m: m.to_bloch())
 
     def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
         for m in self.m_list:
