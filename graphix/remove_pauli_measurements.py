@@ -231,9 +231,19 @@ class _RemovePauliMeasurements:
 
     graph: Graph
     node_specs: dict[Node, _NodeSpec]
+
     measurements: list[Command.M]
+    """List of the original measurements after Pauli-pushing."""
+
     pauli_measurements: dict[Axis, set[Node]]
+    """For each axis, the set of non-input nodes that have a Pauli measurement on that axis.
+
+    Nodes are given with the indexing of the original pattern: use ``node_map`` to retrieve the index in the graph."""
+
     node_map: dict[Node, Node]
+    """Mapping from the nodes of the original pattern to the nodes of the graph (that may have been pivoted).
+
+    The following invariant is maintained for all node ``u``: ``node_specs[node_map[u]].src == u``."""
 
     def __init__(self, cut: PauliPushingCut) -> None:
         self.cut = cut
@@ -265,6 +275,11 @@ class _RemovePauliMeasurements:
         self.node_map = {node: node for node in self.graph.nodes()}
 
     def _apply_clifford(self, node: Node, clifford: Clifford) -> None:
+        """Apply a single-qubit Clifford gate to a node.
+
+        This internal method breaks the semantics invariant: the
+        semantics of the pattern is not preserved.
+        """
         spec = self.node_specs[node]
         spec.clifford @= clifford
         spec.domains = clifford.commute_domains(spec.domains)
@@ -324,7 +339,12 @@ class _RemovePauliMeasurements:
         for node in inter:
             self._apply_clifford(node, Clifford.Z)
 
-    def remove_node(self, u: Node) -> None:
+    def _remove_node(self, u: Node) -> None:
+        """Remove a node from the graph.
+
+        This internal method breaks the semantics invariant: the
+        semantics of the pattern is not preserved.
+        """
         spec = self.node_specs[u]
         if spec.pauli_measurement is None:
             msg = "Pauli measurement expected"
@@ -347,7 +367,7 @@ class _RemovePauliMeasurements:
         if sign == Sign.MINUS:
             for node in self.graph.neighbors(u):
                 self._apply_clifford(node, Clifford.Z)
-        self.remove_node(u)
+        self._remove_node(u)
 
     def remove_y(self, u: Node, sign: Sign) -> None:
         """
