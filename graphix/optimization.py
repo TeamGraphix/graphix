@@ -236,9 +236,9 @@ class StandardizedPattern(_StandardizedPattern):
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
 
-        >        Returns
-                -------
-                graph_state: nx.Graph
+        Returns
+        -------
+        graph_state: nx.Graph
         """
         graph: nx.Graph[int] = nx.Graph()
         graph.add_nodes_from(self.input_nodes)
