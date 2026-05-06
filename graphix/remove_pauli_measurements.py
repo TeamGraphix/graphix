@@ -234,7 +234,6 @@ class _RemovePauliMeasurements:
     :meth:`to_standardized_pattern`. The public methods preserve the
     pattern semantics as invariant, such that an equivalent
     standardized pattern can be obtained at any stage of the process.
-
     """
 
     cut: PauliPushingCut
@@ -250,6 +249,9 @@ class _RemovePauliMeasurements:
     """For each axis, the set of non-input nodes that have a Pauli measurement on that axis.
 
     Nodes are given with the indexing of the original pattern: use ``node_map`` to retrieve the index in the graph."""
+
+    input_node_set: set[Node]
+    output_node_set: set[Node]
 
     node_map: dict[Node, Node]
     """Mapping from the nodes of the original pattern to the nodes of the graph (that may have been pivoted).
@@ -276,12 +278,13 @@ class _RemovePauliMeasurements:
             spec = self.node_specs[cmd_m.node]
             spec.index = i
         self.pauli_measurements = {axis: set() for axis in Axis}
-        input_node_set = set(cut.original_pattern.input_nodes)
+        self.input_node_set = set(cut.original_pattern.input_nodes)
+        self.output_node_set = set(cut.original_pattern.output_nodes)
         for cmd_m in self.cut.pauli_measurements:
             if not isinstance(cmd_m.measurement, PauliMeasurement): # pragma: no cover
                 msg = "Pauli measurement expected."
                 raise TypeError(msg)
-            if cmd_m.node not in input_node_set:
+            if cmd_m.node not in self.input_node_set:
                 self.node_specs[cmd_m.node].pauli_measurement = cmd_m.measurement
                 self.pauli_measurements[cmd_m.measurement.axis].add(cmd_m.node)
         self.node_map = {node: node for node in self.graph.nodes()}
@@ -394,7 +397,7 @@ class _RemovePauliMeasurements:
         self.local_complement(u)
         self.remove_z(u, sign)
 
-    def remove_x_with_non_input_neighbor(self, u: Node, v: Node, sign: Sign) -> None:
+    def remove_x_with_internal_neighbor(self, u: Node, v: Node, sign: Sign) -> None:
         """
         Remove X/-X measurement.
 
@@ -407,6 +410,74 @@ class _RemovePauliMeasurements:
         """
         self.pivot_vertices(u, v)
         self.remove_z(v, sign)
+
+    def remove_all_y_or_z(self) -> None:
+        """
+        Remove all Y and Z measurements, repeatedly.
+
+        Implements Theorem 4.12, Steps 1 and 2.
+        """
+        for axis, remove in (
+            (Axis.Y, self.remove_y),  # Step 1: remove any non-input Y measured node
+            (Axis.Z, self.remove_z),  # Step 2: remove any non-input Z measured node
+        ):
+            while True:
+                node = next(iter(self.pauli_measurements[axis]), None)
+                if node is None:
+                    break
+                new_node = self.node_map[node]
+                spec = self.node_specs[new_node]
+                if spec.pauli_measurement is None: # pragma: no cover
+                    msg = "Pauli measurement expected."
+                    raise RuntimeError(msg)
+                remove(new_node, spec.pauli_measurement.sign)
+
+    def try_remove_x_with_internal_neighbor(self) -> bool:
+        """
+        Find an X measurement connected to internal neighbor and remove it if any.
+
+        Implements Theorem 4.12, Step 3.
+
+        Returns
+        -------
+        bool
+            ``True`` if a node has been found and removed, ``False`` otherwise
+        """
+        for node in self.pauli_measurements[Axis.X]:
+            new_node = self.node_map[node]
+            internal_neighbors = set(self.graph.neighbors(new_node)) - self.input_node_set - self.output_node_set
+            if not internal_neighbors:
+                continue
+            v, *_ = internal_neighbors
+            spec = self.node_specs[new_node]
+            if spec.pauli_measurement is None: # pragma: no cover
+                msg = "Pauli measurement expected."
+                raise RuntimeError(msg)
+            self.remove_x_with_internal_neighbor(new_node, v, spec.pauli_measurement.sign)
+            return True
+        return False
+
+    def try_pivot_x_with_output_node(self) -> bool:
+        """
+        Find an X measurement connected to an output node and pivot it if any.
+
+        Implements Theorem 4.12, Step 4.
+
+        Returns
+        -------
+        bool
+            ``True`` if a node has been found and pivoted, ``False`` otherwise
+        """
+        for node in self.pauli_measurements[Axis.X]:
+            new_node = self.node_map[node]
+            non_input_output_nodes = set(self.graph.neighbors(new_node)) & self.output_node_set - self.input_node_set
+            if not non_input_output_nodes:
+                continue
+            v, *_ = non_input_output_nodes
+            self.pivot_vertices(node, v)
+            return True
+        return False
+
 
     def to_standardized_pattern(self) -> StandardizedPattern:
         output_nodes: list[Node | None] = [None] * len(self.cut.original_pattern.output_nodes)
@@ -497,47 +568,9 @@ def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
         The pattern in which Pauli measurements have been removed.
     """
     process = _RemovePauliMeasurements(cut)
-    input_node_set = set(cut.original_pattern.input_nodes)
-    output_node_set = set(cut.original_pattern.output_nodes)
     while True:
-        for axis, remove in (
-            (Axis.Y, process.remove_y),  # Step 1: remove any non-input Y measured node
-            (Axis.Z, process.remove_z),  # Step 2: remove any non-input Z measured node
-        ):
-            while True:
-                node = next(iter(process.pauli_measurements[axis]), None)
-                if node is None:
-                    break
-                new_node = process.node_map[node]
-                spec = process.node_specs[new_node]
-                if spec.pauli_measurement is None: # pragma: no cover
-                    msg = "Pauli measurement expected."
-                    raise RuntimeError(msg)
-                remove(new_node, spec.pauli_measurement.sign)
-
-        # Step 3: remove any non-input X measured node connected to any other internal vertex
-        for node in process.pauli_measurements[Axis.X]:
-            new_node = process.node_map[node]
-            internal_neighbors = set(process.graph.neighbors(new_node)) - input_node_set - output_node_set
-            if not internal_neighbors:
-                continue
-            v, *_ = internal_neighbors
-            spec = process.node_specs[new_node]
-            if spec.pauli_measurement is None: # pragma: no cover
-                msg = "Pauli measurement expected."
-                raise RuntimeError(msg)
-            process.remove_x_with_non_input_neighbor(new_node, v, spec.pauli_measurement.sign)
-            break
-        else:
-            # Step 4: pivot a non-input X measured node connected to an output node if any (Lemma 4.11)
-            for node in process.pauli_measurements[Axis.X]:
-                new_node = process.node_map[node]
-                non_input_output_nodes = set(process.graph.neighbors(new_node)) & output_node_set - input_node_set
-                if not non_input_output_nodes:
-                    continue
-                v, *_ = non_input_output_nodes
-                process.pivot_vertices(node, v)
-                break  # node removed: break for-loop, continue outer while-loop
-            else:
-                break  # no node found: interrupt outer while-loop
+        process.remove_all_y_or_z() # Steps 1 and 2
+        if not process.try_remove_x_with_internal_neighbor(): # Step 3
+            if not process.try_pivot_x_with_output_node(): # Step 4
+                break
     return process.to_standardized_pattern()

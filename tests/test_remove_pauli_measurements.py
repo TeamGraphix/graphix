@@ -148,13 +148,13 @@ def test_remove_y(fx_rng: Generator, node: Node, sign: Sign) -> None:
 
 
 @pytest.mark.parametrize("sign", Sign)
-def test_remove_x_with_non_input_neighbor(fx_rng: Generator, sign: Sign) -> None:
+def test_remove_x_with_internal_neighbor(fx_rng: Generator, sign: Sign) -> None:
     og = opengraph_lemma_2_32({0: PauliMeasurement(Axis.X, sign)})
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
     cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
     remove_pauli_measurements = _RemovePauliMeasurements(cut)
-    remove_pauli_measurements.remove_x_with_non_input_neighbor(0, 1, sign)
+    remove_pauli_measurements.remove_x_with_internal_neighbor(0, 1, sign)
     standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
     pattern2 = standardized_pattern2.to_pattern()
     check_pattern_equivalence(pattern, pattern2, rng=fx_rng)
