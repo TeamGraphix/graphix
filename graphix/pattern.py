@@ -1807,10 +1807,11 @@ class Pattern:
                 the result is ``self``.
 
         """
-        from graphix.remove_pauli_measurements import remove_pauli_measurements  # noqa: PLC0415
+        from graphix.remove_pauli_measurements import PauliPushingCut, remove_pauli_measurements  # noqa: PLC0415
 
         standardized_pattern = optimization.StandardizedPattern.from_pattern(self)
-        standardized_pattern = remove_pauli_measurements(standardized_pattern, stacklevel=stacklevel + 1)
+        cut = PauliPushingCut.from_standardized_pattern(standardized_pattern, stacklevel=stacklevel + 1)
+        standardized_pattern = remove_pauli_measurements(cut)
         pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
         if copy:
             return pattern

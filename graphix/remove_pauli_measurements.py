@@ -152,7 +152,7 @@ class PauliPushingCut:
                         #                = M^{XZ,(s+1)π}
                         #                = S^s M^{-Z}
                         shifted_domains[cmd.node] = s_domain
-                    case _:
+                    case _: # pragma: no cover
                         assert_never(cmd.measurement.axis)
                 pauli_measurements.append(Command.M(node=cmd.node, measurement=cmd.measurement))
         return cls(pattern, pauli_measurements, non_pauli_measurements, shifted_domains)
@@ -238,7 +238,7 @@ class _RemovePauliMeasurements:
     """
 
     cut: PauliPushingCut
-    """Cut of the pattern measurements obtained by Pauli pushing."""
+    """Cut of the pattern measurements obtained by Pauli-pushing."""
 
     graph: Graph
     node_specs: dict[Node, _NodeSpec]
@@ -254,7 +254,8 @@ class _RemovePauliMeasurements:
     node_map: dict[Node, Node]
     """Mapping from the nodes of the original pattern to the nodes of the graph (that may have been pivoted).
 
-    The following invariant is maintained for all node ``u``: ``node_specs[node_map[u]].src == u``."""
+    The following invariant is maintained for all node ``u``: ``node_specs[node_map[u]].src == u``.
+    """
 
     def __init__(self, cut: PauliPushingCut) -> None:
         self.cut = cut
@@ -277,7 +278,7 @@ class _RemovePauliMeasurements:
         self.pauli_measurements = {axis: set() for axis in Axis}
         input_node_set = set(cut.original_pattern.input_nodes)
         for cmd_m in self.cut.pauli_measurements:
-            if not isinstance(cmd_m.measurement, PauliMeasurement):
+            if not isinstance(cmd_m.measurement, PauliMeasurement): # pragma: no cover
                 msg = "Pauli measurement expected."
                 raise TypeError(msg)
             if cmd_m.node not in input_node_set:
@@ -357,7 +358,7 @@ class _RemovePauliMeasurements:
         semantics of the pattern is not preserved.
         """
         spec = self.node_specs[u]
-        if spec.pauli_measurement is None:
+        if spec.pauli_measurement is None: # pragma: no cover
             msg = "Pauli measurement expected"
             raise RuntimeError(msg)
         self.pauli_measurements[spec.pauli_measurement.axis].remove(spec.src)
@@ -400,7 +401,7 @@ class _RemovePauliMeasurements:
         Prerequisite (not checked):
         - u measured in X (sign==PLUS) or -X (sign=MINUS);
         - (u, v) is a graph edge;
-        - u and v are not input nodes.
+        - u and v are internal nodes.
 
         Implements Lemma 4.9 [BMBdF+21].
         """
@@ -472,7 +473,7 @@ def _map_domain(node_map: Mapping[Node, Node], domain: set[Node]) -> set[Node]:
     return {v for node in domain if (v := node_map.get(node)) is not None}
 
 
-def remove_pauli_measurements(pattern: StandardizedPattern, *, stacklevel: int = 1) -> StandardizedPattern:
+def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
     """Remove non-input Pauli measurements from the given pattern.
 
     This function implements the algorithm described in [BMBdF+21],
@@ -487,24 +488,17 @@ def remove_pauli_measurements(pattern: StandardizedPattern, *, stacklevel: int =
 
     Parameters
     ----------
-    pattern: StandardizedPattern
-        Standardized pattern to optimize.
-    stacklevel : int, optional
-        Stack level to use for warnings. Defaults to 1, meaning that warnings
-        are reported at this function's call site.
+    cut: PauliPushingCut
+        The Pauli-pushed pattern to optimize.
 
     Returns
     -------
     StandardizedPattern
-            The pattern in which Pauli measurements have been moved
-            before the other measurements. If ``copy`` is ``False``,
-            the result is ``self``.
-
+        The pattern in which Pauli measurements have been removed.
     """
-    cut = PauliPushingCut.from_standardized_pattern(pattern, stacklevel=stacklevel + 1)
     process = _RemovePauliMeasurements(cut)
-    input_node_set = set(pattern.input_nodes)
-    output_node_set = set(pattern.output_nodes)
+    input_node_set = set(cut.original_pattern.input_nodes)
+    output_node_set = set(cut.original_pattern.output_nodes)
     while True:
         for axis, remove in (
             (Axis.Y, process.remove_y),  # Step 1: remove any non-input Y measured node
@@ -516,7 +510,7 @@ def remove_pauli_measurements(pattern: StandardizedPattern, *, stacklevel: int =
                     break
                 new_node = process.node_map[node]
                 spec = process.node_specs[new_node]
-                if spec.pauli_measurement is None:
+                if spec.pauli_measurement is None: # pragma: no cover
                     msg = "Pauli measurement expected."
                     raise RuntimeError(msg)
                 remove(new_node, spec.pauli_measurement.sign)
@@ -524,12 +518,12 @@ def remove_pauli_measurements(pattern: StandardizedPattern, *, stacklevel: int =
         # Step 3: remove any non-input X measured node connected to any other internal vertex
         for node in process.pauli_measurements[Axis.X]:
             new_node = process.node_map[node]
-            non_input_neighbors = set(process.graph.neighbors(new_node)) - input_node_set
-            if not non_input_neighbors:
-                break
-            v, *_ = non_input_neighbors
+            internal_neighbors = set(process.graph.neighbors(new_node)) - input_node_set - output_node_set
+            if not internal_neighbors:
+                continue
+            v, *_ = internal_neighbors
             spec = process.node_specs[new_node]
-            if spec.pauli_measurement is None:
+            if spec.pauli_measurement is None: # pragma: no cover
                 msg = "Pauli measurement expected."
                 raise RuntimeError(msg)
             process.remove_x_with_non_input_neighbor(new_node, v, spec.pauli_measurement.sign)

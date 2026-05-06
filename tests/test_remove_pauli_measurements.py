@@ -6,7 +6,7 @@ import networkx as nx
 import pytest
 from numpy.random import Generator
 
-from graphix import Axis, BlochMeasurement, Circuit, Measurement, OpenGraph, PauliMeasurement, Sign, StandardizedPattern
+from graphix import Axis, BlochMeasurement, Clifford, Circuit, Command, Measurement, OpenGraph, Pattern, PauliMeasurement, Sign, StandardizedPattern
 from graphix.random_objects import rand_circuit, rand_state_vector
 from graphix.remove_pauli_measurements import PauliPushingCut, _RemovePauliMeasurements, remove_pauli_measurements
 
@@ -159,17 +159,19 @@ def test_remove_x_with_non_input_neighbor(fx_rng: Generator, sign: Sign) -> None
     pattern2 = standardized_pattern2.to_pattern()
     check_pattern_equivalence(pattern, pattern2, rng=fx_rng)
 
-
-def check_circuit(circuit: Circuit, rng: Generator) -> None:
-    pattern = circuit.transpile().pattern
-    standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    standardized_pattern2 = remove_pauli_measurements(standardized_pattern)
-
-    input_node_set = set(standardized_pattern2.input_nodes)
-    assert all(
+def all_bloch_measurement_or_input_node(input_nodes: Iterator[Node], measurement_commands: Iterator[Command.M]) -> bool:
+    input_node_set = set(input_nodes)
+    return all(
         isinstance(cmd_m.measurement, BlochMeasurement) or cmd_m.node in input_node_set
-        for cmd_m in standardized_pattern2.m_list
+        for cmd_m in measurement_commands
     )
+
+def check_pattern(pattern: Pattern, rng: Generator) -> None:
+    standardized_pattern = StandardizedPattern.from_pattern(pattern)
+    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    standardized_pattern2 = remove_pauli_measurements(cut)
+
+    assert all_bloch_measurement_or_input_node(standardized_pattern2.input_nodes, standardized_pattern2.m_list)
 
     # Check that the pattern has a gflow
     standardized_pattern2.to_bloch().extract_gflow()
@@ -181,7 +183,7 @@ def check_circuit(circuit: Circuit, rng: Generator) -> None:
 def test_ccx(fx_rng: Generator) -> None:
     circuit = Circuit(3)
     circuit.ccx(0, 1, 2)
-    check_circuit(circuit, fx_rng)
+    check_pattern(circuit.transpile().pattern, fx_rng)
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -190,7 +192,7 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     nqubits = 4
     depth = 4
     circuit = rand_circuit(nqubits, depth, rng)
-    check_circuit(circuit, rng)
+    check_pattern(circuit.transpile().pattern, rng)
 
 
 def check_pattern_equivalence(pattern: Pattern, pattern2: Pattern, rng: Generator) -> None:
@@ -201,3 +203,49 @@ def check_pattern_equivalence(pattern: Pattern, pattern2: Pattern, rng: Generato
         state = pattern.simulate_pattern(input_state=input_state, rng=rng)
         state2 = pattern2.simulate_pattern(input_state=input_state, rng=rng)
         assert state.isclose(state2)
+
+def test_step_4() -> None:
+    graph: Graph = nx.Graph(
+        [
+            (0, 1),
+            (1, 2)
+        ]
+    )
+    measurements = {0: Measurement.XY(0.25), 1: Measurement.X}
+    output_nodes = tuple(node for node in range(8) if node not in measurements)
+    og = OpenGraph(graph, input_nodes=(0,), output_nodes=(2,), measurements=measurements)
+    pattern = og.to_pattern()
+    standardized_pattern = StandardizedPattern.from_pattern(pattern)
+    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    standardized_pattern2 = remove_pauli_measurements(cut)
+    assert len(standardized_pattern2.m_list) == 1
+
+def test_step_4_no_flow() -> None:
+    pattern = Pattern(input_nodes=(0,), output_nodes=(0,), cmds=[Command.N(1), Command.E((0, 1)), Command.M(1)])
+    standardized_pattern = StandardizedPattern.from_pattern(pattern)
+    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    standardized_pattern2 = remove_pauli_measurements(cut)
+    assert len(standardized_pattern2.m_list) == 1
+
+def test_cliffords_in_original_pattern(fx_rng: Generator) -> None:
+    circuit = Circuit(2)
+    circuit.cnot(0, 1)
+    pattern = circuit.transpile().pattern
+    u, v = pattern.output_nodes
+    pattern.add(Command.C(u, Clifford.S))
+    pattern.add(Command.C(v, Clifford.SDG))
+    check_pattern(pattern, fx_rng)
+
+def test_pattern_remove_pauli_measurements() -> None:
+    circuit = Circuit(2)
+    circuit.cnot(0, 1)
+    pattern = circuit.transpile().pattern
+    pattern2 = pattern.remove_pauli_measurements(copy=True)
+    assert all_bloch_measurement_or_input_node(pattern2.input_nodes, (cmd for cmd in pattern2 if isinstance(cmd, Command.M)))
+    assert not pattern2.is_standard()
+    pattern3 = pattern.remove_pauli_measurements(copy=True, standardize=True)
+    assert all_bloch_measurement_or_input_node(pattern3.input_nodes, (cmd for cmd in pattern3 if isinstance(cmd, Command.M)))
+    assert pattern3.is_standard()
+    assert not all_bloch_measurement_or_input_node(pattern.input_nodes, (cmd for cmd in pattern if isinstance(cmd, Command.M)))
+    pattern.remove_pauli_measurements()
+    assert all_bloch_measurement_or_input_node(pattern.input_nodes, (cmd for cmd in pattern if isinstance(cmd, Command.M)))
