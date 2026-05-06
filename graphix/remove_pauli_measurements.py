@@ -152,7 +152,7 @@ class PauliPushingCut:
                         #                = M^{XZ,(s+1)π}
                         #                = S^s M^{-Z}
                         shifted_domains[cmd.node] = s_domain
-                    case _: # pragma: no cover
+                    case _:  # pragma: no cover
                         assert_never(cmd.measurement.axis)
                 pauli_measurements.append(Command.M(node=cmd.node, measurement=cmd.measurement))
         return cls(pattern, pauli_measurements, non_pauli_measurements, shifted_domains)
@@ -281,7 +281,7 @@ class _RemovePauliMeasurements:
         self.input_node_set = set(cut.original_pattern.input_nodes)
         self.output_node_set = set(cut.original_pattern.output_nodes)
         for cmd_m in self.cut.pauli_measurements:
-            if not isinstance(cmd_m.measurement, PauliMeasurement): # pragma: no cover
+            if not isinstance(cmd_m.measurement, PauliMeasurement):  # pragma: no cover
                 msg = "Pauli measurement expected."
                 raise TypeError(msg)
             if cmd_m.node not in self.input_node_set:
@@ -361,7 +361,7 @@ class _RemovePauliMeasurements:
         semantics of the pattern is not preserved.
         """
         spec = self.node_specs[u]
-        if spec.pauli_measurement is None: # pragma: no cover
+        if spec.pauli_measurement is None:  # pragma: no cover
             msg = "Pauli measurement expected"
             raise RuntimeError(msg)
         self.pauli_measurements[spec.pauli_measurement.axis].remove(spec.src)
@@ -427,7 +427,7 @@ class _RemovePauliMeasurements:
                     break
                 new_node = self.node_map[node]
                 spec = self.node_specs[new_node]
-                if spec.pauli_measurement is None: # pragma: no cover
+                if spec.pauli_measurement is None:  # pragma: no cover
                     msg = "Pauli measurement expected."
                     raise RuntimeError(msg)
                 remove(new_node, spec.pauli_measurement.sign)
@@ -450,7 +450,7 @@ class _RemovePauliMeasurements:
                 continue
             v, *_ = internal_neighbors
             spec = self.node_specs[new_node]
-            if spec.pauli_measurement is None: # pragma: no cover
+            if spec.pauli_measurement is None:  # pragma: no cover
                 msg = "Pauli measurement expected."
                 raise RuntimeError(msg)
             self.remove_x_with_internal_neighbor(new_node, v, spec.pauli_measurement.sign)
@@ -477,7 +477,6 @@ class _RemovePauliMeasurements:
             self.pivot_vertices(node, v)
             return True
         return False
-
 
     def to_standardized_pattern(self) -> StandardizedPattern:
         output_nodes: list[Node | None] = [None] * len(self.cut.original_pattern.output_nodes)
@@ -569,8 +568,10 @@ def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
     """
     process = _RemovePauliMeasurements(cut)
     while True:
-        process.remove_all_y_or_z() # Steps 1 and 2
-        if not process.try_remove_x_with_internal_neighbor(): # Step 3
-            if not process.try_pivot_x_with_output_node(): # Step 4
-                break
+        process.remove_all_y_or_z()  # Steps 1 and 2
+        if (
+            not process.try_remove_x_with_internal_neighbor()  # Step 3
+            and not process.try_pivot_x_with_output_node()  # Step 4
+        ):
+            break
     return process.to_standardized_pattern()
