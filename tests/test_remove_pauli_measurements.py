@@ -193,6 +193,16 @@ def check_pattern(pattern: Pattern, rng: Generator) -> None:
     check_pattern_equivalence(pattern, pattern2, rng=rng)
 
 
+def check_pattern_equivalence(pattern: Pattern, pattern2: Pattern, rng: Generator) -> None:
+    pattern.minimize_space()
+    pattern2.minimize_space()
+    for _ in range(4):
+        input_state = rand_state_vector(len(pattern.input_nodes), rng=rng)
+        state = pattern.simulate_pattern(input_state=input_state, rng=rng)
+        state2 = pattern2.simulate_pattern(input_state=input_state, rng=rng)
+        assert state.isclose(state2)
+
+
 def test_ccx(fx_rng: Generator) -> None:
     circuit = Circuit(3)
     circuit.ccx(0, 1, 2)
@@ -206,16 +216,6 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     depth = 4
     circuit = rand_circuit(nqubits, depth, rng)
     check_pattern(circuit.transpile().pattern, rng)
-
-
-def check_pattern_equivalence(pattern: Pattern, pattern2: Pattern, rng: Generator) -> None:
-    pattern.minimize_space()
-    pattern2.minimize_space()
-    for _ in range(4):
-        input_state = rand_state_vector(len(pattern.input_nodes), rng=rng)
-        state = pattern.simulate_pattern(input_state=input_state, rng=rng)
-        state2 = pattern2.simulate_pattern(input_state=input_state, rng=rng)
-        assert state.isclose(state2)
 
 
 def test_step_4() -> None:
@@ -268,3 +268,17 @@ def test_pattern_remove_pauli_measurements() -> None:
     assert all_bloch_measurement_or_input_node(
         pattern.input_nodes, (cmd for cmd in pattern if isinstance(cmd, Command.M))
     )
+
+
+def test_pattern_remove_pauli_measurements_output_nodes() -> None:
+    og = OpenGraph(
+        graph=nx.Graph([(1, 2)]),
+        input_nodes=[],
+        output_nodes=[2],
+        measurements={
+            1: Measurement.X,
+        },
+    )
+    pattern = og.to_pattern()
+    pattern.remove_pauli_measurements()
+    pattern.simulate_pattern()

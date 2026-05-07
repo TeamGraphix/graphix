@@ -37,9 +37,9 @@ from graphix.measurements import PauliMeasurement
 from graphix.optimization import StandardizedPattern
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
-    from typing import TypeAlias, TypeVar
+    from typing import TypeAlias
 
     import networkx as nx
 
@@ -79,10 +79,13 @@ class PauliPushingCut:
         """Move Pauli measurements before the other measurements and return the cut between Pauli measurements and non-Pauli measurements.
 
         If you only need the resulting pattern, you can use
-        :meth:`perform_pauli_pushing` instead.
+        :meth:`StandardizedPattern.perform_pauli_pushing` or
+        :meth:`~graphix.pattern.Pattern.perform_pauli_pushing` instead.
 
         Parameters
         ----------
+        pattern: StandardizedPattern
+            The pattern to reorder.
         leave_nodes : AbstractSet[Node], optional
             Nodes that should not be moved. This constraint only
             applies to Pauli nodes and has no effect on non-Pauli nodes.
@@ -209,15 +212,6 @@ class _NodeSpec:
     """Correction domains (the nodes refer to the numbering of the original pattern)."""
 
     clifford: Clifford = Clifford.I
-    is_output: bool = False
-
-    index: int = 0
-    """Index of the node in the original pattern.
-
-    For output node, this is the index in the output node list of the
-    original pattern. For measured nodes, this is the index of the
-    measurement in the measurement sequence (after Pauli pushing).
-    """
 
     pauli_measurement: PauliMeasurement | None = None
     """Pauli measurement if the node is not an input and is measured with a Pauli measurement.
@@ -269,14 +263,7 @@ class _RemovePauliMeasurements:
             self.node_specs[node].domains.t_domain = _expand_domain(cut.shifted_domains, domain)
         for node, clifford in cut.original_pattern.c_dict.items():
             self.node_specs[node].clifford = clifford
-        for i, node in enumerate(cut.original_pattern.output_nodes):
-            spec = self.node_specs[node]
-            spec.is_output = True
-            spec.index = i
         self.measurements = cut.measurements()
-        for i, cmd_m in enumerate(self.measurements):
-            spec = self.node_specs[cmd_m.node]
-            spec.index = i
         self.pauli_measurements = {axis: set() for axis in Axis}
         self.input_node_set = set(cut.original_pattern.input_nodes)
         self.output_node_set = set(cut.original_pattern.output_nodes)
@@ -328,7 +315,7 @@ class _RemovePauliMeasurements:
         - (u, v) is a graph edge;
         - u and v are not input nodes.
 
-        Implements Lemmate 2.32 and 4.5 [BMBdF+21].
+        Implements Lemmas 2.32 and 4.5 [BMBdF+21].
         """
         n_u = set(self.graph.neighbors(u))
         n_v = set(self.graph.neighbors(v))
@@ -421,10 +408,7 @@ class _RemovePauliMeasurements:
             (Axis.Y, self.remove_y),  # Step 1: remove any non-input Y measured node
             (Axis.Z, self.remove_z),  # Step 2: remove any non-input Z measured node
         ):
-            while True:
-                node = next(iter(self.pauli_measurements[axis]), None)
-                if node is None:
-                    break
+            while (node := next(iter(self.pauli_measurements[axis]), None)) is not None:
                 new_node = self.node_map[node]
                 spec = self.node_specs[new_node]
                 if spec.pauli_measurement is None:  # pragma: no cover
@@ -446,9 +430,9 @@ class _RemovePauliMeasurements:
         for node in self.pauli_measurements[Axis.X]:
             new_node = self.node_map[node]
             internal_neighbors = set(self.graph.neighbors(new_node)) - self.input_node_set - self.output_node_set
-            if not internal_neighbors:
+            v = next(iter(internal_neighbors), None)
+            if v is None:
                 continue
-            v, *_ = internal_neighbors
             spec = self.node_specs[new_node]
             if spec.pauli_measurement is None:  # pragma: no cover
                 msg = "Pauli measurement expected."
@@ -471,41 +455,46 @@ class _RemovePauliMeasurements:
         for node in self.pauli_measurements[Axis.X]:
             new_node = self.node_map[node]
             non_input_output_nodes = set(self.graph.neighbors(new_node)) & self.output_node_set - self.input_node_set
-            if not non_input_output_nodes:
+            v = next(iter(non_input_output_nodes), None)
+            if v is None:
                 continue
-            v, *_ = non_input_output_nodes
             self.pivot_vertices(node, v)
             return True
         return False
 
+    def _create_new_m(self, original_m: Command.M) -> Command.M | None:
+        node = self.node_map.get(original_m.node)
+        if node is None:
+            return None
+        spec = self.node_specs[node]
+        new_m = original_m.clifford(spec.clifford)
+        new_m.node = node
+        new_m.s_domain = _map_domain(self.node_map, new_m.s_domain)
+        new_m.t_domain = _map_domain(self.node_map, new_m.t_domain)
+        return new_m
+
     def to_standardized_pattern(self) -> StandardizedPattern:
-        output_nodes: list[Node | None] = [None] * len(self.cut.original_pattern.output_nodes)
-        measurements: list[Command.M | None] = [None] * len(self.measurements)
-        z_dict: dict[Node, set[int]] = {}
-        x_dict: dict[Node, set[int]] = {}
-        c_dict: dict[Node, Clifford] = {}
-        for node, spec in self.node_specs.items():
-            if spec.is_output:
-                output_nodes[spec.index] = node
-                if spec.domains.t_domain:
-                    z_dict[node] = _map_domain(self.node_map, spec.domains.t_domain)
-                if spec.domains.s_domain:
-                    x_dict[node] = _map_domain(self.node_map, spec.domains.s_domain)
-                if spec.clifford != Clifford.I:
-                    c_dict[node] = spec.clifford
-            else:
-                cmd_m = self.measurements[spec.index].clifford(spec.clifford)
-                cmd_m.node = node
-                cmd_m.s_domain = _map_domain(self.node_map, cmd_m.s_domain)
-                cmd_m.t_domain = _map_domain(self.node_map, cmd_m.t_domain)
-                measurements[spec.index] = cmd_m
+        n_list = tuple(cmd_n for cmd_n in self.cut.original_pattern.n_list if cmd_n.node in self.node_specs)
+        output_nodes = tuple(self.node_map[node] for node in self.cut.original_pattern.output_nodes)
+        measurements = tuple(new_m for original_m in self.measurements if (new_m := self._create_new_m(original_m)))
+        z_dict = {
+            node: t_domain
+            for node in output_nodes
+            if (t_domain := _map_domain(self.node_map, self.node_specs[node].domains.t_domain))
+        }
+        x_dict = {
+            node: s_domain
+            for node in output_nodes
+            if (s_domain := _map_domain(self.node_map, self.node_specs[node].domains.s_domain))
+        }
+        c_dict = {node: clifford for node in output_nodes if (clifford := self.node_specs[node].clifford) != Clifford.I}
         return StandardizedPattern(
             self.cut.original_pattern.input_nodes,
-            _filter_none(output_nodes),
+            output_nodes,
             self.cut.original_pattern.results,
-            (cmd_n for cmd_n in self.cut.original_pattern.n_list if cmd_n.node in self.node_specs),
-            (frozenset(edge) for edge in self.graph.edges()),
-            _filter_none(measurements),
+            n_list,
+            self.graph.edges(),
+            measurements,
             c_dict,
             z_dict,
             x_dict,
@@ -514,8 +503,8 @@ class _RemovePauliMeasurements:
 
 def _complement_subgraph(graph: nx.Graph[Node], s: set[Node]) -> None:
     """Complement edges in a given subgraph."""
-    all_pairs = {(u, v) for u, v in itertools.combinations(s, 2)}
-    existing = {edge for edge in all_pairs if edge in graph.edges()}
+    all_pairs = set(itertools.combinations(s, 2))
+    existing = all_pairs & graph.edges()
     graph.remove_edges_from(existing)
     graph.add_edges_from(all_pairs - existing)
 
@@ -523,20 +512,12 @@ def _complement_subgraph(graph: nx.Graph[Node], s: set[Node]) -> None:
 def _complement_edges(graph: nx.Graph[Node], s: set[Node], t: set[Node]) -> None:
     """Complement edges between two set of nodes.
 
-    s and t are supposed to be disjoint.
+    ``s`` and ``t`` are supposed to be disjoint.
     """
     all_pairs = {(u, v) for u in s for v in t}
     existing = {(u, v) for u, v in graph.edges(s) if v in t}
     graph.remove_edges_from(existing)
     graph.add_edges_from(all_pairs - existing)
-
-
-if TYPE_CHECKING:
-    T = TypeVar("T")
-
-
-def _filter_none(it: Iterable[T | None]) -> list[T]:
-    return [elt for elt in it if elt is not None]
 
 
 def _map_domain(node_map: Mapping[Node, Node], domain: set[Node]) -> set[Node]:

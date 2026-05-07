@@ -268,10 +268,9 @@ class StandardizedPattern(_StandardizedPattern):
 
         Returns
         -------
-        Pattern
+        StandardizedPattern
             The pattern in which Pauli measurements have been moved
             before the other measurements.
-
         """
         from graphix.remove_pauli_measurements import PauliPushingCut  # noqa: PLC0415
 

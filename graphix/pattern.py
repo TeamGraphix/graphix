@@ -1785,8 +1785,6 @@ class Pattern:
 
         Parameters
         ----------
-        pattern: StandardizedPattern
-            Standardized pattern to optimize.
         copy : bool, optional
             If ``True``, the current pattern remains unchanged and a
             new pattern is returned. The default is ``False``, meaning
@@ -1801,11 +1799,10 @@ class Pattern:
 
         Returns
         -------
-        StandardizedPattern
+        Pattern
                 The pattern in which Pauli measurements have been moved
                 before the other measurements. If ``copy`` is ``False``,
                 the result is ``self``.
-
         """
         from graphix.remove_pauli_measurements import PauliPushingCut, remove_pauli_measurements  # noqa: PLC0415
 
@@ -1816,6 +1813,7 @@ class Pattern:
         if copy:
             return pattern
         self.__seq = pattern.__seq
+        self.__output_nodes = pattern.__output_nodes
         return self
 
 
