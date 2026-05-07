@@ -60,10 +60,10 @@ class PauliPushingCut:
 
     original_pattern: StandardizedPattern
 
-    pauli_measurements: list[Command.M]
+    pauli_measurements: tuple[Command.M, ...]
     """Pauli measurements: they are all applied before non-Pauli measurements and their domains are empty."""
 
-    non_pauli_measurements: list[Command.M]
+    non_pauli_measurements: tuple[Command.M, ...]
 
     shifted_domains: dict[int, set[int]]
     """The shifted domains.
@@ -71,6 +71,11 @@ class PauliPushingCut:
     The output of the original pattern can be retrieved by using
     :func:`~graphix.pattern.shift_outcomes` with these domains.
     """
+
+    @property
+    def measurements(self) -> tuple[Command.M, ...]:
+        """Return the list of measurements, where Pauli measurements appear first and without signal."""
+        return self.pauli_measurements + self.non_pauli_measurements
 
     @classmethod
     def from_standardized_pattern(
@@ -158,11 +163,7 @@ class PauliPushingCut:
                     case _:  # pragma: no cover
                         assert_never(cmd.measurement.axis)
                 pauli_measurements.append(Command.M(node=cmd.node, measurement=cmd.measurement))
-        return cls(pattern, pauli_measurements, non_pauli_measurements, shifted_domains)
-
-    def measurements(self) -> list[Command.M]:
-        """Return the list of measurements, where Pauli measurements appear first and without signal."""
-        return self.pauli_measurements + self.non_pauli_measurements
+        return cls(pattern, tuple(pauli_measurements), tuple(non_pauli_measurements), shifted_domains)
 
     def to_standardized_pattern(self) -> StandardizedPattern:
         """Return the standardized pattern where all Pauli measurements have been pushed."""
@@ -172,7 +173,7 @@ class PauliPushingCut:
             self.original_pattern.results,
             self.original_pattern.n_list,
             self.original_pattern.e_set,
-            self.measurements(),
+            self.measurements,
             self.original_pattern.c_dict,
             _expand_corrections(self.shifted_domains, self.original_pattern.z_dict),
             _expand_corrections(self.shifted_domains, self.original_pattern.x_dict),
@@ -236,7 +237,7 @@ class _RemovePauliMeasurements:
     graph: Graph
     node_specs: dict[Node, _NodeSpec]
 
-    measurements: list[Command.M]
+    measurements: tuple[Command.M, ...]
     """List of the original measurements after Pauli-pushing."""
 
     pauli_measurements: dict[Axis, set[Node]]
@@ -263,7 +264,7 @@ class _RemovePauliMeasurements:
             self.node_specs[node].domains.t_domain = _expand_domain(cut.shifted_domains, domain)
         for node, clifford in cut.original_pattern.c_dict.items():
             self.node_specs[node].clifford = clifford
-        self.measurements = cut.measurements()
+        self.measurements = cut.measurements
         self.pauli_measurements = {axis: set() for axis in Axis}
         self.input_node_set = set(cut.original_pattern.input_nodes)
         self.output_node_set = set(cut.original_pattern.output_nodes)
