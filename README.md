@@ -69,7 +69,7 @@ pattern.draw_graph(flow_from_pattern=False)
 ### preprocessing Pauli measurements (Clifford gates)
 
 ```python
-pattern.perform_pauli_measurements()
+pattern.remove_pauli_measurements()
 pattern.draw_graph()
 ```
 

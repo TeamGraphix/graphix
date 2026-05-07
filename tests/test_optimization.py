@@ -66,8 +66,7 @@ def test_incorporate_pauli_results(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
+    pattern.remove_pauli_measurements()
     pattern2 = incorporate_pauli_results(pattern)
     state = pattern.simulate_pattern(rng=rng)
     state2 = pattern2.simulate_pattern(rng=rng)
@@ -83,11 +82,10 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    # pattern.move_pauli_measurements_to_the_front()
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
-    pattern2 = incorporate_pauli_results(pattern)
-    gflow = pattern2.extract_gflow()
+    pattern.remove_pauli_measurements()
+    # We should convert to Bloch measurement the remaining Pauli
+    # measurements on input nodes.
+    gflow = pattern.to_bloch().extract_gflow()
     gflow.check_well_formed()
 
 
@@ -100,8 +98,7 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
+    pattern.remove_pauli_measurements()
     pattern2 = remove_useless_domains(pattern)
     state = pattern.simulate_pattern(rng=rng)
     state2 = pattern2.simulate_pattern(rng=rng)

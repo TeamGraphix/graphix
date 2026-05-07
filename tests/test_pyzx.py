@@ -78,8 +78,7 @@ def test_random_clifford_t() -> None:
 
 
 def simulate_pattern(pattern: Pattern, rng: Generator) -> Statevec:
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
+    pattern.remove_pauli_measurements()
     pattern.minimize_space()
     return pattern.simulate_pattern(rng=rng)
 

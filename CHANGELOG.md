@@ -11,11 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #490: Introduced new `Instruction` and `Command` namespace classes for instruction and command instantiation.
 
-- #476 Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
+- #476: Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
 
 ### Fixed
 
 ### Changed
+
+- #168, #498: `Pattern.remove_pauli_measurements` replaces `Pattern.perform_pauli_measurements`: the new algorithm removes all non-input Pauli nodes from patterns with flow and returns a pattern
 
 - #490: Exposed more common classes and methods to top level `__init__.py`.
   - Renamed `Instruction`, `InstructionWithoutRZZ` and `Command` to `InstructionType`, `InstructionTypeWithoutRZZ` and `CommandType` respectively.

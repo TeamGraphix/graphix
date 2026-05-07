@@ -66,7 +66,7 @@ def qasm3_gate_call(gate: str, operands: Iterable[str], args: Iterable[str] | No
 
 def angle_to_qasm3(angle: ParameterizedAngle) -> str:
     """Get the OpenQASM3 representation of an angle."""
-    if not isinstance(angle, float):
+    if not isinstance(angle, (int, float)):
         raise TypeError("QASM export of symbolic pattern is not supported")
     return angle_to_str(angle, output=OutputFormat.ASCII, multiplication_sign=True)
 

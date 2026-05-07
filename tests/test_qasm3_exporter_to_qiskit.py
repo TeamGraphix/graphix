@@ -119,8 +119,7 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=rng)
     pattern = circuit.transpile().pattern
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
+    pattern.remove_pauli_measurements()
     pattern.minimize_space()
 
     # qiskit_qasm3_import.exceptions.ConversionError: initialisation of classical bits is not supported

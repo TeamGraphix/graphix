@@ -83,9 +83,8 @@ print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 
 # %%
-# Optimizing by performing Pauli measurements in the pattern using efficient stabilizer simulator.
-pattern.remove_input_nodes()
-pattern.perform_pauli_measurements()
+# Optimizing by performing Pauli measurements in the pattern.
+pattern.remove_pauli_measurements()
 
 # %%
 # Simulate using the TN backend of graphix, which will return an MBQCTensorNet object.
@@ -202,8 +201,7 @@ def cost(
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
+    pattern.remove_pauli_measurements()
     mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
     exp_val: float = 0
     for op in ham:

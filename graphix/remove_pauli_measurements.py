@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from warnings import warn
 
+import networkx as nx
 from typing_extensions import assert_never
 
 from graphix.clifford import Clifford, Domains
@@ -41,14 +42,11 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import TypeAlias
 
-    import networkx as nx
-
     from graphix.command import Node
 
     Graph: TypeAlias = nx.Graph[int]
 else:
-    # The type is quoted because we don't need to import `nx`.
-    Graph = "nx.Graph"
+    Graph = nx.Graph
 
 
 @dataclass(frozen=True, slots=True)
@@ -342,6 +340,16 @@ class _RemovePauliMeasurements:
         for node in inter:
             self._apply_clifford(node, Clifford.Z)
 
+        u_output = u in self.output_node_set
+        v_output = v in self.output_node_set
+        if u_output != v_output:
+            if u_output:
+                old_output, new_output = u, v
+            else:
+                old_output, new_output = v, u
+            self.output_node_set.remove(old_output)
+            self.output_node_set.add(new_output)
+
     def _remove_node(self, u: Node) -> None:
         """Remove a node from the graph.
 
@@ -349,10 +357,8 @@ class _RemovePauliMeasurements:
         semantics of the pattern is not preserved.
         """
         spec = self.node_specs[u]
-        if spec.pauli_measurement is None:  # pragma: no cover
-            msg = "Pauli measurement expected"
-            raise RuntimeError(msg)
-        self.pauli_measurements[spec.pauli_measurement.axis].remove(spec.src)
+        if spec.pauli_measurement is not None:
+            self.pauli_measurements[spec.pauli_measurement.axis].remove(spec.src)
         del self.node_map[spec.src]
         del self.node_specs[u]
         self.graph.remove_node(u)
@@ -463,6 +469,14 @@ class _RemovePauliMeasurements:
             return True
         return False
 
+    def remove_isolated_internal_nodes(self) -> None:
+        """Remove isolated internal nodes."""
+        # Construct the list first since the graph should not be
+        # modified while enumerating isolated nodes.
+        for node in list(nx.isolates(self.graph)):
+            if node not in self.input_node_set and node not in self.output_node_set:
+                self._remove_node(node)
+
     def _create_new_m(self, original_m: Command.M) -> Command.M | None:
         node = self.node_map.get(original_m.node)
         if node is None:
@@ -556,4 +570,5 @@ def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
             and not process.try_pivot_x_with_output_node()  # Step 4
         ):
             break
+    process.remove_isolated_internal_nodes()
     return process.to_standardized_pattern()
