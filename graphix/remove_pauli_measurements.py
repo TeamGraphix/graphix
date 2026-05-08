@@ -482,9 +482,6 @@ class _RemovePauliMeasurements:
             if node not in self.input_node_set and node not in self.output_node_set:
                 self._remove_node(node)
 
-    def transform_input_hadamard(self) -> None:
-        for node in list()
-
     def _create_new_m(self, original_m: Command.M) -> Command.M | None:
         node = self.node_map.get(original_m.node)
         if node is None:
