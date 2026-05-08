@@ -244,7 +244,10 @@ class _RemovePauliMeasurements:
     Nodes are given with the indexing of the original pattern: use ``node_map`` to retrieve the index in the graph."""
 
     input_node_set: set[Node]
+    """Set of input nodes: inputs nodes are never pivoted, therefore their indexing is preserved."""
+
     output_node_set: set[Node]
+    """Set of output nodes, using the new indexing."""
 
     node_map: dict[Node, Node]
     """Mapping from the nodes of the original pattern to the nodes of the graph (that may have been pivoted).
@@ -476,6 +479,9 @@ class _RemovePauliMeasurements:
         for node in list(nx.isolates(self.graph)):
             if node not in self.input_node_set and node not in self.output_node_set:
                 self._remove_node(node)
+
+    def transform_input_hadamard(self) -> None:
+        for node in list()
 
     def _create_new_m(self, original_m: Command.M) -> Command.M | None:
         node = self.node_map.get(original_m.node)
