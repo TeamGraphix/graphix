@@ -213,9 +213,9 @@ class _NodeSpec:
     clifford: Clifford = Clifford.I
 
     pauli_measurement: PauliMeasurement | None = None
-    """Pauli measurement if the node is not an input and is measured with a Pauli measurement.
+    """Pauli measurement if the node is measured with a Pauli measurement.
 
-    ``None`` if the node is an input, an output, or measured with a non-Pauli measurement.
+    ``None`` if the node is an output or measured with a non-Pauli measurement.
     """
 
 
@@ -273,8 +273,8 @@ class _RemovePauliMeasurements:
             if not isinstance(cmd_m.measurement, PauliMeasurement):  # pragma: no cover
                 msg = "Pauli measurement expected."
                 raise TypeError(msg)
+            self.node_specs[cmd_m.node].pauli_measurement = cmd_m.measurement
             if cmd_m.node not in self.input_node_set:
-                self.node_specs[cmd_m.node].pauli_measurement = cmd_m.measurement
                 self.pauli_measurements[cmd_m.measurement.axis].add(cmd_m.node)
         self.node_map = {node: node for node in self.graph.nodes()}
 
@@ -290,6 +290,8 @@ class _RemovePauliMeasurements:
         if spec.pauli_measurement is not None:
             axis = spec.pauli_measurement.axis
             spec.pauli_measurement = spec.pauli_measurement.clifford(clifford)
+            if node in self.input_node_set:
+                return
             new_axis = spec.pauli_measurement.axis
             if new_axis != axis:
                 self.pauli_measurements[axis].remove(spec.src)
