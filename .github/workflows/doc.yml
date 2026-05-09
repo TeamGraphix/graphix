@@ -67,7 +67,7 @@ jobs:
           # CI succeeds with version 10.33.4:
           # https://github.com/TeamGraphix/graphix/actions/runs/25476469782/job/74750924624
           corepack prepare pnpm@10.33.4 --activate
-          # corepack enable pnpm
+          corepack enable pnpm
           pnpm dlx prettier --write .
 
       - uses: reviewdog/action-suggester@v1.22.0
