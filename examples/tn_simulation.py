@@ -84,6 +84,7 @@ print(f"Number of edges: {len(graph.edges)}")
 
 # %%
 # Optimizing by removing Pauli measurements in the pattern.
+pattern.remove_input_nodes()
 pattern.remove_pauli_measurements(standardize=True)
 
 # %%
@@ -201,6 +202,7 @@ def cost(
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
+    pattern.remove_input_nodes()
     pattern.remove_pauli_measurements(standardize=True)
     mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
     exp_val: float = 0
