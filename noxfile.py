@@ -109,16 +109,9 @@ class ReverseDependency:
     "package",
     [
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="fix/graphix_namespace"),
-        ReverseDependency(
-            "https://github.com/TeamGraphix/graphix-symbolic",
-        ),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
-        ReverseDependency(
-            "https://github.com/thierry-martinez/veriphix",
-            doctest_modules=False,
-            install_target=".[dev]",
-            branch="fix/graphix_namespace",
-        ),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+        ReverseDependency("https://github.com/qat-inria/veriphix", doctest_modules=False, install_target=".[dev]"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
         ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler", branch="ps_dim"),
     ],
