@@ -59,7 +59,15 @@ jobs:
       - uses: actions/setup-node@v4
 
       - run: |
-          corepack enable pnpm
+          # Pin pnpm to the latest version reported to work
+          #
+          # CI fails with version 11.0.9:
+          # https://github.com/TeamGraphix/graphix/actions/runs/25607609586/job/75172334745
+          #
+          # CI succeeds with version 10.33.4:
+          # https://github.com/TeamGraphix/graphix/actions/runs/25476469782/job/74750924624
+          corepack prepare pnpm@10.33.4 --activate
+          # corepack enable pnpm
           pnpm dlx prettier --write .
 
       - uses: reviewdog/action-suggester@v1.22.0
