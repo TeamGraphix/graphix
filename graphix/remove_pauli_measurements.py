@@ -165,7 +165,6 @@ class PauliPushingCut:
         return StandardizedPattern(
             self.original_pattern.input_nodes,
             self.original_pattern.output_nodes,
-            self.original_pattern.results,
             self.original_pattern.n_list,
             self.original_pattern.e_set,
             self.measurements,
@@ -508,7 +507,6 @@ class _RemovePauliMeasurements:
         return StandardizedPattern(
             self.cut.original_pattern.input_nodes,
             output_nodes,
-            self.cut.original_pattern.results,
             n_list,
             self.graph.edges(),
             measurements,

@@ -75,27 +75,8 @@ class Pattern:
     efficiency of the pattern accoring to measurement calculus.
 
     ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
-
-    Attributes
-    ----------
-    list(self) :
-        list of commands.
-
-        .. line-block::
-            each command is a list [type, nodes, attr] which will be applied in the order of list indices.
-            type: one of {'N', 'M', 'E', 'X', 'Z', 'S', 'C'}
-            nodes: int for {'N', 'M', 'X', 'Z', 'S', 'C'} commands, tuple (i, j) for {'E'} command
-            attr for N: none
-            attr for M: meas_plane, angle, s_domain, t_domain
-            attr for X: signal_domain
-            attr for Z: signal_domain
-            attr for S: signal_domain
-            attr for C: clifford_index, as defined in :py:mod:`graphix.clifford`
-    n_node : int
-        total number of nodes in the resource state
     """
 
-    results: dict[int, Outcome]
     __seq: list[CommandType]
 
     def __init__(
@@ -116,7 +97,6 @@ class Pattern:
         output_nodes : Iterable[int] | None
             Optional. List of output qubits.
         """
-        self.results = {}  # measurement results from the graph state simulator
         if input_nodes is None:
             self.__input_nodes = []
         else:
@@ -224,8 +204,8 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern ``self`` followed by those of the pattern ``other``. Merged nodes are removed.
         - If ``preserve_mapping = True`` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern ``self``, where the nth merged output is replaced by the output of pattern ``other`` corresponding to its nth input instead.
         """
-        nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
-        nodes_p2 = other.extract_nodes() | other.results.keys()
+        nodes_p1 = self.extract_nodes()  # Results contain preprocessed Pauli nodes
+        nodes_p2 = other.extract_nodes()
 
         if not mapping.keys() <= nodes_p2:
             raise PatternError("Keys of `mapping` must correspond to the nodes of `other`.")
@@ -263,7 +243,6 @@ class Pattern:
 
         mapped_inputs = [mapping_complete[n] for n in other.input_nodes]
         mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
-        mapped_results: dict[int, Outcome] = {mapping_complete[n]: m for n, m in other.results.items()}
 
         merged = mapping_values_set.intersection(self.__output_nodes)
 
@@ -304,9 +283,7 @@ class Pattern:
 
         seq = self.__seq + [update_command(c) for c in other]
 
-        results: dict[int, Outcome] = {**self.results, **mapped_results}
         p = Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq)
-        p.results = results
 
         return p, mapping_complete
 
@@ -384,7 +361,6 @@ class Pattern:
             self.__seq == other.__seq
             and self.__input_nodes == other.__input_nodes
             and self.__output_nodes == other.__output_nodes
-            and self.results == other.results
         )
 
     def to_ascii(
@@ -1567,7 +1543,6 @@ class Pattern:
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
         result.__n_node = self.__n_node
-        result.results = self.results.copy()
         return result
 
     def check_runnability(self) -> None:
@@ -1585,7 +1560,7 @@ class Pattern:
         have hidden domains that cannot be checked.
         """
         active = set(self.input_nodes)
-        measured = set(self.results)
+        measured = set()
 
         def check_active(cmd: CommandType, node: int) -> None:
             if node in measured:
@@ -1654,7 +1629,6 @@ class Pattern:
         Pattern(input_nodes=[0], cmds=[M(0, Measurement.XZ(1.25))])
         """
         new_pattern = Pattern(input_nodes=self.input_nodes)
-        new_pattern.results = self.results
 
         for cmd in self:
             if cmd.kind == CommandKind.M:
@@ -1893,8 +1867,8 @@ def shift_outcomes(outcomes: Mapping[int, Outcome], signal_dict: Mapping[int, Ab
 
     This method updates the given ``outcomes`` by swapping the
     measurements affected by signals. This can be used either to
-    transform the value of :data:`Pattern.results` into measurements
-    observed in the unshifted pattern, or vice versa.
+    transform the results into measurements observed in the unshifted
+    pattern, or vice versa.
 
     Parameters
     ----------

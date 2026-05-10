@@ -110,7 +110,6 @@ def standardized_to_space_optimal_pattern(pattern: StandardizedPattern) -> Patte
 
     """
     target = graphix.Pattern(input_nodes=pattern.input_nodes)
-    target.results = dict(pattern.results)
     initialized = set(pattern.input_nodes)
     done: set[Node] = set()
     n_dict = {n.node: n for n in pattern.n_list}
@@ -229,8 +228,6 @@ class SpaceMinimizationHeuristics:
         nodes = set(graph.nodes)
         not_measured = nodes - set(pattern.output_nodes)
         dependency = _extract_dependency(pattern)
-        # keys() should be converted into `set` because it is transient.
-        _update_dependency(set(pattern.results.keys()), dependency)
         meas_order = []
         while not_measured:
             next_node = min((i for i in not_measured if not dependency[i]), key=graph.degree)

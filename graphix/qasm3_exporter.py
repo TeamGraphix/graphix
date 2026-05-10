@@ -151,12 +151,6 @@ def pattern_to_qasm3_lines(pattern: Pattern, input_state: dict[int, State] | Sta
         state = input_state if isinstance(input_state, State) else input_state[node]
         yield from state_to_qasm3_lines(node, state)
         yield "\n"
-    if pattern.results != {}:
-        for i in pattern.results:
-            res = pattern.results[i]
-            yield f"// measurement result of qubit q{i}\n"
-            yield f"bit c{i} = {res};\n"
-            yield "\n"
     for cmd in pattern:
         yield from command_to_qasm3_lines(cmd)
 

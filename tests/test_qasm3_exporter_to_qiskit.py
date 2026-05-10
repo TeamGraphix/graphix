@@ -14,7 +14,7 @@ from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N
 from graphix.fundamentals import Plane
 from graphix.measurements import BlochMeasurement, Measurement, outcome
-from graphix.optimization import incorporate_pauli_results, single_qubit_domains
+from graphix.optimization import single_qubit_domains
 from graphix.qasm3_exporter import pattern_to_qasm3
 from graphix.random_objects import rand_circuit
 from graphix.sim.statevec import StatevectorBackend
@@ -121,9 +121,6 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.remove_pauli_measurements()
     pattern.minimize_space()
-
-    # qiskit_qasm3_import.exceptions.ConversionError: initialisation of classical bits is not supported
-    pattern = incorporate_pauli_results(pattern)
 
     # qiskit_qasm3_import.exceptions.ConversionError: unhandled binary operator '^'
     pattern = single_qubit_domains(pattern)
