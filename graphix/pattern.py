@@ -21,12 +21,10 @@ import networkx as nx
 from typing_extensions import assert_never
 
 from graphix import command, optimization
-from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Axis, Plane, Sign
-from graphix.graphsim import GraphState
-from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
+from graphix.fundamentals import Plane
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
 from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
@@ -46,9 +44,9 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.clifford import Clifford
     from graphix.command import CommandType
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
-    from graphix.optimization import StandardizedPattern
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
@@ -1428,28 +1426,6 @@ class Pattern:
         empty_nodes: list[int] = []
         self.__input_nodes = empty_nodes
 
-    def perform_pauli_measurements(self, ignore_pauli_with_deps: bool = False, *, stacklevel: int = 1) -> None:
-        """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
-
-        Parameters
-        ----------
-        ignore_pauli_with_deps : bool
-            Optional (*False* by default).
-            If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
-            If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
-        stacklevel : int, optional
-            Stack level to use for warnings. Defaults to 1, meaning that warnings
-            are reported at this function's call site.
-
-        .. seealso:: :func:`measure_pauli`
-
-        """
-        if self.input_nodes:
-            raise PatternError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
-        self.__dict__.update(
-            measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps, stacklevel=stacklevel + 1).__dict__
-        )
-
     def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
         for cmd in self:
             if (
@@ -1739,6 +1715,10 @@ class Pattern:
     ) -> Pattern:
         """Move Pauli measurements before the other measurements.
 
+        If you need to recover the cut between Pauli measurements and
+        non-Pauli measurements or the shifted signal, you can use
+        :meth:`~graphix.remove_pauli_measurements.PauliPushingCut.from_standardized_pattern` instead.
+
         Parameters
         ----------
         leave_nodes : AbstractSet[Node], optional
@@ -1865,158 +1845,6 @@ class RunnabilityError(PatternError):
                 assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, stacklevel: int = 1) -> Pattern:
-    """Perform Pauli measurement of a pattern by fast graph state simulator.
-
-    Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
-    pattern together with Clifford commands. Users are required to ensure there are no input nodes with :func:`graphix.pattern.Pattern.remove_input_nodes` before using this function.
-
-    TODO: non-XY plane measurements in original pattern
-
-    Parameters
-    ----------
-    pattern : graphix.pattern.Pattern object
-    ignore_pauli_with_deps : bool
-        Optional (*False* by default).
-        If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
-        If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
-    stacklevel : int, optional
-        Stack level to use for warnings. Defaults to 1, meaning that warnings
-        are reported at this function's call site.
-
-    Returns
-    -------
-    new_pattern : graphix.Pattern object
-        pattern with Pauli measurement removed.
-        only returned if copy argument is True.
-
-
-    .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
-    .. seealso:: :class:`graphix.graphsim.GraphState`
-    """
-    pattern._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
-    pat = Pattern()
-    standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
-    if not ignore_pauli_with_deps:
-        standardized_pattern = standardized_pattern.perform_pauli_pushing(stacklevel=stacklevel + 1)
-    output_nodes = set(pattern.output_nodes)
-    graph = standardized_pattern.extract_graph()
-    graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results: dict[int, Outcome] = pattern.results
-    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
-    if not to_measure:
-        return pattern
-    for cmd in to_measure:
-        pattern_cmd = cmd[0]
-        measurement_basis = cmd[1]
-        # extract signals for adaptive angle.
-        s_signal = 0
-        t_signal = 0
-        match measurement_basis.axis:
-            case Axis.X:  # X measurement is not affected by s_signal
-                t_signal = sum(results[j] for j in pattern_cmd.t_domain)
-            case Axis.Y:
-                s_signal = sum(results[j] for j in pattern_cmd.s_domain)
-                t_signal = sum(results[j] for j in pattern_cmd.t_domain)
-            case Axis.Z:  # Z measurement is not affected by t_signal
-                s_signal = sum(results[j] for j in pattern_cmd.s_domain)
-            case _:
-                assert_never(measurement_basis.axis)
-
-        if int(s_signal % 2) == 1:  # equivalent to X byproduct
-            graph_state.h(pattern_cmd.node)
-            graph_state.z(pattern_cmd.node)
-            graph_state.h(pattern_cmd.node)
-        if int(t_signal % 2) == 1:  # equivalent to Z byproduct
-            graph_state.z(pattern_cmd.node)
-        basis = measurement_basis
-        match basis.axis:
-            case Axis.X:
-                measure = graph_state.measure_x
-            case Axis.Y:
-                measure = graph_state.measure_y
-            case Axis.Z:
-                measure = graph_state.measure_z
-            case _:
-                assert_never(basis.axis)
-        if basis.sign == Sign.PLUS:
-            results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
-        else:
-            results[pattern_cmd.node] = 0 if measure(pattern_cmd.node, choice=1) else 1
-
-    # measure (remove) isolated nodes. if they aren't Pauli measurements,
-    # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
-    # which means we can just choose s=0. We should not remove output nodes even if isolated.
-    isolates = graph_state.isolated_nodes()
-    for node in non_pauli_meas:
-        if (node in isolates) and (node not in output_nodes):
-            graph_state.remove_node(node)
-            results[node] = 0
-
-    # update command sequence
-    vops = graph_state.extract_vops()
-    new_seq: list[CommandType] = []
-    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
-    new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
-    new_seq.extend(
-        cmd.clifford(Clifford(vops[cmd.node])) for cmd in standardized_pattern.m_list if cmd.node in graph_state.nodes
-    )
-    new_seq.extend(
-        command.C(node=index, clifford=Clifford(vops[index]))
-        for index in pattern.output_nodes
-        if vops[index] != Clifford.I
-    )
-    new_seq.extend(command.Z(node=node, domain=set(domain)) for node, domain in standardized_pattern.z_dict.items())
-    new_seq.extend(command.X(node=node, domain=set(domain)) for node, domain in standardized_pattern.x_dict.items())
-    pat.replace(new_seq, input_nodes=[])
-    pat.reorder_output_nodes(standardized_pattern.output_nodes)
-    assert pat.n_node == len(graph_state.nodes)
-    pat.results = results
-    return pat
-
-
-def pauli_nodes(pattern: StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
-    """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
-
-    Parameters
-    ----------
-    pattern : optimization.StandardizedPattern
-
-    Returns
-    -------
-    pauli_node : list
-        list of measures
-    non_pauli_nodes : set[int]
-    """
-    pauli_node: list[tuple[command.M, PauliMeasurement]] = []
-    # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
-    non_pauli_node: set[int] = set()
-    for cmd in pattern.m_list:
-        if isinstance(cmd.measurement, PauliMeasurement):
-            # Pauli measurement to be removed
-            match cmd.measurement.axis:
-                case Axis.X:
-                    if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
-                        non_pauli_node.add(cmd.node)
-                    else:
-                        pauli_node.append((cmd, cmd.measurement))
-                case Axis.Y:
-                    if (cmd.s_domain | cmd.t_domain) & non_pauli_node:  # cmd depend on non-Pauli measurement
-                        non_pauli_node.add(cmd.node)
-                    else:
-                        pauli_node.append((cmd, cmd.measurement))
-                case Axis.Z:
-                    if cmd.s_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
-                        non_pauli_node.add(cmd.node)
-                    else:
-                        pauli_node.append((cmd, cmd.measurement))
-                case _:
-                    raise PatternError("Unknown Pauli measurement basis")
-        else:
-            non_pauli_node.add(cmd.node)
-    return pauli_node, non_pauli_node
-
-
 def assert_permutation(original: list[int], user: list[int]) -> None:
     """Check that the provided `user` node list is a permutation from `original`."""
     node_set = set(user)
@@ -2056,23 +1884,23 @@ def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> Extr
             assert_never(plane)
 
 
-def shift_outcomes(outcomes: dict[int, Outcome], signal_dict: dict[int, set[int]]) -> dict[int, Outcome]:
+def shift_outcomes(outcomes: Mapping[int, Outcome], signal_dict: Mapping[int, AbstractSet[int]]) -> dict[int, Outcome]:
     """Update outcomes with shifted signals.
 
     Shifted signals (as returned by the method
     :func:`Pattern.shift_signals`) affect classical outputs
     (measurements) while leaving the quantum state invariant.
 
-    This method updates the given `outcomes` by swapping the
+    This method updates the given ``outcomes`` by swapping the
     measurements affected by signals. This can be used either to
     transform the value of :data:`Pattern.results` into measurements
     observed in the unshifted pattern, or vice versa.
 
     Parameters
     ----------
-    outcomes : dict[int, int]
+    outcomes : Mapping[int, Outcome]
         Classical outputs.
-    signal_dict : dict[int, set[int]]
+    signal_dict : Mapping[int, AbstractSet[int]]
         For each node, the signal that has been shifted
         (as returned by :func:`Pattern.shift_signals`).
 

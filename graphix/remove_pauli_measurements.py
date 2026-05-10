@@ -51,10 +51,7 @@ else:
 
 @dataclass(frozen=True, slots=True)
 class PauliPushingCut:
-    """Cut of the pattern measurements into Pauli and non-Pauli measurements.
-
-    This structure is returned by :meth:`StandardizedPattern.cut_by_pauli_pushing`.
-    """
+    """Cut of the pattern measurements into Pauli and non-Pauli measurements."""
 
     original_pattern: StandardizedPattern
 
@@ -82,7 +79,7 @@ class PauliPushingCut:
         """Move Pauli measurements before the other measurements and return the cut between Pauli measurements and non-Pauli measurements.
 
         If you only need the resulting pattern, you can use
-        :meth:`StandardizedPattern.perform_pauli_pushing` or
+        :meth:`~graphix.optimization.StandardizedPattern.perform_pauli_pushing` or
         :meth:`~graphix.pattern.Pattern.perform_pauli_pushing` instead.
 
         Parameters
