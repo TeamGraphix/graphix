@@ -87,9 +87,9 @@ class _StandardizedPattern:
     n_list: tuple[command.N, ...]
     e_set: frozenset[frozenset[Node]]
     m_list: tuple[command.M, ...]
-    c_dict: Mapping[Node, Clifford]
     z_dict: Mapping[Node, frozenset[Node]]
     x_dict: Mapping[Node, frozenset[Node]]
+    c_dict: Mapping[Node, Clifford]
 
 
 class StandardizedPattern(_StandardizedPattern):
@@ -122,12 +122,12 @@ class StandardizedPattern(_StandardizedPattern):
         Set of edges. Each edge is a set with two elements.
     m_list: tuple[command.M]
         The M commands.
-    c_dict: Mapping[Node, Clifford]
-        Mapping associating Clifford corrections to some nodes.
     z_dict: Mapping[Node, frozenset[Node]]
         Mapping associating Z-domains to some nodes.
     x_dict: Mapping[Node, frozenset[Node]]
         Mapping associating X-domains to some nodes.
+    c_dict: Mapping[Node, Clifford]
+        Mapping associating Clifford corrections to some nodes.
 
     """
 
@@ -138,9 +138,9 @@ class StandardizedPattern(_StandardizedPattern):
         n_list: Iterable[command.N],
         e_set: Iterable[Iterable[Node]],
         m_list: Iterable[command.M],
-        c_dict: Mapping[Node, Clifford],
         z_dict: Mapping[Node, Iterable[Node]],
         x_dict: Mapping[Node, Iterable[Node]],
+        c_dict: Mapping[Node, Clifford],
     ) -> None:
         """Return a new StandardizedPattern with immutable data structures."""
         super().__init__(
@@ -149,9 +149,9 @@ class StandardizedPattern(_StandardizedPattern):
             tuple(n_list),
             frozenset(frozenset(edge) for edge in e_set),
             tuple(m_list),
-            MappingProxyType(dict(c_dict)),
             MappingProxyType({node: frozenset(nodes) for node, nodes in z_dict.items()}),
             MappingProxyType({node: frozenset(nodes) for node, nodes in x_dict.items()}),
+            MappingProxyType(dict(c_dict)),
         )
 
     @classmethod
@@ -165,9 +165,9 @@ class StandardizedPattern(_StandardizedPattern):
         n_list: list[command.N] = []
         e_set: set[frozenset[Node]] = set()
         m_list: list[command.M] = []
-        c_dict: dict[Node, Clifford] = {}
         z_dict: dict[Node, set[Node]] = {}
         x_dict: dict[Node, set[Node]] = {}
+        c_dict: dict[Node, Clifford] = {}
 
         # Standardization could turn non-runnable patterns into
         # runnable ones, so we check runnability first to avoid hiding
@@ -224,7 +224,7 @@ class StandardizedPattern(_StandardizedPattern):
                     # has been already applied to a node, applying a clifford `C'` to the same
                     # node is equivalent to apply `C'C` to a fresh node.
                     c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
-        return cls(pattern.input_nodes, pattern.output_nodes, n_list, e_set, m_list, c_dict, z_dict, x_dict)
+        return cls(pattern.input_nodes, pattern.output_nodes, n_list, e_set, m_list, z_dict, x_dict, c_dict)
 
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
@@ -576,9 +576,9 @@ class StandardizedPattern(_StandardizedPattern):
             self.n_list,
             self.e_set,
             m_list,
-            self.c_dict,
             self.z_dict,
             self.x_dict,
+            self.c_dict,
         )
 
     def to_bloch(self) -> StandardizedPattern:

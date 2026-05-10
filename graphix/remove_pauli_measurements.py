@@ -168,9 +168,9 @@ class PauliPushingCut:
             self.original_pattern.n_list,
             self.original_pattern.e_set,
             self.measurements,
-            self.original_pattern.c_dict,
             _expand_corrections(self.shifted_domains, self.original_pattern.z_dict),
             _expand_corrections(self.shifted_domains, self.original_pattern.x_dict),
+            self.original_pattern.c_dict,
         )
 
 
@@ -510,9 +510,9 @@ class _RemovePauliMeasurements:
             n_list,
             self.graph.edges(),
             measurements,
-            c_dict,
             z_dict,
             x_dict,
+            c_dict,
         )
 
 
