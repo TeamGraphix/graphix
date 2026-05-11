@@ -1508,12 +1508,12 @@ class Pattern:
                     flow: PauliFlow[Measurement] | None = None
 
                     if flow_from_pattern:
-                        xzcorrections = self.extract_xzcorrections().downcast_bloch()
+                        xz_corrections = self.extract_xzcorrections()
                         try:
-                            flow = xzcorrections.to_causal_flow()
-                        except FlowError:
+                            flow = xz_corrections.downcast_bloch().to_causal_flow()
+                        except (FlowError, TypeError):
                             try:
-                                flow = xzcorrections.to_gflow()
+                                flow = xz_corrections.downcast_bloch().to_gflow()
                             except (FlowError, TypeError):
                                 warn(
                                     "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
@@ -1538,8 +1538,8 @@ class Pattern:
                     gv = GraphVisualizer.from_flow(flow=flow, **options)
 
                 case DrawPatternAnnotations.XZCorrections:
-                    xzcorrections_ = self.extract_xzcorrections()
-                    gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections_, **options)
+                    xzcorrections = self.extract_xzcorrections()
+                    gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, **options)
 
         gv.visualize()
 
