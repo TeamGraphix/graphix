@@ -235,14 +235,19 @@ class XZCorrections(Generic[_AM_co]):
         ----------
         [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
-        correction_function = {
-            i: x_corr | {i} if self.og.measurements[i].to_plane() in {Plane.XZ, Plane.YZ} else x_corr
-            for i, x_corr in self.x_corrections.items()
-        }
+        correction_function: dict[int, set[int]] = {}
 
-        cf = GFlow(self.og, correction_function, self.partial_order_layers)
-        cf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible.
-        return cf
+        for i, meas in self.og.measurements.items():
+            corrections = set(self.x_corrections.get(i, set()))
+
+            if meas.to_plane() in {Plane.XZ, Plane.YZ}:
+                corrections.add(i)
+
+            correction_function[i] = corrections
+
+        gf = GFlow(self.og, correction_function, self.partial_order_layers)
+        gf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible.
+        return gf
 
     def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
         """Return the XZ-corrections where all measurements in the open graph are converted to Bloch.
