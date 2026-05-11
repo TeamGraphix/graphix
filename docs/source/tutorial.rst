@@ -172,8 +172,7 @@ Performing Pauli measurements
 +++++++++++++++++++++++++++++
 
 It is known that quantum circuit consisting of Pauli basis states, Clifford gates and Pauli measurements can be simulated classically (see `Gottesman-Knill theorem
-<https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>`_; e.g. the graph state simulator runs in :math:`\mathcal{O}(n \log n)` time).
-The Pauli measurement part of the MBQC is exactly this, and they can be preprocessed by our graph state simulator :class:`~graphix.graphsim.GraphState` - see :doc:`lc-mbqc` for more detailed description.
+<https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>`).
 
 We can call :meth:`~graphix.pattern.Pattern.remove_pauli_measurements()` (method of the :class:`~graphix.pattern.Pattern` object) to optimize the measurement pattern.
 We get an updated measurement pattern without Pauli measurements as follows:

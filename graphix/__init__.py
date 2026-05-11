@@ -10,6 +10,7 @@ from graphix.clifford import Clifford
 from graphix.command import Command
 from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
 from graphix.fundamentals import ANGLE_PI, Axis, Plane, Sign, angle_to_rad, rad_to_angle
+from graphix.graphsim import GraphState
 from graphix.instruction import Instruction
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 from graphix.noise_models import DepolarisingNoiseModel, NoiseModel
@@ -41,6 +42,7 @@ __all__ = [
     "DrawPatternAnnotations",
     "FixedBranchSelector",
     "GFlow",
+    "GraphState",
     "Instruction",
     "KrausChannel",
     "Measurement",

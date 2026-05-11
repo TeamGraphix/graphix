@@ -39,7 +39,7 @@ class ResourceGraph:
     ----------
     cltype : :class:`ResourceType` object
         Type of the cluster.
-    graph : :class:`~graphix.graphsim.GraphState` object
+    graph : :class:`Graph` object
         Graph state of the cluster.
     """
 
@@ -59,7 +59,7 @@ def graph_to_fusion_network(
     max_ghz: float = np.inf,
     max_lin: float = np.inf,
 ) -> list[ResourceGraph]:
-    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`~graphix.graphsim.GraphState`.
+    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`Graph`.
 
     Extraction algorithm is based on [1].
 
@@ -67,7 +67,7 @@ def graph_to_fusion_network(
 
     Parameters
     ----------
-    graph : :class:`~graphix.graphsim.GraphState` object
+    graph : :class:`Graph` object
         Graph state.
     phasedict : dict
         Dictionary of phases for each node.
