@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -19,12 +18,8 @@ from graphix import command
 from graphix.clifford import Clifford, Domains
 from graphix.command import CommandKind, Node
 from graphix.flow._partial_order import compute_topological_generations
-from graphix.flow.core import CausalFlow, GFlow, XZCorrections
-from graphix.flow.exceptions import (
-    FlowGenericError,
-    FlowGenericErrorReason,
-)
-from graphix.fundamentals import Axis, Plane, Sign
+from graphix.flow.core import XZCorrections
+from graphix.fundamentals import Axis, Sign
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.space_minimization import (
@@ -506,104 +501,6 @@ class StandardizedPattern(_StandardizedPattern):
         if oset:
             return oset, *generations[::-1]
         return generations[::-1]
-
-    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
-        r"""Extract the causal flow structure from the current measurement pattern.
-
-        This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
-
-        Returns
-        -------
-        flow.CausalFlow[Measurement]
-            The causal flow associated with the current pattern.
-
-        Raises
-        ------
-        FlowError
-            If the pattern:
-            - Contains measurements in forbidden planes (XZ or YZ),
-            - Is empty, or
-            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
-        ValueError
-            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
-
-        Notes
-        -----
-        This method makes use of :func:`StandardizedPattern.extract_partial_order_layers` which computes the pattern's direct acyclical graph (DAG) induced by the corrections and returns a particular layer stratification (obtained by doing a topological sort on the DAG). Further, it constructs the pattern's induced correction function from :math:`M` and :math:`X` commands.
-        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
-        """
-        correction_function: dict[int, set[int]] = defaultdict(set)
-        pre_measured_nodes = self.results.keys()  # Not included in the flow.
-
-        for m in self.m_list:
-            try:
-                bloch = m.measurement.downcast_bloch()
-            except TypeError:
-                valid = False
-            else:
-                valid = bloch.plane == Plane.XY
-            if not valid:
-                raise FlowGenericError(FlowGenericErrorReason.XYPlane)
-            _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
-
-        for node, domain in self.x_dict.items():
-            _update_corrections(node, domain - pre_measured_nodes, correction_function)
-
-        og = (
-            self.extract_opengraph()
-        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
-        partial_order_layers = (
-            self.extract_partial_order_layers()
-        )  # Raises a `ValueError` if the pattern corrections form closed loops.
-        cf = CausalFlow(og.downcast_bloch(), dict(correction_function), partial_order_layers)
-        cf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible, or if a measured node is corrected by more than one node.
-        return cf
-
-    def extract_gflow(self) -> GFlow[BlochMeasurement]:
-        r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
-
-        This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
-
-        Returns
-        -------
-        flow.GFlow[Measurement]
-            The gflow associated with the current pattern.
-
-        Raises
-        ------
-        FlowError
-            If the pattern is empty or if the extracted structure does not satisfy
-            the well-formedness conditions required for a valid gflow.
-        TypeError
-            If the pattern contains a Pauli measurement
-        ValueError
-            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
-
-        Notes
-        -----
-        The notes provided in :func:`self.extract_causal_flow` apply here as well.
-        """
-        correction_function: dict[int, set[int]] = {}
-        pre_measured_nodes = self.results.keys()  # Not included in the flow.
-
-        for m in self.m_list:
-            # Raises a `TypeError` if the measurement is not represented as a Bloch measurement
-            if m.measurement.downcast_bloch().plane in {Plane.XZ, Plane.YZ}:
-                correction_function.setdefault(m.node, set()).add(m.node)
-            _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
-
-        for node, domain in self.x_dict.items():
-            _update_corrections(node, domain - pre_measured_nodes, correction_function)
-
-        og = (
-            self.extract_opengraph()
-        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
-        partial_order_layers = (
-            self.extract_partial_order_layers()
-        )  # Raises a `ValueError` if the pattern corrections form closed loops.
-        gf = GFlow(og.downcast_bloch(), correction_function, partial_order_layers)
-        gf.check_well_formed()
-        return gf
 
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
         r"""Extract the XZ-corrections from the current measurement pattern.
