@@ -172,7 +172,7 @@ Performing Pauli measurements
 +++++++++++++++++++++++++++++
 
 It is known that quantum circuit consisting of Pauli basis states, Clifford gates and Pauli measurements can be simulated classically (see `Gottesman-Knill theorem
-<https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>`).
+<https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>`_).
 
 We can call :meth:`~graphix.pattern.Pattern.remove_pauli_measurements()` (method of the :class:`~graphix.pattern.Pattern` object) to optimize the measurement pattern.
 We get an updated measurement pattern without Pauli measurements as follows:
