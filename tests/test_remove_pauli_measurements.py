@@ -230,6 +230,11 @@ def test_step_4() -> None:
 
 
 def test_step_4_no_flow() -> None:
+    # This example tests the case of a pattern that contains a
+    # non-input X-measured node 1 which is connected to an output node
+    # 0, where the node 0 is also an input.  In this situation Lemma
+    # 4.11 cannot be applied; this exercices the filtering implemented
+    # in the `try_pivot_x_with_output_node` method.
     pattern = Pattern(input_nodes=(0,), output_nodes=(0,), cmds=[Command.N(1), Command.E((0, 1)), Command.M(1)])
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
     cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)

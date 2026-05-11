@@ -97,7 +97,6 @@ class PauliPushingCut:
         -------
         PauliPushingCut
             The cut between Pauli measurements and non-Pauli measurements.
-
         """
         pattern._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
 
@@ -451,9 +450,9 @@ class _RemovePauliMeasurements:
 
     def try_pivot_x_with_output_node(self) -> bool:
         """
-        Find an X measurement connected to an output node and pivot it if any.
+        Find an X measurement connected to an output node that is not also an input and pivot it if any.
 
-        Implements Theorem 4.12, Step 4.
+        Implements Lemma 4.11 and Theorem 4.12, Step 4.
 
         Returns
         -------
@@ -548,9 +547,9 @@ def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
     This function removes all non-input Y and Z measured nodes and all
     non-input X measured nodes connected to any other internal vertex.
     Furthermore, if any non-input X measured node is connected to an
-    output node, pivoting these nodes enables eliminating further
-    nodes.  In particular, if the pattern has flow, all non-input
-    Pauli measurements are removed.
+    output node that is not also an input, pivoting these nodes
+    enables eliminating further nodes.  In particular, if the pattern
+    has flow, all non-input Pauli measurements are removed.
 
     Parameters
     ----------
