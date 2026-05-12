@@ -910,10 +910,8 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "graphix-qasm-parser" },
     { name = "mypy" },
     { name = "nox" },
-    { name = "openqasm-parser" },
     { name = "pre-commit" },
     { name = "psutil" },
     { name = "pyright" },
@@ -953,7 +951,6 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "furo", marker = "extra == 'doc'" },
-    { name = "graphix-qasm-parser", marker = "extra == 'dev'", specifier = ">=0.1.1" },
     { name = "joblib", marker = "extra == 'doc'" },
     { name = "matplotlib" },
     { name = "matplotlib", marker = "extra == 'doc'" },
@@ -964,7 +961,6 @@ requires-dist = [
     { name = "numpy", specifier = ">=2" },
     { name = "numpy", marker = "python_full_version == '3.10.*' and extra == 'typing'", specifier = "<2.4.2" },
     { name = "numpy", marker = "python_full_version >= '3.11' and extra == 'typing'", specifier = "==2.4.2" },
-    { name = "openqasm-parser", marker = "extra == 'dev'", specifier = ">=3.1.0" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "psutil", marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },
@@ -990,19 +986,6 @@ requires-dist = [
     { name = "typing-extensions" },
 ]
 provides-extras = ["dev", "doc", "extra", "typing"]
-
-[[package]]
-name = "graphix-qasm-parser"
-version = "0.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "graphix" },
-    { name = "openqasm-parser" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/78/9c/5ce5b46c7f93ad771b8fa6c72ef761c47fca31c0474ad7f18735075bef1a/graphix_qasm_parser-0.1.1.tar.gz", hash = "sha256:d591019aef21e31e86a2cb06d723bbfdfffac318d53b138010ec36e2b79f8d18", size = 15461, upload-time = "2026-02-05T15:47:26.795Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/61/b36a40f960bdc2ad06307e5ec9373889fb803e7dacfab8a9e9fddee4fbba/graphix_qasm_parser-0.1.1-py3-none-any.whl", hash = "sha256:7dcc8a2debba94e417b9ffcccacee7d941153211542825a7cf1b2c945c798bd0", size = 9608, upload-time = "2026-02-05T15:47:25.618Z" },
-]
 
 [[package]]
 name = "humanize"
@@ -1921,18 +1904,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/42/5f/29fd5f29b0a5d96e2def96ecba3112fc330ecd16e8c97c2b332563c5e201/numpy_typing_compat-20251206.2.4.tar.gz", hash = "sha256:59882d23aaff054a2536da80564012cdce33487657be4d79c5925bb8705fcabc", size = 5011, upload-time = "2025-12-06T20:02:04.942Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/63/7c/5c2892e6bc0628a2ccf4e938e1e2db22794657ccb374672d66e20d73839e/numpy_typing_compat-20251206.2.4-py3-none-any.whl", hash = "sha256:a82e723bd20efaa4cf2886709d4264c144f1f2b609bda83d1545113b7e47a5b5", size = 6300, upload-time = "2025-12-06T20:01:57.578Z" },
-]
-
-[[package]]
-name = "openqasm-parser"
-version = "3.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "antlr4-python3-runtime" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/95/04/a9ee93005c202210d467caa653cb9836a7a57cff45cb4a666f70cfb2e176/openqasm_parser-3.1.0.tar.gz", hash = "sha256:51c5b2bad28e57670a42097765764f2bb8451382448da2ede953be2d25159386", size = 49958, upload-time = "2025-11-25T00:07:53.813Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/0a/57ee502b5326d5dca38a9ed87a4ac255383bda28383055bf9bef2d0011c3/openqasm_parser-3.1.0-py3-none-any.whl", hash = "sha256:0ced1faf1444037933268272dedcbb326654befee870d93e9e7f637d204dbac5", size = 51599, upload-time = "2025-11-25T00:07:52.294Z" },
 ]
 
 [[package]]
