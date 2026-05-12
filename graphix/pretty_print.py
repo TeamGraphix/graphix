@@ -11,6 +11,7 @@ from math import pi
 from typing import TYPE_CHECKING, SupportsFloat
 
 # `assert_never` introduced in Python 3.11
+import numpy as np
 from typing_extensions import assert_never
 
 from graphix import command
@@ -26,6 +27,8 @@ if TYPE_CHECKING:
     from graphix.flow.core import PauliFlow, XZCorrections
     from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
+    from graphix.sim.density_matrix import DensityMatrix
+    from graphix.sim.statevec import Statevec
 
 
 class OutputFormat(Enum):
@@ -34,6 +37,158 @@ class OutputFormat(Enum):
     ASCII = enum.auto()
     LaTeX = enum.auto()
     Unicode = enum.auto()
+
+
+def complex_to_str(value: complex, output: OutputFormat, *, atol: float = 1e-8) -> str:
+    """Return a compact exact-looking representation of a complex number."""
+    val = complex(value)
+    if abs(val) <= atol:
+        return "0"
+
+    radius = abs(val)
+    if math.isclose(radius, 1.0, abs_tol=atol) and abs(val.real) > atol and abs(val.imag) > atol:
+        phase = math.atan2(val.imag, val.real) / pi
+        phase_str = angle_to_str(phase, output)
+        if output == OutputFormat.LaTeX:
+            return rf"\mathrm{{e}}^{{\mathrm{{i}}{phase_str}}}"
+        if output == OutputFormat.Unicode:
+            return f"e^(i{phase_str})"
+        return f"exp(i{phase_str})"
+
+    real = _real_to_str(val.real, output, atol=atol) if abs(val.real) > atol else ""
+    imag = _imaginary_to_str(val.imag, output, atol=atol) if abs(val.imag) > atol else ""
+    if real and imag:
+        sign = " + " if not imag.startswith("-") else " - "
+        return f"{real}{sign}{imag.removeprefix('-')}"
+    return real or imag
+
+
+def statevector_to_str(
+    state: Statevec,
+    output: OutputFormat,
+    *,
+    encoding: str = "MSB",
+    atol: float = 1e-8,
+) -> str:
+    """Return a pretty ket expansion for a statevector."""
+    terms = []
+    for ket, amp in state.to_dict(encoding=encoding, atol=atol).items():
+        coeff = complex_to_str(amp, output, atol=atol)
+        terms.append(_ket_term(coeff, ket, output))
+    body = _join_terms(terms) if terms else "0"
+    return rf"\({body}\)" if output == OutputFormat.LaTeX else body
+
+
+def density_matrix_to_str(
+    state: DensityMatrix,
+    output: OutputFormat,
+    *,
+    encoding: str = "MSB",
+    atol: float = 1e-8,
+) -> str:
+    """Return a pretty outer-product expansion for a density matrix."""
+    terms = []
+    for row in range(1 << state.nqubit):
+        bra_ket = _format_basis(state.nqubit, row, encoding)
+        for col in range(1 << state.nqubit):
+            coeff = state.rho[row, col]
+            if np.isclose(abs(coeff), 0, atol=atol, rtol=0):
+                continue
+            terms.append(_density_term(complex_to_str(coeff, output, atol=atol), bra_ket, _format_basis(state.nqubit, col, encoding), output))
+    body = _join_terms(terms) if terms else "0"
+    return rf"\({body}\)" if output == OutputFormat.LaTeX else body
+
+
+def _real_to_str(value: float, output: OutputFormat, *, atol: float) -> str:
+    sign = "-" if value < 0 else ""
+    val = abs(value)
+    if math.isclose(val, math.sqrt(2) / 2, abs_tol=atol):
+        return sign + _sqrt_fraction(2, 2, output)
+    if math.isclose(val, math.sqrt(3) / 2, abs_tol=atol):
+        return sign + _sqrt_fraction(3, 2, output)
+
+    frac = Fraction(val).limit_denominator(16)
+    if math.isclose(val, float(frac), abs_tol=atol):
+        return sign + _fraction_to_str(frac.numerator, frac.denominator, output)
+    return f"{value:.8g}"
+
+
+def _imaginary_to_str(value: float, output: OutputFormat, *, atol: float) -> str:
+    sign = "-" if value < 0 else ""
+    magnitude = _real_to_str(abs(value), output, atol=atol)
+    unit = r"\mathrm{i}" if output == OutputFormat.LaTeX else "i"
+    if magnitude == "1":
+        return f"{sign}{unit}"
+    if output == OutputFormat.LaTeX:
+        return f"{sign}{magnitude}{unit}"
+    return f"{sign}{magnitude}{unit}"
+
+
+def _fraction_to_str(num: int, den: int, output: OutputFormat) -> str:
+    if den == 1:
+        return str(num)
+    if output == OutputFormat.LaTeX:
+        return rf"\frac{{{num}}}{{{den}}}"
+    return f"{num}/{den}"
+
+
+def _sqrt_fraction(rad: int, den: int, output: OutputFormat) -> str:
+    if output == OutputFormat.LaTeX:
+        return rf"\frac{{\sqrt{{{rad}}}}}{{{den}}}"
+    root = f"√{rad}" if output == OutputFormat.Unicode else f"sqrt({rad})"
+    return f"{root}/{den}"
+
+
+def _ket(label: str, output: OutputFormat) -> str:
+    if output == OutputFormat.LaTeX:
+        return rf"\lvert {label}\rangle"
+    if output == OutputFormat.Unicode:
+        return f"|{label}⟩"
+    return f"|{label}>"
+
+
+def _bra(label: str, output: OutputFormat) -> str:
+    if output == OutputFormat.LaTeX:
+        return rf"\langle {label}\rvert"
+    if output == OutputFormat.Unicode:
+        return f"⟨{label}|"
+    return f"<{label}|"
+
+
+def _ket_term(coeff: str, ket: str, output: OutputFormat) -> str:
+    if coeff == "1":
+        return _ket(ket, output)
+    if coeff == "-1":
+        return f"-{_ket(ket, output)}"
+    return f"{coeff}{_ket(ket, output)}"
+
+
+def _density_term(coeff: str, ket_label: str, bra_label: str, output: OutputFormat) -> str:
+    outer = f"{_ket(ket_label, output)}{_bra(bra_label, output)}"
+    if coeff == "1":
+        return outer
+    if coeff == "-1":
+        return f"-{outer}"
+    return f"{coeff}{outer}"
+
+
+def _join_terms(terms: list[str]) -> str:
+    result = terms[0]
+    for term in terms[1:]:
+        if term.startswith("-"):
+            result += f" - {term[1:]}"
+        else:
+            result += f" + {term}"
+    return result
+
+
+def _format_basis(nqubit: int, index: int, encoding: str) -> str:
+    label = f"{index:0{nqubit}b}"
+    if encoding == "MSB":
+        return label
+    if encoding == "LSB":
+        return label[::-1]
+    raise ValueError("encoding must be either 'MSB' or 'LSB'.")
 
 
 def angle_to_str(

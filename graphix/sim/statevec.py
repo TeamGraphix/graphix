@@ -16,6 +16,7 @@ from typing_extensions import override
 
 from graphix import parameter, states
 from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
+from graphix.pretty_print import OutputFormat, statevector_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
@@ -519,6 +520,10 @@ class Statevec(DenseState):
         .. :meth:`to_dict`
         """
         return self._to_dict_map(lambda x: np.abs(x) ** 2, encoding, rtol=rtol, atol=atol)
+
+    def draw(self, output: OutputFormat = OutputFormat.ASCII, encoding: _ENCODING = "MSB", *, atol: float = 1e-8) -> str:
+        """Return a pretty ket expansion of the statevector."""
+        return statevector_to_str(self, output=output, encoding=encoding, atol=atol)
 
     def _to_dict_map(
         self,

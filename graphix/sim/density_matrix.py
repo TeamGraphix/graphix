@@ -19,6 +19,7 @@ from graphix import linalg_validations as lv
 from graphix import parameter
 from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
+from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.states import BasicStates, State
@@ -116,6 +117,10 @@ class DensityMatrix(DenseState):
     def __str__(self) -> str:
         """Return a string description."""
         return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
+
+    def draw(self, output: OutputFormat = OutputFormat.ASCII, encoding: str = "MSB", *, atol: float = 1e-8) -> str:
+        """Return a pretty outer-product expansion of the density matrix."""
+        return density_matrix_to_str(self, output=output, encoding=encoding, atol=atol)
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:

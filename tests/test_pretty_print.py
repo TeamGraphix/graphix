@@ -13,8 +13,11 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
-from graphix.pretty_print import OutputFormat, pattern_to_str
+from graphix.pretty_print import OutputFormat, complex_to_str, pattern_to_str
 from graphix.random_objects import rand_circuit
+from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
+from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -202,3 +205,24 @@ def test_xzcorr_str() -> None:
         str(flow)
         == "x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}; z(1) = {4, 5}, z(2) = {3, 6}; {1, 2} < {3, 4} < {5, 6}"
     )
+
+
+def test_complex_number_pretty_print() -> None:
+    assert complex_to_str(0.25, OutputFormat.ASCII) == "1/4"
+    assert complex_to_str(2**-0.5, OutputFormat.Unicode) == "√2/2"
+    assert complex_to_str(0.5 + 0.8660254037844386j, OutputFormat.LaTeX) == r"\mathrm{e}^{\mathrm{i}\frac{\pi}{3}}"
+
+
+def test_statevector_draw() -> None:
+    state = Statevec(data=BasicStates.PLUS)
+
+    assert state.draw() == "sqrt(2)/2|0> + sqrt(2)/2|1>"
+    assert state.draw(OutputFormat.Unicode) == "√2/2|0⟩ + √2/2|1⟩"
+    assert state.draw(OutputFormat.LaTeX) == r"\(\frac{\sqrt{2}}{2}\lvert 0\rangle + \frac{\sqrt{2}}{2}\lvert 1\rangle\)"
+
+
+def test_density_matrix_draw() -> None:
+    state = DensityMatrix(data=BasicStates.PLUS)
+
+    assert state.draw() == "1/2|0><0| + 1/2|0><1| + 1/2|1><0| + 1/2|1><1|"
+    assert state.draw(OutputFormat.Unicode) == "1/2|0⟩⟨0| + 1/2|0⟩⟨1| + 1/2|1⟩⟨0| + 1/2|1⟩⟨1|"
