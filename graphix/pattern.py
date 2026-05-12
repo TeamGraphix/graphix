@@ -1506,17 +1506,21 @@ class Pattern:
                     flow: PauliFlow[Measurement] | None = None
 
                     if flow_from_pattern:
-                        xz_corrections = self.extract_xzcorrections()
                         try:
-                            flow = xz_corrections.downcast_bloch().to_causal_flow()
-                        except (FlowError, TypeError):
+                            xz_corrections = self.extract_xzcorrections().downcast_bloch()
+                        except TypeError:
+                            pass
+                        else:
                             try:
-                                flow = xz_corrections.downcast_bloch().to_gflow()
-                            except (FlowError, TypeError):
-                                warn(
-                                    "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
-                                    stacklevel=stacklevel,
-                                )
+                                flow = xz_corrections.to_causal_flow()
+                            except FlowError:
+                                try:
+                                    flow = xz_corrections.to_gflow()
+                                except FlowError:
+                                    warn(
+                                        "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
+                                        stacklevel=stacklevel,
+                                    )
 
                     if flow is None:
                         og = self.extract_opengraph()
