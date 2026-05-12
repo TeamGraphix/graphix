@@ -95,71 +95,6 @@ class PauliString:
     sign: Sign = Sign.PLUS
 
     @staticmethod
-    def from_measured_node(flow: PauliFlow[Measurement], node: Node) -> PauliString:
-        """Extract the Pauli string of a measured node and its focused correction set.
-
-        Parameters
-        ----------
-        flow : PauliFlow[Measurement]
-            A focused Pauli flow. The resulting Pauli string is extracted from its correction function.
-        node : int
-            A measured node whose associated Pauli string is computed.
-
-        Returns
-        -------
-        PauliString
-            Primary extraction string associated to the input measured nodes. The Pauli string is defined over qubit indices corresponding to positions in ``output_nodes``.
-
-        Notes
-        -----
-        See Eq. (13) and Lemma 4.4 in Ref. [1]. The phase of the Pauli string is given by Eq. (37).
-
-        References
-        ----------
-        [1] Simmons, 2021 (arXiv:2109.05654).
-        """
-        og = flow.og
-        dim = len(flow.og.output_nodes)
-        c_set = set(flow.correction_function[node])
-        odd_c_set = og.odd_neighbors(c_set)
-        inter_c_odd_set = c_set & odd_c_set
-
-        x_corrections = frozenset((c_set - odd_c_set).intersection(og.output_nodes))
-        y_corrections = frozenset(inter_c_odd_set.intersection(og.output_nodes))
-        z_corrections = frozenset((odd_c_set - c_set).intersection(og.output_nodes))
-
-        # Sign computation.
-        negative_sign = False
-
-        # One phase flip per edge between adjacent vertices in the correction set.
-        negative_sign ^= og.graph.subgraph(c_set).number_of_edges() % 2 == 1
-
-        # One phase flip per two Ys in the graph state stabilizer.
-        negative_sign ^= bool(len(inter_c_odd_set) // 2 % 2)
-
-        # One phase flip per node in the graph state stabilizer that is absorbed from a Pauli measurement with angle π.
-        for n in c_set | odd_c_set:
-            meas = og.measurements.get(n, None)
-            if isinstance(meas, PauliMeasurement):
-                negative_sign ^= meas.sign == Sign.MINUS
-
-        # One phase flip if measured on the YZ plane.
-        negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
-
-        axes_dict: dict[int, Axis] = {}
-        output_to_qubit_mapping = NodeIndex()
-        output_to_qubit_mapping.extend(og.output_nodes)
-
-        # Sets `x_corrections`, `y_corrections` and `z_corrections` are disjoint.
-        corrections = (x_corrections, y_corrections, z_corrections)
-        for correction, axis in zip(corrections, Axis, strict=True):
-            for cnode in correction:
-                qubit = output_to_qubit_mapping.index(cnode)
-                axes_dict[qubit] = axis
-
-        return PauliString(dim, axes_dict, Sign.minus_if(negative_sign))
-
-    @staticmethod
     def from_str(ps: str) -> PauliString:
         """Construct a PauliString from its string representation.
 
@@ -574,6 +509,71 @@ class CliffordMap:
         return tab
 
 
+def extraction_ps_from_corrected_node(flow: PauliFlow[Measurement], node: Node) -> PauliString:
+    """Extract the Pauli string of a measured node and its focused correction set.
+
+    Parameters
+    ----------
+    flow : PauliFlow[Measurement]
+        A focused Pauli flow. The resulting Pauli string is extracted from its correction function.
+    node : int
+        A measured node whose associated Pauli string is computed.
+
+    Returns
+    -------
+    PauliString
+        Primary extraction string associated to the input measured nodes. The Pauli string is defined over qubit indices corresponding to positions in ``output_nodes``.
+
+    Notes
+    -----
+    See Eq. (13) and Lemma 4.4 in Ref. [1]. The phase of the Pauli string is given by Eq. (37).
+
+    References
+    ----------
+    [1] Simmons, 2021 (arXiv:2109.05654).
+    """
+    og = flow.og
+    dim = len(flow.og.output_nodes)
+    c_set = set(flow.correction_function[node])
+    odd_c_set = og.odd_neighbors(c_set)
+    inter_c_odd_set = c_set & odd_c_set
+
+    x_corrections = frozenset((c_set - odd_c_set).intersection(og.output_nodes))
+    y_corrections = frozenset(inter_c_odd_set.intersection(og.output_nodes))
+    z_corrections = frozenset((odd_c_set - c_set).intersection(og.output_nodes))
+
+    # Sign computation.
+    negative_sign = False
+
+    # One phase flip per edge between adjacent vertices in the correction set.
+    negative_sign ^= og.graph.subgraph(c_set).number_of_edges() % 2 == 1
+
+    # One phase flip per two Ys in the graph state stabilizer.
+    negative_sign ^= bool(len(inter_c_odd_set) // 2 % 2)
+
+    # One phase flip per node in the graph state stabilizer that is absorbed from a Pauli measurement with angle π.
+    for n in c_set | odd_c_set:
+        meas = og.measurements.get(n, None)
+        if isinstance(meas, PauliMeasurement):
+            negative_sign ^= meas.sign == Sign.MINUS
+
+    # One phase flip if measured on the YZ plane.
+    negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
+
+    axes_dict: dict[int, Axis] = {}
+    output_to_qubit_mapping = NodeIndex()
+    output_to_qubit_mapping.extend(og.output_nodes)
+
+    # Sets `x_corrections`, `y_corrections` and `z_corrections` are disjoint.
+    corrections = (x_corrections, y_corrections, z_corrections)
+    for correction, axis in zip(corrections, Axis, strict=True):
+        for cnode in correction:
+            qubit = output_to_qubit_mapping.index(cnode)
+            axes_dict[qubit] = axis
+
+    return PauliString(dim, axes_dict, Sign.minus_if(negative_sign))
+
+
 def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], dict[int, int]]:
     r"""Extend the inputs of a given open graph.
 
@@ -684,6 +684,6 @@ def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[Paul
     # In the context for `CliffordMap.from_focused_flow` the check is performed when accessing the cached property `flow.pauli_strings` in the function `clifford_z_map_from_focused_flow`.
 
     # It's better to call the `PauliString` constructor instead of the cached property `flow_extended.pauli_strings` since the latter will compute a `PauliString` for _every_ node in the correction function and we just need it for the input nodes.
-    x_map_ancillas = {node: PauliString.from_measured_node(flow_extended, node) for node in og_extended.input_nodes}
+    x_map_ancillas = {node: extraction_ps_from_corrected_node(flow_extended, node) for node in og_extended.input_nodes}
 
     return tuple(x_map_ancillas[ancillary_inputs_map[input_node]] for input_node in og.input_nodes)

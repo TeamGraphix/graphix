@@ -15,7 +15,13 @@ import networkx as nx
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
-from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponentialDAG, PauliString
+from graphix.circ_ext.extraction import (
+    CliffordMap,
+    ExtractionResult,
+    PauliExponentialDAG,
+    PauliString,
+    extraction_ps_from_corrected_node,
+)
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
@@ -830,7 +836,7 @@ class PauliFlow(Generic[_AM_co]):
         """
         if not self.is_focused():
             raise ValueError("Flow is not focused.")
-        return {node: PauliString.from_measured_node(self, node) for node in self.correction_function}
+        return {node: extraction_ps_from_corrected_node(self, node) for node in self.correction_function}
 
     def extract_circuit(self: PauliFlow[Measurement]) -> ExtractionResult:
         """Extract a circuit from a flow.
