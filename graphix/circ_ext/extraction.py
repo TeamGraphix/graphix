@@ -493,20 +493,7 @@ class CliffordMap:
                 f"Isometries are not supported yet: # of inputs ({len(self.input_nodes)}) must be equal to the # of outputs ({len(self.output_nodes)})."
             )
 
-        tab = MatGF2(np.zeros((2 * n, 2 * n + 1)))
-
-        for mapping, shift in (self.x_map, 0), (self.z_map, n):
-            for i, ps in enumerate(mapping):  # Indices in the Clifford map correspond to qubits (0 to n-1).
-                for j, ax in ps.axes.items():
-                    if ax in {Axis.X, Axis.Y}:
-                        tab[i + shift, j] = 1
-                    if ax in {Axis.Y, Axis.Z}:
-                        tab[i + shift, j + n] = 1
-
-                if ps.sign is Sign.MINUS:
-                    tab[i + shift, 2 * n] = 1
-
-        return tab
+        return MatGF2(np.vstack((*(ps.to_tableau() for ps in self.x_map), *(ps.to_tableau() for ps in self.z_map))))
 
 
 def extraction_ps_from_corrected_node(flow: PauliFlow[Measurement], node: Node) -> PauliString:
