@@ -551,6 +551,9 @@ def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
     enables eliminating further nodes.  In particular, if the pattern
     has flow, all non-input Pauli measurements are removed.
 
+    Note that if the pattern is nondeterministic, only the 0-branch is
+    preserved.
+
     Parameters
     ----------
     cut: PauliPushingCut
