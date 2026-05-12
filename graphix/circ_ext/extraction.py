@@ -159,6 +159,178 @@ class PauliString:
 
         return PauliString(dim, axes_dict, Sign.minus_if(negative_sign))
 
+    @staticmethod
+    def from_str(ps: str) -> PauliString:
+        """Construct a PauliString from its string representation.
+
+        Parameters
+        ----------
+        ps : str
+            String encoding of a Pauli string. The first character must be
+            ``'+'`` or ``'-'`` (the sign), followed by one or more single-character
+            Pauli operators (``'X'``, ``'Y'``, ``'Z'``, or ``'I'``).
+            Example: ``'+XYZ'``, ``'-IXI'``.
+
+        Returns
+        -------
+        PauliString
+            The PauliString instance corresponding to the input string.
+
+        Raises
+        ------
+        ValueError
+            If the string is shorter than 2 characters,
+            the first character is not ``'+'`` or ``'-'``, or
+            any operator character is not one of ``'X'``, ``'Y'``, ``'Z'``, ``'I'``.
+
+        Examples
+        --------
+        >>> PauliString.from_str("+XYZ")
+        PauliString(dim=3, sign=Sign.PLUS, axes={0: Axis.X, 1: Axis.Y, 2: Axis.Z})
+        >>> PauliString.from_str("-IXI")
+        PauliString(dim=3, sign=Sign.MINUS, axes={1: Axis.X})
+        """
+        if len(ps) < 2:
+            raise ValueError("Input string must have at least 2 characters (a sign followed by operators).")
+
+        sign_char, ops = ps[0], ps[1:]  # Mypy disallows string unpacking
+
+        _sign_map = {"+": Sign.PLUS, "-": Sign.MINUS}
+        _axis_map = {"X": Axis.X, "Y": Axis.Y, "Z": Axis.Z}
+
+        if sign_char not in _sign_map:
+            raise ValueError(f"First character must be '+' or '-', got '{sign_char}'.")
+
+        invalid = {op for op in ops if op not in _axis_map and op != "I"}
+        if invalid:
+            raise ValueError(f"Invalid Pauli operator(s): {invalid}. Each operator must be 'X', 'Y', 'Z', or 'I'.")
+
+        return PauliString(
+            sign=_sign_map[sign_char],
+            dim=len(ops),
+            axes={i: _axis_map[op] for i, op in enumerate(ops) if op != "I"},
+        )
+
+    def __str__(self) -> str:
+        """Return a string representation of the Pauli string."""
+        pauli_str = (
+            str(self.sign),
+            *(getattr(self.axes.get(node), "name", "I") for node in range(self.dim)),
+        )
+
+        return "".join(pauli_str)
+
+    @staticmethod
+    def from_tableau(tab: MatGF2) -> PauliString:
+        r"""Construct a `PauliString` from a one-dimensional tableau representation.
+
+        The tableau encodes a Pauli operator of the form
+        :math:`\pm P_0 \otimes P_1 \otimes \cdots \otimes P_{n-1}`,
+        where each single-qubit Pauli is stored as an (x, z) bit pair and the final
+        element encodes the sign.
+
+        Layout of ``tab`` (length ``2n + 1``)::
+
+            [ x_0, x_1, …, x_{n-1} | z_0, z_1, …, z_{n-1} | sign ]
+
+        Encoding conventions:
+
+        * ``(x=1, z=0)`` → X
+        * ``(x=0, z=1)`` → Z
+        * ``(x=1, z=1)`` → Y
+        * ``(x=0, z=0)`` → I (identity, qubit absent in ``axes``)
+        * ``sign = 0``   → +1
+        * ``sign = 1``   → -1
+
+        Parameters
+        ----------
+        tab : MatGF2
+            A one-dimensional GF(2) array of odd length ``2n + 1``
+            representing an n-qubit Pauli operator.
+
+        Returns
+        -------
+        PauliString
+            The Pauli operator encoded by ``tab``.
+
+        Raises
+        ------
+        ValueError
+            If ``tab`` is not one-dimensional or ``len(tab)`` is even.
+
+        Examples
+        --------
+        >>> tab = MatGF2(np.array([1, 1, 1]))
+        >>> PauliString.from_tableau(tab)
+        PauliString(dim=1, sign=Sign.MINUS, axes={0: Axis.Y})
+        >>> tab = MatGF2(np.array([0, 0, 0, 1, 0]))
+        >>> PauliString.from_tableau(tab)
+        PauliString(dim=2, sign=Sign.PLUS, axes={1: Axis.Z})
+        """
+        if tab.ndim != 1:
+            raise ValueError(
+                f"Attempted to initialise a PauliString from a {tab.ndim}-dimensional tableau. `PauliString.from_tableau` expects a one-dimensional array."
+            )
+        if len(tab) % 2 == 0:
+            raise ValueError(
+                f"`PauliString.from_tableau` expects an array with an odd number of elements (got {len(tab)})."
+            )
+
+        dim = len(tab) // 2
+        sign = Sign.minus_if(tab[-1])
+
+        axes: dict[int, Axis] = {}
+        for i, (x, z) in enumerate(zip(tab[:dim], tab[dim:-1], strict=True)):
+            if (x, z) == (1, 0):
+                axes[i] = Axis.X
+            elif (x, z) == (0, 1):
+                axes[i] = Axis.Z
+            elif (x, z) == (1, 1):
+                axes[i] = Axis.Y
+
+        return PauliString(dim, axes, sign)
+
+    def to_tableau(self) -> MatGF2:
+        """Serialise this PauliString into a one-dimensional tableau representation.
+
+        Produces the inverse of :meth:`from_tableau`: a ``MatGF2`` of length
+        ``2n + 1`` whose layout is::
+
+            [ x_0, x_1, …, x_{n-1} | z_0, z_1, …, z_{n-1} | sign ]
+
+        Encoding conventions:
+
+        * X → ``(x=1, z=0)``
+        * Z → ``(x=0, z=1)``
+        * Y → ``(x=1, z=1)``
+        * I → ``(x=0, z=0)`` (absent in ``self.axes``)
+        * ``+`` sign → ``0``
+        * ``-`` sign → ``1``
+
+        Returns
+        -------
+        MatGF2
+            A one-dimensional GF(2) array of length ``2 * self.dim + 1``.
+
+        Examples
+        --------
+        >>> ps = PauliString.from_str("-XY")
+        >>> ps.to_tableau()
+        MatGF2([1, 1, 0, 1, 1])
+        """
+        tab = MatGF2(np.zeros(2 * self.dim + 1, dtype=np.uint8))
+
+        for i, ax in self.axes.items():
+            if ax in {Axis.X, Axis.Y}:
+                tab[i] = 1
+            if ax in {Axis.Y, Axis.Z}:
+                tab[i + self.dim] = 1
+
+        if self.sign is Sign.MINUS:
+            tab[2 * self.dim] = 1
+
+        return tab
+
 
 @dataclass(frozen=True)
 class PauliExponential:
