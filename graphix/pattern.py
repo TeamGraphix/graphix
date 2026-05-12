@@ -963,8 +963,6 @@ class Pattern:
         Notes
         -----
         - This function wraps :func:`optimization.StandardizedPattern.extract_partial_order_layers`, and the returned object is described in the notes of this method.
-
-        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract the partial order layering.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
 

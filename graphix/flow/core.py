@@ -200,7 +200,7 @@ class XZCorrections(Generic[_AM_co]):
     def to_causal_flow(self: XZCorrections[_PM_co]) -> CausalFlow[_PM_co]:
         r"""Extract a causal flow from XZ-corrections.
 
-        This method does not call the flow-extraction routine on the underlying open graph. Instead, it reads out the correction function from the x-corrections and verifies its compatibility with the XZ-corrections intrinsic partial order.
+        This method does not invoke the flow-extraction routine on the underlying open graph. Instead, it assigns the ``x_corrections`` mapping to the flow's correction function and verifies that it is compatible with the intrinsic partial order of the XZ-corrections. If the resulting correction function is incompatible with this partial order, or the open graph contains measurements in XZ or YZ planes, a ``FlowError`` is raised.
 
         Returns
         -------
@@ -221,7 +221,7 @@ class XZCorrections(Generic[_AM_co]):
     def to_gflow(self: XZCorrections[_PM_co]) -> GFlow[_PM_co]:
         r"""Extract a gflow from XZ-corrections.
 
-        This method does not call the flow-extraction routine on the underlying open graph. Instead, it reads out the correction function from the x-corrections and verifies its compatibility with the XZ-corrections intrinsic partial order.
+        This method does not invoke the flow-extraction routine on the underlying open graph. Instead, it assigns the ``x_corrections`` mapping to the flow's correction function and verifies that it is compatible with the intrinsic partial order of the XZ-corrections. Nodes measured in planes XZ or YZ are assigned to their correcting set. If the resulting correction function is incompatible with this partial order ``FlowError`` is raised.
 
         Returns
         -------
