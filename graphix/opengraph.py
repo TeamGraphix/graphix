@@ -152,7 +152,6 @@ class OpenGraph(Generic[_AM_co]):
         from graphix.visualization import GraphVisualizer  # noqa: PLC0415  Avoid circular imports
 
         gv = GraphVisualizer.from_opengraph(og=self, **options)
-
         gv.visualize()
 
     def map(self: OpenGraph[_A], f: Callable[[_A], _B]) -> OpenGraph[_B]:

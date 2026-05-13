@@ -107,11 +107,11 @@ def example_pflow(rng: Generator) -> Pattern:
 @pytest.mark.parametrize("flow_from_pattern", [False, True])
 @pytest.mark.parametrize("measurement_labels", [False, True])
 @pytest.mark.parametrize("pauli_measurements", [False, True])
-@pytest.mark.parametrize("show_local_clifford", [False, True])
+@pytest.mark.parametrize("local_clifford", [False, True])
 def test_draw_pattern_flow(
     example: Callable[[Generator], Pattern],
     flow_from_pattern: bool,
-    show_local_clifford: bool,
+    local_clifford: bool,
     pauli_measurements: bool,
     measurement_labels: bool,
     fx_rng: Generator,
@@ -121,7 +121,7 @@ def test_draw_pattern_flow(
         flow_from_pattern=flow_from_pattern,
         pauli_measurements=pauli_measurements,
         measurement_labels=measurement_labels,
-        show_local_clifford=show_local_clifford,
+        local_clifford=local_clifford,
         node_distance=(0.7, 0.6),
     )
     plt.close()
@@ -131,10 +131,10 @@ def test_draw_pattern_flow(
 @pytest.mark.parametrize("example", [example_flow, example_gflow, example_pflow])
 @pytest.mark.parametrize("measurement_labels", [False, True])
 @pytest.mark.parametrize("pauli_measurements", [False, True])
-@pytest.mark.parametrize("show_local_clifford", [False, True])
+@pytest.mark.parametrize("local_clifford", [False, True])
 def test_draw_pattern_xzcorrections(
     example: Callable[[Generator], Pattern],
-    show_local_clifford: bool,
+    local_clifford: bool,
     pauli_measurements: bool,
     measurement_labels: bool,
     fx_rng: Generator,
@@ -144,7 +144,7 @@ def test_draw_pattern_xzcorrections(
         annotations=DrawPatternAnnotations.XZCorrections,
         pauli_measurements=pauli_measurements,
         measurement_labels=measurement_labels,
-        show_local_clifford=show_local_clifford,
+        local_clifford=local_clifford,
         node_distance=(0.7, 0.6),
     )
     plt.close()

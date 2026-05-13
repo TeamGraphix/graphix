@@ -1437,7 +1437,6 @@ class Pattern:
         *,
         annotations: DrawPatternAnnotations | None = DrawPatternAnnotations.Flow,
         flow_from_pattern: bool = True,
-        show_local_clifford: bool = False,
         stacklevel: int = 1,
         **options: Unpack[DrawKwargs],
     ) -> None:
@@ -1452,8 +1451,6 @@ class Pattern:
                 - ``None``: show the underlying open graph only.
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
-        show_local_clifford : bool, default=False
-            If ``True``, the local Clifford operators are printed.
         options : Unpack[DrawKwargs]
             Options controlling graph visualization. See :class:`VisualizationOptions`.
         stacklevel : int, optional
@@ -1469,12 +1466,11 @@ class Pattern:
         -----
         If ``flow_from_pattern==True`` but the pattern is not compatible with a gflow, an attempt to be extract the flow from the underlying open graph will be made while warning the user.
         """
-        lc = self.extract_clifford() if show_local_clifford else None
-        options.setdefault("local_clifford", lc)
+        local_clifford_map = self.extract_clifford() if options.get("local_clifford") else None
 
         if annotations is None:
             og = self.extract_opengraph()
-            gv = GraphVisualizer.from_opengraph(og=og, **options)
+            gv = GraphVisualizer.from_opengraph(og=og, local_clifford_map=local_clifford_map, **options)
         else:
             match annotations:
                 case DrawPatternAnnotations.Flow:
@@ -1508,11 +1504,13 @@ class Pattern:
                                 "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawPatternAnnotations.XZCorrections`."
                             )
 
-                    gv = GraphVisualizer.from_flow(flow=flow, **options)
+                    gv = GraphVisualizer.from_flow(flow=flow, local_clifford_map=local_clifford_map, **options)
 
                 case DrawPatternAnnotations.XZCorrections:
                     xzcorrections = self.extract_xzcorrections()
-                    gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, **options)
+                    gv = GraphVisualizer.from_xzcorrections(
+                        xz_corr=xzcorrections, local_clifford_map=local_clifford_map, **options
+                    )
 
         gv.visualize()
 
