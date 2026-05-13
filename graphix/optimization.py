@@ -433,10 +433,6 @@ class StandardizedPattern(_StandardizedPattern):
         ------
         ValueError
             If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state.
-
-        Notes
-        -----
-        This operation loses all the information on the Clifford commands.
         """
         for n in self.n_list:
             if n.state != BasicStates.PLUS:
@@ -444,7 +440,7 @@ class StandardizedPattern(_StandardizedPattern):
                     f"Open graph construction in flow extraction requires N commands to represent a |+⟩ state. Error found in {n}."
                 )
         measurements = {m.node: m.measurement for m in self.m_list}
-        return OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
+        return OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements, self.c_dict)
 
     def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
         """Extract the measurement order of the pattern in the form of layers.

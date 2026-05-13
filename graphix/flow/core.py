@@ -16,7 +16,7 @@ import networkx as nx
 from typing_extensions import assert_never, override
 
 from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponentialDAG, PauliString
-from graphix.command import E, M, N, X, Z
+from graphix.command import C, E, M, N, X, Z
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
     compute_partial_order_layers,
@@ -191,6 +191,9 @@ class XZCorrections(Generic[_AM_co]):
 
             for corrected_node in self.x_corrections.get(measured_node, []):
                 pattern.add(X(node=corrected_node, domain={measured_node}))
+
+        for output_node, clifford in self.og.output_cliffords.items():
+            pattern.add(C(node=output_node, clifford=clifford))
 
         pattern.reorder_output_nodes(self.og.output_nodes)
         return pattern

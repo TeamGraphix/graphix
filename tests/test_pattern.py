@@ -1168,6 +1168,51 @@ class TestPattern:
             original_pattern.to_bloch().perform_pauli_pushing()
         assert original_pattern.perform_pauli_pushing(copy=True, standardize=True).is_standard()
 
+    def test_extract_opengraph_standardization(self) -> None:
+        p = Pattern(cmds=[N(0), C(0, Clifford.H), M(0, Measurement.XY(0.3))])
+        og = p.extract_opengraph()
+        p.standardize()
+        og_std = p.extract_opengraph()
+
+        assert og.isclose(og_std)
+
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            Pattern(
+                input_nodes=[0],
+                cmds=[
+                    N(1),
+                    E((0, 1)),
+                    C(0, Clifford.H),
+                    M(0, -Measurement.Z),
+                    X(1, {0}),
+                    C(1, Clifford.H),
+                    C(1, Clifford.X),
+                ],
+            ),
+            Pattern(
+                cmds=[N(0), C(0, Clifford.H), C(0, Clifford.X), C(0, Clifford.Z)],
+            ),
+            Pattern(
+                input_nodes=[0],
+                cmds=[
+                    N(1),
+                    E((0, 1)),
+                    C(0, Clifford.S),
+                    C(1, Clifford.X),
+                ],
+            ),
+        ],
+    )
+    def test_extract_opengraph_roundtrip(self, pattern: Pattern, fx_rng: Generator) -> None:
+        pattern_test = pattern.extract_opengraph().to_pattern()
+
+        sv = pattern.simulate_pattern(rng=fx_rng)
+        sv_test = pattern_test.simulate_pattern(rng=fx_rng)
+
+        assert sv.isclose(sv_test)
+
 
 def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401

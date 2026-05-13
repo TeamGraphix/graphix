@@ -27,7 +27,6 @@ from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
-from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevec
@@ -48,6 +47,7 @@ if TYPE_CHECKING:
 
     from graphix.command import CommandType
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
+    from graphix.opengraph import OpenGraph
     from graphix.optimization import StandardizedPattern
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
@@ -1139,44 +1139,16 @@ class Pattern:
     def extract_opengraph(self) -> OpenGraph[Measurement]:
         r"""Extract the underlying resource-state open graph from the pattern.
 
+        This method proceeds by standardizing the pattern first to guarantee that
+        Clifford commands are properly encoded in the resulting open graph.
+        Specifically, Cliffords acting on measured nodes are absorbed into measurements,
+        while Cliffords acting on output nodes are stored in ``OpenGraph.output_cliffords``.
+
         Returns
         -------
         OpenGraph[Measurement]
-
-        Raises
-        ------
-        ValueError
-            If `N` commands in the pattern do not represent a :math:`|+\rangle` state.
-
-        Notes
-        -----
-        This operation loses all the information on the Clifford commands.
         """
-        nodes = set(self.input_nodes)
-        edges: set[tuple[int, int]] = set()
-        measurements: dict[int, Measurement] = {}
-
-        for cmd in self.__seq:
-            match cmd.kind:
-                case CommandKind.N:
-                    if cmd.state != BasicStates.PLUS:
-                        raise PatternError(
-                            f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
-                        )
-                    nodes.add(cmd.node)
-                case CommandKind.E:
-                    u, v = cmd.nodes
-                    if u > v:
-                        u, v = v, u
-                    edges.symmetric_difference_update({(u, v)})
-                case CommandKind.M:
-                    measurements[cmd.node] = cmd.measurement
-
-        graph = nx.Graph(edges)
-        graph.add_nodes_from(nodes)
-
-        # Inputs and outputs are casted to `tuple` to replicate the behavior of `:func: graphix.opitmization.StandardizedPattern.extract_opengraph`.
-        return OpenGraph(graph, tuple(self.__input_nodes), tuple(self.__output_nodes), measurements)
+        return optimization.StandardizedPattern.from_pattern(self).extract_opengraph()
 
     def extract_clifford(self) -> dict[int, Clifford]:
         """Extract Clifford commands.
