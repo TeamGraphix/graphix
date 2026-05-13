@@ -120,9 +120,8 @@ def pattern_to_qasm3(pattern: Pattern, input_state: dict[int, State] | State = B
     qubits if the pattern has been Pauli-presimulated, and it may include
     Boolean expressions using xor (`^`) if some domains contain
     multiple qubits. These features are not supported by
-    `qiskit-qasm3-import`. The functions
-    :func:`graphix.optimization.incorporate_pauli_results` and
-    :func:`graphix.optimization.single_qubit_domains` transform any
+    `qiskit-qasm3-import`. The function
+    :func:`graphix.optimization.single_qubit_domains` transforms any
     pattern into an equivalent one such that exporting to OpenQASM 3.0
     produces a circuit that can be imported into Qiskit.
 
