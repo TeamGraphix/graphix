@@ -468,7 +468,7 @@ class _RemovePauliMeasurements:
             v = next(iter(non_input_output_nodes), None)
             if v is None:
                 continue
-            self.pivot_vertices(node, v)
+            self.pivot_vertices(new_node, v)
             return True
         return False
 

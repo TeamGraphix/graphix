@@ -287,3 +287,37 @@ def test_pattern_remove_pauli_measurements_output_nodes() -> None:
     pattern = og.to_pattern()
     pattern.remove_pauli_measurements()
     pattern.simulate_pattern()
+
+
+def test_try_pivot_x_with_output_node_after_pivot() -> None:
+    # This test checks that `try_pivot_x_with_output_node` applies
+    # `pivot_vertices` using `new_node` rather than the original
+    # `node`.
+    #
+    # In practice this situation is unlikely to arise: for `node != new_node`
+    # to occur, a pivot must have already been applied to `node`.  Yet,
+    # after such a pivot we would need `new_node` to be measured in X, which
+    # implies that `node` was originally measured in Z.  The removal strategy
+    # would then delete `node` before the pivot could take place.
+    #
+    # Consequently, this test guarantees that `try_pivot_x_with_output_node`
+    # works correctly regardless of the removal strategy and maintains the
+    # intended invariant, even though the earlier bug (pivoting with the
+    # original node) was not observable through the public API.
+    pattern = Pattern(
+        cmds=[
+            Command.N(0),
+            Command.N(1),
+            Command.N(2),
+            Command.E((0, 1)),
+            Command.E((0, 2)),
+            Command.M(0),
+            Command.M(1, Measurement.Z),
+        ]
+    )
+    standardized_pattern = StandardizedPattern.from_pattern(pattern)
+    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    process = _RemovePauliMeasurements(cut)
+    process.remove_x_with_internal_neighbor(0, 1, Sign.PLUS)
+    # Fail if pivot is applied to the original node
+    process.try_pivot_x_with_output_node()
