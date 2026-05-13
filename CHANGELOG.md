@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - #168, #498: `Pattern.remove_pauli_measurements` replaces `Pattern.perform_pauli_measurements`.  The new algorithm removes all non-input Pauli nodes from patterns that have a flow and returns a pattern that is equivalent for every input state.
+  - Field `Pattern.results` and function `incorporate_pauli_results` removed.
 
 - #490: Exposed more common classes and methods to top level `__init__.py`.
   - Renamed `Instruction`, `InstructionWithoutRZZ` and `Command` to `InstructionType`, `InstructionTypeWithoutRZZ` and `CommandType` respectively.
