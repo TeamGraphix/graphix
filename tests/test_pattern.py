@@ -427,23 +427,6 @@ class TestPattern:
         state_p = pattern.simulate_pattern()
         assert state_p.isclose(state_ref)
 
-    # @pytest.mark.parametrize("jumps", range(1, 48))
-    # def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int) -> None:
-    #     rng = Generator(fx_bg.jumped(jumps))
-    #     x, z = rng.integers(2, size=2)
-    #     c = rng.integers(len(Clifford))
-    #     pattern = Pattern(input_nodes=[0])
-    #     pattern.results[1] = x
-    #     pattern.add(X(node=0, domain={1}))
-    #     pattern.results[2] = z
-    #     pattern.add(Z(node=0, domain={2}))
-    #     pattern.add(C(node=0, clifford=Clifford(c)))
-    #     pattern_ref = pattern.copy()
-    #     pattern.standardize()
-    #     state_ref = pattern_ref.simulate_pattern()
-    #     state_p = pattern.simulate_pattern()
-    #     assert state_p.isclose(state_ref)
-
     # Simple pattern composition
     def test_compose_1(self) -> None:
         i1_lst = [0]
