@@ -19,7 +19,6 @@ from graphix.circ_ext.extraction import (
     CliffordMap,
     ExtractionResult,
     PauliExponentialDAG,
-    PauliString,
     extraction_ps_from_corrected_node,
 )
 from graphix.command import E, M, N, X, Z
@@ -57,6 +56,7 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.circ_ext.extraction import PauliString
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
