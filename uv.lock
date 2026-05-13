@@ -993,7 +993,7 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'dev'" },
     { name = "pytest-mpl", marker = "extra == 'dev'" },
     { name = "pyzx", marker = "extra == 'extra'", specifier = ">=0.10.0" },
-    { name = "qiskit", marker = "extra == 'dev'", specifier = "==2.3.1" },
+    { name = "qiskit", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "qiskit-aer", marker = "extra == 'dev'" },
     { name = "qiskit-qasm3-import", marker = "extra == 'dev'" },
     { name = "quimb" },
