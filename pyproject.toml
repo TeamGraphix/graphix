@@ -43,15 +43,15 @@ Documentation = "https://graphix.readthedocs.io"
 
 [project.optional-dependencies]
 dev = [
-    "mypy==1.19.1",
+    "mypy==2.1.0",
     "pre-commit",
     "pyright",
-    "ruff==0.15.5",
-    "types-networkx==3.6.1.20260303",
+    "ruff==0.15.12",
+    "types-networkx==3.6.1.20260512",
     "types-psutil",
     "types-setuptools",
     "scipy-stubs",
-    "nox==2026.2.9",
+    "nox==2026.4.10",
     "psutil",
     "pytest",
     "pytest-benchmark",
@@ -74,7 +74,7 @@ extra = [
 ]
 typing = [
     "numpy==2.4.2; python_version >= '3.11'",
-    "numba==0.64.0; python_version >= '3.11'",
+    "numba==0.65.1; python_version >= '3.11'",
     "numpy<2.4.2; python_version == '3.10'",
 ]
 
