@@ -121,9 +121,9 @@ class PauliString:
         Examples
         --------
         >>> PauliString.from_str("+XYZ")
-        PauliString(dim=3, sign=Sign.PLUS, axes={0: Axis.X, 1: Axis.Y, 2: Axis.Z})
+        PauliString(dim=3, axes={0: Axis.X, 1: Axis.Y, 2: Axis.Z}, sign=Sign.PLUS)
         >>> PauliString.from_str("-IXI")
-        PauliString(dim=3, sign=Sign.MINUS, axes={1: Axis.X})
+        PauliString(dim=3, axes={1: Axis.X}, sign=Sign.MINUS)
         """
         if len(ps) < 2:
             raise ValueError("Input string must have at least 2 characters (a sign followed by operators).")
@@ -197,10 +197,10 @@ class PauliString:
         --------
         >>> tab = MatGF2(np.array([1, 1, 1]))
         >>> PauliString.from_tableau(tab)
-        PauliString(dim=1, sign=Sign.MINUS, axes={0: Axis.Y})
+        PauliString(dim=1, axes={0: Axis.Y}, sign=Sign.MINUS)
         >>> tab = MatGF2(np.array([0, 0, 0, 1, 0]))
         >>> PauliString.from_tableau(tab)
-        PauliString(dim=2, sign=Sign.PLUS, axes={1: Axis.Z})
+        PauliString(dim=2, axes={1: Axis.Z}, sign=Sign.PLUS)
         """
         if tab.ndim != 1:
             raise ValueError(
@@ -251,7 +251,7 @@ class PauliString:
         --------
         >>> ps = PauliString.from_str("-XY")
         >>> ps.to_tableau()
-        MatGF2([1, 1, 0, 1, 1])
+        MatGF2([1, 1, 0, 1, 1], dtype=uint8)
         """
         tab = MatGF2(np.zeros(2 * self.dim + 1, dtype=np.uint8))
 
