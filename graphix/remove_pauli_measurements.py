@@ -285,6 +285,9 @@ class _RemovePauliMeasurements:
         if spec.pauli_measurement is not None:
             axis = spec.pauli_measurement.axis
             spec.pauli_measurement = spec.pauli_measurement.clifford(clifford)
+            # Update pauli_measurements: sets in `pauli_measurements`
+            # dict only cover non-input nodes, so this update is
+            # skipped when the node is an input.
             if node in self.input_node_set:
                 return
             new_axis = spec.pauli_measurement.axis
