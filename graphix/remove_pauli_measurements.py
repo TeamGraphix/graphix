@@ -38,7 +38,7 @@ from graphix.measurements import PauliMeasurement
 from graphix.optimization import StandardizedPattern
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
     from collections.abc import Set as AbstractSet
     from typing import TypeAlias
 
@@ -301,7 +301,7 @@ class _RemovePauliMeasurements:
 
         Implements Lemma 2.31 and 4.3 [BMBdF+21].
         """
-        n_u = set(self.graph.neighbors(u))
+        n_u = list(self.graph.neighbors(u))
         _complement_subgraph(self.graph, n_u)
         # |+⟩⟨+| + exp(-iπ/2) |-⟩⟨-| = H S† H
         self._apply_clifford(u, Clifford.H @ Clifford.SDG @ Clifford.H)
@@ -322,9 +322,9 @@ class _RemovePauliMeasurements:
         n_u = set(self.graph.neighbors(u))
         n_v = set(self.graph.neighbors(v))
 
-        only_u = n_u - n_v - {v}
-        only_v = n_v - n_u - {u}
         inter = n_u & n_v
+        only_u = n_u - inter - {v}
+        only_v = n_v - inter - {u}
 
         _complement_edges(self.graph, only_u, only_v)
         _complement_edges(self.graph, only_u, inter)
@@ -518,7 +518,7 @@ class _RemovePauliMeasurements:
         )
 
 
-def _complement_subgraph(graph: nx.Graph[Node], s: set[Node]) -> None:
+def _complement_subgraph(graph: nx.Graph[Node], s: Iterable[Node]) -> None:
     """Complement edges in a given subgraph."""
     all_pairs = set(itertools.combinations(s, 2))
     existing = all_pairs & graph.edges()
