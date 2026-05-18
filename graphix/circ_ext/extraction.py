@@ -98,13 +98,15 @@ class PauliString:
     def from_str(ps: str) -> PauliString:
         """Construct a PauliString from its string representation.
 
+        The sign prefix (``'+'`` or ``'-'``) is optional; if omitted, the sign
+        defaults to ``Sign.PLUS``.
+
         Parameters
         ----------
         ps : str
-            String encoding of a Pauli string. The first character must be
-            ``'+'`` or ``'-'`` (the sign), followed by one or more single-character
-            Pauli operators (``'X'``, ``'Y'``, ``'Z'``, or ``'I'``).
-            Example: ``'+XYZ'``, ``'-IXI'``.
+            String encoding of a Pauli string. Optionally starts with ``'+'``
+            or ``'-'``, followed by zero or more single-character Pauli operators
+            (``'X'``, ``'Y'``, ``'Z'``, or ``'I'``).
 
         Returns
         -------
@@ -114,9 +116,8 @@ class PauliString:
         Raises
         ------
         ValueError
-            If the string is shorter than 2 characters,
-            the first character is not ``'+'`` or ``'-'``, or
-            any operator character is not one of ``'X'``, ``'Y'``, ``'Z'``, ``'I'``.
+            If the first character is not ``'+'`` or ``'-'`` or a valid operator character,
+            or any operator character is not one of ``'X'``, ``'Y'``, ``'Z'``, ``'I'``.
 
         Examples
         --------
@@ -124,33 +125,44 @@ class PauliString:
         PauliString(dim=3, axes={0: Axis.X, 1: Axis.Y, 2: Axis.Z}, sign=Sign.PLUS)
         >>> PauliString.from_str("-IXI")
         PauliString(dim=3, axes={1: Axis.X}, sign=Sign.MINUS)
+        >>> PauliString.from_str("X")
+        PauliString(dim=1, axes={0: Axis.X}, sign=Sign.PLUS)
+        >>> PauliString.from_str("")
+        PauliString(dim=0, axes={}, sign=Sign.PLUS)
         """
-        if len(ps) < 2:
-            raise ValueError("Input string must have at least 2 characters (a sign followed by operators).")
+        if len(ps) == 0:
+            return PauliString(0, {})
 
-        sign_char, ops = ps[0], ps[1:]  # Mypy disallows string unpacking
+        first_char, *operator_chars = iter(ps)
 
-        _sign_map = {"+": Sign.PLUS, "-": Sign.MINUS}
-        _axis_map = {"X": Axis.X, "Y": Axis.Y, "Z": Axis.Z}
+        match first_char:
+            case "+":
+                sign = Sign.PLUS
+            case "-":
+                sign = Sign.MINUS
+            case "X" | "Y" | "Z" | "I":
+                sign = Sign.PLUS
+                operator_chars = [first_char, *operator_chars]
+            case _:
+                raise ValueError(
+                    f"First character must be '+', '-', or a valid operator ('X', 'Y', 'Z', or 'I'), got '{first_char}'."
+                )
 
-        if sign_char not in _sign_map:
-            raise ValueError(f"First character must be '+' or '-', got '{sign_char}'.")
-
-        invalid = {op for op in ops if op not in _axis_map and op != "I"}
+        invalid = {op for op in operator_chars if op not in Axis.__members__ and op != "I"}
         if invalid:
             raise ValueError(f"Invalid Pauli operator(s): {invalid}. Each operator must be 'X', 'Y', 'Z', or 'I'.")
 
         return PauliString(
-            sign=_sign_map[sign_char],
-            dim=len(ops),
-            axes={i: _axis_map[op] for i, op in enumerate(ops) if op != "I"},
+            sign=sign,
+            dim=len(operator_chars),
+            axes={i: Axis[op] for i, op in enumerate(operator_chars) if op != "I"},
         )
 
     def __str__(self) -> str:
         """Return a string representation of the Pauli string."""
         pauli_str = (
             str(self.sign),
-            *(getattr(self.axes.get(node), "name", "I") for node in range(self.dim)),
+            *(axis.name if (axis := self.axes.get(node)) else "I" for node in range(self.dim)),
         )
 
         return "".join(pauli_str)
@@ -493,7 +505,7 @@ class CliffordMap:
                 f"Isometries are not supported yet: # of inputs ({len(self.input_nodes)}) must be equal to the # of outputs ({len(self.output_nodes)})."
             )
 
-        return MatGF2(np.vstack((*(ps.to_tableau() for ps in self.x_map), *(ps.to_tableau() for ps in self.z_map))))
+        return MatGF2(np.vstack([ps.to_tableau() for psmap in (self.x_map, self.z_map) for ps in psmap]))
 
 
 def extraction_ps_from_corrected_node(flow: PauliFlow[Measurement], node: Node) -> PauliString:
