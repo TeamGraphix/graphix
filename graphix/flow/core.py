@@ -856,6 +856,8 @@ class PauliFlow(Generic[_AM_co]):
         [1] Simmons, 2021 (arXiv:2109.05654).
         [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
+        if self.og.output_cliffords:
+            raise NotImplementedError("Circuit extraction is not supported for open graphs with Clifford decorations.")
         pexp_dag = PauliExponentialDAG.from_focused_flow(self)
         clifford_map = CliffordMap.from_focused_flow(self)
 
