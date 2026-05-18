@@ -703,6 +703,13 @@ class TestPattern:
         assert p_1 == pc_1
         assert p_2 == pc_2
 
+    # Pattern composition for single-node graph with empty mapping
+    def test_compose_4(self) -> None:
+        p = Pattern(input_nodes=[0], cmds=[C(0, Clifford.Z)])
+        p_test, _ = p.compose(p, mapping={})
+        p_ref = Pattern(input_nodes=[0, 1], cmds=[C(0, Clifford.Z), C(1, Clifford.Z)])
+        assert p_test == p_ref
+
     # Equivalence between pattern and circuit composition
     def test_compose_5(self, fx_rng: Generator) -> None:
         circuit_1 = Circuit(1)

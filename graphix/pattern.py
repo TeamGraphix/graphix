@@ -256,7 +256,7 @@ class Pattern:
                 stacklevel=2,
             )
 
-        shift = max(*nodes_p1, *mapping.values()) + 1
+        shift = max((*nodes_p1, *mapping.values())) + 1
         mapping_sequential = {
             node: i for i, node in enumerate(sorted(nodes_p2 - mapping.keys()), start=shift)
         }  # assigns new labels to nodes in other not specified in mapping
@@ -1139,7 +1139,7 @@ class Pattern:
     def extract_opengraph(self) -> OpenGraph[Measurement]:
         r"""Extract the underlying resource-state open graph from the pattern.
 
-        This method proceeds by standardizing the pattern first to guarantee that
+        This method standardizes the pattern first to guarantee that
         Clifford commands are properly encoded in the resulting open graph.
         Specifically, Cliffords acting on measured nodes are absorbed into measurements,
         while Cliffords acting on output nodes are stored in ``OpenGraph.output_cliffords``.

@@ -735,7 +735,7 @@ class OpenGraph(Generic[_AM_co]):
                     )
                 measurements_other[v] = vm.clifford(uc)  # type: ignore[attr-defined]
 
-        shift = max(*self.graph.nodes, *mapping.values()) + 1
+        shift = max((*self.graph.nodes, *mapping.values())) + 1
 
         mapping_sequential = {
             node: i for i, node in enumerate(sorted(other.graph.nodes - mapping.keys()), start=shift)

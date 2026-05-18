@@ -128,7 +128,7 @@ class StandardizedPattern(_StandardizedPattern):
     m_list: tuple[command.M]
         The M commands.
     c_dict: Mapping[Node, Clifford]
-        Mapping associating Clifford corrections to some nodes.
+        Mapping associating Clifford corrections to some output nodes.
     z_dict: Mapping[Node, frozenset[Node]]
         Mapping associating Z-domains to some nodes.
     x_dict: Mapping[Node, frozenset[Node]]

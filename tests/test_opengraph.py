@@ -820,6 +820,7 @@ def _compose_5() -> OpenGraphComposeTestCase:
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
+# Merge clifford with measurement
 @register_open_graph_compose_test_case
 def _compose_6() -> OpenGraphComposeTestCase:
     """Generate composition test with Cliffords.
@@ -854,6 +855,7 @@ def _compose_6() -> OpenGraphComposeTestCase:
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
+# Merge clifford with measurement
 @register_open_graph_compose_test_case
 def _compose_7() -> OpenGraphComposeTestCase:
     """Generate composition test with Cliffords.
@@ -887,6 +889,7 @@ def _compose_7() -> OpenGraphComposeTestCase:
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
+# Merge outputs with Cliffords
 @register_open_graph_compose_test_case
 def _compose_8() -> OpenGraphComposeTestCase:
     """Generate composition test with Cliffords.
@@ -919,6 +922,36 @@ def _compose_8() -> OpenGraphComposeTestCase:
     mapping = {2: 2}
 
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Parallel composition for single-node graph with empty mapping
+@register_open_graph_compose_test_case
+def _compose_9() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    [(0)]
+
+    Graph 2 = Graph 1
+
+    Mapping: {}
+
+    Expected graph
+    [(0)] [(1)]
+
+    """
+    g: nx.Graph[int] = nx.Graph()
+    g = nx.Graph()
+    g.add_node(0)
+    og: OpenGraph[Measurement] = OpenGraph(graph=g, input_nodes=[0], output_nodes=[0], measurements={})
+
+    g_ref: nx.Graph[int] = nx.Graph()
+    g_ref.add_nodes_from((0, 1))
+    og_ref: OpenGraph[Measurement] = OpenGraph(graph=g_ref, input_nodes=[0, 1], output_nodes=[0, 1], measurements={})
+
+    mapping: dict[int, int] = {}
+
+    return OpenGraphComposeTestCase(og, og, og_ref, mapping)
 
 
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
