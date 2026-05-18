@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #476 Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
 
+- #505
+  - Added new methods `XZCorrections.to_causal_flow` and `XZCorrections.to_gflow` which subsume  `StandardizedPattern.extract_causal_flow` and `StandardizedPattern.extract_gflow`.
+  - Added new methods `XZCorrections.to_bloch` and `XZCorrections.downcast_bloch`.
+
 ### Fixed
 
 ### Changed
