@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #507: Introduced new methods `PauliString.__str__`, `PauliString.from_str`, `PauliString.to_tableau`, and `PauliString.from_tableau`.
 
+- #505
+  - Added new methods `XZCorrections.to_causal_flow` and `XZCorrections.to_gflow` which subsume  `StandardizedPattern.extract_causal_flow` and `StandardizedPattern.extract_gflow`.
+  - Added new methods `XZCorrections.to_bloch` and `XZCorrections.downcast_bloch`.
+
 ### Fixed
 
 ### Changed

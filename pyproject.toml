@@ -47,7 +47,7 @@ dev = [
     "pre-commit",
     "pyright",
     "ruff==0.15.12",
-    "types-networkx==3.6.1.20260512",
+    "types-networkx==3.6.1.20260513",
     "types-psutil",
     "types-setuptools",
     "scipy-stubs",
