@@ -603,6 +603,20 @@ class TestExtraction:
         assert s1.isclose(s2)
 
 
+class TestPauliString:
+    @pytest.mark.parametrize("ps", ["+X", "-XIY", "+II", "+YXZZYX", "-IIIYXZII", "+"])
+    def test_round_trip_conversions(self, ps: str) -> None:
+        tab = PauliString.from_str(ps).to_tableau()
+        ps_test = str(PauliString.from_tableau(tab))
+
+        assert ps == ps_test
+
+    @pytest.mark.parametrize(("ps", "ps_ref"), [("", "+"), ("XIZY", "+XIZY")])
+    def test_implicit_sign_str(self, ps: str, ps_ref: str) -> None:
+        ps_test = PauliString.from_str(ps)
+        assert ps_ref == str(ps_test)
+
+
 def test_extend_input() -> None:
     og = OpenGraph(
         graph=nx.Graph([(1, 3), (2, 4), (3, 4), (3, 5), (4, 6)]),

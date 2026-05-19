@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #490: Introduced new `Instruction` and `Command` namespace classes for instruction and command instantiation.
 
-- #476 Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
+- #476: Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
+
+- #507: Introduced new methods `PauliString.__str__`, `PauliString.from_str`, `PauliString.to_tableau`, and `PauliString.from_tableau`.
 
 - #505
   - Added new methods `XZCorrections.to_causal_flow` and `XZCorrections.to_gflow` which subsume  `StandardizedPattern.extract_causal_flow` and `StandardizedPattern.extract_gflow`.
@@ -35,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Define `PauliString` on qubit indices and remove all `remap` methods.
   - Represent `x_map` and `z_map` attributes of `CliffordMap` as sequences of `PauliString` instead of mappings.
   - Rename `PauliFlow.pauli_strings` property as `PauliFlow.extraction_pauli_strings`.
+
+- #507: Static method `PauliString.from_measured_node` is subsumed by the function `extraction_ps_from_corrected_node`.
 
 ### Fixed
 
