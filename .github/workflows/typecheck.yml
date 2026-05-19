@@ -32,9 +32,9 @@ jobs:
           enable-cache: true
           python-version: ${{ env.python-version }}
 
-      - run: uv run --extra dev --extra extra --extra typing mypy
+      - run: uv run --extra dev --extra typing mypy
 
-      - run: uv run --extra dev --extra extra --extra typing pyright
+      - run: uv run --extra dev --extra typing pyright
 
   # Check that `mypy` find installed `graphix` package (#328)
   #
