@@ -903,6 +903,7 @@ class TestPattern:
     # Extract causal flow from random circuits
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_extract_causal_flow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        """Tests the round trip Pattern -> XZCorrections -> CausalFlow -> XZCorrections -> Pattern."""
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 2
         depth = 2
@@ -920,6 +921,7 @@ class TestPattern:
     # Extract gflow from random circuits
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_extract_gflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        """Tests the round trip Pattern -> XZCorrections -> GFlow -> XZCorrections -> Pattern."""
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 2
         depth = 2
@@ -950,6 +952,7 @@ class TestPattern:
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
     def test_extract_gflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+        """Tests the round trip Pattern -> XZCorrections -> GFlow -> XZCorrections -> Pattern."""
         if test_case.has_gflow:
             alpha = 2 * np.pi * fx_rng.random()
             s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)

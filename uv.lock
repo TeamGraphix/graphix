@@ -1003,7 +1003,7 @@ requires-dist = [
     { name = "sphinx", marker = "extra == 'doc'" },
     { name = "sphinx-gallery", marker = "extra == 'doc'" },
     { name = "sympy" },
-    { name = "types-networkx", marker = "extra == 'dev'", specifier = "==3.6.1.20260512" },
+    { name = "types-networkx", marker = "extra == 'dev'", specifier = "==3.6.1.20260513" },
     { name = "types-psutil", marker = "extra == 'dev'" },
     { name = "types-setuptools", marker = "extra == 'dev'" },
     { name = "typing-extensions" },
@@ -3155,15 +3155,15 @@ wheels = [
 
 [[package]]
 name = "types-networkx"
-version = "3.6.1.20260512"
+version = "3.6.1.20260513"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7e/13/1f7a223c2a7c74d660d391413a68cb9d0a2aa8b2b90c16f1fd9be27384a6/types_networkx-3.6.1.20260512.tar.gz", hash = "sha256:c1fc309f3a93b393ea20e2153c3a01b43c152f348a9f5039e43b5f6bf9102dc7", size = 73844, upload-time = "2026-05-12T05:29:26.873Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/61/7280109856f2a5fa51bc0f992e0aa56301686e99b5b6ad8eeb23aa0aadeb/types_networkx-3.6.1.20260513.tar.gz", hash = "sha256:19e8c870e54f17001af62dc2783eb707916a51c7fbf0e1b3940407f082bacb62", size = 73894, upload-time = "2026-05-13T05:39:19.847Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ce/93/23408a3f681aaa9186a3bfe4927eb4cc91d634f2c6148447213c9ada4071/types_networkx-3.6.1.20260512-py3-none-any.whl", hash = "sha256:6369ecfa733101a45fb43c1c741f217a02c30c79373708a047310ec277b1c01d", size = 162405, upload-time = "2026-05-12T05:29:25.441Z" },
+    { url = "https://files.pythonhosted.org/packages/23/70/10dc4c13beac90cc3c7f8b8e25265c194fb47480b5486859e76fded28e29/types_networkx-3.6.1.20260513-py3-none-any.whl", hash = "sha256:9e11bb739b40e6c35ef88e17cb753ede1afa88ec91985b9048a8fc9c043fee3f", size = 162379, upload-time = "2026-05-13T05:39:18.585Z" },
 ]
 
 [[package]]

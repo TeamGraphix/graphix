@@ -188,7 +188,7 @@ def check_pattern(pattern: Pattern, rng: Generator) -> None:
     assert all_bloch_measurement_or_input_node(standardized_pattern2.input_nodes, standardized_pattern2.m_list)
 
     # Check that the pattern has a gflow
-    standardized_pattern2.to_bloch().extract_gflow()
+    standardized_pattern2.to_bloch().extract_xzcorrections().to_gflow()
 
     pattern2 = standardized_pattern2.to_pattern()
     check_pattern_equivalence(pattern, pattern2, rng=rng)

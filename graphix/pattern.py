@@ -937,8 +937,6 @@ class Pattern:
         Notes
         -----
         - This function wraps :func:`optimization.StandardizedPattern.extract_partial_order_layers`, and the returned object is described in the notes of this method.
-
-        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract the partial order layering.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
 
@@ -964,11 +962,10 @@ class Pattern:
 
         Notes
         -----
-        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract a causal flow.
         - Applying the chain ``Pattern.extract_causal_flow().to_corrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation. This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
         - This method requires that all the measurements in the pattern are represented as Bloch measurements (i.e., there are no :class:`PauliMeasurement`s). Use :meth:`to_bloch()` to convert all Pauli measurements.
         """
-        return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
+        return self.extract_xzcorrections().downcast_bloch().to_causal_flow()
 
     def extract_gflow(self) -> GFlow[BlochMeasurement]:
         r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
@@ -992,7 +989,7 @@ class Pattern:
         -----
         The notes provided in :func:`self.extract_causal_flow` apply here as well.
         """
-        return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
+        return self.extract_xzcorrections().downcast_bloch().to_gflow()
 
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
         """Extract the XZ-corrections from the current measurement pattern.
@@ -1461,17 +1458,21 @@ class Pattern:
                     flow: PauliFlow[Measurement] | None = None
 
                     if flow_from_pattern:
-                        pattern_std = optimization.StandardizedPattern.from_pattern(self)
                         try:
-                            flow = pattern_std.extract_causal_flow()
-                        except FlowError:
+                            xz_corrections = self.extract_xzcorrections().downcast_bloch()
+                        except TypeError:
+                            pass
+                        else:
                             try:
-                                flow = pattern_std.extract_gflow()
-                            except (FlowError, TypeError):
-                                warn(
-                                    "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
-                                    stacklevel=stacklevel,
-                                )
+                                flow = xz_corrections.to_causal_flow()
+                            except FlowError:
+                                try:
+                                    flow = xz_corrections.to_gflow()
+                                except FlowError:
+                                    warn(
+                                        "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
+                                        stacklevel=stacklevel,
+                                    )
 
                     if flow is None:
                         og = self.extract_opengraph()

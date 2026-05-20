@@ -15,7 +15,12 @@ import networkx as nx
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
-from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponentialDAG, PauliString
+from graphix.circ_ext.extraction import (
+    CliffordMap,
+    ExtractionResult,
+    PauliExponentialDAG,
+    extraction_ps_from_corrected_node,
+)
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
@@ -51,10 +56,13 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.circ_ext.extraction import PauliString
+    from graphix.measurements import BlochMeasurement
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
     from graphix.visualization import DrawKwargs
+
 
 TotalOrder = Sequence[int]
 
@@ -194,6 +202,82 @@ class XZCorrections(Generic[_AM_co]):
 
         pattern.reorder_output_nodes(self.og.output_nodes)
         return pattern
+
+    def to_causal_flow(self: XZCorrections[_PM_co]) -> CausalFlow[_PM_co]:
+        r"""Extract a causal flow from XZ-corrections.
+
+        This method does not invoke the flow-extraction routine on the underlying open graph.
+        Instead, it assigns the ``x_corrections`` mapping to the flow's correction function
+        and verifies that it is compatible with the intrinsic partial order of the XZ-corrections.
+        If the resulting correction function is incompatible with this partial order,
+        or the open graph contains measurements in XZ or YZ planes, a ``FlowError`` is raised.
+
+        Returns
+        -------
+        CausalFlow[_PM_co]
+
+        Notes
+        -----
+        See Theorem 1 in Ref. [1].
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+        """
+        cf = CausalFlow(self.og, self.x_corrections, self.partial_order_layers)
+        cf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible, if a measured node is corrected by more than one node, or if nodes are not measured on the XY plane.
+        return cf
+
+    def to_gflow(self: XZCorrections[_PM_co]) -> GFlow[_PM_co]:
+        r"""Extract a gflow from XZ-corrections.
+
+        This method does not invoke the flow-extraction routine on the underlying open graph.
+        Instead, it assigns the ``x_corrections`` mapping to the flow's correction function
+        and verifies that it is compatible with the intrinsic partial order of the XZ-corrections.
+        Nodes measured in planes XZ or YZ are assigned to their correcting set. If the resulting
+        correction function is incompatible with this partial order ``FlowError`` is raised.
+
+        Returns
+        -------
+        GFlow[_PM_co]
+
+        Notes
+        -----
+        See Theorem 2 in Ref. [1].
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+        """
+        correction_function: dict[int, set[int]] = {}
+
+        for i, meas in self.og.measurements.items():
+            corrections = set(self.x_corrections.get(i, set()))
+
+            if meas.to_plane() in {Plane.XZ, Plane.YZ}:
+                corrections.add(i)
+
+            correction_function[i] = corrections
+
+        gf = GFlow(self.og, correction_function, self.partial_order_layers)
+        gf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible.
+        return gf
+
+    def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
+        """Return the XZ-corrections where all measurements in the open graph are converted to Bloch.
+
+        See :meth:`OpenGraph.to_bloch` for additional information.
+        """
+        return XZCorrections(self.og.to_bloch(), self.x_corrections, self.z_corrections, self.partial_order_layers)
+
+    def downcast_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
+        """Return the open graph if all measurements are described as Bloch measurements; raise `TypeError` otherwise.
+
+        See :meth:`OpenGraph.downcast_bloch` for additional information.
+        """
+        return XZCorrections(
+            self.og.downcast_bloch(), self.x_corrections, self.z_corrections, self.partial_order_layers
+        )
 
     def generate_total_measurement_order(self) -> TotalOrder:
         """Generate a sequence of all the non-output nodes in the open graph in an arbitrary order compatible with the intrinsic partial order of the XZ-corrections.
@@ -830,7 +914,7 @@ class PauliFlow(Generic[_AM_co]):
         """
         if not self.is_focused():
             raise ValueError("Flow is not focused.")
-        return {node: PauliString.from_measured_node(self, node) for node in self.correction_function}
+        return {node: extraction_ps_from_corrected_node(self, node) for node in self.correction_function}
 
     def extract_circuit(self: PauliFlow[Measurement]) -> ExtractionResult:
         """Extract a circuit from a flow.
