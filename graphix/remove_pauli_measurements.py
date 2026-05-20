@@ -245,9 +245,13 @@ class _RemovePauliMeasurements:
     """Set of output nodes, using the new indexing."""
 
     node_map: dict[Node, Node]
-    """Mapping from the nodes of the original pattern to the nodes of the graph (that may have been pivoted).
+    """Mapping from the nodes of the original pattern to the corresponding nodes in the (possibly pivoted) graph.
 
-    The following invariant is maintained for all node ``u``: ``node_specs[node_map[u]].src == u``.
+    Nodes that have been removed from the graph are absent from this
+    mapping.
+
+    The following invariant is maintained for all node ``u``:
+    ``node_specs[node_map[u]].src == u``.
     """
 
     def __init__(self, cut: PauliPushingCut) -> None:
@@ -299,7 +303,7 @@ class _RemovePauliMeasurements:
         """
         Local complement.
 
-        Implements Lemma 2.31 and 4.3 [BMBdF+21].
+        This implements Lemma 2.31 and 4.3 [BMBdF+21].
         """
         n_u = list(self.graph.neighbors(u))
         _complement_subgraph(self.graph, n_u)
@@ -317,7 +321,7 @@ class _RemovePauliMeasurements:
         - (u, v) is a graph edge;
         - u and v are not input nodes.
 
-        Implements Lemmas 2.32 and 4.5 [BMBdF+21].
+        This implements Lemmas 2.32 and 4.5 [BMBdF+21].
         """
         n_u = set(self.graph.neighbors(u))
         n_v = set(self.graph.neighbors(v))
@@ -371,10 +375,10 @@ class _RemovePauliMeasurements:
         Remove Z/-Z measurement.
 
         Prerequisite (not checked):
-        - u measured in Z (sign==PLUS) or -Z (sign=MINUS);
+        - u measured in Z (sign==PLUS) or -Z (sign==MINUS);
         - u is not an input node.
 
-        Implements Lemma 4.7 [BMBdF+21].
+        This implements Lemma 4.7 [BMBdF+21].
         """
         if sign == Sign.MINUS:
             for node in self.graph.neighbors(u):
@@ -389,7 +393,7 @@ class _RemovePauliMeasurements:
         - u measured in Y (sign==PLUS) or -Y (sign=MINUS);
         - u is not an input node.
 
-        Implements Lemma 4.8 [BMBdF+21].
+        This implements Lemma 4.8 [BMBdF+21].
         """
         self.local_complement(u)
         self.remove_z(u, sign)
@@ -403,16 +407,18 @@ class _RemovePauliMeasurements:
         - (u, v) is a graph edge;
         - u and v are internal nodes.
 
-        Implements Lemma 4.9 [BMBdF+21].
+        This implements Lemma 4.9 [BMBdF+21].
         """
         self.pivot_edge(u, v)
+        # `pivot_edge` swaps the endpoints `u` and `v`, so the
+        # original node `u` becomes `v`.
         self.remove_z(v, sign)
 
     def remove_all_y_or_z(self) -> None:
         """
         Remove all Y and Z measurements, repeatedly.
 
-        Implements Theorem 4.12, Steps 1 and 2.
+        This implements Theorem 4.12, Steps 1 and 2.
         """
         for axis, remove in (
             (Axis.Y, self.remove_y),  # Step 1: remove any non-input Y measured node
@@ -427,15 +433,16 @@ class _RemovePauliMeasurements:
                 remove(new_node, spec.pauli_measurement.sign)
 
     def try_remove_x_with_internal_neighbor(self) -> bool:
-        """
-        Find an X measurement connected to internal neighbor and remove it if any.
+        """Find an X measurement connected to an internal neighbor and remove it if any.
 
-        Implements Theorem 4.12, Step 3.
+        This implements Theorem 4.12, Step 3, except for the final "go
+        back to step 1", which is handled by the ``while`` loop in
+        :func:`remove_pauli_measurements`.
 
         Returns
         -------
         bool
-            ``True`` if a node has been found and removed, ``False`` otherwise
+            ``True`` if a suitable node was found and removed, ``False`` otherwise.
         """
         for node in self.pauli_measurements[Axis.X]:
             new_node = self.node_map[node]
@@ -452,15 +459,20 @@ class _RemovePauliMeasurements:
         return False
 
     def try_pivot_x_with_output_node(self) -> bool:
-        """
-        Find an X measurement connected to an output node that is not also an input and pivot it if any.
+        """Find an X-measurement connected to an output node that is not also an input and pivot it if any.
 
-        Implements Lemma 4.11 and Theorem 4.12, Step 4.
+        This implements Lemma 4.11 and Theorem 4.12, Step 4, except
+        for the final "go back to step 1", which is handled by
+        the ``while`` loop in :func:`remove_pauli_measurements`.
+
+        This method does not remove any node: it only performs the
+        pivot, converting the X-measurement into a Z-measurement,
+        which will be removed by Step 1 on the next iteration.
 
         Returns
         -------
         bool
-            ``True`` if a node has been found and pivoted, ``False`` otherwise
+            ``True`` if a suitable node was found and pivoted, ``False`` otherwise.
         """
         for node in self.pauli_measurements[Axis.X]:
             new_node = self.node_map[node]
@@ -501,6 +513,7 @@ class _RemovePauliMeasurements:
         return new_m
 
     def to_standardized_pattern(self) -> StandardizedPattern:
+        # Prepare only nodes that have not been removed (i.e., that still appear in `node_specs`)
         n_list = tuple(cmd_n for cmd_n in self.cut.original_pattern.n_list if cmd_n.node in self.node_specs)
         output_nodes = tuple(self.node_map[node] for node in self.cut.original_pattern.output_nodes)
         measurements = tuple(new_m for original_m in self.measurements if (new_m := self._create_new_m(original_m)))
@@ -546,7 +559,27 @@ def _complement_edges(graph: nx.Graph[Node], s: set[Node], t: set[Node]) -> None
     graph.add_edges_from(all_pairs - existing)
 
 
-def _map_domain(node_map: Mapping[Node, Node], domain: set[Node]) -> set[Node]:
+def _map_domain(node_map: Mapping[Node, Node], domain: Iterable[Node]) -> set[Node]:
+    """Translate a set of nodes from the original numbering to the new numbering.
+
+    Parameters
+    ----------
+    node_map : Mapping[Node, Node]
+        Mapping from the nodes of the original pattern to the
+        corresponding nodes in the (possibly pivoted) graph.  Nodes
+        that have been removed from the graph are absent from this
+        mapping.
+    domain : Iterable[Node]
+        The collection of nodes expressed with the original numbering.
+
+    Returns
+    -------
+    set[Node]
+        A new set containing the translated nodes.  Any node in
+        ``domain`` that does not appear in ``node_map`` (i.e., has
+        been removed) is omitted from the result, i.e. we treat such a
+        node as having been measured with the outcome 0.
+    """
     return {v for node in domain if (v := node_map.get(node)) is not None}
 
 
