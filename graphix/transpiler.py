@@ -57,7 +57,7 @@ class TranspileResult:
     classical_outputs: tuple[int, ...]
 
 
-@dataclass
+@dataclass(frozen=True)
 class SimulateResult(Generic[_DenseStateT_co]):
     """
     The result of a simulation.
@@ -953,8 +953,8 @@ class Circuit:
     @overload
     def simulate_statevector(
         self,
-        input_state: Data | None = None,
         backend: StatevectorBackend | Literal["statevector"] = ...,
+        input_state: Data | None = None,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
@@ -964,8 +964,8 @@ class Circuit:
     @overload
     def simulate_statevector(
         self,
+        backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: Data | None = None,
-        backend: DensityMatrixBackend | Literal["densitymatrix"] = ...,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
@@ -975,8 +975,8 @@ class Circuit:
     @overload
     def simulate_statevector(
         self,
+        backend: DenseStateBackend[_DenseStateT_co],
         input_state: Data | None = None,
-        backend: DenseStateBackend[_DenseStateT_co] = ...,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
@@ -985,8 +985,8 @@ class Circuit:
 
     def simulate_statevector(
         self,
-        input_state: Data | None = None,
         backend: DenseStateBackend[_DenseStateT_co] | _DenseStateBackendLiteral = "statevector",
+        input_state: Data | None = None,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
