@@ -1013,12 +1013,12 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        backend_ = _initialize_backend(backend, branch_selector)
+        _backend = _initialize_backend(backend, branch_selector)
 
         if input_state is None:
-            backend_.add_nodes(range(self.width))
+            _backend.add_nodes(range(self.width))
         else:
-            backend_.add_nodes(range(self.width), input_state)
+            _backend.add_nodes(range(self.width), input_state)
 
         classical_measures = []
 
@@ -1026,23 +1026,20 @@ class Circuit:
             instr = self.instruction[i]
 
             def evolve_single(op: Matrix, target: int) -> None:
-                backend_.state.evolve_single(op, backend_.node_index.index(target))
+                _backend.state.evolve_single(op, _backend.node_index.index(target))
 
             def evolve(op: Matrix, qargs: Iterable[int]) -> None:
-                backend_.state.evolve(op, [backend_.node_index.index(qarg) for qarg in qargs])
+                _backend.state.evolve(op, [_backend.node_index.index(qarg) for qarg in qargs])
 
             match instr.kind:
                 case instruction.InstructionKind.CNOT:
                     evolve(Ops.CNOT, [instr.control, instr.target])
-                    # backend.state.cnot(
-                    #     (backend.node_index.index(instr.control), backend.node_index.index(instr.target))
-                    # )
                 case instruction.InstructionKind.SWAP:
                     u, v = instr.targets
-                    backend_.state.swap((backend_.node_index.index(u), backend_.node_index.index(v)))
+                    _backend.state.swap((_backend.node_index.index(u), _backend.node_index.index(v)))
                 case instruction.InstructionKind.CZ:
                     u, v = instr.targets
-                    backend_.state.entangle((backend_.node_index.index(u), backend_.node_index.index(v)))
+                    _backend.state.entangle((_backend.node_index.index(u), _backend.node_index.index(v)))
                 case instruction.InstructionKind.I:
                     pass
                 case instruction.InstructionKind.S:
@@ -1066,13 +1063,13 @@ class Circuit:
                 case instruction.InstructionKind.CCX:
                     evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
                 case instruction.InstructionKind.M:
-                    result = backend_.measure(
+                    result = _backend.measure(
                         instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1
                     )
                     classical_measures.append(result)
                 case _:
                     raise ValueError(f"Unknown instruction: {instr}")
-        return SimulateResult(cast("_DenseStateT_co", backend_.state), tuple(classical_measures))
+        return SimulateResult(cast("_DenseStateT_co", _backend.state), tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor) -> Circuit:
         """Apply `visitor` to all instructions in the circuit."""
