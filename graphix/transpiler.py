@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, Generic, Literal, SupportsFloat, TypeVar, cast, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -21,7 +21,9 @@ from graphix.instruction import InstructionKind, InstructionVisitor
 from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.sim.statevec import StatevectorBackend
+from graphix.sim.base_backend import DenseStateBackend
+from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
+from graphix.sim.statevec import Statevec, StatevectorBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -33,11 +35,16 @@ if TYPE_CHECKING:
     from graphix.instruction import InstructionType, InstructionTypeWithoutRZZ
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.sim import Data
-    from graphix.sim.base_backend import DenseStateBackend, Matrix
-    from graphix.sim.statevec import Statevec
+    from graphix.sim.base_backend import DenseState, Matrix
 
 
-@dataclass
+_BuiltinDenseStateBackend = DensityMatrixBackend | StatevectorBackend
+_DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
+
+_DenseStateT_co = TypeVar("_DenseStateT_co", bound="DenseState", covariant=True)
+
+
+@dataclass(frozen=True)
 class TranspileResult:
     """
     The result of a transpilation.
@@ -51,7 +58,7 @@ class TranspileResult:
 
 
 @dataclass
-class SimulateResult:
+class SimulateResult(Generic[_DenseStateT_co]):
     """
     The result of a simulation.
 
@@ -59,7 +66,7 @@ class SimulateResult:
     classical_measures : tuple[int,...], classical measures
     """
 
-    statevec: Statevec
+    statevec: _DenseStateT_co
     classical_measures: tuple[int, ...]
 
 
@@ -943,15 +950,48 @@ class Circuit:
         )
         return ancilla[17], ancilla[15], ancilla[13], seq
 
+    @overload
     def simulate_statevector(
         self,
         input_state: Data | None = None,
-        backend: DenseStateBackend[Statevec] | None = None,
+        backend: StatevectorBackend | Literal["statevector"] = ...,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-    ) -> SimulateResult:
+    ) -> SimulateResult[Statevec]: ...
+
+    @overload
+    def simulate_statevector(
+        self,
+        input_state: Data | None = None,
+        backend: DensityMatrixBackend | Literal["densitymatrix"] = ...,
+        branch_selector: BranchSelector | None = None,
+        rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
+    ) -> SimulateResult[DensityMatrix]: ...
+
+    @overload
+    def simulate_statevector(
+        self,
+        input_state: Data | None = None,
+        backend: DenseStateBackend[_DenseStateT_co] = ...,
+        branch_selector: BranchSelector | None = None,
+        rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
+    ) -> SimulateResult[_DenseStateT_co]: ...
+
+    def simulate_statevector(
+        self,
+        input_state: Data | None = None,
+        backend: DenseStateBackend[_DenseStateT_co] | _DenseStateBackendLiteral = "statevector",
+        branch_selector: BranchSelector | None = None,
+        rng: Generator | None = None,
+        *,
+        stacklevel: int = 1,
+    ) -> SimulateResult[_DenseStateT_co]:
         """Run statevector simulation of the gate sequence.
 
         Parameters
@@ -971,17 +1011,12 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        if backend is not None:
-            if branch_selector is not None:
-                raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
-        else:
-            if branch_selector is None:
-                branch_selector = RandomBranchSelector()
-            backend = StatevectorBackend(branch_selector=branch_selector)
+        backend_ = _initialize_backend(backend, branch_selector)
+
         if input_state is None:
-            backend.add_nodes(range(self.width))
+            backend_.add_nodes(range(self.width))
         else:
-            backend.add_nodes(range(self.width), input_state)
+            backend_.add_nodes(range(self.width), input_state)
 
         classical_measures = []
 
@@ -989,23 +1024,23 @@ class Circuit:
             instr = self.instruction[i]
 
             def evolve_single(op: Matrix, target: int) -> None:
-                backend.state.evolve_single(op, backend.node_index.index(target))
+                backend_.state.evolve_single(op, backend_.node_index.index(target))
 
             def evolve(op: Matrix, qargs: Iterable[int]) -> None:
-                backend.state.evolve(op, [backend.node_index.index(qarg) for qarg in qargs])
+                backend_.state.evolve(op, [backend_.node_index.index(qarg) for qarg in qargs])
 
             match instr.kind:
                 case instruction.InstructionKind.CNOT:
-                    backend.state.cnot(
-                        (backend.node_index.index(instr.control), backend.node_index.index(instr.target))
-                    )
-                    # evolve(Ops.CNOT, [instr.control, instr.target])
+                    evolve(Ops.CNOT, [instr.control, instr.target])
+                    # backend.state.cnot(
+                    #     (backend.node_index.index(instr.control), backend.node_index.index(instr.target))
+                    # )
                 case instruction.InstructionKind.SWAP:
                     u, v = instr.targets
-                    backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))
+                    backend_.state.swap((backend_.node_index.index(u), backend_.node_index.index(v)))
                 case instruction.InstructionKind.CZ:
                     u, v = instr.targets
-                    backend.state.entangle((backend.node_index.index(u), backend.node_index.index(v)))
+                    backend_.state.entangle((backend_.node_index.index(u), backend_.node_index.index(v)))
                 case instruction.InstructionKind.I:
                     pass
                 case instruction.InstructionKind.S:
@@ -1029,13 +1064,13 @@ class Circuit:
                 case instruction.InstructionKind.CCX:
                     evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
                 case instruction.InstructionKind.M:
-                    result = backend.measure(
+                    result = backend_.measure(
                         instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1
                     )
                     classical_measures.append(result)
                 case _:
                     raise ValueError(f"Unknown instruction: {instr}")
-        return SimulateResult(backend.state, tuple(classical_measures))
+        return SimulateResult(cast("_DenseStateT_co", backend_.state), tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor) -> Circuit:
         """Apply `visitor` to all instructions in the circuit."""
@@ -1161,3 +1196,45 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
             if instr.kind == InstructionKind.M:
                 visitor.qubits[instr.target] = None
     return TranspileSwapsResult(new_circuit, tuple(visitor.qubits))
+
+
+@overload
+def _initialize_backend(
+    backend: StatevectorBackend | Literal["statevector"],
+    branch_selector: BranchSelector | None,
+) -> StatevectorBackend: ...
+
+
+@overload
+def _initialize_backend(
+    backend: DensityMatrixBackend | Literal["densitymatrix"],
+    branch_selector: BranchSelector | None,
+) -> DensityMatrixBackend: ...
+
+
+@overload
+def _initialize_backend(
+    backend: DenseStateBackend[_DenseStateT_co],
+    branch_selector: BranchSelector | None,
+) -> DenseStateBackend[_DenseStateT_co]: ...
+
+
+def _initialize_backend(
+    backend: DenseStateBackend[_DenseStateT_co] | _DenseStateBackendLiteral,
+    branch_selector: BranchSelector | None,
+) -> _BuiltinDenseStateBackend | DenseStateBackend[_DenseStateT_co]:
+    if isinstance(backend, DenseStateBackend):
+        if branch_selector is not None:
+            raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
+        return backend
+
+    if branch_selector is None:
+        branch_selector = RandomBranchSelector()
+
+    match backend:
+        case "statevector":
+            return StatevectorBackend(branch_selector=branch_selector)
+        case "densitymatrix":
+            return DensityMatrixBackend(branch_selector=branch_selector)
+        case _:
+            raise ValueError(f"Unknown backend {backend}.")
