@@ -997,8 +997,8 @@ class Circuit:
         Parameters
         ----------
         input_state : Data
-        backend : :class:`graphix.sim.base_backend.DenseStateBackend[Statevec]` | None, optional
-            The simulator backend to use. If ``None`` (default), "statevector" backend is used.
+        backend: :class:`graphix.sim.base_backend.DenseStateBackend[_DenseStateT_co]`, 'statevector', or 'densitymatrix'
+            Simulator backend to use. Optional, defaults to "statevector".
         branch_selector: :class:`graphix.branch_selector.BranchSelector`
             branch selector for measures (default: :class:`RandomBranchSelector`). It cannot be specified if ``backend`` is already instantiated.
         rng: Generator, optional
@@ -1223,6 +1223,20 @@ def _initialize_backend(
     backend: DenseStateBackend[_DenseStateT_co] | _DenseStateBackendLiteral,
     branch_selector: BranchSelector | None,
 ) -> _BuiltinDenseStateBackend | DenseStateBackend[_DenseStateT_co]:
+    """Initialize backend for circuit simulation.
+
+    Parameters
+    ----------
+    backend: :class:`graphix.sim.base_backend.DenseStateBackend[_DenseStateT_co]`, 'statevector', or 'densitymatrix'
+        Simulation backend
+    branch_selector: :class:`BranchSelector`
+        Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  If ``None``, it defaults to :class:`RandomBranchSelector`.
+
+    Returns
+    -------
+    :class:`DenseStateBackend`
+        matching the appropriate backend
+    """
     if isinstance(backend, DenseStateBackend):
         if branch_selector is not None:
             raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
