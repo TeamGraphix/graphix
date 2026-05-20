@@ -309,9 +309,9 @@ class _RemovePauliMeasurements:
             # |0⟩⟨0| + exp(iπ/2) |1⟩⟨1| = S
             self._apply_clifford(node, Clifford.S)
 
-    def pivot_vertices(self, u: Node, v: Node) -> None:
+    def pivot_edge(self, u: Node, v: Node) -> None:
         """
-        Pivot two vertices.
+        Pivot an edge.
 
         Prerequisite (not checked):
         - (u, v) is a graph edge;
@@ -405,7 +405,7 @@ class _RemovePauliMeasurements:
 
         Implements Lemma 4.9 [BMBdF+21].
         """
-        self.pivot_vertices(u, v)
+        self.pivot_edge(u, v)
         self.remove_z(v, sign)
 
     def remove_all_y_or_z(self) -> None:
@@ -468,7 +468,7 @@ class _RemovePauliMeasurements:
             v = next(iter(non_input_output_nodes), None)
             if v is None:
                 continue
-            self.pivot_vertices(new_node, v)
+            self.pivot_edge(new_node, v)
             return True
         return False
 

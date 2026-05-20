@@ -96,13 +96,13 @@ def test_local_complement(fx_rng: Generator, measured_set: AbstractSet[int]) -> 
 
 
 @pytest.mark.parametrize("measured_set", [set(), {4}, {4, 5}, {4, 5, 6}, {4, 5, 7}, {0}, {1}, {2}, {3}, {0, 2}])
-def test_pivot_vertices(fx_rng: Generator, measured_set: AbstractSet[int]) -> None:
+def test_pivot_edge(fx_rng: Generator, measured_set: AbstractSet[int]) -> None:
     og = opengraph_lemma_2_32({node: Measurement.XY(0.25) for node in measured_set})
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
     cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
     remove_pauli_measurements = _RemovePauliMeasurements(cut)
-    remove_pauli_measurements.pivot_vertices(0, 1)
+    remove_pauli_measurements.pivot_edge(0, 1)
     standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
     og2 = standardized_pattern2.extract_opengraph()
     expected_graph: Graph = nx.Graph(
@@ -292,7 +292,7 @@ def test_pattern_remove_pauli_measurements_output_nodes() -> None:
 
 def test_try_pivot_x_with_output_node_after_pivot() -> None:
     # This test checks that `try_pivot_x_with_output_node` applies
-    # `pivot_vertices` using `new_node` rather than the original
+    # `pivot_edge` using `new_node` rather than the original
     # `node`.
     #
     # In practice this situation is unlikely to arise: for `node != new_node`
