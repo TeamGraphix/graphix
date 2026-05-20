@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, Literal, SupportsFloat, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, cast, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -22,11 +22,12 @@ from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
-from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.density_matrix import DensityMatrixBackend
+from graphix.sim.statevec import StatevectorBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+    from typing import Literal
 
     from numpy.random import Generator
 
@@ -36,10 +37,11 @@ if TYPE_CHECKING:
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.sim import Data
     from graphix.sim.base_backend import DenseState, Matrix
+    from graphix.sim.density_matrix import DensityMatrix
+    from graphix.sim.statevec import Statevec
 
-
-_BuiltinDenseStateBackend = DensityMatrixBackend | StatevectorBackend
-_DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
+    _BuiltinDenseStateBackend = DensityMatrixBackend | StatevectorBackend
+    _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
 
 _DenseStateT_co = TypeVar("_DenseStateT_co", bound="DenseState", covariant=True)
 
