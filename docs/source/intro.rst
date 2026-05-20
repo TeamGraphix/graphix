@@ -124,16 +124,17 @@ which we can express by a long sequence,
 Note that the input state has *teleported* to qubits 6 and 7 after the computation.
 
 ..
-    We can inspect the graph state using :class:`~graphix.graphsim.GraphState` class:
+    We can inspect the graph state using :class:`~graphix.opengraph.OpenGraph` class:
 
     .. code-block:: python
 
-        from graphix import GraphState
-        g = GraphState(nodes=[0,1],edges=[(0,1)])
+        from graphix import OpenGraph
+        import networkx as nx
+        og = OpenGraph(nx.Graph([0, 1]), output_nodes=[0, 1])
 
-    >>> print(g.to_statevector())
-    Statevec, data=[[ 0.5+0.j  0.5+0.j]
-    [ 0.5+0.j -0.5+0.j]], shape=(2, 2)
+    >>> print(og.to_pattern().simulate_pattern())
+    Statevec object with statevector [[ 0.5+0.j  0.5+0.j]
+    [ 0.5+0.j -0.5+0.j]] and length (2, 2).
 
 
 

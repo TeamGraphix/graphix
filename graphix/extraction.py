@@ -6,11 +6,17 @@ import copy
 import dataclasses
 import operator
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
 
-from graphix.graphsim import GraphState
+if TYPE_CHECKING:
+    from typing import TypeAlias
+
+    Graph: TypeAlias = nx.Graph[int]
+else:
+    Graph = nx.Graph
 
 
 class ResourceType(Enum):
@@ -33,12 +39,12 @@ class ResourceGraph:
     ----------
     cltype : :class:`ResourceType` object
         Type of the cluster.
-    graph : :class:`~graphix.graphsim.GraphState` object
+    graph : :class:`Graph` object
         Graph state of the cluster.
     """
 
     cltype: ResourceType
-    graph: GraphState
+    graph: Graph
 
     def __eq__(self, other: object) -> bool:
         """Return `True` if two resource graphs are equal, `False` otherwise."""
@@ -49,11 +55,11 @@ class ResourceGraph:
 
 
 def graph_to_fusion_network(
-    graph: GraphState,
+    graph: Graph,
     max_ghz: float = np.inf,
     max_lin: float = np.inf,
 ) -> list[ResourceGraph]:
-    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`~graphix.graphsim.GraphState`.
+    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`Graph`.
 
     Extraction algorithm is based on [1].
 
@@ -61,7 +67,7 @@ def graph_to_fusion_network(
 
     Parameters
     ----------
-    graph : :class:`~graphix.graphsim.GraphState` object
+    graph : :class:`Graph` object
         Graph state.
     phasedict : dict
         Dictionary of phases for each node.
@@ -161,7 +167,7 @@ def create_resource_graph(node_ids: list[int], root: int | None = None) -> Resou
     else:
         edges = [(node_ids[i], node_ids[i + 1]) for i in range(len(node_ids)) if i + 1 < len(node_ids)]
         cluster_type = ResourceType.LINEAR
-    tmp_graph = GraphState()
+    tmp_graph = Graph()
     tmp_graph.add_nodes_from(node_ids)
     tmp_graph.add_edges_from(edges)
     return ResourceGraph(cltype=cluster_type, graph=tmp_graph)
