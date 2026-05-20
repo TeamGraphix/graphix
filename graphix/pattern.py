@@ -1762,7 +1762,7 @@ class Pattern:
 
         standardized_pattern = optimization.StandardizedPattern.from_pattern(self)
         cut = PauliPushingCut.from_standardized_pattern(standardized_pattern, stacklevel=stacklevel + 1)
-        standardized_pattern = remove_pauli_measurements(cut)
+        standardized_pattern = remove_pauli_measurements(cut, stacklevel=stacklevel + 1)
         pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
         if copy:
             return pattern

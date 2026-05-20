@@ -472,12 +472,21 @@ class _RemovePauliMeasurements:
             return True
         return False
 
-    def remove_isolated_internal_nodes(self) -> None:
-        """Remove isolated internal nodes."""
+    def remove_isolated_internal_nodes(self, *, stacklevel: int = 1) -> None:
+        """Remove isolated internal nodes.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+        """
         # Construct the list first since the graph should not be
         # modified while enumerating isolated nodes.
         for node in list(nx.isolates(self.graph)):
             if node not in self.input_node_set and node not in self.output_node_set:
+                if node not in self.pauli_measurements:
+                    warn("Non-Pauli measurement on an isolated node was removed.", stacklevel=stacklevel + 1)
                 self._remove_node(node)
 
     def _create_new_m(self, original_m: Command.M) -> Command.M | None:
@@ -541,7 +550,7 @@ def _map_domain(node_map: Mapping[Node, Node], domain: set[Node]) -> set[Node]:
     return {v for node in domain if (v := node_map.get(node)) is not None}
 
 
-def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
+def remove_pauli_measurements(cut: PauliPushingCut, *, stacklevel: int = 1) -> StandardizedPattern:
     """Remove non-input Pauli measurements from the given pattern.
 
     This function implements the algorithm described in [BMBdF+21],
@@ -561,6 +570,9 @@ def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
     ----------
     cut: PauliPushingCut
         The Pauli-pushed pattern to optimize.
+    stacklevel : int, optional
+        Stack level to use for warnings. Defaults to 1, meaning that warnings
+        are reported at this function's call site.
 
     Returns
     -------
@@ -575,5 +587,5 @@ def remove_pauli_measurements(cut: PauliPushingCut) -> StandardizedPattern:
             and not process.try_pivot_x_with_output_node()  # Step 4
         ):
             break
-    process.remove_isolated_internal_nodes()
+    process.remove_isolated_internal_nodes(stacklevel=stacklevel + 1)
     return process.to_standardized_pattern()

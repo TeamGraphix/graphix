@@ -7,6 +7,7 @@ import pytest
 from numpy.random import Generator
 
 from graphix import (
+    ANGLE_PI,
     Axis,
     BlochMeasurement,
     Circuit,
@@ -321,3 +322,10 @@ def test_try_pivot_x_with_output_node_after_pivot() -> None:
     process.remove_x_with_internal_neighbor(0, 1, Sign.PLUS)
     # Fail if pivot is applied to the original node
     process.try_pivot_x_with_output_node()
+
+
+def test_isolated_nodes_non_pauli() -> None:
+    pattern = Pattern(cmds=[Command.N(0), Command.N(1), Command.M(0), Command.M(1, Measurement.XY(ANGLE_PI / 4))])
+    with pytest.warns(UserWarning, match="Non-Pauli measurement on an isolated node was removed."):
+        pattern.remove_pauli_measurements()
+    assert list(pattern) == []
