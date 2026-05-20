@@ -21,7 +21,7 @@ from graphix.instruction import InstructionKind, InstructionVisitor
 from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.statevec import StatevectorBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -33,7 +33,8 @@ if TYPE_CHECKING:
     from graphix.instruction import InstructionType, InstructionTypeWithoutRZZ
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.sim import Data
-    from graphix.sim.base_backend import Matrix
+    from graphix.sim.base_backend import DenseStateBackend, Matrix
+    from graphix.sim.statevec import Statevec
 
 
 @dataclass
@@ -945,6 +946,7 @@ class Circuit:
     def simulate_statevector(
         self,
         input_state: Data | None = None,
+        backend: DenseStateBackend[Statevec] | None = None,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
@@ -955,8 +957,10 @@ class Circuit:
         Parameters
         ----------
         input_state : Data
+        backend : :class:`graphix.sim.base_backend.DenseStateBackend[Statevec]` | None, optional
+            The simulator backend to use. If ``None`` (default), "statevector" backend is used.
         branch_selector: :class:`graphix.branch_selector.BranchSelector`
-            branch selector for measures (default: :class:`RandomBranchSelector`).
+            branch selector for measures (default: :class:`RandomBranchSelector`). It cannot be specified if ``backend`` is already instantiated.
         rng: Generator, optional
             Random-number generator for measurements.
             This generator is used only in case of random branch selection
@@ -967,10 +971,13 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        if branch_selector is None:
-            branch_selector = RandomBranchSelector()
-
-        backend = StatevectorBackend(branch_selector=branch_selector)
+        if backend is not None:
+            if branch_selector is not None:
+                raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
+        else:
+            if branch_selector is None:
+                branch_selector = RandomBranchSelector()
+            backend = StatevectorBackend(branch_selector=branch_selector)
         if input_state is None:
             backend.add_nodes(range(self.width))
         else:
@@ -992,6 +999,7 @@ class Circuit:
                     backend.state.cnot(
                         (backend.node_index.index(instr.control), backend.node_index.index(instr.target))
                     )
+                    # evolve(Ops.CNOT, [instr.control, instr.target])
                 case instruction.InstructionKind.SWAP:
                     u, v = instr.targets
                     backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))
