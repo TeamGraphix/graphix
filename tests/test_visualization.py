@@ -158,8 +158,7 @@ def example_hadamard() -> Pattern:
 
 def example_local_clifford() -> Pattern:
     pattern = example_hadamard()
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
+    pattern.remove_pauli_measurements()
     return pattern
 
 
@@ -258,8 +257,7 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         # to have causal flow.
         pattern = pattern.to_bloch()
     else:
-        pattern.remove_input_nodes()
-        pattern.perform_pauli_measurements()
+        pattern.remove_pauli_measurements()
     pattern.standardize()
     pattern.draw(
         flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(1, 1), measurement_labels=True, legend=False

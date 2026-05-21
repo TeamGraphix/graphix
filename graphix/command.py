@@ -14,6 +14,9 @@ from graphix.measurements import Measurement
 from graphix.repr_mixins import DataclassReprMixin
 from graphix.states import BasicStates, State
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 Node: TypeAlias = int
 
 logger = logging.getLogger(__name__)
@@ -140,6 +143,22 @@ class M(BaseM, _KindChecker):
             domains.s_domain,
             domains.t_domain,
         )
+
+    def map(self, f: Callable[[Measurement], Measurement]) -> M:
+        """Return a measurement command where the function ``f`` has been applied to the measurement.
+
+        Parameters
+        ----------
+        f: Callable[[Measurement], Measurement]
+            Function applied to the measurement.
+
+        Returns
+        -------
+        M
+            The resulting command.
+
+        """
+        return M(self.node, f(self.measurement), self.s_domain, self.t_domain)
 
 
 @dataclasses.dataclass(repr=False)
