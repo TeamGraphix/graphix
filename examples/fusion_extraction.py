@@ -18,19 +18,23 @@ from __future__ import annotations
 
 import itertools
 
-import graphix
+import matplotlib.pyplot as plt
+import networkx as nx
+
 from graphix import extraction
-from graphix.extraction import graph_to_fusion_network
+from graphix.extraction import Graph, graph_to_fusion_network
 
 # %%
 # Here we say we want a graph state with 9 nodes and 12 edges.
 # We can obtain resource graph for a measurement pattern by using :code:`pattern.extract_graph()`.
-gs = graphix.GraphState()
+gs = Graph()
 nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 edges = [(0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (0, 5), (4, 5), (5, 6), (6, 7), (7, 0), (7, 8), (8, 1)]
 gs.add_nodes_from(nodes)
 gs.add_edges_from(edges)
-gs.draw()
+labels = {i: i for i in iter(nodes)}
+nx.draw(gs, labels=labels, node_color="C0", edgecolors="k")
+plt.show()
 
 # %%
 # Decomposition with GHZ and linear cluster resource states with no limitation in their sizes.

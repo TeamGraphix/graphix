@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from graphix._version import __version__
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector, RandomBranchSelector
+from graphix.channels import KrausChannel
 from graphix.circ_ext import CliffordMap, PauliExponential, PauliExponentialDAG, PauliString
 from graphix.clifford import Clifford
 from graphix.command import Command

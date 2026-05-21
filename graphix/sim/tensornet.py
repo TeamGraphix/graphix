@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
     from graphix import Pattern
     from graphix.clifford import Clifford
+    from graphix.command import Node
     from graphix.measurements import Measurement, Outcome
     from graphix.sim import Data
 
@@ -643,7 +644,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
                 graph_prep = "sequential" if max_degree > 5 or not pattern.is_standard() else "parallel"
             case _:
                 raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
-        results = deepcopy(pattern.results)
+        results: dict[Node, Outcome] = {}
         if graph_prep == "parallel":
             if not pattern.is_standard():
                 raise ValueError("parallel preparation strategy does not support not-standardized pattern")
