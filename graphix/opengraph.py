@@ -721,19 +721,11 @@ class OpenGraph(Generic[_AM_co]):
 
             # Apply other's output Cliffords onto self's measurement
             if um is not None and (vc := other.output_cliffords.get(v)) is not None:
-                if not hasattr(um, "clifford"):
-                    raise OpenGraphError(
-                        f"Cannot merge a measured node with a Clifford-decorated node because the measurement label cannot absorb the Clifford: {v, vc} -> {u, um}"
-                    )
-                measurements[u] = um.clifford(vc)  # type: ignore[attr-defined]
+                measurements[u] = um.clifford(vc)
 
             # Apply self's output Cliffords onto other's measurement
             if vm is not None and (uc := self.output_cliffords.get(u)) is not None:
-                if not hasattr(vm, "clifford"):
-                    raise OpenGraphError(
-                        f"Cannot merge a measured node with a Clifford-decorated node because the measurement label cannot absorb the Clifford: {v, vm} -> {u, uc}"
-                    )
-                measurements_other[v] = vm.clifford(uc)  # type: ignore[attr-defined]
+                measurements_other[v] = vm.clifford(uc)
 
         shift = max((*self.graph.nodes, *mapping.values())) + 1
 
