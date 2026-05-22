@@ -714,6 +714,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
     """
 
+    _: dataclasses.KW_ONLY
     node_index: NodeIndex = dataclasses.field(default_factory=NodeIndex)
     branch_selector: BranchSelector = dataclasses.field(default_factory=RandomBranchSelector)
     symbolic: bool = False

@@ -989,9 +989,7 @@ class Circuit:
 
             match instr.kind:
                 case instruction.InstructionKind.CNOT:
-                    backend.state.cnot(
-                        (backend.node_index.index(instr.control), backend.node_index.index(instr.target))
-                    )
+                    evolve(Ops.CNOT, [instr.control, instr.target])
                 case instruction.InstructionKind.SWAP:
                     u, v = instr.targets
                     backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))

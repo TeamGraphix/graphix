@@ -20,7 +20,7 @@ from graphix import parameter
 from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
@@ -30,6 +30,19 @@ if TYPE_CHECKING:
     from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
+
+CZ_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
+    dtype=np.complex128,
+)
+CNOT_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],
+    dtype=np.complex128,
+)
+SWAP_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
+    dtype=np.complex128,
+)
 
 
 class DensityMatrix(DenseState):

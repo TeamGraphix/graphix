@@ -1,98 +1,116 @@
-"""MBQC state vector backend."""
+"""MBQC state vector backend simulator based on 10.48550/arXiv.2506.08142."""
 
 from __future__ import annotations
 
-import copy
 import dataclasses
 import functools
 import math
 from collections.abc import Iterable
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
+import numba as nb
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import override
 
-from graphix import parameter, states
-from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
-from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
-from graphix.states import BasicStates
+from graphix.parameter import ExpressionOrSupportsComplex
+from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix
+from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
-    from typing import Any, Literal, TypeVar
+    from collections.abc import Callable, Sequence
+    from typing import Any, Literal, Self, TypeAlias, TypeVar
 
-    from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
 
     _ENCODING = Literal["LSB", "MSB"]
     _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
 
+    from graphix.parameter import ExpressionOrSupportsComplex
 
-CZ_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
-    dtype=np.complex128,
-)
-CNOT_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],
-    dtype=np.complex128,
-)
-SWAP_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
-    dtype=np.complex128,
-)
+    EvolveSingleJit: TypeAlias = Callable[[npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], None]  # type introduced in 3.12
+    ExpectationSingleJit: TypeAlias = Callable[  # type introduced in 3.12
+        [npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], complex
+    ]
+    EntangleJit: TypeAlias = Callable[[npt.NDArray[np.complex128], int, int, int], None]  # type introduced in 3.12
 
 
+NUM_QUBIT_PARALLEL = 15
+"""This constant determines the number of qubits above which matrix operations are multi-threaded. For lower counts, the overhead does not compensate parallelization."""
+
+# TODO: Use q for function parameters
 class Statevec(DenseState):
-    """Statevector object."""
+    """Statevector object.
 
-    psi: Matrix
+    Attributes
+    ----------
+    psi : numpy.ndarray of numpy.complex128
+        Complex-valued 1-dimensional array representing the quantum statevector.
+        Throughout the simulation ``psi`` has constant size ``2**max_qubits``. Only the first ``2**nqubit`` complex values have meaning.
+
+    _max_qubits : int
+        Maximum Hilbert space size allowed for internal computations. It determines the size of ``psi``. For circuit simulations, it corresponds to the number of qubits, while for pattern simulations it corresponds to the pattern's maximum space.
+
+    _nqubit : int
+        Number of active qubits at any given time.
+    """
+
+    psi: npt.NDArray[np.complex128]
+    _max_qubits: int
+    _nqubit: int
 
     def __init__(
-        self,
-        data: Data = BasicStates.PLUS,
-        nqubit: int | None = None,
+        self, data: Data = BasicStates.PLUS, nqubit: int | None = None, max_qubits: int | None = None
     ) -> None:
         """Initialize statevector objects.
 
-        `data` can be:
-        - a single :class:`graphix.states.State` (classical description of a quantum state)
-        - an iterable of :class:`graphix.states.State` objects
-        - an iterable of scalars (A 2**n numerical statevector)
-        - a *graphix.statevec.Statevec* object
-
-        If *nqubit* is not provided, the number of qubit is inferred from *data* and checked for consistency.
-        If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
-        in the tensor product state.
-        If both *nqubit* and *data* are provided, consistency of the dimensions is checked.
-        If a *graphix.statevec.Statevec* is passed, returns a copy.
+        See :class:`graphix.sim.statevec.Statevec` for additional information.
 
         Parameters
         ----------
         data : Data, optional
-            input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
-        nqubit : int, optional
-            number of qubits to prepare, defaults to None
+            Input data to prepare the state. Can be a classical description or a numerical input, defaults to `graphix.states.BasicStates.PLUS`
+        nqubit : int | None, optional
+            Number of qubits to prepare. If ``None`` (default), it's inferred from ``data``.
+        max_qubits : int | None, optional.
+            Maximum Hilbert space size for array preallocation. If ``None`` (default), it's set equal to ``nqubit``.
+
+        Raises
+        ------
+        ValueError
+            If `max_qubits` is smaller than `nqubit` or the number of qubits inferred from ``data``.
         """
         if nqubit is not None and nqubit < 0:
-            raise ValueError("nqubit must be a non-negative integer.")
+            raise ValueError("`nqubit` must be a non-negative integer.")
+
+        if max_qubits is not None and max_qubits < 0:
+            raise ValueError("`max_qubits` must be a non-negative integer.")
 
         if isinstance(data, Statevec):
-            # assert nqubit is None or len(state.flatten()) == 2**nqubit
-            if nqubit is not None and len(data.flatten()) != 2**nqubit:
+            if nqubit is not None and len(data.flatten()) != 1 << nqubit:
                 raise ValueError(
                     f"Inconsistent parameters between nqubit = {nqubit} and the inferred number of qubit = {len(data.flatten())}."
                 )
             self.psi = data.psi.copy()
+            self._max_qubits = data.max_qubits
+            self._nqubit = data.nqubit
+
+            if max_qubits is not None:
+                if max_qubits < data.max_qubits:
+                    raise ValueError(
+                        f"`max_qubits` can't be smaller than the capacity of input state: {max_qubits} < {data.max_qubits}"
+                    )
+                self.ensure_capacity(max_qubits)
             return
 
         # The type
         # list[states.State] | list[ExpressionOrSupportsComplex] | list[Iterable[ExpressionOrSupportsComplex]]
         # would be more precise, but given a value X of type Iterable[A] | Iterable[B],
         # mypy infers that list(X) has type list[A | B] instead of list[A] | list[B].
-        input_list: list[states.State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex]]
-        if isinstance(data, states.State):
+        input_list: list[State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex]]
+        if isinstance(data, State):
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
@@ -104,52 +122,109 @@ class Statevec(DenseState):
         if len(input_list) == 0:
             if nqubit is not None and nqubit != 0:
                 raise ValueError("nqubit is not null but input state is empty.")
+            nqubit = 0
+            psi = np.array([1], dtype=np.complex128)
 
-            self.psi = np.array(1, dtype=np.complex128)
-
-        elif isinstance(input_list[0], states.State):
+        elif isinstance(input_list[0], State):
+            length = len(input_list)
             if nqubit is None:
-                nqubit = len(input_list)
-            elif nqubit != len(input_list):
-                raise ValueError("Mismatch between nqubit and length of input state.")
+                nqubit = length
+            elif nqubit != length:
+                raise ValueError(f"Mismatch between nqubit and length of input state: {nqubit} != {length}.")
 
             def state_to_statevector(
-                s: states.State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex],
+                s: State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex],
             ) -> npt.NDArray[np.complex128]:
-                if not isinstance(s, states.State):
+                if not isinstance(s, State):
                     raise TypeError("Data should be an homogeneous sequence of states.")
                 return s.to_statevector()
 
-            list_of_sv = [state_to_statevector(s) for s in input_list]
+            psi = functools.reduce(
+                lambda m0, m1: np.kron(m0, m1).astype(np.complex128, copy=False),
+                (state_to_statevector(s) for s in input_list),
+            )
 
-            tmp_psi = functools.reduce(lambda m0, m1: np.kron(m0, m1).astype(np.complex128), list_of_sv)
-            # reshape
-            self.psi = tmp_psi.reshape((2,) * nqubit)
         # `SupportsFloat` is needed because `numpy.float64` is not an instance of `SupportsComplex`!
-        elif isinstance(input_list[0], (Expression, SupportsComplex, SupportsFloat)):
+        elif isinstance(input_list[0], (SupportsComplex, SupportsFloat)):
+            length = len(input_list)
+            inferred_nqubit = length.bit_length() - 1
             if nqubit is None:
-                length = len(input_list)
                 if length & (length - 1):
-                    raise ValueError("Length is not a power of two")
-                nqubit = length.bit_length() - 1
-            elif nqubit != len(input_list).bit_length() - 1:
-                raise ValueError("Mismatch between nqubit and length of input state")
-            psi = np.array(input_list)
-            # check only if the matrix is not symbolic
-            if psi.dtype != "O" and not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
+                    raise ValueError(f"Length of input data is not a power of two: {length}")
+                nqubit = inferred_nqubit
+            elif nqubit != inferred_nqubit:
+                raise ValueError(f"Mismatch between nqubit and inferred nqubit: {nqubit} != {inferred_nqubit}")
+            psi = np.array(input_list, dtype=np.complex128)
+            if not np.isclose(np.linalg.norm(psi), 1.0):
                 raise ValueError("Input state is not normalized")
-            self.psi = psi.reshape((2,) * nqubit)
+
         else:
             raise TypeError(f"First element of data has type {type(input_list[0])} whereas Number or State is expected")
 
+        if max_qubits is not None:
+            if max_qubits < nqubit:
+                raise ValueError(
+                    f"`max_qubits` can't be smaller than the length of input state: {max_qubits} < {nqubit}"
+                )
+        else:
+            max_qubits = nqubit
+
+        self.psi = psi
+        self._max_qubits = nqubit  # bootstrap for self.ensure_capacity
+        self._nqubit = nqubit
+        self.ensure_capacity(max_qubits)  # may extend both self.psi and self._max_qubits
+
     def __str__(self) -> str:
         """Return a string description."""
-        return f"Statevec object with statevector {self.psi} and length {self.dims()}."
+        sv = self.psi
+        return f"Statevec object with statevector {sv} and length {len(sv)}."
+
+    # Note that `@property` must appear before `@override` for pyright
+    @property
+    @override
+    def nqubit(self) -> int:
+        """Return the number of qubits."""
+        return self._nqubit
+
+    @property
+    def max_qubits(self) -> int:
+        """Return the preallocated number of qubits."""
+        return self._max_qubits
+
+    @property
+    def size_valid_psi(self) -> int:
+        """Return the number of meaningful elements in ``self.psi``."""
+        return 1 << self.nqubit  # 2**self.nqubit
+
+    def ensure_capacity(self, required_qubits: int) -> None:
+        """Extend the state vector if the required qubit capacity exceeds the current one.
+
+        Does nothing if ``required_qubits <= self.max_qubits``.
+
+        Parameters
+        ----------
+        required_qubits : int
+            Minimum number of qubits the state vector must support. If expansion
+            is needed, ``self.psi`` is extended to size ``2**required_qubits``.
+        """
+        if required_qubits > self.max_qubits:
+            offset = (1 << required_qubits) - len(self.psi)
+            self.psi = np.concatenate([self.psi, np.empty(offset, dtype=self.psi.dtype)])
+            self._max_qubits = required_qubits
+
+    @override
+    def flatten(self) -> Matrix:
+        """Return flattened state.
+
+        A view of only the first ``2**self.nqubit`` elements of ``self.psi`` is returned.
+        """
+        return self.psi[: self.size_valid_psi]
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
-        r"""
-        Add nodes (qubits) to the state vector and initialize them in a specified state.
+        r"""Add nodes (qubits) to the state vector and initialize them in a specified state.
+
+        Previously existing nodes remain unchanged.
 
         Parameters
         ----------
@@ -163,15 +238,27 @@ class Statevec(DenseState):
             - If a list of basic states is provided, it must match the length of ``nodes``, and
               each node is initialized with its corresponding state.
             - A single-qubit state vector will be broadcast to all nodes.
-            - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
-              initializes the new nodes jointly.
+            - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`, initializes the new nodes jointly.
 
         Notes
         -----
-        Previously existing nodes remain unchanged.
+        This method can extend the size of ``self.psi`` for convenience, but this requires allocating a full new array.
         """
+        self.ensure_capacity(required_qubits=self.nqubit + nqubit)
         sv_to_add = Statevec(nqubit=nqubit, data=data)
         self.tensor(sv_to_add)
+
+    @override
+    def entangle(self, edge: tuple[int, int]) -> None:
+        """Connect graph nodes.
+
+        Parameters
+        ----------
+        edge : tuple of int
+            (control, target) qubit indices
+        """
+        kernel = _entangle_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _entangle_jit
+        kernel(self.psi, self.nqubit, *edge)
 
     @override
     def evolve_single(self, op: Matrix, i: int) -> None:
@@ -184,8 +271,30 @@ class Statevec(DenseState):
         i : int
             qubit index
         """
-        psi = tensordot(op, self.psi, (1, i))
-        self.psi = np.moveaxis(psi, 0, i)
+        self._check_bounds(i)
+        kernel = _evolve_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _evolve_single_jit
+        # We cast to np.complex128 to match numba signature.
+        kernel(self.psi, op.astype(np.complex128), self.nqubit, i)
+
+    @override
+    def expectation_single(self, op: Matrix, loc: int) -> complex:
+        """Return the expectation value of single-qubit operator.
+
+        Parameters
+        ----------
+        op : numpy.ndarray
+            2*2 operator
+        loc : int
+            target qubit index
+
+        Returns
+        -------
+        complex : expectation value.
+        """
+        self._check_bounds(loc)
+        kernel = _expectation_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _expectation_single_jit
+        # We cast to np.complex128 to match numba signature.
+        return kernel(self.psi, op.astype(np.complex128), self.nqubit, loc)
 
     @override
     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
@@ -201,24 +310,62 @@ class Statevec(DenseState):
         op_dim = int(np.log2(len(op)))
         # TODO shape = (2,)* 2 * op_dim
         shape = [2 for _ in range(2 * op_dim)]
+        psi_t = self.flatten().reshape((2,) * self.nqubit)
         op_tensor = op.reshape(shape)
-        psi = tensordot(
+        psi = np.tensordot(
             op_tensor,
-            self.psi,
+            psi_t,
             (tuple(op_dim + i for i in range(len(qargs))), qargs),
         )
-        self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
+        self.psi[:self.size_valid_psi] = np.moveaxis(psi, range(len(qargs)), qargs).reshape(1<< self.nqubit)
 
-    def dims(self) -> tuple[int, ...]:
-        """Return the dimensions."""
-        return self.psi.shape
+    # @override
+    # def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
+    #     """Apply a multi-qubit operation.
 
-    # Note that `@property` must appear before `@override` for pyright
-    @property
-    @override
-    def nqubit(self) -> int:
-        """Return the number of qubits."""
-        return self.psi.ndim
+    #     Parameters
+    #     ----------
+    #     op : numpy.ndarray
+    #         2^n*2^n matrix
+    #     qargs : list of int
+    #         target qubits' indices
+    #     """
+    #     nq = len(qargs)
+    #     # treat x as a tensor with ng output + ng input legs
+    #     op_t = op.reshape((2,) * (nq * 2))
+    #     psi_t = self.flatten().reshape((2,) * self.nqubit)
+
+    #     state_idx = list(range(self.nqubit))          # [0, 1, 2, 3]
+    #     out_idx   = list(range(self.nqubit, self.nqubit + nq))  # [4, 5]
+
+    #     # x subscripts: [out_0, out_1, in_0, in_1] → [4, 5, 1, 3]
+    #     xt_idx = out_idx + list(qargs)
+
+    #     # result subscripts: same as state but source slots replaced by out labels
+    #     # [0, 4, 2, 5]
+    #     res_idx = state_idx.copy()
+    #     for i, s in enumerate(qargs):
+    #         res_idx[s] = out_idx[i]
+
+    #     return np.einsum(op_t, xt_idx, psi_t, state_idx, res_idx).reshape(1 << self.nqubit)
+
+    def expectation_value(self, op: Matrix, qargs: Sequence[int]) -> complex:
+        """Return the expectation value of multi-qubit operator.
+
+        Parameters
+        ----------
+        op : numpy.ndarray
+            2^n*2^n operator
+        qargs : list of int
+            target qubit indices
+
+        Returns
+        -------
+        complex : expectation value
+        """
+        sv = deepcopy(self)
+        sv.evolve(op, qargs)
+        return complex(np.dot(self.flatten().conjugate(), sv.flatten()))
 
     @override
     def remove_qubit(self, qarg: int) -> None:
@@ -260,61 +407,8 @@ class Statevec(DenseState):
         qarg : int
             qubit index
         """
-        norm = _norm(self.psi)
-        if isinstance(norm, SupportsFloat):
-            assert not np.isclose(norm, 0)
-        index: list[slice[int] | int] = [slice(None)] * self.psi.ndim
-        index[qarg] = 0
-        psi = self.psi[tuple(index)]
-        norm = _norm(psi)
-        if isinstance(norm, SupportsFloat) and math.isclose(norm, 0):
-            index[qarg] = 1
-            psi = self.psi[tuple(index)]
-        self.psi = psi
-        self.normalize()
-
-    @override
-    def entangle(self, edge: tuple[int, int]) -> None:
-        """Connect graph nodes.
-
-        Parameters
-        ----------
-        edge : tuple of int
-            (control, target) qubit indices
-        """
-        # contraction: 2nd index - control index, and 3rd index - target index.
-        psi = tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
-        # sort back axes
-        self.psi = np.moveaxis(psi, (0, 1), edge)
-
-    def tensor(self, other: Statevec) -> None:
-        r"""Tensor product state with other qubits.
-
-        Results in self :math:`\otimes` other.
-
-        Parameters
-        ----------
-        other : :class:`graphix.sim.statevec.Statevec`
-            statevector to be tensored with self
-        """
-        psi_self = self.psi.flatten()
-        psi_other = other.psi.flatten()
-
-        total_num = len(self.dims()) + len(other.dims())
-        self.psi = kron(psi_self, psi_other).reshape((2,) * total_num)
-
-    def cnot(self, qubits: tuple[int, int]) -> None:
-        """Apply CNOT.
-
-        Parameters
-        ----------
-        qubits : tuple of int
-            (control, target) qubit indices
-        """
-        # contraction: 2nd index - control index, and 3rd index - target index.
-        psi = tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
-        # sort back axes
-        self.psi = np.moveaxis(psi, (0, 1), qubits)
+        self._check_bounds(qarg)
+        self._nqubit = _remove_qubit_jit(self.psi, self.nqubit, qarg, atol=1e-10)
 
     @override
     def swap(self, qubits: tuple[int, int]) -> None:
@@ -325,72 +419,29 @@ class Statevec(DenseState):
         qubits : tuple of int
             (control, target) qubit indices
         """
-        # contraction: 2nd index - control index, and 3rd index - target index.
-        psi = tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
-        # sort back axes
-        self.psi = np.moveaxis(psi, (0, 1), qubits)
+        _swap_jit(self.psi, self.nqubit, *qubits)
 
-    def normalize(self) -> None:
-        """Normalize the state in-place."""
-        # Note that the following calls to `astype` are guaranteed to
-        # return the original NumPy array itself, since `copy=False` and
-        # the `dtype` matches. This is important because the array is
-        # then modified in place.
-        if self.psi.dtype == np.object_:
-            psi_o = self.psi.astype(np.object_, copy=False)
-            norm_o = _norm_symbolic(psi_o)
-            psi_o /= norm_o
-            self.psi = psi_o
-        else:
-            psi_c = self.psi.astype(np.complex128, copy=False)
-            norm_c = _norm_numeric(psi_c)
-            psi_c /= norm_c
-            self.psi = psi_c
+    def tensor(self, other: Statevec) -> None:
+        r"""Tensor product state with other qubits.
 
-    def flatten(self) -> Matrix:
-        """Return flattened statevector."""
-        return self.psi.flatten()
-
-    @override
-    def expectation_single(self, op: Matrix, loc: int) -> complex:
-        """Return the expectation value of single-qubit operator.
+        Results in ``self`` :math:`\otimes` ``other``.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 operator
-        loc : int
-            target qubit index
-
-        Returns
-        -------
-        complex : expectation value.
+        other : :class:`graphix.sim.statevec.Statevec`
+            Statevector to be tensored with ``self``.
         """
-        st1 = copy.copy(self)
-        st1.normalize()
-        st2 = copy.copy(st1)
-        st1.evolve_single(op, loc)
-        return complex(np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten()))
+        _tensor_jit(self.psi, other.psi, self.nqubit, other.nqubit)
+        self._nqubit += other.nqubit
 
-    def expectation_value(self, op: Matrix, qargs: Sequence[int]) -> complex:
-        """Return the expectation value of multi-qubit operator.
+    def _check_bounds(self, i: int) -> None:
+        """Check if qubit index is valid.
 
-        Parameters
-        ----------
-        op : numpy.ndarray
-            2^n*2^n operator
-        qargs : list of int
-            target qubit indices
-
-        Returns
-        -------
-        complex : expectation value
+        This check is necessary because there is no bounds checking in Numba. See
+        https://numba.pydata.org/numba-doc/dev/reference/pysemantics.html#bounds-checking
         """
-        st2 = copy.copy(self)
-        st2.normalize()
-        st1 = copy.copy(st2)
-        st1.evolve(op, qargs)
-        return complex(np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten()))
+        if not 0 <= i < self.nqubit:
+            raise IndexError(f"Qubit index {i} out of range [0, {self.nqubit})")
 
     def fidelity(self, other: Statevec) -> float:
         r"""Calculate the fidelity against another statevector.
@@ -437,7 +488,7 @@ class Statevec(DenseState):
         *,
         rtol: float = 0.0,
         atol: float = 1e-8,
-    ) -> dict[str, np.object_ | np.complex128]:
+        ) -> dict[str, np.object_ | np.complex128]:
         r"""Convert the statevector to dictionary form.
 
         This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding complex amplitudes. Amplitudes below a certain threshold are filtered out.
@@ -488,7 +539,7 @@ class Statevec(DenseState):
 
     def to_prob_dict(
         self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8
-    ) -> dict[str, np.object_ | np.float64]:
+        ) -> dict[str, np.object_ | np.float64]:
         r"""Convert the statevector to a probability distirbution in a dictionary form.
 
         This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding probabilities.
@@ -527,52 +578,285 @@ class Statevec(DenseState):
         *,
         rtol: float = 0.0,
         atol: float = 1e-8,
-    ) -> dict[str, _ScalarT]:
+        ) -> dict[str, _ScalarT]:
         mask = np.logical_not(np.isclose(np.abs(self.flatten()), 0, rtol=rtol, atol=atol))
         i_vals = np.arange(1 << self.nqubit)[mask]
         amp_vals = f(self.flatten()[mask])
 
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
-        """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
-        result = Statevec()
-        result.psi = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.psi)
-        return result
-
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevec:
-        """Return a copy of the state vector where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
-        result = Statevec()
-        result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
-        return result
-
-
+#TODO: type **kwargs with Unpack
+#TODO: Update tests
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):
-    """MBQC simulator with statevector method."""
+    """MBQC state vector backend simulator based on 10.48550/arXiv.2506.08142."""
 
-    state: Statevec = dataclasses.field(init=False, default_factory=lambda: Statevec(nqubit=0))
+    state: Statevec = dataclasses.field(init=True, default_factory=lambda: Statevec(nqubit=0))
+
+    @classmethod
+    def with_capacity(cls, max_qubits: int, state: Statevec | None = None, **kwargs) -> Self:
+        """Initialize the backend with the required capacity to perform the simulation.
+
+        Parameters
+        ----------
+        max_qubits : int
+            Number of qubits the state vector must support. For pattern simulations this corresponds to ``Pattern.max_space()``.
+        """
+        state_init = (
+            Statevec(nqubit=0, max_qubits=max_qubits) if state is None else Statevec(state, max_qubits=max_qubits)
+        )
+        return cls(state_init, **kwargs)
 
 
-def _norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:
-    """Return norm of the state."""
-    flat = psi.flatten()
-    return check_expression_or_float(np.sqrt(np.sum(flat.conj() * flat)))
+@nb.njit("(c16[::1], c16[::1], int32, int32)")
+def _tensor_jit(
+    psi: npt.NDArray[np.complex128],
+    psi_other: npt.NDArray[np.complex128],
+    nqubit: int,
+    nqubit_other: int,
+) -> None:
+    size_psi = 1 << nqubit
+    size_other = 1 << nqubit_other
+    # We update the elements of `psi` in-place.
+    # This requires starting the update for the last element of the new psi, `size_psi * size_other - 1`
+    k = size_psi * size_other - 1
+    sp_m1 = size_psi - 1
+    so_m1 = size_other - 1
+
+    for i in range(size_psi):
+        alpha_old = psi[sp_m1 - i]
+        for j in range(size_other):
+            psi[k] = alpha_old * psi_other[so_m1 - j]
+            k -= 1
 
 
-def _norm_numeric(psi: npt.NDArray[np.complex128]) -> float:
-    flat = psi.flatten()
-    norm_sq = np.sum(flat.conj() * flat)
-    assert math.isclose(norm_sq.imag, 0, abs_tol=1e-15)
-    return math.sqrt(norm_sq.real)
+@nb.njit("(c16[::1], int32, int32, int32)")
+def _swap_jit(psi: npt.NDArray[np.complex128], nqubit: int, q1: int, q2: int) -> None:
+
+    if q1 == q2:
+        return
+    size_sv = 1 << nqubit
+    mask_1 = 1 << nqubit - 1 - q1
+    mask_2 = 1 << nqubit - 1 - q2
+    mask = mask_1 | mask_2
+    # `mask` is an integer number whose binary representation has 1s at positions `q1` and `q2` and 0s elsewhere.
+
+    for i in range(size_sv):
+        # i & mask_1 = 2^(nqubit - 1 - q_1) if the binary representation of `i` has a 1 at position `q1` and 0 otherwise.
+        i_has_1_at_q1 = bool(i & mask_1)
+        i_has_1_at_q2 = bool(i & mask_2)
+        if i_has_1_at_q1 != i_has_1_at_q2:
+            # `j` has the same binary representation as `i` except for bits `q1` and `q2` which are flipped.
+            j = i ^ mask
+            if j > i:  # Ensure we don't swap the same indices twice.
+                psi[j], psi[i] = psi[i], psi[j]
 
 
-def _norm(psi: Matrix) -> ExpressionOrFloat:
-    """Return norm of the state."""
-    # Narrow psi to concrete dtype
-    if psi.dtype == np.object_:
-        return _norm_symbolic(psi.astype(np.object_, copy=False))
-    return _norm_numeric(psi.astype(np.complex128, copy=False))
+def _evolve_single(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int) -> None:
+    r"""Apply a single-qubit operation.
+
+    This function is inspired from 10.48550/arXiv.2506.08142.
+    """
+    nblocks = 1 << q
+    size_block = 1 << nqubit - q  # 2**(nqubit - q)
+    size_half_block = (
+        size_block >> 1
+    )  # Left-to-right tensor product encoding (first qubit corresponds to most significant bit). For right-to-left encoding use `size_half_block = 1 << i`
+
+    for b in nb.prange(nblocks):
+        # WARNING: setting `b0 += size_block` may result in a race condition if `parallel=True`
+        b0 = size_block * b
+        for offset in range(size_half_block):
+            i1 = b0 | offset
+            i2 = i1 | size_half_block
+            psi1 = psi[i1]
+            psi2 = psi[i2]
+            psi[i1] = op[0, 0] * psi1 + op[0, 1] * psi2
+            psi[i2] = op[1, 0] * psi1 + op[1, 1] * psi2
+
+
+_evolve_single_jit: EvolveSingleJit = nb.njit("(c16[::1], c16[:, :], int32, int32)", parallel=False)(_evolve_single)
+_evolve_single_jit_parallel: EvolveSingleJit = nb.njit("(c16[::1], c16[:, :], int32, int32)", parallel=True)(
+    _evolve_single
+)
+
+
+def _expectation_single(
+    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int
+) -> complex:
+    nblocks = 1 << q
+    size_block = 1 << nqubit - q
+    size_half_block = (
+        size_block >> 1
+    )  # Left-to-right tensor product encoding (first qubit corresponds to most significant bit). For right-to-left encoding use `size_half_block = 1 << i`
+
+    result = 0.0 + 0.0j
+
+    for b in nb.prange(nblocks):
+        # WARNING: setting `b0 += size_block` may result in a race condition if `parallel=True`
+        b0 = b << nqubit - q
+        for offset in range(size_half_block):
+            i1 = b0 | offset
+            i2 = i1 | size_half_block
+            psi1 = psi[i1]
+            psi2 = psi[i2]
+            b1 = op[0, 0] * psi1 + op[0, 1] * psi2
+            b2 = op[1, 0] * psi1 + op[1, 1] * psi2
+            result += psi1.conjugate() * b1 + psi2.conjugate() * b2
+
+    return result
+
+
+_expectation_single_jit: ExpectationSingleJit = nb.njit("c16(c16[::1], c16[:, :], int32, int32)", parallel=False)(
+    _expectation_single
+)
+_expectation_single_jit_parallel: ExpectationSingleJit = nb.njit(
+    "c16(c16[::1], c16[:, :], int32, int32)", parallel=True
+)(_expectation_single)
+
+
+def _entangle(psi: npt.NDArray[np.complex128], nqubit: int, control: int, target: int) -> None:
+    size_sv = 1 << nqubit
+    mask_control = 1 << nqubit - 1 - control
+    mask_target = 1 << nqubit - 1 - target
+    mask = mask_control | mask_target
+    # `mask` is an integer number whose binary representation has 1s at positions `control` and `target` and 0s elsewhere.
+
+    for i in nb.prange(size_sv):
+        if mask & i == mask:
+            psi[i] = -psi[i]
+
+
+_entangle_jit: EntangleJit = nb.njit("(c16[::1], int32, int32, int32)", parallel=False)(_entangle)
+_entangle_jit_parallel: EntangleJit = nb.njit("(c16[::1], int32, int32, int32)", parallel=True)(_entangle)
+
+
+@nb.njit("int32(c16[::1], int32, int32, f8)", parallel=False)
+def _remove_qubit_jit(
+    psi: npt.NDArray[np.complex128],
+    nqubit: int,
+    q: int,
+    atol: float,
+) -> int:
+    new_nqubit = nqubit - 1
+
+    n_blocks = 1 << q
+    size_block = 1 << nqubit - q  # 2**(nqubits - q)
+    size_half_block = size_block >> 1
+
+    # Compute norm of branch 0
+    norm2 = 0.0
+    shift = 0
+    b0 = shift
+    for _ in range(n_blocks):
+        # If parallelization, set `b0 = b * size_block + shift` with `b` the loop variable to avoid race condition.
+        # Parallelization for norm computation is not worth, execution-time controlled by the update loop which can't be parallelized without cache.
+        for j in range(size_half_block):
+            a = psi[b0 | j]
+            a_re = a.real
+            a_im = a.imag
+            norm2 += a_re * a_re + a_im * a_im
+        b0 += size_block
+
+    # If norm of branch 0 is 0, compute norm of branch 1 and set shift to branch 1
+    if norm2 <= atol:
+        norm2 = 0
+        shift = size_half_block
+        b0 = shift
+        for _ in range(n_blocks):
+            for j in range(size_half_block):
+                a = psi[b0 | j]
+                a_re = a.real
+                a_im = a.imag
+                norm2 += a_re * a_re + a_im * a_im
+            b0 += size_block
+
+    b0 = shift
+    k = 0
+    inv_norm = 1.0 / math.sqrt(norm2)
+
+    # Update `psi` with selected and normalized elements.
+    for _ in range(n_blocks):
+        for j in range(size_half_block):
+            psi[k] = (
+                psi[b0 | j] * inv_norm
+            )  # b0 | j equivalent to b0 + j because the active bits of b0 and j don't overlap.
+            k += 1
+        b0 += size_block
+
+    return new_nqubit
+
+
+
+
+#     @override
+#     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
+#         """Apply a multi-qubit operation.
+
+#         Parameters
+#         ----------
+#         op : numpy.ndarray
+#             2^n*2^n matrix
+#         qargs : list of int
+#             target qubits' indices
+#         """
+#         op_dim = int(np.log2(len(op)))
+#         # TODO shape = (2,)* 2 * op_dim
+#         shape = [2 for _ in range(2 * op_dim)]
+#         op_tensor = op.reshape(shape)
+#         psi = tensordot(
+#             op_tensor,
+#             self.psi,
+#             (tuple(op_dim + i for i in range(len(qargs))), qargs),
+#         )
+#         self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
+
+
+
+
+#     def normalize(self) -> None:
+#         """Normalize the state in-place."""
+#         # Note that the following calls to `astype` are guaranteed to
+#         # return the original NumPy array itself, since `copy=False` and
+#         # the `dtype` matches. This is important because the array is
+#         # then modified in place.
+#         if self.psi.dtype == np.object_:
+#             psi_o = self.psi.astype(np.object_, copy=False)
+#             norm_o = _norm_symbolic(psi_o)
+#             psi_o /= norm_o
+#             self.psi = psi_o
+#         else:
+#             psi_c = self.psi.astype(np.complex128, copy=False)
+#             norm_c = _norm_numeric(psi_c)
+#             psi_c /= norm_c
+#             self.psi = psi_c
+
+
+
+
+
+
+
+
+# def _norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:
+#     """Return norm of the state."""
+#     flat = psi.flatten()
+#     return check_expression_or_float(np.sqrt(np.sum(flat.conj() * flat)))
+
+
+# def _norm_numeric(psi: npt.NDArray[np.complex128]) -> float:
+#     flat = psi.flatten()
+#     norm_sq = np.sum(flat.conj() * flat)
+#     assert math.isclose(norm_sq.imag, 0, abs_tol=1e-15)
+#     return math.sqrt(norm_sq.real)
+
+
+# def _norm(psi: Matrix) -> ExpressionOrFloat:
+#     """Return norm of the state."""
+#     # Narrow psi to concrete dtype
+#     if psi.dtype == np.object_:
+#         return _norm_symbolic(psi.astype(np.object_, copy=False))
+#     return _norm_numeric(psi.astype(np.complex128, copy=False))
 
 
 def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:

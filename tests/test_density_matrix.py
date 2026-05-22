@@ -15,8 +15,8 @@ from graphix.branch_selector import ConstBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
-from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.sim.density_matrix import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, DensityMatrix, DensityMatrixBackend
+from graphix.sim.statevec import Statevec
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
