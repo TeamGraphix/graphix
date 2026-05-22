@@ -1415,11 +1415,9 @@ class Pattern:
         -----
         If ``flow_from_pattern==True`` but the pattern is not compatible with a gflow, an attempt to be extract the flow from the underlying open graph will be made while warning the user.
         """
-        local_clifford_map = self.extract_clifford() if options.get("local_clifford") else None
-
         if annotations is None:
             og = self.extract_opengraph()
-            gv = GraphVisualizer.from_opengraph(og=og, local_clifford_map=local_clifford_map, **options)
+            gv = GraphVisualizer.from_opengraph(og=og, **options)
         else:
             match annotations:
                 case DrawPatternAnnotations.Flow:
@@ -1457,13 +1455,11 @@ class Pattern:
                                 "The pattern's open graph does not have Pauli flow. Consider setting the `annotations` parameter to `None` or `DrawPatternAnnotations.XZCorrections`."
                             )
 
-                    gv = GraphVisualizer.from_flow(flow=flow, local_clifford_map=local_clifford_map, **options)
+                    gv = GraphVisualizer.from_flow(flow=flow, **options)
 
                 case DrawPatternAnnotations.XZCorrections:
                     xzcorrections = self.extract_xzcorrections()
-                    gv = GraphVisualizer.from_xzcorrections(
-                        xz_corr=xzcorrections, local_clifford_map=local_clifford_map, **options
-                    )
+                    gv = GraphVisualizer.from_xzcorrections(xz_corr=xzcorrections, **options)
 
         gv.visualize()
 

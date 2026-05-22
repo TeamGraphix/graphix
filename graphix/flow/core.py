@@ -795,22 +795,8 @@ class PauliFlow(Generic[_AM_co]):
 
         Parameters
         ----------
-        pauli_measurements : bool, default=True
-            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
-        measurement_labels : bool, default=False
-            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
-        node_labels : bool | Mapping[int, str], default=True
-            If ``True``, display numeric node labels. If a mapping, use custom labels
-            for nodes specified in the mapping.
-        node_distance : tuple[float, float], default=(1, 1)
-            Scaling factors (x_scale, y_scale) applied to node positions.
-        legend : bool, default=True
-            If ``True``, legend is shown.
-        figsize : tuple[int, int] | None, default=None
-            Figure dimensions (width, height) in inches. If ``None``, dimensions are
-            determined automatically based on graph structure.
-        filename : Path | None, default=None
-            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        options: Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
         """
         from graphix.visualization import GraphVisualizer  # noqa: PLC0415  Avoid circular imports
 
