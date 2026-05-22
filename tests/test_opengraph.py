@@ -954,6 +954,41 @@ def _compose_9() -> OpenGraphComposeTestCase:
     return OpenGraphComposeTestCase(og, og, og_ref, mapping)
 
 
+# Merge clifford with measurement
+@register_open_graph_compose_test_case
+def _compose_10() -> OpenGraphComposeTestCase:
+    """Generate composition test with Cliffords.
+
+    Graph 1
+    [1] -- (2)
+
+    Graph 2 = Graph 1
+
+    Mapping: 1 -> 2
+
+    Expected graph
+    [1] -- 2 -- (3)
+
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2)])
+    inputs = [1]
+    outputs = [2]
+    meas = dict.fromkeys(g.nodes - set(outputs), Plane.XY)
+    og1 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.H})
+    og2 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.X})
+    og_ref = OpenGraph(
+        nx.Graph([(1, 2), (2, 3)]),
+        input_nodes=[1],
+        output_nodes=[3],
+        measurements={1: Plane.XY, 2: Plane.YZ},
+        output_cliffords={3: Clifford.X},
+    )
+
+    mapping = {1: 2}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
     """Verify if the input pattern is deterministic."""
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:

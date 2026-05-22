@@ -676,7 +676,6 @@ class OpenGraph(Generic[_AM_co]):
         The open graph composition requires that
         - :math:`V \subseteq V_2`.
         - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
-        - If we attempt to merge a measured node with a Clifford-decorated node the measure label must implement the method ``clifford`` to absorb the Clifford command, that is, the measure label must be a subtype of ``Measurement``.
 
         The returned open graph follows this convention:
         - :math:`I = (I_1 \cup I_2) \setminus M \cup (I_1 \cap I_2 \cap M)`,
@@ -700,24 +699,6 @@ class OpenGraph(Generic[_AM_co]):
             # Validate that shared measurements are compatible
             if vm is not None and um is not None and not vm.isclose(um):
                 raise OpenGraphError(f"Cannot merge nodes with different measurements: {v, vm} -> {u, um}.")
-
-            # To comply with mypy, we could define a runtime-checkable Protocol:
-            #
-            # from typing import Protocol, Self, runtime_checkable
-            # @runtime_checkable
-            # class HasClifford(Protocol):
-            #     def clifford(self, clifford_gate: Clifford) -> Self: ...
-            #
-            # if not isinstance(um, HasClifford):
-            #     raise OpenGraphError("...")
-            # measurements[u] = um.clifford(vc)
-            #
-            # This informs mypy that `um` has the `clifford` attribute
-            # without narrowing the type of `um` so we can still assign it to
-            # measurements: dict[int, _AM_co]
-            # However, `isinstance` with protocols is disadvised since it can decrease
-            # performance significantly.
-            # https://typing.python.org/en/latest/reference/protocols.html
 
             # Apply other's output Cliffords onto self's measurement
             if um is not None and (vc := other.output_cliffords.get(v)) is not None:
