@@ -5,8 +5,9 @@ from __future__ import annotations
 import dataclasses
 import enum
 import logging
+from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias, override
 
 from graphix import utils
 from graphix.clifford import Clifford, Domains
@@ -16,6 +17,7 @@ from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Self
 
 Node: TypeAlias = int
 
@@ -44,8 +46,12 @@ class _KindChecker:
         utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
-class BaseCommand(DataclassReprMixin):
+class BaseCommand(ABC, DataclassReprMixin):
     """Base class for pattern command."""
+
+    @abstractmethod
+    def reindex(self, f: Callable[[Node], Node]) -> Self:
+        """Return a command whose nodes have been reindexed using ``f``."""
 
 
 @dataclasses.dataclass(repr=False)
@@ -70,6 +76,10 @@ class BaseN(BaseCommand):
     node: int
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> BaseN:
+        return BaseN(f(self.node))
+
 
 @dataclasses.dataclass(repr=False)
 class N(BaseN, _KindChecker):
@@ -86,6 +96,10 @@ class N(BaseN, _KindChecker):
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> N:
+        return N(f(self.node), self.state)
+
 
 @dataclasses.dataclass(repr=False)
 class BaseM(BaseCommand):
@@ -100,6 +114,10 @@ class BaseM(BaseCommand):
 
     node: Node
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
+
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> BaseM:
+        return BaseM(f(self.node))
 
 
 @dataclasses.dataclass(repr=False)
@@ -156,9 +174,12 @@ class M(BaseM, _KindChecker):
         -------
         M
             The resulting command.
-
         """
         return M(self.node, f(self.measurement), self.s_domain, self.t_domain)
+
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> M:
+        return M(f(self.node), self.measurement, set(map(f, self.s_domain)), set(map(f, self.t_domain)))
 
 
 @dataclasses.dataclass(repr=False)
@@ -173,6 +194,11 @@ class E(_KindChecker, BaseCommand):
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
+
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> E:
+        u, v = self.nodes
+        return E((f(u), f(v)))
 
 
 @dataclasses.dataclass(repr=False)
@@ -191,6 +217,10 @@ class C(_KindChecker, BaseCommand):
     clifford: Clifford
     kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> C:
+        return C(f(self.node), self.clifford)
+
 
 @dataclasses.dataclass(repr=False)
 class X(_KindChecker, BaseCommand):
@@ -207,6 +237,10 @@ class X(_KindChecker, BaseCommand):
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
+
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> X:
+        return X(f(self.node), set(map(f, self.domain)))
 
 
 @dataclasses.dataclass(repr=False)
@@ -225,6 +259,10 @@ class Z(_KindChecker, BaseCommand):
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> Z:
+        return Z(f(self.node), set(map(f, self.domain)))
+
 
 @dataclasses.dataclass(repr=False)
 class S(_KindChecker, BaseCommand):
@@ -242,6 +280,10 @@ class S(_KindChecker, BaseCommand):
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> S:
+        return S(f(self.node), set(map(f, self.domain)))
+
 
 @dataclasses.dataclass(repr=False)
 class T(_KindChecker, BaseCommand):
@@ -254,6 +296,10 @@ class T(_KindChecker, BaseCommand):
     """
 
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
+
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> T:
+        return self
 
 
 class Command:

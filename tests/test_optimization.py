@@ -9,9 +9,9 @@ from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
-from graphix.optimization import StandardizedPattern, remove_useless_domains
+from graphix.optimization import StandardizedPattern, remove_local_clifford_commands, remove_useless_domains
 from graphix.pattern import Pattern
-from graphix.random_objects import rand_circuit
+from graphix.random_objects import rand_circuit, rand_state_vector
 from graphix.states import PlanarState
 
 if TYPE_CHECKING:
@@ -131,3 +131,20 @@ def test_bug_482() -> None:
     )
     output_pattern = StandardizedPattern.from_pattern(input_pattern).to_space_optimal_pattern()
     assert input_pattern.output_nodes == output_pattern.output_nodes
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_remove_local_clifford_commands(fx_bg: PCG64, jumps: int) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 4
+    depth = 4
+    circuit = rand_circuit(nqubits, depth, rng)
+    pattern = circuit.transpile().pattern
+    pattern.remove_pauli_measurements()
+    assert any(cmd.kind == CommandKind.C for cmd in pattern)
+    new_pattern = remove_local_clifford_commands(pattern)
+    assert not any(cmd.kind == CommandKind.C for cmd in new_pattern)
+    input_state = rand_state_vector(nqubits, rng=rng)
+    state_ref = pattern.simulate_pattern(input_state=input_state, rng=rng)
+    state = new_pattern.simulate_pattern(input_state=input_state, rng=rng)
+    assert state.isclose(state_ref)

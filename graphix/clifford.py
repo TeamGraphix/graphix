@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+import networkx as nx
 import numpy as np
 import typing_extensions
 
@@ -18,6 +19,7 @@ from graphix._db import (
     CLIFFORD_LABEL,
     CLIFFORD_MEASURE,
     CLIFFORD_MUL,
+    CLIFFORD_PAULI_DECOMPOSITION,
     CLIFFORD_TO_QASM3,
 )
 from graphix.fundamentals import Axis, ComplexUnit, I
@@ -25,6 +27,8 @@ from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
     import numpy.typing as npt
+
+    from graphix import OpenGraph, PauliMeasurement
 
 
 @dataclass
@@ -172,6 +176,19 @@ class Clifford(Enum):
                 case _:  # pragma: no cover
                     raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         return Domains(s_domain, t_domain)
+
+    def to_opengraph(self) -> OpenGraph[PauliMeasurement]:
+        """Return a local-Clifford-free open graph equivalent to the Clifford gate."""
+        from graphix import OpenGraph  # noqa: PLC0415
+
+        decomposition = CLIFFORD_PAULI_DECOMPOSITION[self.value]
+        n = len(decomposition)
+        return OpenGraph(
+            graph=nx.path_graph(n + 1),
+            input_nodes=[0],
+            output_nodes=[n],
+            measurements=dict(enumerate(decomposition)),
+        )
 
 
 Clifford.I = Clifford(0)

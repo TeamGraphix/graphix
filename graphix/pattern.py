@@ -162,6 +162,14 @@ class Pattern:
         self.clear()
         self.extend(cmds)
 
+    def reindex(self, f: Callable[[Node], Node]) -> Pattern:
+        """Return a pattern whose nodes have been reindexed using ``f``."""
+        new_pattern = Pattern(input_nodes=map(f, self.input_nodes))
+        for cmd in self:
+            new_pattern.add(cmd.reindex(f))
+        new_pattern.reorder_output_nodes(map(f, self.output_nodes))
+        return new_pattern
+
     def compose(
         self, other: Pattern, mapping: Mapping[int, int], preserve_mapping: bool = False
     ) -> tuple[Pattern, dict[int, int]]:
@@ -263,25 +271,7 @@ class Pattern:
         else:
             outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
-        def update_command(cmd: CommandType) -> CommandType:
-            # Shallow copy is enough since the mutable attributes of cmd_new susceptible to change are reassigned
-            cmd_new = copy.copy(cmd)
-
-            if cmd_new.kind is CommandKind.E:
-                i, j = cmd_new.nodes
-                cmd_new.nodes = (mapping_complete[i], mapping_complete[j])
-            elif cmd_new.kind is not CommandKind.T:
-                cmd_new.node = mapping_complete[cmd_new.node]
-                match cmd_new.kind:
-                    case CommandKind.M:
-                        cmd_new.s_domain = {mapping_complete[i] for i in cmd_new.s_domain}
-                        cmd_new.t_domain = {mapping_complete[i] for i in cmd_new.t_domain}
-                    case CommandKind.X | CommandKind.Z | CommandKind.S:
-                        cmd_new.domain = {mapping_complete[i] for i in cmd_new.domain}
-
-            return cmd_new
-
-        seq = self.__seq + [update_command(c) for c in other]
+        seq = [*self.__seq, *(c.reindex(lambda node: mapping_complete[node]) for c in other)]
 
         p = Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq)
 
