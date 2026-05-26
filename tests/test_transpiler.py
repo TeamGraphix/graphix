@@ -11,6 +11,7 @@ from graphix.branch_selector import ConstBranchSelector
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
+from graphix.sim import Statevec
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit, transpile_swaps
 from tests.test_branch_selector import CheckedBranchSelector
@@ -278,8 +279,9 @@ def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
     for qubit in transpiled_swaps.qubits:
         assert qubit is not None
         qubits.append(qubit)
-    state2.psi = np.transpose(state2.psi, qubits)
-    assert state.isclose(state2)
+    psi_t = np.transpose(state2.flatten().reshape((2,) * nqubits), qubits)
+    state2_test = Statevec(psi_t.reshape(1 << nqubits))
+    assert state.isclose(state2_test)
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))

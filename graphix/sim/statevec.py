@@ -30,7 +30,9 @@ if TYPE_CHECKING:
 
     from graphix.parameter import ExpressionOrSupportsComplex
 
-    EvolveSingleJit: TypeAlias = Callable[[npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], None]  # type introduced in 3.12
+    EvolveSingleJit: TypeAlias = Callable[
+        [npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], None
+    ]  # type introduced in 3.12
     ExpectationSingleJit: TypeAlias = Callable[  # type introduced in 3.12
         [npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], complex
     ]
@@ -39,6 +41,7 @@ if TYPE_CHECKING:
 
 NUM_QUBIT_PARALLEL = 15
 """This constant determines the number of qubits above which matrix operations are multi-threaded. For lower counts, the overhead does not compensate parallelization."""
+
 
 # TODO: Use q for function parameters
 class Statevec(DenseState):
@@ -61,9 +64,7 @@ class Statevec(DenseState):
     _max_qubits: int
     _nqubit: int
 
-    def __init__(
-        self, data: Data = BasicStates.PLUS, nqubit: int | None = None, max_qubits: int | None = None
-    ) -> None:
+    def __init__(self, data: Data = BasicStates.PLUS, nqubit: int | None = None, max_qubits: int | None = None) -> None:
         """Initialize statevector objects.
 
         See :class:`graphix.sim.statevec.Statevec` for additional information.
@@ -296,29 +297,6 @@ class Statevec(DenseState):
         # We cast to np.complex128 to match numba signature.
         return kernel(self.psi, op.astype(np.complex128), self.nqubit, loc)
 
-    @override
-    def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
-        """Apply a multi-qubit operation.
-
-        Parameters
-        ----------
-        op : numpy.ndarray
-            2^n*2^n matrix
-        qargs : list of int
-            target qubits' indices
-        """
-        op_dim = int(np.log2(len(op)))
-        # TODO shape = (2,)* 2 * op_dim
-        shape = [2 for _ in range(2 * op_dim)]
-        psi_t = self.flatten().reshape((2,) * self.nqubit)
-        op_tensor = op.reshape(shape)
-        psi = np.tensordot(
-            op_tensor,
-            psi_t,
-            (tuple(op_dim + i for i in range(len(qargs))), qargs),
-        )
-        self.psi[:self.size_valid_psi] = np.moveaxis(psi, range(len(qargs)), qargs).reshape(1<< self.nqubit)
-
     # @override
     # def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
     #     """Apply a multi-qubit operation.
@@ -330,24 +308,47 @@ class Statevec(DenseState):
     #     qargs : list of int
     #         target qubits' indices
     #     """
-    #     nq = len(qargs)
-    #     # treat x as a tensor with ng output + ng input legs
-    #     op_t = op.reshape((2,) * (nq * 2))
+    #     op_dim = int(np.log2(len(op)))
+    #     # TODO shape = (2,)* 2 * op_dim
+    #     shape = [2 for _ in range(2 * op_dim)]
     #     psi_t = self.flatten().reshape((2,) * self.nqubit)
+    #     op_tensor = op.reshape(shape)
+    #     psi = np.tensordot(
+    #         op_tensor,
+    #         psi_t,
+    #         (tuple(op_dim + i for i in range(len(qargs))), qargs),
+    #     ).astype(np.complex128)
+    #     self.psi[:self.size_valid_psi] = np.moveaxis(psi, range(len(qargs)), qargs).reshape(1<< self.nqubit)
 
-    #     state_idx = list(range(self.nqubit))          # [0, 1, 2, 3]
-    #     out_idx   = list(range(self.nqubit, self.nqubit + nq))  # [4, 5]
+    @override
+    def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
+        """Apply a multi-qubit operation.
 
-    #     # x subscripts: [out_0, out_1, in_0, in_1] → [4, 5, 1, 3]
-    #     xt_idx = out_idx + list(qargs)
+        Parameters
+        ----------
+        op : numpy.ndarray
+            2^n*2^n matrix
+        qargs : list of int
+            target qubits' indices
+        """
+        nq = len(qargs)
+        # treat x as a tensor with ng output + ng input legs
+        op_t = op.reshape((2,) * (nq * 2)).astype(np.complex128, copy=False)
+        psi_t = self.flatten().reshape((2,) * self.nqubit).astype(np.complex128, copy=False)
 
-    #     # result subscripts: same as state but source slots replaced by out labels
-    #     # [0, 4, 2, 5]
-    #     res_idx = state_idx.copy()
-    #     for i, s in enumerate(qargs):
-    #         res_idx[s] = out_idx[i]
+        state_idx = np.array(range(self.nqubit))  # [0, 1, 2, 3]
+        out_idx = np.array(range(self.nqubit, self.nqubit + nq))  # [4, 5]
 
-    #     return np.einsum(op_t, xt_idx, psi_t, state_idx, res_idx).reshape(1 << self.nqubit)
+        # x subscripts: [out_0, out_1, in_0, in_1] → [4, 5, 1, 3]
+        xt_idx = np.concatenate((out_idx, qargs))
+
+        # result subscripts: same as state but source slots replaced by out labels
+        # [0, 4, 2, 5]
+        res_idx = state_idx.copy()
+        for i, s in enumerate(qargs):
+            res_idx[s] = out_idx[i]
+
+        self.psi[: self.size_valid_psi] = np.einsum(op_t, xt_idx, psi_t, state_idx, res_idx).reshape(1 << self.nqubit)
 
     def expectation_value(self, op: Matrix, qargs: Sequence[int]) -> complex:
         """Return the expectation value of multi-qubit operator.
@@ -488,7 +489,7 @@ class Statevec(DenseState):
         *,
         rtol: float = 0.0,
         atol: float = 1e-8,
-        ) -> dict[str, np.object_ | np.complex128]:
+    ) -> dict[str, np.object_ | np.complex128]:
         r"""Convert the statevector to dictionary form.
 
         This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding complex amplitudes. Amplitudes below a certain threshold are filtered out.
@@ -539,7 +540,7 @@ class Statevec(DenseState):
 
     def to_prob_dict(
         self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8
-        ) -> dict[str, np.object_ | np.float64]:
+    ) -> dict[str, np.object_ | np.float64]:
         r"""Convert the statevector to a probability distirbution in a dictionary form.
 
         This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding probabilities.
@@ -578,15 +579,16 @@ class Statevec(DenseState):
         *,
         rtol: float = 0.0,
         atol: float = 1e-8,
-        ) -> dict[str, _ScalarT]:
+    ) -> dict[str, _ScalarT]:
         mask = np.logical_not(np.isclose(np.abs(self.flatten()), 0, rtol=rtol, atol=atol))
         i_vals = np.arange(1 << self.nqubit)[mask]
         amp_vals = f(self.flatten()[mask])
 
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
-#TODO: type **kwargs with Unpack
-#TODO: Update tests
+
+# TODO: type **kwargs with Unpack
+# TODO: Update tests
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):
     """MBQC state vector backend simulator based on 10.48550/arXiv.2506.08142."""
@@ -787,8 +789,6 @@ def _remove_qubit_jit(
     return new_nqubit
 
 
-
-
 #     @override
 #     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
 #         """Apply a multi-qubit operation.
@@ -812,8 +812,6 @@ def _remove_qubit_jit(
 #         self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
 
 
-
-
 #     def normalize(self) -> None:
 #         """Normalize the state in-place."""
 #         # Note that the following calls to `astype` are guaranteed to
@@ -830,12 +828,6 @@ def _remove_qubit_jit(
 #             norm_c = _norm_numeric(psi_c)
 #             psi_c /= norm_c
 #             self.psi = psi_c
-
-
-
-
-
-
 
 
 # def _norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:

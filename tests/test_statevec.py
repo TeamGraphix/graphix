@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -8,6 +9,8 @@ import pytest
 from numpy.random import Generator
 
 from graphix.clifford import Clifford
+from graphix.ops import Ops
+from graphix.random_objects import rand_unit
 from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates
 
@@ -15,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from typing import Literal
 
-    from numpy.random import Generator
+    from numpy.random import PCG64
 
     _ENCODING = Literal["LSB", "MSB"]
 
@@ -242,6 +245,86 @@ class TestSimulation:
         sv.remove_qubit(q)
         assert np.allclose(sv.flatten(), sv_ref.flatten())
 
+    @pytest.mark.parametrize(
+        ("sv", "qargs", "op", "data_ref"),
+        [
+            (Statevec(data=BasicStates.ZERO, nqubit=2), (0,), Clifford.X.matrix, np.array([0, 0, 1, 0])),
+            (
+                Statevec(data=[BasicStates.PLUS, BasicStates.PLUS]),
+                (1,),
+                Clifford.H.matrix,
+                np.array([1, 0, 1, 0]) / np.sqrt(2),
+            ),
+            (
+                Statevec(data=[BasicStates.PLUS, BasicStates.MINUS]),
+                (0,),
+                np.array([[1, 0], [0, np.exp(0.25j * np.pi)]]),
+                np.array([1, -1, np.exp(0.25j * np.pi), -np.exp(0.25j * np.pi)]) / 2,
+            ),
+            (
+                Statevec(data=np.array([1, 0, 0, 0, 0, 0, 0, 1]) / np.sqrt(2)),
+                (1,),
+                Clifford.Z.matrix,
+                np.array([1, 0, 0, 0, 0, 0, 0, -1]) / np.sqrt(2),
+            ),
+            (
+                Statevec(data=np.array([1, 0, 0, 0, 0, 0, 0, 1]) / np.sqrt(2)),
+                (0, 1),
+                Ops.CNOT,
+                np.array([1, 0, 0, 0, 0, 1, 0, 0]) / np.sqrt(2),
+            ),
+            (
+                Statevec(data=np.array([1, 0, 0, 0, 0, 0, 0, 1]) / np.sqrt(2)),
+                (0, 2),
+                Ops.CNOT,
+                np.array([1, 0, 0, 0, 0, 0, 1, 0]) / np.sqrt(2),
+            ),
+            (
+                Statevec(data=np.array([1, 0, 0, 0, 0, 0, 0, 1]) / np.sqrt(2), max_qubits=5),
+                (1, 2),
+                Ops.CNOT,
+                np.array([1, 0, 0, 0, 0, 0, 1, 0]) / np.sqrt(2),
+            ),
+            (
+                Statevec(data=np.array([1, 0, 0, 0, 0, 0, 0, 1]) / np.sqrt(2), max_qubits=5),
+                (0, 1, 2),
+                Ops.CCX,
+                np.array([1, 0, 0, 0, 0, 0, 1, 0]) / np.sqrt(2),
+            ),
+        ],
+    )
+    def test_evolve(
+        self, sv: Statevec, qargs: tuple[int, ...], op: npt.NDArray[np.complex128], data_ref: npt.NDArray[np.complex128]
+    ) -> None:
+        sv.evolve(op, qargs)
+        assert np.allclose(sv.flatten(), data_ref)
+
+    @pytest.mark.parametrize("jumps", range(1, 5))
+    def test_evolve_rnd(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 4
+        data = generate_rnd_data(rng, nqubits)
+        sv = Statevec(data=data)
+        op = rand_unit(8, rng)
+
+        sv.evolve(op, (1, 2, 3))
+        data_ref = np.kron(np.eye(2), op) @ data
+        sv_ref = Statevec(data_ref)
+
+        assert sv.isclose(sv_ref)
+
+    @pytest.mark.parametrize("jumps", range(1, 5))
+    def test_expectation_value(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 4
+        data = generate_rnd_data(rng, nqubits)
+        sv = Statevec(data=data)
+        op = rand_unit(4, rng)
+
+        val_test = sv.expectation_value(op, (1, 2))
+        val_ref = np.conjugate(data) @ functools.reduce(np.kron, (np.eye(2), op, np.eye(2))) @ data
+        assert val_test == pytest.approx(val_ref)
+
 
 # TODO: Refactor using parametrize
 class TestFidelity:
@@ -308,6 +391,7 @@ def test_to_dict(encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
     for ket, amp in sv.to_dict(encoding=encoding).items():
         assert np.isclose(dict_ref[ket], amp.real)
         assert np.isclose(0, amp.imag)
+
 
 @pytest.mark.parametrize(
     ("encoding", "dict_ref"),
@@ -420,7 +504,6 @@ def test_to_prob_dict(encoding: _ENCODING, dict_ref: Mapping[str, float]) -> Non
 #     sv_ref = pattern.simulate_pattern(backend=SBLegacy(), rng=rng)
 
 #     assert sv_ref.isclose(SVLegacy(data=sv_test.flatten()))
-
 
 
 # from __future__ import annotations
@@ -584,35 +667,6 @@ def test_to_prob_dict(encoding: _ENCODING, dict_ref: Mapping[str, float]) -> Non
 #         p = Pattern(input_nodes=[0, 1, 2])
 #         sv = p.simulate_pattern(backend="statevector")
 #         assert sv.nqubit == 3
-
-
-
-
-#     @pytest.mark.parametrize(
-#         ("encoding", "dict_ref"),
-#         [
-#             ("LSB", {"000": 0.5, "010": 0.5, "100": -0.5, "110": -0.5}),
-#             ("MSB", {"000": 0.5, "010": 0.5, "001": -0.5, "011": -0.5}),
-#         ],
-#     )
-#     def test_to_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
-#         sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
-#         for ket, amp in sv.to_dict(encoding=encoding).items():
-#             assert np.isclose(dict_ref[ket], amp.real)
-#             assert np.isclose(0, amp.imag)
-
-#     @pytest.mark.parametrize(
-#         ("encoding", "dict_ref"),
-#         [
-#             ("LSB", {"001": 0.25, "011": 0.25, "101": 0.25, "111": 0.25}),
-#             ("MSB", {"100": 0.25, "110": 0.25, "101": 0.25, "111": 0.25}),
-#         ],
-#     )
-#     def test_to_prob_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
-#         sv = Statevec(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
-#         for ket, amp2 in sv.to_prob_dict(encoding=encoding).items():
-#             assert np.isclose(dict_ref[ket], amp2.real)
-#             assert np.isclose(0, amp2.imag)
 
 
 # def test_normalize() -> None:
