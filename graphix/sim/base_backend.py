@@ -6,7 +6,7 @@ import dataclasses
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypedDict, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -380,12 +380,12 @@ class DenseState(ABC):
         """
 
     @abstractmethod
-    def entangle(self, edge: tuple[int, int]) -> None:
+    def entangle(self, qubits: tuple[int, int]) -> None:
         """Connect graph nodes.
 
         Parameters
         ----------
-        edge : tuple of int
+        qubits : tuple of int
             (control, target) qubit indices
         """
 
@@ -402,14 +402,14 @@ class DenseState(ABC):
         """
 
     @abstractmethod
-    def evolve_single(self, op: Matrix, i: int) -> None:
+    def evolve_single(self, op: Matrix, qubit: int) -> None:
         """Apply a single-qubit operation.
 
         Parameters
         ----------
         op : numpy.ndarray
             2*2 matrix
-        i : int
+        qubit : int
             qubit index
         """
 
@@ -682,6 +682,14 @@ class Backend(Generic[_StateT_co]):
 _DenseStateT_co = TypeVar("_DenseStateT_co", bound="DenseState", covariant=True)
 
 
+class DenseStateBackendKwargs(TypedDict, total=False):
+    """Keyword arguments for initializing a `DenseStateBackend`."""
+
+    node_index: NodeIndex
+    branch_selector: BranchSelector
+    symbolic: bool
+
+
 @dataclass(frozen=True)
 class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     """
@@ -708,6 +716,8 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         Branch selector used for measurements.  Default is :class:`RandomBranchSelector`.
     symbolic : bool, optional
         If True, support arbitrary objects (typically, symbolic expressions) in matrices.
+
+    All parameters are key-word only.
 
     See Also
     --------
@@ -811,7 +821,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     def apply_single(self, node: int, op: Matrix) -> None:
         """Apply a single gate to the state."""
         index = self.node_index.index(node)
-        self.state.evolve_single(op=op, i=index)
+        self.state.evolve_single(op=op, qubit=index)
 
     @override
     def apply_clifford(self, node: int, clifford: Clifford) -> None:

@@ -16,12 +16,15 @@ import numpy.typing as npt
 from typing_extensions import override
 
 from graphix.parameter import ExpressionOrSupportsComplex
-from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix
+from graphix.sim.base_backend import DenseState, DenseStateBackend, DenseStateBackendKwargs, Matrix
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any, Literal, Self, TypeAlias, TypeVar
+
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
 
     from graphix.sim.data import Data
 
@@ -250,65 +253,65 @@ class Statevec(DenseState):
         self.tensor(sv_to_add)
 
     @override
-    def entangle(self, edge: tuple[int, int]) -> None:
+    def entangle(self, qubits: tuple[int, int]) -> None:
         """Connect graph nodes.
 
         Parameters
         ----------
-        edge : tuple of int
+        qubits : tuple of int
             (control, target) qubit indices
         """
         kernel = _entangle_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _entangle_jit
-        kernel(self.psi, self.nqubit, *edge)
+        kernel(self.psi, self.nqubit, *qubits)
 
     @override
-    def evolve_single(self, op: Matrix, i: int) -> None:
+    def evolve_single(self, op: Matrix, qubit: int) -> None:
         """Apply a single-qubit operation.
 
         Parameters
         ----------
         op : numpy.ndarray
             2*2 matrix
-        i : int
+        q : int
             qubit index
         """
-        self._check_bounds(i)
+        self._check_bounds(qubit)
         kernel = _evolve_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _evolve_single_jit
         # We cast to np.complex128 to match numba signature.
-        kernel(self.psi, op.astype(np.complex128), self.nqubit, i)
+        kernel(self.psi, op.astype(np.complex128), self.nqubit, qubit)
 
     @override
-    def expectation_single(self, op: Matrix, loc: int) -> complex:
+    def expectation_single(self, op: Matrix, qubit: int) -> complex:
         """Return the expectation value of single-qubit operator.
 
         Parameters
         ----------
         op : numpy.ndarray
             2*2 operator
-        loc : int
+        qubit : int
             target qubit index
 
         Returns
         -------
         complex : expectation value.
         """
-        self._check_bounds(loc)
+        self._check_bounds(qubit)
         kernel = _expectation_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _expectation_single_jit
         # We cast to np.complex128 to match numba signature.
-        return kernel(self.psi, op.astype(np.complex128), self.nqubit, loc)
+        return kernel(self.psi, op.astype(np.complex128), self.nqubit, qubit)
 
     @override
-    def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
+    def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
         """Apply a multi-qubit operation.
 
         Parameters
         ----------
         op : numpy.ndarray
             2^n*2^n matrix
-        qargs : list of int
+        qubits : list of int
             target qubits' indices
         """
-        nq = len(qargs)
+        nq = len(qubits)
         # treat op as a tensor with nq output + nq input legs
         op_t = op.reshape((2,) * (nq * 2)).astype(np.complex128, copy=False)
         psi_t = self.flatten().reshape((2,) * self.nqubit).astype(np.complex128, copy=False)
@@ -316,23 +319,23 @@ class Statevec(DenseState):
         psi_idx = np.array(range(self.nqubit))
         out_idx = np.array(range(self.nqubit, self.nqubit + nq))  # fresh labels
 
-        op_idx = np.concatenate((out_idx, qargs))
+        op_idx = np.concatenate((out_idx, qubits))
 
         # result subscripts: same as psi but modified indices (qargs) replaced by out labels
         res_idx = psi_idx.copy()
-        for i, s in enumerate(qargs):
+        for i, s in enumerate(qubits):
             res_idx[s] = out_idx[i]
 
         self.psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)
 
-    def expectation_value(self, op: Matrix, qargs: Sequence[int]) -> complex:
+    def expectation_value(self, op: Matrix, qubits: Sequence[int]) -> complex:
         """Return the expectation value of multi-qubit operator.
 
         Parameters
         ----------
         op : numpy.ndarray
             2^n*2^n operator
-        qargs : list of int
+        qubits : list of int
             target qubit indices
 
         Returns
@@ -340,11 +343,11 @@ class Statevec(DenseState):
         complex : expectation value
         """
         sv = deepcopy(self)
-        sv.evolve(op, qargs)
+        sv.evolve(op, qubits)
         return complex(np.dot(self.flatten().conjugate(), sv.flatten()))
 
     @override
-    def remove_qubit(self, qarg: int) -> None:
+    def remove_qubit(self, qubit: int) -> None:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
 
         This results in the same result as partial trace, if the qubit *qarg* is separable from the rest.
@@ -380,11 +383,11 @@ class Statevec(DenseState):
 
         Parameters
         ----------
-        qarg : int
+        qubit : int
             qubit index
         """
-        self._check_bounds(qarg)
-        self._nqubit = _remove_qubit_jit(self.psi, self.nqubit, qarg, atol=1e-10)
+        self._check_bounds(qubit)
+        self._nqubit = _remove_qubit_jit(self.psi, self.nqubit, qubit, atol=1e-10)
 
     @override
     def swap(self, qubits: tuple[int, int]) -> None:
@@ -410,14 +413,14 @@ class Statevec(DenseState):
         _tensor_jit(self.psi, other.psi, self.nqubit, other.nqubit)
         self._nqubit += other.nqubit
 
-    def _check_bounds(self, i: int) -> None:
+    def _check_bounds(self, qubit: int) -> None:
         """Check if qubit index is valid.
 
         This check is necessary because there is no bounds checking in Numba. See
         https://numba.pydata.org/numba-doc/dev/reference/pysemantics.html#bounds-checking
         """
-        if not 0 <= i < self.nqubit:
-            raise IndexError(f"Qubit index {i} out of range [0, {self.nqubit})")
+        if not 0 <= qubit < self.nqubit:
+            raise IndexError(f"Qubit index {qubit} out of range [0, {self.nqubit})")
 
     def fidelity(self, other: Statevec) -> float:
         r"""Calculate the fidelity against another statevector.
@@ -562,7 +565,6 @@ class Statevec(DenseState):
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
 
-# TODO: type **kwargs with Unpack
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):
     """MBQC state vector backend simulator based on 10.48550/arXiv.2506.08142."""
@@ -570,7 +572,9 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
     state: Statevec = dataclasses.field(init=True, default_factory=lambda: Statevec(nqubit=0))
 
     @classmethod
-    def with_capacity(cls, max_qubits: int, state: Statevec | None = None, **kwargs) -> Self:
+    def with_capacity(
+        cls, max_qubits: int, state: Statevec | None = None, **kwargs: Unpack[DenseStateBackendKwargs]
+    ) -> Self:
         """Initialize the backend with the required capacity to perform the simulation.
 
         Parameters

@@ -356,7 +356,7 @@ class PatternSimulator(Generic[_StateT_co]):
         graph_prep: str, optional
             [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
         symbolic : bool, optional
-            [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+            [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
         stacklevel : int, optional
             Stack level to use for warnings. Defaults to 1, meaning that warnings
             are reported at this function's call site.
@@ -531,7 +531,7 @@ def _initialize_backend(
     graph_prep: str, optional
         [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
     symbolic : bool, optional
-        [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+        [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
 
     Returns
     -------
@@ -562,7 +562,12 @@ def _initialize_backend(
         case "statevector":
             if noise_model is not None:
                 raise ValueError("`noise_model` cannot be specified for state vector backend.")
-            return StatevectorBackend(branch_selector=branch_selector, symbolic=symbolic)
+            if symbolic:
+                raise ValueError(
+                    "Statevector backend does not support `symbolic` simulation. Consider using backend in `graphix-symbolic` plugin."
+                )
+            nqubits = pattern.max_space()
+            return StatevectorBackend.with_capacity(nqubits, branch_selector=branch_selector)
         case "densitymatrix":
             if noise_model is None:
                 warnings.warn(
