@@ -7,7 +7,10 @@ import enum
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias, override
+from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias
+
+# override introduced in Python 3.12
+from typing_extensions import override
 
 from graphix import utils
 from graphix.clifford import Clifford, Domains
