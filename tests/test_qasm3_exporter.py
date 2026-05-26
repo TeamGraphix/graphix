@@ -46,17 +46,17 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
 
     See
     :func:`test_qasm3_exporter_to_qiskit:test_to_qasm3_random_circuit`,
-    where the result is validated. The current test does not go through the
-    normalization passes ``incorporate_pauli_results`` and ``single_qubit_domains``,
-    so it exercises execution paths that are not tested elsewhere.
+    where the result is validated. The current test does not go
+    through the normalization pass ``single_qubit_domains``, so it
+    exercises execution paths that are not tested elsewhere.
     """
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=rng)
     pattern = circuit.transpile().pattern
-    pattern.remove_input_nodes()
     pattern = pattern.infer_pauli_measurements()
-    pattern.perform_pauli_measurements()
+    pattern.remove_pauli_measurements()
     pattern.minimize_space()
+    print(pattern)
     _qasm3 = pattern_to_qasm3(pattern)

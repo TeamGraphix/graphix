@@ -65,6 +65,8 @@ def tests_extra(session: Session) -> None:
 def tests_all(session: Session) -> None:
     """Run the test suite with all dependencies."""
     session.install(".[dev,extra]")
+    # This dependency is added here to avoid circular dependencies
+    session.install("graphix-qasm-parser>=0.1.1")
     run_pytest(session, doctest_modules=True, mpl=True)
 
 
@@ -108,19 +110,17 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency("https://github.com/emlynsg/graphix-stim-backend", branch="jcz"),
-        ReverseDependency(
-            "https://github.com/TeamGraphix/graphix-symbolic",
-        ),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
             doctest_modules=False,
             install_target=".[dev]",
-            branch="fix/graphix_namespace",
+            branch="fix/graphix_498_remove_pauli",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
-        ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler", branch="ps_dim"),
+        ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:

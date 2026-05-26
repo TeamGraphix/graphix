@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -13,19 +12,13 @@ from warnings import warn
 import networkx as nx
 
 # assert_never added in Python 3.11
-from typing_extensions import assert_never
-
 from graphix import command
 from graphix.clifford import Clifford, Domains
 from graphix.command import CommandKind, Node
 from graphix.flow._partial_order import compute_topological_generations
-from graphix.flow.core import CausalFlow, GFlow, XZCorrections
-from graphix.flow.exceptions import (
-    FlowGenericError,
-    FlowGenericErrorReason,
-)
-from graphix.fundamentals import Axis, Plane, Sign
-from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
+from graphix.flow.core import XZCorrections
+from graphix.fundamentals import Axis, Sign
+from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.space_minimization import (
     minimize_space,
@@ -86,13 +79,12 @@ class _StandardizedPattern:
 
     input_nodes: tuple[Node, ...]
     output_nodes: tuple[Node, ...]
-    results: Mapping[Node, Outcome]
     n_list: tuple[command.N, ...]
     e_set: frozenset[frozenset[Node]]
     m_list: tuple[command.M, ...]
-    c_dict: Mapping[Node, Clifford]
     z_dict: Mapping[Node, frozenset[Node]]
     x_dict: Mapping[Node, frozenset[Node]]
+    c_dict: Mapping[Node, Clifford]
 
 
 class StandardizedPattern(_StandardizedPattern):
@@ -119,20 +111,18 @@ class StandardizedPattern(_StandardizedPattern):
         Input nodes.
     output_nodes: tuple[Node, ...]
         Output nodes.
-    results: Mapping[Node, Outcome]
-        Already measured nodes (by Pauli presimulation).
     n_list: tuple[command.N]
         The N commands.
     e_set: frozenset[frozenset[Node]]
         Set of edges. Each edge is a set with two elements.
     m_list: tuple[command.M]
         The M commands.
-    c_dict: Mapping[Node, Clifford]
-        Mapping associating Clifford corrections to some nodes.
     z_dict: Mapping[Node, frozenset[Node]]
         Mapping associating Z-domains to some nodes.
     x_dict: Mapping[Node, frozenset[Node]]
         Mapping associating X-domains to some nodes.
+    c_dict: Mapping[Node, Clifford]
+        Mapping associating Clifford corrections to some nodes.
 
     """
 
@@ -140,25 +130,23 @@ class StandardizedPattern(_StandardizedPattern):
         self,
         input_nodes: Iterable[Node],
         output_nodes: Iterable[Node],
-        results: Mapping[Node, Outcome],
         n_list: Iterable[command.N],
         e_set: Iterable[Iterable[Node]],
         m_list: Iterable[command.M],
-        c_dict: Mapping[Node, Clifford],
         z_dict: Mapping[Node, Iterable[Node]],
         x_dict: Mapping[Node, Iterable[Node]],
+        c_dict: Mapping[Node, Clifford],
     ) -> None:
         """Return a new StandardizedPattern with immutable data structures."""
         super().__init__(
             tuple(input_nodes),
             tuple(output_nodes),
-            MappingProxyType(dict(results)),
             tuple(n_list),
             frozenset(frozenset(edge) for edge in e_set),
             tuple(m_list),
-            MappingProxyType(dict(c_dict)),
             MappingProxyType({node: frozenset(nodes) for node, nodes in z_dict.items()}),
             MappingProxyType({node: frozenset(nodes) for node, nodes in x_dict.items()}),
+            MappingProxyType(dict(c_dict)),
         )
 
     @classmethod
@@ -172,9 +160,9 @@ class StandardizedPattern(_StandardizedPattern):
         n_list: list[command.N] = []
         e_set: set[frozenset[Node]] = set()
         m_list: list[command.M] = []
-        c_dict: dict[Node, Clifford] = {}
         z_dict: dict[Node, set[Node]] = {}
         x_dict: dict[Node, set[Node]] = {}
+        c_dict: dict[Node, Clifford] = {}
 
         # Standardization could turn non-runnable patterns into
         # runnable ones, so we check runnability first to avoid hiding
@@ -231,9 +219,7 @@ class StandardizedPattern(_StandardizedPattern):
                     # has been already applied to a node, applying a clifford `C'` to the same
                     # node is equivalent to apply `C'C` to a fresh node.
                     c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
-        return cls(
-            pattern.input_nodes, pattern.output_nodes, pattern.results, n_list, e_set, m_list, c_dict, z_dict, x_dict
-        )
+        return cls(pattern.input_nodes, pattern.output_nodes, n_list, e_set, m_list, z_dict, x_dict, c_dict)
 
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
@@ -250,8 +236,14 @@ class StandardizedPattern(_StandardizedPattern):
             graph.add_edge(u, v)
         return graph
 
-    def perform_pauli_pushing(self, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1) -> Self:
+    def perform_pauli_pushing(
+        self, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1
+    ) -> StandardizedPattern:
         """Move Pauli measurements before the other measurements.
+
+        If you need to recover the cut between Pauli measurements and
+        non-Pauli measurements or the shifted signal, you can use
+        :meth:`~graphix.remove_pauli_measurements.PauliPushingCut.from_standardized_pattern` instead.
 
         Parameters
         ----------
@@ -264,93 +256,15 @@ class StandardizedPattern(_StandardizedPattern):
 
         Returns
         -------
-        Pattern
+        StandardizedPattern
             The pattern in which Pauli measurements have been moved
             before the other measurements.
         """
-        self._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
+        from graphix.remove_pauli_measurements import PauliPushingCut  # noqa: PLC0415
 
-        if leave_nodes:
-            leave_non_pauli_nodes = [
-                cmd.node
-                for cmd in self.m_list
-                if not isinstance(cmd.measurement, PauliMeasurement) and cmd.node in leave_nodes
-            ]
-            if leave_non_pauli_nodes:
-                warn(
-                    f"`leave_nodes` contains nodes that are not Pauli: {leave_non_pauli_nodes}. The constraint has no effect on these nodes.",
-                    stacklevel=stacklevel + 1,
-                )
-
-        shift_domains: dict[int, set[int]] = {}
-
-        def expand_domain(domain: AbstractSet[int]) -> set[int]:
-            """Merge previously shifted domains into ``domain``.
-
-            Parameters
-            ----------
-            domain : set[int]
-                Domain to update with any accumulated shift information.
-            """
-            new_domain = set(domain)
-            for node in domain & shift_domains.keys():
-                new_domain ^= shift_domains[node]
-            return new_domain
-
-        pauli_list = []
-        non_pauli_list = []
-        for cmd in self.m_list:
-            s_domain = expand_domain(cmd.s_domain)
-            t_domain = expand_domain(cmd.t_domain)
-            if not isinstance(cmd.measurement, PauliMeasurement) or (leave_nodes and cmd.node in leave_nodes):
-                non_pauli_list.append(
-                    command.M(node=cmd.node, measurement=cmd.measurement, s_domain=s_domain, t_domain=t_domain)
-                )
-            else:
-                match cmd.measurement.axis:
-                    case Axis.X:
-                        # M^X X^s Z^t = M^{XY,0} X^s Z^t
-                        #             = M^{XY,(-1)^s·0+tπ}
-                        #             = S^t M^X
-                        # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
-                        #                = M^{XY,(-1)^s·π+tπ}
-                        #                = S^t M^{-X}
-                        shift_domains[cmd.node] = t_domain
-                    case Axis.Y:
-                        # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
-                        #             = M^{XY,(-1)^s·π/2+tπ}
-                        #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
-                        #             = S^{s+t} M^Y
-                        # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
-                        #                = M^{XY,(-1)^s·(-π/2)+tπ}
-                        #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
-                        #                = S^{s+t} M^{-Y}
-                        shift_domains[cmd.node] = s_domain ^ t_domain
-                    case Axis.Z:
-                        # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
-                        #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
-                        #             = M^{XZ,(-1)^t·sπ}
-                        #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
-                        #             = S^s M^Z
-                        # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
-                        #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
-                        #                = M^{XZ,(s+1)π}
-                        #                = S^s M^{-Z}
-                        shift_domains[cmd.node] = s_domain
-                    case _:
-                        assert_never(cmd.measurement.axis)
-                pauli_list.append(command.M(node=cmd.node, measurement=cmd.measurement))
-        return self.__class__(
-            self.input_nodes,
-            self.output_nodes,
-            self.results,
-            self.n_list,
-            self.e_set,
-            pauli_list + non_pauli_list,
-            self.c_dict,
-            {node: expand_domain(domain) for node, domain in self.z_dict.items()},
-            {node: expand_domain(domain) for node, domain in self.x_dict.items()},
-        )
+        return PauliPushingCut.from_standardized_pattern(
+            self, leave_nodes, stacklevel=stacklevel + 1
+        ).to_standardized_pattern()
 
     def max_space(self) -> int:
         """Compute the maximum number of nodes that must be present in the graph (graph space) during the execution of the space-optimal pattern for the given measurement order.
@@ -396,7 +310,6 @@ class StandardizedPattern(_StandardizedPattern):
         from graphix.pattern import Pattern  # noqa: PLC0415
 
         pattern = Pattern(input_nodes=self.input_nodes)
-        pattern.results = dict(self.results)
         pattern.extend(
             self.n_list,
             (command.E((u, v)) for u, v in self.e_set),
@@ -470,8 +383,7 @@ class StandardizedPattern(_StandardizedPattern):
             - There cannot be any empty layers.
         """
         oset = frozenset(self.output_nodes)  # First layer by convention.
-        pre_measured_nodes = self.results.keys()  # Not included in the partial order layers.
-        excluded_nodes = oset | pre_measured_nodes
+        excluded_nodes = oset
 
         zero_indegree = set(self.input_nodes).union(n.node for n in self.n_list) - excluded_nodes
         dag: dict[int, set[int]] = {
@@ -507,104 +419,6 @@ class StandardizedPattern(_StandardizedPattern):
             return oset, *generations[::-1]
         return generations[::-1]
 
-    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
-        r"""Extract the causal flow structure from the current measurement pattern.
-
-        This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
-
-        Returns
-        -------
-        flow.CausalFlow[Measurement]
-            The causal flow associated with the current pattern.
-
-        Raises
-        ------
-        FlowError
-            If the pattern:
-            - Contains measurements in forbidden planes (XZ or YZ),
-            - Is empty, or
-            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
-        ValueError
-            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
-
-        Notes
-        -----
-        This method makes use of :func:`StandardizedPattern.extract_partial_order_layers` which computes the pattern's direct acyclical graph (DAG) induced by the corrections and returns a particular layer stratification (obtained by doing a topological sort on the DAG). Further, it constructs the pattern's induced correction function from :math:`M` and :math:`X` commands.
-        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
-        """
-        correction_function: dict[int, set[int]] = defaultdict(set)
-        pre_measured_nodes = self.results.keys()  # Not included in the flow.
-
-        for m in self.m_list:
-            try:
-                bloch = m.measurement.downcast_bloch()
-            except TypeError:
-                valid = False
-            else:
-                valid = bloch.plane == Plane.XY
-            if not valid:
-                raise FlowGenericError(FlowGenericErrorReason.XYPlane)
-            _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
-
-        for node, domain in self.x_dict.items():
-            _update_corrections(node, domain - pre_measured_nodes, correction_function)
-
-        og = (
-            self.extract_opengraph()
-        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
-        partial_order_layers = (
-            self.extract_partial_order_layers()
-        )  # Raises a `ValueError` if the pattern corrections form closed loops.
-        cf = CausalFlow(og.downcast_bloch(), dict(correction_function), partial_order_layers)
-        cf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible, or if a measured node is corrected by more than one node.
-        return cf
-
-    def extract_gflow(self) -> GFlow[BlochMeasurement]:
-        r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
-
-        This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
-
-        Returns
-        -------
-        flow.GFlow[Measurement]
-            The gflow associated with the current pattern.
-
-        Raises
-        ------
-        FlowError
-            If the pattern is empty or if the extracted structure does not satisfy
-            the well-formedness conditions required for a valid gflow.
-        TypeError
-            If the pattern contains a Pauli measurement
-        ValueError
-            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
-
-        Notes
-        -----
-        The notes provided in :func:`self.extract_causal_flow` apply here as well.
-        """
-        correction_function: dict[int, set[int]] = {}
-        pre_measured_nodes = self.results.keys()  # Not included in the flow.
-
-        for m in self.m_list:
-            # Raises a `TypeError` if the measurement is not represented as a Bloch measurement
-            if m.measurement.downcast_bloch().plane in {Plane.XZ, Plane.YZ}:
-                correction_function.setdefault(m.node, set()).add(m.node)
-            _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
-
-        for node, domain in self.x_dict.items():
-            _update_corrections(node, domain - pre_measured_nodes, correction_function)
-
-        og = (
-            self.extract_opengraph()
-        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
-        partial_order_layers = (
-            self.extract_partial_order_layers()
-        )  # Raises a `ValueError` if the pattern corrections form closed loops.
-        gf = GFlow(og.downcast_bloch(), correction_function, partial_order_layers)
-        gf.check_well_formed()
-        return gf
-
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
         r"""Extract the XZ-corrections from the current measurement pattern.
 
@@ -623,17 +437,15 @@ class StandardizedPattern(_StandardizedPattern):
         x_corr: dict[int, set[int]] = {}
         z_corr: dict[int, set[int]] = {}
 
-        pre_measured_nodes = self.results.keys()  # Not included in the xz-corrections.
-
         for m in self.m_list:
-            _update_corrections(m.node, m.s_domain - pre_measured_nodes, x_corr)
-            _update_corrections(m.node, m.t_domain - pre_measured_nodes, z_corr)
+            _update_corrections(m.node, m.s_domain, x_corr)
+            _update_corrections(m.node, m.t_domain, z_corr)
 
         for node, domain in self.x_dict.items():
-            _update_corrections(node, domain - pre_measured_nodes, x_corr)
+            _update_corrections(node, domain, x_corr)
 
         for node, domain in self.z_dict.items():
-            _update_corrections(node, domain - pre_measured_nodes, z_corr)
+            _update_corrections(node, domain, z_corr)
 
         og = (
             self.extract_opengraph()
@@ -642,6 +454,35 @@ class StandardizedPattern(_StandardizedPattern):
         return XZCorrections.from_measured_nodes_mapping(
             og, x_corr, z_corr
         )  # Raises a `XZCorrectionsError` if the input dictionaries are not well formed.
+
+    def map(self, f: Callable[[Measurement], Measurement]) -> StandardizedPattern:
+        """Return a pattern where the function ``f`` has been applied to each measurement.
+
+        Parameters
+        ----------
+        f: Callable[[Measurement], Measurement]
+            Function applied to each measurement.
+
+        Returns
+        -------
+        StandardizedPattern
+            The resulting pattern.
+        """
+        m_list = tuple(cmd_m.map(f) for cmd_m in self.m_list)
+        return StandardizedPattern(
+            self.input_nodes,
+            self.output_nodes,
+            self.n_list,
+            self.e_set,
+            m_list,
+            self.z_dict,
+            self.x_dict,
+            self.c_dict,
+        )
+
+    def to_bloch(self) -> StandardizedPattern:
+        """Return an equivalent pattern in which all measurements are represented as Bloch measurements."""
+        return self.map(lambda m: m.to_bloch())
 
     def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
         for m in self.m_list:
@@ -695,16 +536,6 @@ def _commute_clifford(clifford_gate: Clifford, c_dict: dict[int, Clifford], i: i
         )
 
 
-def _incorporate_pauli_results_in_domain(
-    results: Mapping[int, int], domain: AbstractSet[int]
-) -> tuple[bool, set[int]] | None:
-    if not (results.keys() & domain):
-        return None
-    new_domain = set(domain - results.keys())
-    odd_outcome = sum(outcome for node, outcome in results.items() if node in domain) % 2
-    return odd_outcome == 1, new_domain
-
-
 def _update_corrections(node: Node, domain: AbstractSet[Node], correction: dict[Node, set[Node]]) -> None:
     """Update the correction mapping by adding a node to all entries in a domain.
 
@@ -726,59 +557,11 @@ def _update_corrections(node: Node, domain: AbstractSet[Node], correction: dict[
         correction.setdefault(measured_node, set()).add(node)
 
 
-def incorporate_pauli_results(pattern: Pattern) -> Pattern:
-    """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
-    from graphix.pattern import Pattern  # noqa: PLC0415
-
-    result = Pattern(input_nodes=pattern.input_nodes)
-    for cmd in pattern:
-        match cmd.kind:
-            case CommandKind.M:
-                s = _incorporate_pauli_results_in_domain(pattern.results, cmd.s_domain)
-                t = _incorporate_pauli_results_in_domain(pattern.results, cmd.t_domain)
-                if s or t:
-                    if s:
-                        apply_x, new_s_domain = s
-                    else:
-                        apply_x = False
-                        new_s_domain = cmd.s_domain
-                    if t:
-                        apply_z, new_t_domain = t
-                    else:
-                        apply_z = False
-                        new_t_domain = cmd.t_domain
-                    new_cmd = command.M(cmd.node, cmd.measurement, new_s_domain, new_t_domain)
-                    if apply_x:
-                        new_cmd = new_cmd.clifford(Clifford.X)
-                    if apply_z:
-                        new_cmd = new_cmd.clifford(Clifford.Z)
-                    result.add(new_cmd)
-                else:
-                    result.add(cmd)
-            case CommandKind.X | CommandKind.Z:
-                signal = _incorporate_pauli_results_in_domain(pattern.results, cmd.domain)
-                if signal:
-                    apply_c, new_domain = signal
-                    if new_domain:
-                        cmd_cstr = command.X if cmd.kind == CommandKind.X else command.Z
-                        result.add(cmd_cstr(cmd.node, new_domain))
-                    if apply_c:
-                        c = Clifford.X if cmd.kind == CommandKind.X else Clifford.Z
-                        result.add(command.C(cmd.node, c))
-                else:
-                    result.add(cmd)
-            case _:
-                result.add(cmd)
-    result.reorder_output_nodes(pattern.output_nodes)
-    return result
-
-
 def remove_useless_domains(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where measurement domains that are not used given the specific measurement angles and planes are removed."""
     from graphix.pattern import Pattern  # noqa: PLC0415
 
     new_pattern = Pattern(input_nodes=pattern.input_nodes)
-    new_pattern.results = pattern.results
     for cmd in pattern:
         if cmd.kind == CommandKind.M:
             match cmd.measurement:
@@ -800,7 +583,6 @@ def single_qubit_domains(pattern: Pattern) -> Pattern:
     from graphix.pattern import Pattern  # noqa: PLC0415
 
     new_pattern = Pattern(input_nodes=pattern.input_nodes)
-    new_pattern.results = pattern.results
 
     def decompose_domain(
         cmd: Callable[[int, set[int]], command.CommandType], node: int, domain: AbstractSet[int]

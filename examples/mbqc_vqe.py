@@ -94,9 +94,8 @@ class MBQCVQE:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
-        pattern.remove_input_nodes()
-        pattern = pattern.infer_pauli_measurements()  # Infer Pauli measurements to determine measurement planes
-        pattern.perform_pauli_measurements()  # Perform Pauli measurements
+        pattern = pattern.infer_pauli_measurements()
+        pattern.remove_pauli_measurements()
         pattern.minimize_space()
         return pattern
 

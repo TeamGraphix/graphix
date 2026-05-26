@@ -110,7 +110,6 @@ def standardized_to_space_optimal_pattern(pattern: StandardizedPattern) -> Patte
 
     """
     target = graphix.Pattern(input_nodes=pattern.input_nodes)
-    target.results = dict(pattern.results)
     initialized = set(pattern.input_nodes)
     done: set[Node] = set()
     n_dict = {n.node: n for n in pattern.n_list}
@@ -193,8 +192,8 @@ class SpaceMinimizationHeuristics:
         This minimization heuristic is optimal but requires the pattern to have a causal flow.
         """
         try:
-            cf = pattern.extract_causal_flow()
-        except FlowError:
+            cf = pattern.extract_xzcorrections().downcast_bloch().to_causal_flow()
+        except (TypeError, FlowError):
             return None
         else:
             meas_order = tuple(chain(*reversed(cf.partial_order_layers[1:])))
@@ -229,8 +228,6 @@ class SpaceMinimizationHeuristics:
         nodes = set(graph.nodes)
         not_measured = nodes - set(pattern.output_nodes)
         dependency = _extract_dependency(pattern)
-        # keys() should be converted into `set` because it is transient.
-        _update_dependency(set(pattern.results.keys()), dependency)
         meas_order = []
         while not_measured:
             next_node = min((i for i in not_measured if not dependency[i]), key=graph.degree)

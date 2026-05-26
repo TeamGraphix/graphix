@@ -9,36 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #476: Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
+
 - #484: J & CZ transpilation.
   - Replaced `Circuit.transpile()` with a new approach based decomposing circuits into J & CZ gates.
   - Added `Circuit.transpile_to_cflow()` to produce `CausalFlow` using the same decomposition.
   - Added `instruction.J` class.
   - Added `Circuit.transpile_j_to_rzh()` method to prepare circuits with J gates for export to OpenQASM.
+  - Added `transpile` argument to `qasm3_exporter.circuit_to_qasm3` and `qasm3_exporter.circuit_to_qasm3_lines`, which defaults to true and applies `Circuit.transpile_j_to_rzh` and `Circuit.transpile_measurements_to_z_axis` methods.
 
 - #490: Introduced new `Instruction` and `Command` namespace classes for instruction and command instantiation.
 
-- #476 Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
+- #505
+  - Added new methods `XZCorrections.to_causal_flow` and `XZCorrections.to_gflow` which subsume  `StandardizedPattern.extract_causal_flow` and `StandardizedPattern.extract_gflow`.
+  - Added new methods `XZCorrections.to_bloch` and `XZCorrections.downcast_bloch`.
 
-### Fixed
-
-### Changed
-
-- #484: Added `transpile` argument to `qasm3_exporter.circuit_to_qasm3` and `qasm3_exporter.circuit_to_qasm3_lines`, which defaults to true and applies `Circuit.transpile_j_to_rzh` and `Circuit.transpile_measurements_to_z_axis` methods.
-
-- #490: Exposed more common classes and methods to top level `__init__.py`.
-  - Renamed `Instruction`, `InstructionWithoutRZZ` and `Command` to `InstructionType`, `InstructionTypeWithoutRZZ` and `CommandType` respectively.
-  - Moved `InstructionType`, `InstructionTypeWithoutRZZ`, `CommandType`, `Correction` and `CommandOrNoise` to `TYPE_CHECKING` blocks.
-  - Renamed `DrawAnnotations` to `DrawPatternAnnotations`.
-
-- #479: Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
-
-- #454, #481: New space minimization API that allows users to select or define custom heuristics.
-
-- #476
-  - Added new field `dim` to `PauliString` to represent the dimension of the Hilbert space.
-  - Define `PauliString` on qubit indices and remove all `remap` methods.
-  - Represent `x_map` and `z_map` attributes of `CliffordMap` as sequences of `PauliString` instead of mappings.
-  - Rename `PauliFlow.pauli_strings` property as `PauliFlow.extraction_pauli_strings`.
+- #507: Introduced new methods `PauliString.__str__`, `PauliString.from_str`, `PauliString.to_tableau`, and `PauliString.from_tableau`.
 
 ### Fixed
 
@@ -48,9 +34,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- #479: Method `Pattern.draw_graph` subsumed by two different methods: `Pattern.draw_flow` and `Pattern.draw_xzcorrections`.
-
 - #452: Use `uv` for dependency management
+
+- #476
+  - Added new field `dim` to `PauliString` to represent the dimension of the Hilbert space.
+  - Define `PauliString` on qubit indices and remove all `remap` methods.
+  - Represent `x_map` and `z_map` attributes of `CliffordMap` as sequences of `PauliString` instead of mappings.
+  - Rename `PauliFlow.pauli_strings` property as `PauliFlow.extraction_pauli_strings`.
+
+- #479:
+  - Added new methods `OpenGraph.draw`, `PauliFlow.draw` and `XZCorrections.draw`.
+  - Method `Pattern.draw_graph` subsumed by two different methods: `Pattern.draw_flow` and `Pattern.draw_xzcorrections`.
+
+- #454, #481: New space minimization API that allows users to select or define custom heuristics.
+
+- #490: Exposed more common classes and methods to top level `__init__.py`.
+  - Renamed `Instruction`, `InstructionWithoutRZZ` and `Command` to `InstructionType`, `InstructionTypeWithoutRZZ` and `CommandType` respectively.
+  - Moved `InstructionType`, `InstructionTypeWithoutRZZ`, `CommandType`, `Correction` and `CommandOrNoise` to `TYPE_CHECKING` blocks.
+  - Renamed `DrawAnnotations` to `DrawPatternAnnotations`.
+
+- #168, #498: `Pattern.remove_pauli_measurements` replaces `Pattern.perform_pauli_measurements`.  The new algorithm removes all non-input Pauli nodes from patterns that have a flow and returns a pattern that is equivalent for every input state.
+  - Field `Pattern.results` and function `incorporate_pauli_results` removed.
+
+- #507: Static method `PauliString.from_measured_node` is subsumed by the function `extraction_ps_from_corrected_node`.
 
 ## [0.3.5] - 2026-03-26
 

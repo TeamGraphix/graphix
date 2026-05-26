@@ -72,7 +72,7 @@ def qasm3_gate_call(gate: str, operands: Iterable[str], args: Iterable[str] | No
 
 def angle_to_qasm3(angle: ParameterizedAngle) -> str:
     """Get the OpenQASM3 representation of an angle."""
-    if not isinstance(angle, float):
+    if not isinstance(angle, (int, float)):
         raise TypeError("QASM export of symbolic pattern is not supported")
     return angle_to_str(angle, output=OutputFormat.ASCII, multiplication_sign=True)
 
@@ -144,9 +144,8 @@ def pattern_to_qasm3(pattern: Pattern, input_state: dict[int, State] | State = B
     qubits if the pattern has been Pauli-presimulated, and it may include
     Boolean expressions using xor (`^`) if some domains contain
     multiple qubits. These features are not supported by
-    `qiskit-qasm3-import`. The functions
-    :func:`graphix.optimization.incorporate_pauli_results` and
-    :func:`graphix.optimization.single_qubit_domains` transform any
+    `qiskit-qasm3-import`. The function
+    :func:`graphix.optimization.single_qubit_domains` transforms any
     pattern into an equivalent one such that exporting to OpenQASM 3.0
     produces a circuit that can be imported into Qiskit.
 
@@ -175,12 +174,6 @@ def pattern_to_qasm3_lines(pattern: Pattern, input_state: dict[int, State] | Sta
         state = input_state if isinstance(input_state, State) else input_state[node]
         yield from state_to_qasm3_lines(node, state)
         yield "\n"
-    if pattern.results != {}:
-        for i in pattern.results:
-            res = pattern.results[i]
-            yield f"// measurement result of qubit q{i}\n"
-            yield f"bit c{i} = {res};\n"
-            yield "\n"
     for cmd in pattern:
         yield from command_to_qasm3_lines(cmd)
 

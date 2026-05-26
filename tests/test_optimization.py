@@ -9,7 +9,7 @@ from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
-from graphix.optimization import StandardizedPattern, incorporate_pauli_results, remove_useless_domains
+from graphix.optimization import StandardizedPattern, remove_useless_domains
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
@@ -57,27 +57,6 @@ def test_standardize_clifford_entanglement(fx_rng: Generator) -> None:
                 assert state_p.isclose(state_ref)
 
 
-@pytest.mark.parametrize("jumps", range(1, 11))
-def test_incorporate_pauli_results(fx_bg: PCG64, jumps: int) -> None:
-    rng = Generator(fx_bg.jumped(jumps))
-    nqubits = 3
-    depth = 3
-    circuit = rand_circuit(nqubits, depth, rng)
-    pattern = circuit.transpile().pattern
-    pattern.standardize()
-    pattern.shift_signals()
-    pattern.remove_input_nodes()
-    pattern = pattern.infer_pauli_measurements()
-    pattern.perform_pauli_measurements()
-    pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
-    pattern2 = incorporate_pauli_results(pattern)
-    pattern2 = StandardizedPattern.from_pattern(pattern2).to_space_optimal_pattern()
-    state = pattern.simulate_pattern(rng=rng)
-    state2 = pattern2.simulate_pattern(rng=rng)
-    assert state.isclose(state2)
-
-
-@pytest.mark.parametrize("jumps", range(1, 11))
 def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 3
@@ -86,12 +65,10 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    # pattern.move_pauli_measurements_to_the_front()
-    pattern.remove_input_nodes()
-    pattern = pattern.infer_pauli_measurements()
-    pattern.perform_pauli_measurements()
-    pattern2 = incorporate_pauli_results(pattern)
-    gflow = pattern2.extract_gflow()
+    pattern.remove_pauli_measurements()
+    # We should convert to Bloch measurement the remaining Pauli
+    # measurements on input nodes.
+    gflow = pattern.to_bloch().extract_gflow()
     gflow.check_well_formed()
 
 
@@ -104,10 +81,8 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    pattern.remove_input_nodes()
     pattern = pattern.infer_pauli_measurements()
-    pattern.perform_pauli_measurements()
-    pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
+    pattern.remove_pauli_measurements()
     pattern2 = remove_useless_domains(pattern)
     pattern2 = StandardizedPattern.from_pattern(pattern2).to_space_optimal_pattern()
     state = pattern.simulate_pattern(rng=rng)

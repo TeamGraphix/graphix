@@ -32,7 +32,9 @@ Pattern Manipulation
 
     .. automethod:: remove_input_nodes
 
-    .. automethod:: perform_pauli_measurements
+    .. automethod:: perform_pauli_pushing
+
+    .. automethod:: remove_pauli_measurements
 
     .. automethod:: to_ascii
 
@@ -83,4 +85,4 @@ Pattern Manipulation
     .. automethod:: to_bloch
 
 
-.. autofunction:: measure_pauli
+.. autofunction:: shift_outcomes
