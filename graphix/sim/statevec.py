@@ -46,7 +46,6 @@ NUM_QUBIT_PARALLEL = 15
 """This constant determines the number of qubits above which matrix operations are multi-threaded. For lower counts, the overhead does not compensate parallelization."""
 
 
-# TODO: Use q for function parameters
 class Statevec(DenseState):
     """Statevector object.
 
