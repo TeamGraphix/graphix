@@ -297,29 +297,6 @@ class Statevec(DenseState):
         # We cast to np.complex128 to match numba signature.
         return kernel(self.psi, op.astype(np.complex128), self.nqubit, loc)
 
-    # @override
-    # def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
-    #     """Apply a multi-qubit operation.
-
-    #     Parameters
-    #     ----------
-    #     op : numpy.ndarray
-    #         2^n*2^n matrix
-    #     qargs : list of int
-    #         target qubits' indices
-    #     """
-    #     op_dim = int(np.log2(len(op)))
-    #     # TODO shape = (2,)* 2 * op_dim
-    #     shape = [2 for _ in range(2 * op_dim)]
-    #     psi_t = self.flatten().reshape((2,) * self.nqubit)
-    #     op_tensor = op.reshape(shape)
-    #     psi = np.tensordot(
-    #         op_tensor,
-    #         psi_t,
-    #         (tuple(op_dim + i for i in range(len(qargs))), qargs),
-    #     ).astype(np.complex128)
-    #     self.psi[:self.size_valid_psi] = np.moveaxis(psi, range(len(qargs)), qargs).reshape(1<< self.nqubit)
-
     @override
     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
         """Apply a multi-qubit operation.
@@ -332,23 +309,21 @@ class Statevec(DenseState):
             target qubits' indices
         """
         nq = len(qargs)
-        # treat x as a tensor with ng output + ng input legs
+        # treat op as a tensor with nq output + nq input legs
         op_t = op.reshape((2,) * (nq * 2)).astype(np.complex128, copy=False)
         psi_t = self.flatten().reshape((2,) * self.nqubit).astype(np.complex128, copy=False)
 
-        state_idx = np.array(range(self.nqubit))  # [0, 1, 2, 3]
-        out_idx = np.array(range(self.nqubit, self.nqubit + nq))  # [4, 5]
+        psi_idx = np.array(range(self.nqubit))
+        out_idx = np.array(range(self.nqubit, self.nqubit + nq))  # fresh labels
 
-        # x subscripts: [out_0, out_1, in_0, in_1] → [4, 5, 1, 3]
-        xt_idx = np.concatenate((out_idx, qargs))
+        op_idx = np.concatenate((out_idx, qargs))
 
-        # result subscripts: same as state but source slots replaced by out labels
-        # [0, 4, 2, 5]
-        res_idx = state_idx.copy()
+        # result subscripts: same as psi but modified indices (qargs) replaced by out labels
+        res_idx = psi_idx.copy()
         for i, s in enumerate(qargs):
             res_idx[s] = out_idx[i]
 
-        self.psi[: self.size_valid_psi] = np.einsum(op_t, xt_idx, psi_t, state_idx, res_idx).reshape(1 << self.nqubit)
+        self.psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)
 
     def expectation_value(self, op: Matrix, qargs: Sequence[int]) -> complex:
         """Return the expectation value of multi-qubit operator.
@@ -588,7 +563,6 @@ class Statevec(DenseState):
 
 
 # TODO: type **kwargs with Unpack
-# TODO: Update tests
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):
     """MBQC state vector backend simulator based on 10.48550/arXiv.2506.08142."""
@@ -762,7 +736,7 @@ def _remove_qubit_jit(
 
     # If norm of branch 0 is 0, compute norm of branch 1 and set shift to branch 1
     if norm2 <= atol:
-        norm2 = 0
+        norm2 = 0.0
         shift = size_half_block
         b0 = shift
         for _ in range(n_blocks):
@@ -772,6 +746,9 @@ def _remove_qubit_jit(
                 a_im = a.imag
                 norm2 += a_re * a_re + a_im * a_im
             b0 += size_block
+
+    if norm2 <= atol:
+        raise RuntimeError(f"Attempted to remove qubit {q} from 0-norm statevector.")
 
     b0 = shift
     k = 0
@@ -787,68 +764,6 @@ def _remove_qubit_jit(
         b0 += size_block
 
     return new_nqubit
-
-
-#     @override
-#     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
-#         """Apply a multi-qubit operation.
-
-#         Parameters
-#         ----------
-#         op : numpy.ndarray
-#             2^n*2^n matrix
-#         qargs : list of int
-#             target qubits' indices
-#         """
-#         op_dim = int(np.log2(len(op)))
-#         # TODO shape = (2,)* 2 * op_dim
-#         shape = [2 for _ in range(2 * op_dim)]
-#         op_tensor = op.reshape(shape)
-#         psi = tensordot(
-#             op_tensor,
-#             self.psi,
-#             (tuple(op_dim + i for i in range(len(qargs))), qargs),
-#         )
-#         self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
-
-
-#     def normalize(self) -> None:
-#         """Normalize the state in-place."""
-#         # Note that the following calls to `astype` are guaranteed to
-#         # return the original NumPy array itself, since `copy=False` and
-#         # the `dtype` matches. This is important because the array is
-#         # then modified in place.
-#         if self.psi.dtype == np.object_:
-#             psi_o = self.psi.astype(np.object_, copy=False)
-#             norm_o = _norm_symbolic(psi_o)
-#             psi_o /= norm_o
-#             self.psi = psi_o
-#         else:
-#             psi_c = self.psi.astype(np.complex128, copy=False)
-#             norm_c = _norm_numeric(psi_c)
-#             psi_c /= norm_c
-#             self.psi = psi_c
-
-
-# def _norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:
-#     """Return norm of the state."""
-#     flat = psi.flatten()
-#     return check_expression_or_float(np.sqrt(np.sum(flat.conj() * flat)))
-
-
-# def _norm_numeric(psi: npt.NDArray[np.complex128]) -> float:
-#     flat = psi.flatten()
-#     norm_sq = np.sum(flat.conj() * flat)
-#     assert math.isclose(norm_sq.imag, 0, abs_tol=1e-15)
-#     return math.sqrt(norm_sq.real)
-
-
-# def _norm(psi: Matrix) -> ExpressionOrFloat:
-#     """Return norm of the state."""
-#     # Narrow psi to concrete dtype
-#     if psi.dtype == np.object_:
-#         return _norm_symbolic(psi.astype(np.object_, copy=False))
-#     return _norm_numeric(psi.astype(np.complex128, copy=False))
 
 
 def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:

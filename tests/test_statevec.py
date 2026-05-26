@@ -9,9 +9,11 @@ import pytest
 from numpy.random import Generator
 
 from graphix.clifford import Clifford
+from graphix.measurements import Measurement
 from graphix.ops import Ops
+from graphix.pauli import Pauli
 from graphix.random_objects import rand_unit
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevec, StatevectorBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -22,7 +24,9 @@ if TYPE_CHECKING:
 
     _ENCODING = Literal["LSB", "MSB"]
 
-    from graphix.states import State
+    from graphix.states import PlanarState, State
+
+N_JUMPS = 3
 
 
 def generate_rnd_data(rng: Generator, nqubits: int) -> npt.NDArray[np.complex128]:
@@ -32,9 +36,7 @@ def generate_rnd_data(rng: Generator, nqubits: int) -> npt.NDArray[np.complex128
     return data
 
 
-class TestInit:
-    N_JUMPS = 3
-
+class TestStatevec:
     @pytest.mark.parametrize(
         ("state", "data_ref"),
         [
@@ -128,8 +130,6 @@ class TestInit:
         with pytest.raises(ValueError):
             Statevec(data=sv_1, max_qubits=nqubit + 1)
 
-
-class TestSimulation:
     @pytest.mark.parametrize(
         ("sv", "edge", "data_ref"),
         [
@@ -246,6 +246,34 @@ class TestSimulation:
         assert np.allclose(sv.flatten(), sv_ref.flatten())
 
     @pytest.mark.parametrize(
+        "state",
+        [
+            BasicStates.PLUS,
+            BasicStates.MINUS,
+            BasicStates.ZERO,
+            BasicStates.ONE,
+            BasicStates.PLUS_I,
+            BasicStates.MINUS_I,
+        ],
+    )
+    def test_measurement_into_each_xyz_basis(self, state: PlanarState) -> None:
+        n = 3
+        k = 0
+        statevector = state.to_statevector()
+        m_op = np.outer(statevector, statevector.T.conjugate())
+        sv = Statevec(nqubit=n)
+        sv.evolve_single(m_op, k)
+
+        if state is BasicStates.MINUS:
+            # Measurement into |-> results in a 0-norm vector
+            with pytest.raises(RuntimeError):
+                sv.remove_qubit(k)
+        else:
+            sv.remove_qubit(k)
+            sv2 = Statevec(nqubit=n - 1)
+            assert sv.isclose(sv2)
+
+    @pytest.mark.parametrize(
         ("sv", "qargs", "op", "data_ref"),
         [
             (Statevec(data=BasicStates.ZERO, nqubit=2), (0,), Clifford.X.matrix, np.array([0, 0, 1, 0])),
@@ -299,7 +327,7 @@ class TestSimulation:
         sv.evolve(op, qargs)
         assert np.allclose(sv.flatten(), data_ref)
 
-    @pytest.mark.parametrize("jumps", range(1, 5))
+    @pytest.mark.parametrize("jumps", range(1, N_JUMPS))
     def test_evolve_rnd(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 4
@@ -313,7 +341,7 @@ class TestSimulation:
 
         assert sv.isclose(sv_ref)
 
-    @pytest.mark.parametrize("jumps", range(1, 5))
+    @pytest.mark.parametrize("jumps", range(1, N_JUMPS))
     def test_expectation_value(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 4
@@ -325,86 +353,210 @@ class TestSimulation:
         val_ref = np.conjugate(data) @ functools.reduce(np.kron, (np.eye(2), op, np.eye(2))) @ data
         assert val_test == pytest.approx(val_ref)
 
+    @pytest.mark.parametrize(
+        ("sv1", "sv2", "fidelity"),
+        [
+            (Statevec(data=BasicStates.PLUS), Statevec(data=BasicStates.PLUS), 1),
+            (Statevec(data=BasicStates.ZERO), Statevec(data=BasicStates.ONE), 0),
+            (Statevec(data=BasicStates.ZERO), Statevec(data=BasicStates.PLUS), 0.5),
+            (Statevec(data=BasicStates.PLUS), Statevec(data=np.array([1, 1]) / np.sqrt(2) * 1j), 1),
+        ],
+    )
+    def test_fidelity(self, sv1: Statevec, sv2: Statevec, fidelity: float) -> None:
+        assert sv1.fidelity(sv2) == pytest.approx(fidelity)
 
-# TODO: Refactor using parametrize
-class TestFidelity:
-    def test_fidelity_same_state(self) -> None:
-        state = Statevec(data=BasicStates.PLUS)
-        assert state.fidelity(state) == pytest.approx(1)
+    @pytest.mark.parametrize(
+        ("sv1", "sv2", "isclose", "atol"),
+        [
+            (Statevec(data=BasicStates.PLUS), Statevec(data=BasicStates.PLUS), True, 0.0),
+            (Statevec(data=BasicStates.ZERO), Statevec(data=BasicStates.ONE), False, 0.0),
+            (
+                Statevec(data=BasicStates.PLUS),
+                Statevec(data=np.array([1, 1]) / np.sqrt(2) * np.exp(1j * 0.7)),
+                True,
+                0.0,
+            ),
+            (Statevec(data=BasicStates.ZERO), Statevec(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)])), False, 0.0),
+            (
+                Statevec(data=BasicStates.ZERO),
+                Statevec(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)])),
+                True,
+                1.0e-6,
+            ),
+        ],
+    )
+    def test_isclose(self, sv1: Statevec, sv2: Statevec, isclose: bool, atol: float) -> None:
+        if isclose:
+            assert sv1.isclose(sv2, atol=atol)
+        else:
+            assert not sv1.isclose(sv2, atol=atol)
 
-    def test_fidelity_orthogonal(self) -> None:
-        zero = Statevec(data=BasicStates.ZERO)
-        one = Statevec(data=BasicStates.ONE)
-        assert zero.fidelity(one) == pytest.approx(0)
+    @pytest.mark.parametrize(
+        ("encoding", "dict_ref"),
+        [
+            ("LSB", {"000": 0.5, "010": 0.5, "100": -0.5, "110": -0.5}),
+            ("MSB", {"000": 0.5, "010": 0.5, "001": -0.5, "011": -0.5}),
+        ],
+    )
+    def test_to_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
+        sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
+        for ket, amp in sv.to_dict(encoding=encoding).items():
+            assert np.isclose(dict_ref[ket], amp.real)
+            assert np.isclose(0, amp.imag)
 
-    def test_fidelity_known_value(self) -> None:
-        # F(|0>, |+>) = 0.5
-        zero = Statevec(data=BasicStates.ZERO)
-        plus = Statevec(data=BasicStates.PLUS)
-        assert zero.fidelity(plus) == pytest.approx(0.5)
-
-    def test_fidelity_global_phase(self) -> None:
-        plus = Statevec(data=BasicStates.PLUS)
-        plus_rotated = Statevec(data=np.array([1, 1]) / np.sqrt(2) * 1j)
-        assert plus.fidelity(plus_rotated) == pytest.approx(1)
-
-    def test_fidelity_symmetry(self, fx_rng: Generator) -> None:
-        length = 4
-        vec_a = fx_rng.random(length) + 1j * fx_rng.random(length)
-        vec_a /= np.sqrt(np.sum(np.abs(vec_a) ** 2))
-        vec_b = fx_rng.random(length) + 1j * fx_rng.random(length)
-        vec_b /= np.sqrt(np.sum(np.abs(vec_b) ** 2))
-        a = Statevec(data=vec_a)
-        b = Statevec(data=vec_b)
-        assert a.fidelity(b) == pytest.approx(b.fidelity(a))
-
-    def test_isclose_same_state(self) -> None:
-        state = Statevec(data=BasicStates.PLUS)
-        assert state.isclose(state)
-
-    def test_isclose_orthogonal(self) -> None:
-        zero = Statevec(data=BasicStates.ZERO)
-        one = Statevec(data=BasicStates.ONE)
-        assert not zero.isclose(one)
-
-    def test_isclose_global_phase(self) -> None:
-        plus = Statevec(data=BasicStates.PLUS)
-        rotated = Statevec(data=np.array([1, 1]) / np.sqrt(2) * np.exp(1j * 0.7))
-        assert plus.isclose(rotated)
-
-    def test_isclose_tolerance(self) -> None:
-        zero = Statevec(data=BasicStates.ZERO)
-        almost = Statevec(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)]))
-        assert not zero.isclose(almost)
-        assert zero.isclose(almost, atol=1e-6)
-
-
-@pytest.mark.parametrize(
-    ("encoding", "dict_ref"),
-    [
-        ("LSB", {"000": 0.5, "010": 0.5, "100": -0.5, "110": -0.5}),
-        ("MSB", {"000": 0.5, "010": 0.5, "001": -0.5, "011": -0.5}),
-    ],
-)
-def test_to_dict(encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
-    sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
-    for ket, amp in sv.to_dict(encoding=encoding).items():
-        assert np.isclose(dict_ref[ket], amp.real)
-        assert np.isclose(0, amp.imag)
+    @pytest.mark.parametrize(
+        ("encoding", "dict_ref"),
+        [
+            ("LSB", {"001": 0.25, "011": 0.25, "101": 0.25, "111": 0.25}),
+            ("MSB", {"100": 0.25, "110": 0.25, "101": 0.25, "111": 0.25}),
+        ],
+    )
+    def test_to_prob_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
+        sv = Statevec(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
+        for ket, amp2 in sv.to_prob_dict(encoding=encoding).items():
+            assert np.isclose(dict_ref[ket], amp2.real)
+            assert np.isclose(0, amp2.imag)
 
 
-@pytest.mark.parametrize(
-    ("encoding", "dict_ref"),
-    [
-        ("LSB", {"001": 0.25, "011": 0.25, "101": 0.25, "111": 0.25}),
-        ("MSB", {"100": 0.25, "110": 0.25, "101": 0.25, "111": 0.25}),
-    ],
-)
-def test_to_prob_dict(encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
-    sv = Statevec(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
-    for ket, amp2 in sv.to_prob_dict(encoding=encoding).items():
-        assert np.isclose(dict_ref[ket], amp2.real)
-        assert np.isclose(0, amp2.imag)
+class TestStatevectorBackend:
+    @pytest.mark.parametrize(
+        ("state", "data_ref"),
+        [
+            (BasicStates.PLUS, np.array([1, 1] / np.sqrt(2))),
+            (BasicStates.MINUS, np.array([1, -1] / np.sqrt(2))),
+            (BasicStates.ZERO, np.array([1, 0])),
+            (BasicStates.ONE, np.array([0, 1])),
+            (BasicStates.PLUS_I, np.array([1, 1j] / np.sqrt(2))),
+            (BasicStates.MINUS_I, np.array([1, -1j] / np.sqrt(2))),
+        ],
+    )
+    def test_init_basic_states(self, state: State, data_ref: npt.NDArray[np.complex128]) -> None:
+        backend = StatevectorBackend()
+        backend.add_nodes([0], data=state)
+        sv = Statevec(data=data_ref)
+        assert backend.state.isclose(sv)
+
+    @pytest.mark.parametrize(
+        ("n_nodes"),
+        range(5),
+    )
+    def test_init_capacity(self, n_nodes: int, fx_rng: Generator) -> None:
+        capacity = 3
+        data = generate_rnd_data(fx_rng, n_nodes)
+        backend = StatevectorBackend.with_capacity(capacity)
+        backend.add_nodes(range(n_nodes), data=data)
+        sv = Statevec(data=data)
+        assert backend.state.isclose(sv)
+        assert backend.state.max_qubits == max(n_nodes, capacity)
+
+    @pytest.mark.parametrize(
+        ("clifford"),
+        Clifford,
+    )
+    def test_clifford(self, clifford: Clifford, fx_rng: Generator) -> None:
+        nqubits = 4
+        data = generate_rnd_data(fx_rng, nqubits=nqubits)
+
+        backend = StatevectorBackend()
+        backend.add_nodes(nodes=range(nqubits), data=data)
+        backend.apply_clifford(node=0, clifford=clifford)
+
+        vec = Statevec(nqubit=nqubits, data=data)
+        vec.evolve_single(clifford.matrix, 0)
+
+        assert backend.state.isclose(vec)
+
+    @pytest.mark.parametrize("jumps", range(1, N_JUMPS))
+    def test_deterministic_measure_0(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        # plus state & zero state (default), but with tossed coins
+
+        backend = StatevectorBackend()
+        coins = [rng.choice([0, 1]), rng.choice([0, 1])]
+        expected_result = sum(coins) % 2
+        states = [
+            Pauli.X.eigenstate(coins[0]),
+            Pauli.Z.eigenstate(coins[1]),
+        ]
+        nodes = range(len(states))
+        backend.add_nodes(nodes=nodes, data=states)
+        backend.entangle_nodes(edge=(nodes[0], nodes[1]))
+        measurement = Measurement.X
+        node_to_measure = backend.node_index[0]
+        result = backend.measure(node=node_to_measure, measurement=measurement, rng=rng)
+        assert result == expected_result
+
+    @pytest.mark.parametrize("jumps", range(1, N_JUMPS))
+    def test_deterministic_measure_1(self, fx_bg: PCG64, jumps: int) -> None:
+        """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1."""
+        rng = Generator(fx_bg.jumped(jumps))
+        n_nodes = 11
+        backend = StatevectorBackend.with_capacity(n_nodes)
+        states = [BasicStates.PLUS, *(BasicStates.ZERO for _ in range(n_nodes - 1))]
+        backend.add_nodes(nodes=range(n_nodes), data=states)
+        for i in range(1, n_nodes):
+            backend.entangle_nodes(edge=(0, i))
+        measurement = Measurement.X
+        node_to_measure = backend.node_index[0]
+        result = backend.measure(node=node_to_measure, measurement=measurement, rng=rng)
+        assert result == 0
+        assert list(backend.node_index) == list(range(1, n_nodes))
+
+    @pytest.mark.parametrize("jumps", range(1, N_JUMPS))
+    def test_deterministic_measure_many(self, fx_bg: PCG64, jumps: int) -> None:
+        """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1."""
+        rng = Generator(fx_bg.jumped(jumps))
+        # plus state (default)
+        backend = StatevectorBackend()
+        n_traps = 5
+        n_neighbors = 5
+        n_others = 5
+        traps = [Pauli.X.eigenstate() for _ in range(n_traps)]
+        dummies = [Pauli.Z.eigenstate() for _ in range(n_neighbors)]
+        others = [Pauli.I.eigenstate() for _ in range(n_others)]
+        states = traps + dummies + others
+        nodes = range(len(states))
+        backend.add_nodes(nodes=nodes, data=states)
+
+        for dummy in nodes[n_traps : n_traps + n_neighbors]:
+            for trap in nodes[:n_traps]:
+                backend.entangle_nodes(edge=(trap, dummy))
+            for other in nodes[n_traps + n_neighbors :]:
+                backend.entangle_nodes(edge=(other, dummy))
+
+        # Same measurement for all traps
+        measurement = Measurement.X
+
+        for trap in nodes[:n_traps]:
+            node_to_measure = trap
+            result = backend.measure(node=node_to_measure, measurement=measurement, rng=rng)
+            assert result == 0
+
+        assert list(backend.node_index) == list(range(n_traps, n_neighbors + n_traps + n_others))
+
+    @pytest.mark.parametrize("jumps", range(1, N_JUMPS))
+    def test_deterministic_measure_with_coin(self, fx_bg: PCG64, jumps: int) -> None:
+        """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1.
+
+        We add coin toss to that.
+        """
+        rng = Generator(fx_bg.jumped(jumps))
+        # plus state (default)
+        backend = StatevectorBackend()
+        n_neighbors = 10
+        coins = [rng.choice([0, 1])] + [rng.choice([0, 1]) for _ in range(n_neighbors)]
+        expected_result = sum(coins) % 2
+        states = [Pauli.X.eigenstate(coins[0])] + [Pauli.Z.eigenstate(coins[i + 1]) for i in range(n_neighbors)]
+        nodes = range(len(states))
+        backend.add_nodes(nodes=nodes, data=states)
+
+        for i in range(1, n_neighbors + 1):
+            backend.entangle_nodes(edge=(nodes[0], i))
+        measurement = Measurement.X
+        node_to_measure = backend.node_index[0]
+        result = backend.measure(node=node_to_measure, measurement=measurement, rng=rng)
+        assert result == expected_result
+        assert list(backend.node_index) == list(range(1, n_neighbors + 1))
 
 
 # class TestStatevecLegacy:
