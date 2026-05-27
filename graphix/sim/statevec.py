@@ -19,7 +19,6 @@ import numpy.typing as npt
 from typing_extensions import override
 
 from graphix import states
-from graphix.parameter import ExpressionOrSupportsComplex
 from graphix.sim.base_backend import DenseState, DenseStateBackend, DenseStateBackendKwargs, Matrix
 from graphix.states import BasicStates
 
@@ -30,12 +29,11 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.parameter import ExpressionOrSupportsComplex
     from graphix.sim.data import Data
 
     _ENCODING = Literal["LSB", "MSB"]
     _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
-
-    from graphix.parameter import ExpressionOrSupportsComplex
 
     EvolveSingleJit: TypeAlias = Callable[
         [npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], None
@@ -397,7 +395,7 @@ class Statevec(DenseState):
         for i, s in enumerate(qubits):
             res_idx[s] = out_idx[i]
 
-        self.psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)
+        self.psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
 
     def expectation_value(self, op: Matrix, qubits: Sequence[int]) -> complex:
         """Return the expectation value of a multi-qubit operator.
