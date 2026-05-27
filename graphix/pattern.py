@@ -1761,6 +1761,36 @@ class Pattern:
         self.__output_nodes = pattern.__output_nodes
         return self
 
+    def remove_local_clifford_commands(self, *, copy: bool = False) -> Pattern:
+        """Return an equivalent pattern where local Clifford commands have been replaced by MBQC commands.
+
+        See :func:`~optimization.remove_local_clifford_commands`
+        for more information.
+
+        Parameters
+        ----------
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        Pattern
+                The pattern in which local Clifford commands have been replaced
+                by MBQC commands. If ``copy`` is ``False``, the result is
+                ``self``.
+        """
+        new_pattern = optimization.remove_local_clifford_commands(self)
+        if copy:
+            return new_pattern
+        self.__seq = new_pattern.__seq
+        self.__output_nodes = new_pattern.__output_nodes
+        return self
+
 
 class PatternError(Exception):
     """Exception subclass to handle pattern errors."""
