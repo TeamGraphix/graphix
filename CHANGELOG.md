@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #507: Introduced new methods `PauliString.__str__`, `PauliString.from_str`, `PauliString.to_tableau`, and `PauliString.from_tableau`.
 
+- #515:
+  - `Pattern.remove_local_clifford_commands` transpiles MBQC+LC patterns into pure MBQC patterns.
+  - `Clifford.to_opengraph` returns an open graph without local Cliffords that implements the given single-qubit Clifford gate.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
