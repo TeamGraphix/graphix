@@ -364,15 +364,14 @@ class DenseState(ABC):
 
     @abstractmethod
     def add_nodes(self, nqubit: int, data: Data) -> None:
-        """
-        Add nodes (qubits) to the state and initialize them in a specified state.
+        """Add nodes (qubits) to the state and initialize them in a specified state.
 
         Parameters
         ----------
         nqubit : int
             The number of qubits to add to the state.
 
-        data : Data, optional
+        data : Data
             The state in which to initialize the newly added nodes. The supported forms
             of state specification depend on the backend implementation.
 
@@ -381,24 +380,25 @@ class DenseState(ABC):
 
     @abstractmethod
     def entangle(self, qubits: tuple[int, int]) -> None:
-        """Connect graph nodes.
+        """Apply a CZ gate on two qubits.
 
         Parameters
         ----------
-        qubits : tuple of int
-            (control, target) qubit indices
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
 
     @abstractmethod
-    def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
-        """Apply a multi-qubit operation.
+    def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
+        """Apply a multi-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2^n*2^n matrix
-        qargs : list of int
-            target qubits' indices
+        op : Matrix
+            Matrix of shape :math:`(2^n, 2^n)` representing
+            the operator to apply.
+        qubits : Sequence[int]
+            Target qubit indices.
         """
 
     @abstractmethod
@@ -407,40 +407,50 @@ class DenseState(ABC):
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 matrix
+        op : Matrix
+            Matrix of shape :math:`(2, 2)` representing
+            the operator to apply.
         qubit : int
-            qubit index
+            Target qubit index.
         """
 
     @abstractmethod
-    def expectation_single(self, op: Matrix, loc: int) -> complex:
-        """Return the expectation value of single-qubit operator.
+    def expectation_single(self, op: Matrix, qubit: int) -> complex:
+        """Return the expectation value of a single-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 operator
-        loc : int
-            target qubit index
+        op : Matrix
+            Matrix of shape :math:`(2, 2)` representing
+            the operator to measure.
+        qubit : int
+            Target qubit index.
 
         Returns
         -------
-        complex : expectation value.
+        complex
+            Expectation value.
+
         """
 
     @abstractmethod
-    def remove_qubit(self, qarg: int) -> None:
-        """Remove a separable qubit from the system."""
-
-    @abstractmethod
-    def swap(self, qubits: tuple[int, int]) -> None:
-        """Swap qubits.
+    def remove_qubit(self, qubit: int) -> None:
+        """Remove a separable qubit from the system.
 
         Parameters
         ----------
-        qubits : tuple of int
-            (control, target) qubit indices
+        qubit : int
+            Target qubit index.
+        """
+
+    @abstractmethod
+    def swap(self, qubits: tuple[int, int]) -> None:
+        """Apply SWAP gate between two qubits.
+
+        Parameters
+        ----------
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
 
     def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:  # noqa: ARG002

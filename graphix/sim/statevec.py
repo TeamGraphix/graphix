@@ -297,7 +297,16 @@ class Statevec(DenseState):
         ----------
         qubits : tuple[int, int]
             (control, target) qubit indices.
+
+        Notes
+        -----
+        The JIT kernel switches to a parallel implementation when the
+        number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
+        # `_entangle_jit` is not unsafe if calle on out-of-bound indices but
+        # we check them for robustness.
+        for qubit in qubits:
+            self._check_bounds(qubit)
         kernel = _entangle_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _entangle_jit
         kernel(self.psi, self.nqubit, *qubits)
 
@@ -312,11 +321,17 @@ class Statevec(DenseState):
             the operator to apply.
         qubit : int
             Target qubit index.
+
+        Notes
+        -----
+        The JIT kernel switches to a parallel implementation when the
+        number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
         self._check_bounds(qubit)
         kernel = _evolve_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _evolve_single_jit
-        # We cast to np.complex128 to match numba signature.
-        kernel(self.psi, op.astype(np.complex128), self.nqubit, qubit)
+        # Downcast from Matrix to np.complex128 to match numba signature.
+        op_as_complex = _cast_op(op)
+        kernel(self.psi, op_as_complex, self.nqubit, qubit)
 
     @override
     def expectation_single(self, op: Matrix, qubit: int) -> complex:
@@ -337,12 +352,16 @@ class Statevec(DenseState):
 
         Notes
         -----
-        This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
+        - This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
+
+        - The JIT kernel switches to a parallel implementation when the
+        number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
         self._check_bounds(qubit)
         kernel = _expectation_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _expectation_single_jit
-        # We cast to np.complex128 to match numba signature.
-        return kernel(self.psi, op.astype(np.complex128), self.nqubit, qubit)
+        # Downcast from Matrix to np.complex128 to match numba signature.
+        op_as_complex = _cast_op(op)
+        return kernel(self.psi, op_as_complex, self.nqubit, qubit)
 
     @override
     def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
@@ -358,7 +377,9 @@ class Statevec(DenseState):
 
         Notes
         -----
-        This method is a fallback for circuit simulation and it's not required for pattern simulation. It does not have an efficient JIT-compiled implementation.
+        This method is a fallback for circuit simulation and it's not required
+        for pattern simulation. It does not have an efficient JIT-compiled
+        implementation.
         """
         nq = len(qubits)
         # treat op as a tensor with nq output + nq input legs
@@ -390,7 +411,8 @@ class Statevec(DenseState):
 
         Notes
         -----
-        This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
+        This method assumes that quantum state stored in ``self.psi`` is normalized.
+        See the class docstring for details.
         """
         sv = deepcopy(self)
         sv.evolve(op, qubits)
@@ -482,7 +504,7 @@ class Statevec(DenseState):
         IndexError
         """
         if not 0 <= qubit < self.nqubit:
-            raise IndexError(f"Qubit index {qubit} out of range [0, {self.nqubit})")
+            raise IndexError(f"Qubit index {qubit} out of range [0, {self.nqubit} -1]")
 
     def fidelity(self, other: Statevec) -> float:
         r"""Calculate the fidelity against another statevector.
@@ -771,8 +793,8 @@ def _evolve_single(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex12
             psi[i2] = op[1, 0] * psi1 + op[1, 1] * psi2
 
 
-_evolve_single_jit: EvolveSingleJit = nb.njit("(c16[::1], c16[:, :], int32, int32)", parallel=False)(_evolve_single)
-_evolve_single_jit_parallel: EvolveSingleJit = nb.njit("(c16[::1], c16[:, :], int32, int32)", parallel=True)(
+_evolve_single_jit: EvolveSingleJit = nb.njit("(c16[::1], c16[:,:], int32, int32)", parallel=False)(_evolve_single)
+_evolve_single_jit_parallel: EvolveSingleJit = nb.njit("(c16[::1], c16[:,:], int32, int32)", parallel=True)(
     _evolve_single
 )
 
@@ -807,11 +829,11 @@ def _expectation_single(
     return result
 
 
-_expectation_single_jit: ExpectationSingleJit = nb.njit("c16(c16[::1], c16[:, :], int32, int32)", parallel=False)(
+_expectation_single_jit: ExpectationSingleJit = nb.njit("c16(c16[::1], c16[:,:], int32, int32)", parallel=False)(
     _expectation_single
 )
 _expectation_single_jit_parallel: ExpectationSingleJit = nb.njit(
-    "c16(c16[::1], c16[:, :], int32, int32)", parallel=True
+    "c16(c16[::1], c16[:,:], int32, int32)", parallel=True
 )(_expectation_single)
 
 
@@ -909,3 +931,20 @@ def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
     if encoding == "LSB":
         return output[::-1]
     return output
+
+
+def _cast_op(op: Matrix) -> npt.NDArray[np.complex128]:
+    if op.dtype == np.object_:
+        raise TypeError(
+            "Statevector backend does not support symbolic operators. Consider using backend in `graphix-symbolic` plugin."
+        )
+    # By default, the numba signature c16[:,:] assumes a writeable array.
+    # Arrays obtained from, e.g., `graphix.clifford.Clifford.H.matrix` or
+    # `graphix.ops.Ops.X` are not writtable and therefore do not match the
+    # numba signature.
+    # Since ``op`` is a 2-by-2 matrix it's probably not worth it to dispatch
+    # multiple jit kernels (with the appropriate numba signature)
+    # depending on its WRITEABLE flag to avoid copying.
+    # https://github.com/numba/numba/issues/4511#issuecomment-527350694
+    # https://numba.pydata.org/numba-doc/0.17.0/reference/types.html#numba.types.Array
+    return op.astype(np.complex128, copy=True)
