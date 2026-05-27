@@ -18,9 +18,10 @@ import numpy as np
 import numpy.typing as npt
 from typing_extensions import override
 
+from graphix import states
 from graphix.parameter import ExpressionOrSupportsComplex
 from graphix.sim.base_backend import DenseState, DenseStateBackend, DenseStateBackendKwargs, Matrix
-from graphix.states import BasicStates, State
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -148,8 +149,8 @@ class Statevec(DenseState):
         # list[states.State] | list[ExpressionOrSupportsComplex] | list[Iterable[ExpressionOrSupportsComplex]]
         # would be more precise, but given a value X of type Iterable[A] | Iterable[B],
         # mypy infers that list(X) has type list[A | B] instead of list[A] | list[B].
-        input_list: list[State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex]]
-        if isinstance(data, State):
+        input_list: list[states.State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex]]
+        if isinstance(data, states.State):
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
@@ -164,7 +165,7 @@ class Statevec(DenseState):
             nqubit = 0
             psi = np.array([1], dtype=np.complex128)
 
-        elif isinstance(input_list[0], State):
+        elif isinstance(input_list[0], states.State):
             length = len(input_list)
             if nqubit is None:
                 nqubit = length
@@ -172,9 +173,9 @@ class Statevec(DenseState):
                 raise ValueError(f"Mismatch between nqubit and length of input state: {nqubit} != {length}.")
 
             def state_to_statevector(
-                s: State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex],
+                s: states.State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex],
             ) -> npt.NDArray[np.complex128]:
-                if not isinstance(s, State):
+                if not isinstance(s, states.State):
                     raise TypeError("Data should be an homogeneous sequence of states.")
                 return s.to_statevector()
 
