@@ -374,7 +374,7 @@ class PatternSimulator(Generic[_StateT_co]):
             prepare_method = DefaultPrepareMethod()
         self.__prepare_method = prepare_method
         if measure_method is None:
-            measure_method = DefaultMeasureMethod(pattern.results)
+            measure_method = DefaultMeasureMethod()
         self.__measure_method = measure_method
 
     @property
