@@ -80,8 +80,8 @@ class BaseN(BaseCommand):
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
     @override
-    def reindex(self, f: Callable[[Node], Node]) -> BaseN:
-        return BaseN(f(self.node))
+    def reindex(self, f: Callable[[Node], Node]) -> Self:
+        return dataclasses.replace(self, node=f(self.node))
 
 
 @dataclasses.dataclass(repr=False)
@@ -98,10 +98,6 @@ class N(BaseN, _KindChecker):
 
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
-
-    @override
-    def reindex(self, f: Callable[[Node], Node]) -> N:
-        return N(f(self.node), self.state)
 
 
 @dataclasses.dataclass(repr=False)
