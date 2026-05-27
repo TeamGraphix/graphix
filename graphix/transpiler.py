@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
 
 _DenseStateT_co = TypeVar("_DenseStateT_co", bound="DenseState", covariant=True)
+_DenseStateT = TypeVar("_DenseStateT", bound="DenseState")
 
 
 @dataclass(frozen=True)
@@ -60,15 +61,17 @@ class TranspileResult:
 
 
 @dataclass(frozen=True)
-class SimulateResult(Generic[_DenseStateT_co]):
+class SimulateResult(Generic[_DenseStateT]):
     """
-    The result of a simulation.
+    Result of a circuit simulation.
 
-    statevec : :class:`graphix.sim.statevec.Statevec` object
-    classical_measures : tuple[int,...], classical measures
+    statevec : _DenseStateT
+        State representation of the simulation output.
+    classical_measures : tuple[int,...]
+        Results of classical measurements.
     """
 
-    statevec: _DenseStateT_co
+    statevec: _DenseStateT  # mypy rejects covariant types as dataclass parameters as of Python 3.13
     classical_measures: tuple[int, ...]
 
 
@@ -977,29 +980,32 @@ class Circuit:
     @overload
     def simulate_statevector(
         self,
-        backend: DenseStateBackend[_DenseStateT_co],
+        backend: DenseStateBackend[_DenseStateT],
         input_state: Data | None = None,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-    ) -> SimulateResult[_DenseStateT_co]: ...
+    ) -> SimulateResult[_DenseStateT]: ...
 
     def simulate_statevector(
         self,
-        backend: DenseStateBackend[_DenseStateT_co] | _DenseStateBackendLiteral = "statevector",
+        backend: DenseStateBackend[_DenseStateT] | _DenseStateBackendLiteral = "statevector",
         input_state: Data | None = None,
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-    ) -> SimulateResult[_DenseStateT_co]:
-        """Run statevector simulation of the gate sequence.
+    ) -> SimulateResult[_DenseStateT] | SimulateResult[_DenseStateT | Statevec | DensityMatrix]:
+        # `SimulateResult` is not covariant in `_DenseStateT` so `SimulateResult[_DenseStateT]` is not a subtype of `SimulateResult[_DenseStateT | Statevec | DensityMatrix]`
+        r"""Simulate the gate sequence with a backend and input state of choice.
+
+        By default, this method uses the statevector backend and initializes the register to :math:`|+\rangle^{\otimes n}`.
 
         Parameters
         ----------
         input_state : Data
-        backend: :class:`graphix.sim.base_backend.DenseStateBackend[_DenseStateT_co]`, 'statevector', or 'densitymatrix'
+        backend: :class:`graphix.sim.base_backend.DenseStateBackend[_DenseStateT]`, 'statevector', or 'densitymatrix'
             Simulator backend to use. Optional, defaults to "statevector".
         branch_selector: :class:`graphix.branch_selector.BranchSelector`
             branch selector for measures (default: :class:`RandomBranchSelector`). It cannot be specified if ``backend`` is already instantiated.
@@ -1069,7 +1075,7 @@ class Circuit:
                     classical_measures.append(result)
                 case _:
                     raise ValueError(f"Unknown instruction: {instr}")
-        return SimulateResult(cast("_DenseStateT_co", _backend.state), tuple(classical_measures))
+        return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor) -> Circuit:
         """Apply `visitor` to all instructions in the circuit."""
