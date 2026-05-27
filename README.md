@@ -28,12 +28,6 @@ Install `graphix` with `pip`:
 pip install graphix
 ```
 
-Install with [extra dependencies](https://github.com/TeamGraphix/graphix/blob/master/pyproject.toml) (e.g. pyzx):
-
-```bash
-pip install graphix[extra]
-```
-
 ### Editable installation using pip and uv
 
 As well as support for editable installation using pip, Graphix also supports using `uv`:
@@ -41,10 +35,10 @@ As well as support for editable installation using pip, Graphix also supports us
 ```bash
 git clone https://github.com/TeamGraphix/graphix.git
 cd graphix
-uv sync --extra dev --extra extra
+uv sync --extra dev
 ```
 
-This creates a virtual environment and installs all development and extra dependencies from the `pyproject.toml` and `uv` lockfile.
+This creates a virtual environment and installs all development dependencies from the `pyproject.toml` and `uv` lockfile.
 
 ## Using graphix
 
