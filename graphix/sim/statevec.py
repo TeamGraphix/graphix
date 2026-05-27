@@ -1,4 +1,7 @@
-"""MBQC state vector backend simulator based on 10.48550/arXiv.2506.08142."""
+"""Numba JIT-compiled MBQC statevector backend simulator based on Ref. [1].
+
+[1] McGuffin, M. J., Robert J-M., and Ikeda K. "How to Write a Simulator for Quantum Circuits from Scratch: A Tutorial.", 2025 (arXiv:2506.08142).
+"""
 
 from __future__ import annotations
 
@@ -43,7 +46,9 @@ if TYPE_CHECKING:
 
 
 NUM_QUBIT_PARALLEL = 15
-"""This constant determines the number of qubits above which matrix operations are multi-threaded. For lower counts, the overhead does not compensate parallelization."""
+"""This constant determines the number of qubits above which matrix operations
+are multi-threaded. For lower counts, the overhead does not compensate parallelization.
+This number was determined empirically and it may be platform dependent."""
 
 
 class Statevec(DenseState):
@@ -51,15 +56,36 @@ class Statevec(DenseState):
 
     Attributes
     ----------
-    psi : numpy.ndarray of numpy.complex128
+    psi : npt.NDArray[np.complex128]
         Complex-valued 1-dimensional array representing the quantum statevector.
-        Throughout the simulation ``psi`` has constant size ``2**max_qubits``. Only the first ``2**nqubit`` complex values have meaning.
+        Only the first ``2**nqubit`` complex values have meaning.
 
     _max_qubits : int
-        Maximum Hilbert space size allowed for internal computations. It determines the size of ``psi``. For circuit simulations, it corresponds to the number of qubits, while for pattern simulations it corresponds to the pattern's maximum space.
+        Maximum Hilbert space size allowed for internal computations. It determines
+        the size of ``psi``. For circuit simulations, it corresponds to the number
+        of qubits, while for pattern simulations it corresponds to the pattern's
+        maximum space. The method :meth:`Statevec.ensure_capacity` allows to increase
+        this number.
 
     _nqubit : int
         Number of active qubits at any given time.
+
+    Notes
+    -----
+    The internal representation of the quantum state is guaranteed to be
+    normalized after initialization, and it is assumed to remain normalized
+    thereafter.
+
+    Using :meth:`evolve_single`, :meth:`expectation_single`, :meth:`evolve`,
+    or :meth:`expectation_value` with non-unitary operators does not preserve
+    the norm of the statevector and may lead to unexpected behavior.
+
+    In pattern simulation, node measurements call :meth:`evolve_single` with
+    a projector (a non-unitary operator). However, the measured qubit is
+    immediately removed via :meth:`remove_qubit`, which restores the unit
+    norm of the internal quantum state.
+    See :meth:`graphix.sim.base_backend.DenseStateBackend.measure` for additional
+    details.
     """
 
     psi: npt.NDArray[np.complex128]
@@ -67,14 +93,24 @@ class Statevec(DenseState):
     _nqubit: int
 
     def __init__(self, data: Data = BasicStates.PLUS, nqubit: int | None = None, max_qubits: int | None = None) -> None:
-        """Initialize statevector objects.
+        """Initialize a statevector object.
 
-        See :class:`graphix.sim.statevec.Statevec` for additional information.
+        `data` can be:
+        - a single :class:`graphix.states.State` (classical description of a quantum state)
+        - an iterable of :class:`graphix.states.State` objects
+        - an iterable of scalars (a :math:`2^n` numerical statevector)
+        - a single :class:`graphix.statevec.Statevec`
+
+        If ``nqubit`` is not provided, it is inferred from ``data``.
+        If ``max_qubits`` is not provided, it is set to match the provided or inferred ``nqubit``.
+        If only one :class:`graphix.states.State` is provided and ``nqubit`` is a valid integer, the statevector is initialized in the tensor product state.
+        If a ``graphix.statevec.Statevec`` is provided, a copy is returned.
+        Consistency between provided ``nqubit``, ``max_qubits`` and ``data`` is checked.
 
         Parameters
         ----------
         data : Data, optional
-            Input data to prepare the state. Can be a classical description or a numerical input, defaults to `graphix.states.BasicStates.PLUS`
+            Input data to prepare the state. Can be a classical description or a numerical input, defaults to `graphix.states.BasicStates.PLUS`.
         nqubit : int | None, optional
             Number of qubits to prepare. If ``None`` (default), it's inferred from ``data``.
         max_qubits : int | None, optional.
@@ -83,7 +119,7 @@ class Statevec(DenseState):
         Raises
         ------
         ValueError
-            If `max_qubits` is smaller than `nqubit` or the number of qubits inferred from ``data``.
+            If ``nqubit``, ``max_qubits`` or ``data`` are not consistent with each other.
         """
         if nqubit is not None and nqubit < 0:
             raise ValueError("`nqubit` must be a non-negative integer.")
@@ -103,7 +139,7 @@ class Statevec(DenseState):
             if max_qubits is not None:
                 if max_qubits < data.max_qubits:
                     raise ValueError(
-                        f"`max_qubits` can't be smaller than the capacity of input state: {max_qubits} < {data.max_qubits}"
+                        f"`max_qubits` can't be smaller than the capacity of input state: {max_qubits} < {data.max_qubits}."
                     )
                 self.ensure_capacity(max_qubits)
             return
@@ -120,11 +156,11 @@ class Statevec(DenseState):
         elif isinstance(data, Iterable):
             input_list = list(data)
         else:
-            raise TypeError(f"Incorrect type for data: {type(data)}")
+            raise TypeError(f"Incorrect type for data: {type(data)}.")
 
         if len(input_list) == 0:
             if nqubit is not None and nqubit != 0:
-                raise ValueError("nqubit is not null but input state is empty.")
+                raise ValueError("`nqubit` is not null but input state is empty.")
             nqubit = 0
             psi = np.array([1], dtype=np.complex128)
 
@@ -153,21 +189,23 @@ class Statevec(DenseState):
             inferred_nqubit = length.bit_length() - 1
             if nqubit is None:
                 if length & (length - 1):
-                    raise ValueError(f"Length of input data is not a power of two: {length}")
+                    raise ValueError(f"Length of input data is not a power of two: {length}.")
                 nqubit = inferred_nqubit
             elif nqubit != inferred_nqubit:
-                raise ValueError(f"Mismatch between nqubit and inferred nqubit: {nqubit} != {inferred_nqubit}")
+                raise ValueError(f"Mismatch between nqubit and inferred nqubit: {nqubit} != {inferred_nqubit}.")
             psi = np.array(input_list, dtype=np.complex128)
             if not np.isclose(np.linalg.norm(psi), 1.0):
-                raise ValueError("Input state is not normalized")
+                raise ValueError("Input state is not normalized.")
 
         else:
-            raise TypeError(f"First element of data has type {type(input_list[0])} whereas Number or State is expected")
+            raise TypeError(
+                f"First element of data has type {type(input_list[0])} whereas Number or State is expected."
+            )
 
         if max_qubits is not None:
             if max_qubits < nqubit:
                 raise ValueError(
-                    f"`max_qubits` can't be smaller than the length of input state: {max_qubits} < {nqubit}"
+                    f"`max_qubits` can't be smaller than the length of input state: {max_qubits} < {nqubit}."
                 )
         else:
             max_qubits = nqubit
@@ -234,7 +272,7 @@ class Statevec(DenseState):
         nqubit : int
             The number of qubits to add to the state vector.
 
-        data : Data, optional
+        data : Data
             The state in which to initialize the newly added nodes.
 
             - If a single basic state is provided, all new nodes are initialized in that state.
@@ -253,26 +291,27 @@ class Statevec(DenseState):
 
     @override
     def entangle(self, qubits: tuple[int, int]) -> None:
-        """Connect graph nodes.
+        """Apply a CZ gate on two qubits.
 
         Parameters
         ----------
-        qubits : tuple of int
-            (control, target) qubit indices
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
         kernel = _entangle_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _entangle_jit
         kernel(self.psi, self.nqubit, *qubits)
 
     @override
     def evolve_single(self, op: Matrix, qubit: int) -> None:
-        """Apply a single-qubit operation.
+        """Apply a single-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 matrix
-        q : int
-            qubit index
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2, 2)` representing
+            the operator to apply.
+        qubit : int
+            Target qubit index.
         """
         self._check_bounds(qubit)
         kernel = _evolve_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _evolve_single_jit
@@ -281,18 +320,24 @@ class Statevec(DenseState):
 
     @override
     def expectation_single(self, op: Matrix, qubit: int) -> complex:
-        """Return the expectation value of single-qubit operator.
+        """Return the expectation value of a single-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 operator
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2, 2)` representing
+            the operator to measure.
         qubit : int
-            target qubit index
+            Target qubit index.
 
         Returns
         -------
-        complex : expectation value.
+        complex
+            Expectation value.
+
+        Notes
+        -----
+        This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
         """
         self._check_bounds(qubit)
         kernel = _expectation_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _expectation_single_jit
@@ -301,14 +346,19 @@ class Statevec(DenseState):
 
     @override
     def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
-        """Apply a multi-qubit operation.
+        r"""Apply a multi-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2^n*2^n matrix
-        qubits : list of int
-            target qubits' indices
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2^n, 2^n)` representing
+            the operator to apply.
+        qubits : Sequence[int]
+            Target qubit indices.
+
+        Notes
+        -----
+        This method is a fallback for circuit simulation and it's not required for pattern simulation. It does not have an efficient JIT-compiled implementation.
         """
         nq = len(qubits)
         # treat op as a tensor with nq output + nq input legs
@@ -328,18 +378,19 @@ class Statevec(DenseState):
         self.psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)
 
     def expectation_value(self, op: Matrix, qubits: Sequence[int]) -> complex:
-        """Return the expectation value of multi-qubit operator.
+        """Return the expectation value of a multi-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2^n*2^n operator
-        qubits : list of int
-            target qubit indices
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2^n, 2^n)` representing
+            the operator to measure.
+        qubits : Sequence[int]
+            Target qubit indices.
 
-        Returns
-        -------
-        complex : expectation value
+        Notes
+        -----
+        This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
         """
         sv = deepcopy(self)
         sv.evolve(op, qubits)
@@ -347,9 +398,9 @@ class Statevec(DenseState):
 
     @override
     def remove_qubit(self, qubit: int) -> None:
-        r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
+        r"""Remove a separable qubit from the system and assemble the statevector of the remaining qubits.
 
-        This results in the same result as partial trace, if the qubit *qarg* is separable from the rest.
+        This is equivalent to the partial trace if ``qubit`` corresponds to a separable qubit.
 
         For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over
         :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
@@ -369,33 +420,32 @@ class Statevec(DenseState):
                     \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
            \end{align}
 
-        (after normalization) for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`\ket{1}` state,
-        above will return zero amplitudes; in such a case the returned state will be the one above with
-        :math:`0_{\mathrm{k}}` replaced with :math:`1_{\mathrm{k}}` .
+        (after normalization) for :math:`k =` ``qubit``. If the :math:`k` th qubit is in the :math:`\ket{1}` state, all the amplitudes above will be zero.
+        In that case the returned state will be the one above with
+        :math:`0_{\mathrm{k}}` replaced with :math:`1_{\mathrm{k}}`.
 
         .. warning::
-            This method assumes the qubit with index *qarg* to be separable from the rest,
+            This method assumes the qubit ``qarg`` to be separable from the rest,
             and is implemented as a significantly faster alternative for partial trace to
             be used after single-qubit measurements.
-            Care needs to be taken when using this method.
-            Checks for separability will be implemented soon as an option.
+            Separability is not checked.
 
         Parameters
         ----------
         qubit : int
-            qubit index
+            Target qubit index.
         """
         self._check_bounds(qubit)
         self._nqubit = _remove_qubit_jit(self.psi, self.nqubit, qubit, atol=1e-10)
 
     @override
     def swap(self, qubits: tuple[int, int]) -> None:
-        """Swap qubits.
+        """Apply SWAP gate between two qubits.
 
         Parameters
         ----------
-        qubits : tuple of int
-            (control, target) qubit indices
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
         _swap_jit(self.psi, self.nqubit, *qubits)
 
@@ -408,6 +458,10 @@ class Statevec(DenseState):
         ----------
         other : :class:`graphix.sim.statevec.Statevec`
             Statevector to be tensored with ``self``.
+
+        Notes
+        -----
+        This method is used internally by :meth:`add_nodes`.
         """
         _tensor_jit(self.psi, other.psi, self.nqubit, other.nqubit)
         self._nqubit += other.nqubit
@@ -417,6 +471,15 @@ class Statevec(DenseState):
 
         This check is necessary because there is no bounds checking in Numba. See
         https://numba.pydata.org/numba-doc/dev/reference/pysemantics.html#bounds-checking
+
+        Parameters
+        ----------
+        qubit : int
+            Target qubit index.
+
+        Raises
+        ------
+        IndexError
         """
         if not 0 <= qubit < self.nqubit:
             raise IndexError(f"Qubit index {qubit} out of range [0, {self.nqubit})")
@@ -428,8 +491,8 @@ class Statevec(DenseState):
 
         Parameters
         ----------
-        other : :class:`Statevec`
-            statevector to compare with
+        other : :class:`graphix.sim.statevec.Statevec`
+            Statevector to compare with.
 
         Returns
         -------
@@ -446,12 +509,12 @@ class Statevec(DenseState):
 
         Parameters
         ----------
-        other : :class:`Statevec`
-            statevector to compare with
+        other : :class:`graphix.sim.statevec.Statevec`
+            Statevector to compare with.
         rtol : float
-            relative tolerance for :func:`math.isclose`
+            Relative tolerance for :func:`math.isclose`.
         atol : float
-            absolute tolerance for :func:`math.isclose`
+            Absolute tolerance for :func:`math.isclose`.
 
         Returns
         -------
@@ -566,20 +629,67 @@ class Statevec(DenseState):
 
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):
-    """MBQC state vector backend simulator based on 10.48550/arXiv.2506.08142."""
+    """Numba JIT-compiled MBQC statevector backend simulator based on Ref. [1].
+
+    See Also
+    --------
+    graphix.sim.base_backend.DenseStateBackend
+        Base class describing available parameters and shared behavior.
+
+    Notes
+    -----
+    By default, the backend is initialized with a 0-dimensional statevector
+    (a scalar ``1``) and ``max_qubits = 0``.
+
+    The internal state representation can be expanded using
+    ``StatevectorBackend.add_nodes``, but this is inefficient since it
+    requires copying the full quantum state array.
+
+    To preallocate memory for a fixed system size, use
+    :meth:`StatevectorBackend.with_capacity`.
+
+    References
+    ----------
+    [1] McGuffin, M. J., Robert J-M., and Ikeda K. "How to Write a Simulator for Quantum Circuits from Scratch: A Tutorial.", 2025 (arXiv:2506.08142).
+    """
 
     state: Statevec = dataclasses.field(init=True, default_factory=lambda: Statevec(nqubit=0))
+
+    def __post_init__(self) -> None:
+        """Validate backend configuration.
+
+        Raises
+        ------
+        ValueError
+            If ``symbolic`` is ``True``, since the statevector backend
+            does not support symbolic simulation.
+        """
+        if self.symbolic:
+            raise ValueError(
+                "Statevector backend does not support `symbolic` simulation. Consider using backend in `graphix-symbolic` plugin."
+            )
 
     @classmethod
     def with_capacity(
         cls, max_qubits: int, state: Statevec | None = None, **kwargs: Unpack[DenseStateBackendKwargs]
     ) -> Self:
-        """Initialize the backend with the required capacity to perform the simulation.
+        """Initialize the backend with preallocated statevector capacity.
 
         Parameters
         ----------
         max_qubits : int
-            Number of qubits the state vector must support. For pattern simulations this corresponds to ``Pattern.max_space()``.
+            Maximum number of qubits supported by the statevector. For pattern simulation this corresponds to ``Pattern.max_space()``.
+        state: Statevec | None = None
+            Initial backend state. If ``None``, the backend is initialized
+            with a 0-dimensional statevector (scalar ``1``).
+        **kwargs
+            Options for class:`graphix.sim.base_backend.DenseStateBackend`. See
+            :class:`graphix.sim.base_backend.DenseStateBackendKwargs`.
+
+        Returns
+        -------
+        Self
+            Backend instance with capacity for up to ``max_qubits`` qubits.
         """
         state_init = (
             Statevec(nqubit=0, max_qubits=max_qubits) if state is None else Statevec(state, max_qubits=max_qubits)
@@ -594,6 +704,10 @@ def _tensor_jit(
     nqubit: int,
     nqubit_other: int,
 ) -> None:
+    """Tensor in-place two state vectors.
+
+    This function assumes that ``psi`` has enough capacity to contain the tensor product.
+    """
     size_psi = 1 << nqubit
     size_other = 1 << nqubit_other
     # We update the elements of `psi` in-place.
@@ -611,7 +725,10 @@ def _tensor_jit(
 
 @nb.njit("(c16[::1], int32, int32, int32)")
 def _swap_jit(psi: npt.NDArray[np.complex128], nqubit: int, q1: int, q2: int) -> None:
+    """Swap two qubits.
 
+    This function is inspired from Ref. [1].
+    """
     if q1 == q2:
         return
     size_sv = 1 << nqubit
@@ -632,9 +749,9 @@ def _swap_jit(psi: npt.NDArray[np.complex128], nqubit: int, q1: int, q2: int) ->
 
 
 def _evolve_single(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int) -> None:
-    r"""Apply a single-qubit operation.
+    r"""Apply a single-qubit operator.
 
-    This function is inspired from 10.48550/arXiv.2506.08142.
+    This function is inspired from Ref. [1].
     """
     nblocks = 1 << q
     size_block = 1 << nqubit - q  # 2**(nqubit - q)
@@ -663,6 +780,10 @@ _evolve_single_jit_parallel: EvolveSingleJit = nb.njit("(c16[::1], c16[:, :], in
 def _expectation_single(
     psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int
 ) -> complex:
+    """Compute expectation value of single-qubit operator.
+
+    This function applies ``op`` on ``psi`` in the same way as :func:`_evolve_single`.
+    """
     nblocks = 1 << q
     size_block = 1 << nqubit - q
     size_half_block = (
@@ -695,6 +816,10 @@ _expectation_single_jit_parallel: ExpectationSingleJit = nb.njit(
 
 
 def _entangle(psi: npt.NDArray[np.complex128], nqubit: int, control: int, target: int) -> None:
+    """Apply CZ gate on two qubits.
+
+    This function is inspired from Ref. [1].
+    """
     size_sv = 1 << nqubit
     mask_control = 1 << nqubit - 1 - control
     mask_target = 1 << nqubit - 1 - target
@@ -717,6 +842,11 @@ def _remove_qubit_jit(
     q: int,
     atol: float,
 ) -> int:
+    """Remove qubit.
+
+    Argument ``atol`` controls the tolerance below which norm of statevector is 0.
+    See :meth:`Statevec.remove_qubit` for additional details on the implementation.
+    """
     new_nqubit = nqubit - 1
 
     n_blocks = 1 << q
@@ -770,7 +900,10 @@ def _remove_qubit_jit(
 
 
 def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
-    """Format the i-th basis vector as a ket. See :meth:`Statevec.to_dict` for additional details."""
+    """Format the i-th basis vector as a ket.
+
+    See :meth:`Statevec.to_dict` for additional details.
+    """
     display_width = nqubit
     output = f"{i:0{display_width}b}"
     if encoding == "LSB":
