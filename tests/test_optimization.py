@@ -151,6 +151,9 @@ def test_remove_local_clifford_commands(fx_bg: PCG64, jumps: int) -> None:
 
 
 def test_remove_local_clifford_commands_edge_cases() -> None:
+    pattern = Pattern()
+    pattern.remove_local_clifford_commands(copy=False)
+    assert list(pattern) == []
     pattern = Pattern(input_nodes=[0, 1], cmds=[Command.C(0, Clifford.H), Command.E((0, 1))])
     pattern.remove_local_clifford_commands(copy=False)
     pattern.check_runnability()
