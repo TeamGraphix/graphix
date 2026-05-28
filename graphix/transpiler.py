@@ -970,7 +970,7 @@ class Circuit:
         if branch_selector is None:
             branch_selector = RandomBranchSelector()
 
-        backend = StatevectorBackend(branch_selector=branch_selector)
+        backend = StatevectorBackend.with_capacity(self.width, branch_selector=branch_selector)
         if input_state is None:
             backend.add_nodes(range(self.width))
         else:
