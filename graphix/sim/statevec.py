@@ -55,7 +55,7 @@ class Statevec(DenseState):
 
     Attributes
     ----------
-    psi : npt.NDArray[np.complex128]
+    _psi : npt.NDArray[np.complex128]
         Complex-valued 1-dimensional array representing the quantum statevector.
         Only the first ``2**nqubit`` complex values have meaning.
 
@@ -64,7 +64,7 @@ class Statevec(DenseState):
 
     _max_qubits : int
         Maximum Hilbert space size allowed for internal computations. It determines
-        the size of ``psi``. For circuit simulations, it corresponds to the number
+        the size of ``self._psi``. For circuit simulations, it corresponds to the number
         of qubits, while for pattern simulations it corresponds to the pattern's
         maximum space. The method :meth:`Statevec.ensure_capacity` allows to increase
         this number.
@@ -225,7 +225,8 @@ class Statevec(DenseState):
 
         These are the first ``2**self.nqubit`` elements.
         """
-        return self._psi[: self.size_valid_psi]
+        size_valid_psi = 1 << self.nqubit  # 2**self.nqubit
+        return self._psi[:size_valid_psi]
 
     # Note that `@property` must appear before `@override` for pyright
     @property
@@ -238,11 +239,6 @@ class Statevec(DenseState):
     def max_qubits(self) -> int:
         """Return the preallocated number of qubits."""
         return self._max_qubits
-
-    @property
-    def size_valid_psi(self) -> int:
-        """Return the number of meaningful elements in ``self._psi``."""
-        return 1 << self.nqubit  # 2**self.nqubit
 
     def ensure_capacity(self, required_qubits: int) -> None:
         """Extend the state vector if the required qubit capacity exceeds the current one.
@@ -407,7 +403,7 @@ class Statevec(DenseState):
         for i, s in enumerate(qubits):
             res_idx[s] = out_idx[i]
 
-        self._psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
+        self._psi[: len(self.psi)] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
 
     def expectation_value(self, op: Matrix, qubits: Sequence[int]) -> complex:
         """Return the expectation value of a multi-qubit operator.
