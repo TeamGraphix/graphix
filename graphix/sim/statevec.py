@@ -282,11 +282,17 @@ class Statevec(DenseState):
 
         Notes
         -----
-        This method can extend the size of ``self.psi`` for convenience, but this requires allocating a full new array.
+        - This method can extend the size of ``self.psi`` for convenience, but this requires allocating a full new array.
+        - The implementation of this method does not support a parallelized kernel because data is read and written on the same array.
         """
         self.ensure_capacity(required_qubits=self.nqubit + nqubit)
-        sv_to_add = Statevec(nqubit=nqubit, data=data)
-        self.tensor(sv_to_add)
+        if nqubit == 1 and data is BasicStates.PLUS:
+            # Simulating standard N commands falls in this branch.
+            _add_default_node_jit(self.psi, self.nqubit)
+            self._nqubit += 1
+        else:
+            sv_to_add = Statevec(nqubit=nqubit, data=data)
+            self.tensor(sv_to_add)
 
     @override
     def entangle(self, qubits: tuple[int, int]) -> None:
@@ -455,6 +461,10 @@ class Statevec(DenseState):
         ----------
         qubit : int
             Target qubit index.
+
+        Notes
+        -----
+        The implementation of this method does not support a parallelized kernel because data is read and written on the same array.
         """
         self._check_bounds(qubit)
         self._nqubit = _remove_qubit_jit(self.psi, self.nqubit, qubit, atol=1e-10)
@@ -734,14 +744,37 @@ def _tensor_jit(
     # We update the elements of `psi` in-place.
     # This requires starting the update for the last element of the new psi, `size_psi * size_other - 1`
     k = size_psi * size_other - 1
-    sp_m1 = size_psi - 1
-    so_m1 = size_other - 1
+    max_psi_idx = size_psi - 1
+    max_other_idx = size_other - 1
 
     for i in range(size_psi):
-        alpha_old = psi[sp_m1 - i]
+        alpha_old = psi[max_psi_idx - i]
         for j in range(size_other):
-            psi[k] = alpha_old * psi_other[so_m1 - j]
+            psi[k] = alpha_old * psi_other[max_other_idx - j]
             k -= 1
+
+
+@nb.njit("(c16[::1], int32)")
+def _add_default_node_jit(
+    psi: npt.NDArray[np.complex128],
+    nqubit: int,
+) -> None:
+    r"""Tensor in-place a one-qubit |+> state.
+
+    This function follows the same logic as :func:`_tensor_jit` but is specialized to ``psi_other`` being a :math:`(1, 1)/\sqrt{2}` state.
+    """
+    read_idx = (1 << nqubit) - 1  # 2**nqubit - 1
+    write_idx = (1 << nqubit + 1) - 1  # 2**(nqubit + 1) -1
+    amp = 1 / np.sqrt(2)
+
+    while read_idx >= 0:
+        v = amp * psi[read_idx]
+
+        psi[write_idx] = v
+        psi[write_idx - 1] = v
+
+        read_idx -= 1
+        write_idx -= 2
 
 
 @nb.njit("(c16[::1], int32, int32, int32)")
