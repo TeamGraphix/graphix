@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #507: Static method `PauliString.from_measured_node` is subsumed by the function `extraction_ps_from_corrected_node`.
 
+- #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
+
 ## [0.3.5] - 2026-03-26
 
 ### Added
