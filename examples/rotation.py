@@ -77,7 +77,7 @@ print(out_state.flatten())
 state = Statevec(nqubit=2, data=BasicStates.ZERO)  # starts with |0> states
 state.evolve_single(Ops.rx(theta[0]), 0)
 state.evolve_single(Ops.rx(theta[1]), 1)
-print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
+print("overlap of states: ", np.abs(np.dot(state.flatten().conjugate(), out_state.flatten())))
 
 # %%
 # Now let us compile more complex pattern and inspect the graph using the visualization tool.
