@@ -98,12 +98,12 @@ class Statevec(DenseState):
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
         - an iterable of scalars (a :math:`2^n` numerical statevector)
-        - a single :class:`graphix.statevec.Statevec`
+        - a single :class:`graphix.sim.statevec.Statevec`
 
         If ``nqubit`` is not provided, it is inferred from ``data``.
         If ``max_qubits`` is not provided, it is set to match the provided or inferred ``nqubit``.
         If only one :class:`graphix.states.State` is provided and ``nqubit`` is a valid integer, the statevector is initialized in the tensor product state.
-        If a class:`graphix.statevec.Statevec` is provided, a copy is returned.
+        If a class:`graphix.sim.statevec.Statevec` is provided, a copy is returned.
         Consistency between provided ``nqubit``, ``max_qubits`` and ``data`` is checked.
 
         Parameters
@@ -358,8 +358,7 @@ class Statevec(DenseState):
         Notes
         -----
         - This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
-        - The JIT kernel switches to a parallel implementation when the
-        number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
+        - The JIT kernel switches to a parallel implementation when the number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
         self._check_bounds(qubit)
         kernel = _expectation_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _expectation_single_jit
