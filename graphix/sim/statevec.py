@@ -103,13 +103,13 @@ class Statevec(DenseState):
         If ``nqubit`` is not provided, it is inferred from ``data``.
         If ``max_qubits`` is not provided, it is set to match the provided or inferred ``nqubit``.
         If only one :class:`graphix.states.State` is provided and ``nqubit`` is a valid integer, the statevector is initialized in the tensor product state.
-        If a ``graphix.statevec.Statevec`` is provided, a copy is returned.
+        If a class:`graphix.statevec.Statevec` is provided, a copy is returned.
         Consistency between provided ``nqubit``, ``max_qubits`` and ``data`` is checked.
 
         Parameters
         ----------
         data : Data, optional
-            Input data to prepare the state. Can be a classical description or a numerical input, defaults to `graphix.states.BasicStates.PLUS`.
+            Input data to prepare the state. Can be a classical description or a numerical input, defaults to class:`graphix.states.BasicStates.PLUS`.
         nqubit : int | None, optional
             Number of qubits to prepare. If ``None`` (default), it's inferred from ``data``.
         max_qubits : int | None, optional.
@@ -358,7 +358,6 @@ class Statevec(DenseState):
         Notes
         -----
         - This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
-
         - The JIT kernel switches to a parallel implementation when the
         number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
@@ -714,7 +713,7 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
             Initial backend state. If ``None``, the backend is initialized
             with a 0-dimensional statevector (scalar ``1``).
         **kwargs
-            Options for class:`graphix.sim.base_backend.DenseStateBackend`. See
+            Options for :class:`graphix.sim.base_backend.DenseStateBackend`. See
             :class:`graphix.sim.base_backend.DenseStateBackendKwargs`.
 
         Returns
