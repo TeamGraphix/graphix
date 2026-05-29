@@ -59,15 +59,15 @@ class Statevec(DenseState):
         Complex-valued 1-dimensional array representing the quantum statevector.
         Only the first ``2**nqubit`` complex values have meaning.
 
+    _nqubit : int
+        Number of active qubits at any given time.
+
     _max_qubits : int
         Maximum Hilbert space size allowed for internal computations. It determines
         the size of ``psi``. For circuit simulations, it corresponds to the number
         of qubits, while for pattern simulations it corresponds to the pattern's
         maximum space. The method :meth:`Statevec.ensure_capacity` allows to increase
         this number.
-
-    _nqubit : int
-        Number of active qubits at any given time.
 
     Notes
     -----
@@ -87,9 +87,9 @@ class Statevec(DenseState):
     details.
     """
 
-    psi: npt.NDArray[np.complex128]
-    _max_qubits: int
+    _psi: npt.NDArray[np.complex128]
     _nqubit: int
+    _max_qubits: int
 
     def __init__(self, data: Data = BasicStates.PLUS, nqubit: int | None = None, max_qubits: int | None = None) -> None:
         """Initialize a statevector object.
@@ -131,7 +131,7 @@ class Statevec(DenseState):
                 raise ValueError(
                     f"Inconsistent parameters between nqubit = {nqubit} and the inferred number of qubit = {len(data.flatten())}."
                 )
-            self.psi = data.psi.copy()
+            self._psi = data._psi.copy()
             self._max_qubits = data.max_qubits
             self._nqubit = data.nqubit
 
@@ -209,15 +209,23 @@ class Statevec(DenseState):
         else:
             max_qubits = nqubit
 
-        self.psi = psi
+        self._psi = psi
         self._max_qubits = nqubit  # bootstrap for self.ensure_capacity
         self._nqubit = nqubit
-        self.ensure_capacity(max_qubits)  # may extend both self.psi and self._max_qubits
+        self.ensure_capacity(max_qubits)  # may extend both self._psi and self._max_qubits
 
     def __str__(self) -> str:
         """Return a string description."""
         sv = self.psi
         return f"Statevec object with statevector {sv} and length {len(sv)}."
+
+    @property
+    def psi(self) -> npt.NDArray[np.complex128]:
+        """Return a view of the meaningful elements in ``self._psi``.
+
+        These are the first ``2**self.nqubit`` elements.
+        """
+        return self._psi[: self.size_valid_psi]
 
     # Note that `@property` must appear before `@override` for pyright
     @property
@@ -233,7 +241,7 @@ class Statevec(DenseState):
 
     @property
     def size_valid_psi(self) -> int:
-        """Return the number of meaningful elements in ``self.psi``."""
+        """Return the number of meaningful elements in ``self._psi``."""
         return 1 << self.nqubit  # 2**self.nqubit
 
     def ensure_capacity(self, required_qubits: int) -> None:
@@ -245,11 +253,11 @@ class Statevec(DenseState):
         ----------
         required_qubits : int
             Minimum number of qubits the state vector must support. If expansion
-            is needed, ``self.psi`` is extended to size ``2**required_qubits``.
+            is needed, ``self._psi`` is extended to size ``2**required_qubits``.
         """
         if required_qubits > self.max_qubits:
-            offset = (1 << required_qubits) - len(self.psi)
-            self.psi = np.concatenate([self.psi, np.empty(offset, dtype=self.psi.dtype)])
+            offset = (1 << required_qubits) - len(self._psi)
+            self._psi = np.concatenate([self._psi, np.empty(offset, dtype=self._psi.dtype)])
             self._max_qubits = required_qubits
 
     @override
@@ -258,7 +266,7 @@ class Statevec(DenseState):
 
         A view of only the first ``2**self.nqubit`` elements of ``self.psi`` is returned.
         """
-        return self.psi[: self.size_valid_psi]
+        return self.psi
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
@@ -282,13 +290,13 @@ class Statevec(DenseState):
 
         Notes
         -----
-        - This method can extend the size of ``self.psi`` for convenience, but this requires allocating a full new array.
+        - This method can extend the size of ``self._psi`` for convenience, but this requires allocating a full new array.
         - The implementation of this method does not support a parallelized kernel because data is read and written on the same array.
         """
         self.ensure_capacity(required_qubits=self.nqubit + nqubit)
         if nqubit == 1 and data is BasicStates.PLUS:
             # Simulating standard N commands falls in this branch.
-            _add_default_node_jit(self.psi, self.nqubit)
+            _add_default_node_jit(self._psi, self.nqubit)
             self._nqubit += 1
         else:
             sv_to_add = Statevec(nqubit=nqubit, data=data)
@@ -313,7 +321,7 @@ class Statevec(DenseState):
         for qubit in qubits:
             self._check_bounds(qubit)
         kernel = _entangle_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _entangle_jit
-        kernel(self.psi, self.nqubit, *qubits)
+        kernel(self._psi, self.nqubit, *qubits)
 
     @override
     def evolve_single(self, op: Matrix, qubit: int) -> None:
@@ -336,7 +344,7 @@ class Statevec(DenseState):
         kernel = _evolve_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _evolve_single_jit
         # Downcast from Matrix to np.complex128 to match numba signature.
         op_as_complex = _cast_op(op)
-        kernel(self.psi, op_as_complex, self.nqubit, qubit)
+        kernel(self._psi, op_as_complex, self.nqubit, qubit)
 
     @override
     def expectation_single(self, op: Matrix, qubit: int) -> complex:
@@ -357,14 +365,14 @@ class Statevec(DenseState):
 
         Notes
         -----
-        - This method assumes that quantum state stored in ``self.psi`` is normalized. See the class docstring for details.
+        - This method assumes that quantum state represented by ``self.psi`` is normalized. See the class docstring for details.
         - The JIT kernel switches to a parallel implementation when the number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
         self._check_bounds(qubit)
         kernel = _expectation_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _expectation_single_jit
         # Downcast from Matrix to np.complex128 to match numba signature.
         op_as_complex = _cast_op(op)
-        return kernel(self.psi, op_as_complex, self.nqubit, qubit)
+        return kernel(self._psi, op_as_complex, self.nqubit, qubit)
 
     @override
     def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
@@ -399,7 +407,7 @@ class Statevec(DenseState):
         for i, s in enumerate(qubits):
             res_idx[s] = out_idx[i]
 
-        self.psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
+        self._psi[: self.size_valid_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
 
     def expectation_value(self, op: Matrix, qubits: Sequence[int]) -> complex:
         """Return the expectation value of a multi-qubit operator.
@@ -414,7 +422,7 @@ class Statevec(DenseState):
 
         Notes
         -----
-        This method assumes that quantum state stored in ``self.psi`` is normalized.
+        This method assumes that quantum state represented by ``self.psi`` is normalized.
         See the class docstring for details.
         """
         sv = deepcopy(self)
@@ -465,7 +473,7 @@ class Statevec(DenseState):
         The implementation of this method does not support a parallelized kernel because data is read and written on the same array.
         """
         self._check_bounds(qubit)
-        self._nqubit = _remove_qubit_jit(self.psi, self.nqubit, qubit, atol=1e-10)
+        self._nqubit = _remove_qubit_jit(self._psi, self.nqubit, qubit, atol=1e-10)
 
     @override
     def swap(self, qubits: tuple[int, int]) -> None:
@@ -476,7 +484,7 @@ class Statevec(DenseState):
         qubits : tuple[int, int]
             (control, target) qubit indices.
         """
-        _swap_jit(self.psi, self.nqubit, *qubits)
+        _swap_jit(self._psi, self.nqubit, *qubits)
 
     def tensor(self, other: Statevec) -> None:
         r"""Tensor product state with other qubits.
@@ -492,7 +500,7 @@ class Statevec(DenseState):
         -----
         This method is used internally by :meth:`add_nodes`.
         """
-        _tensor_jit(self.psi, other.psi, self.nqubit, other.nqubit)
+        _tensor_jit(self._psi, other.psi, self.nqubit, other.nqubit)
         self._nqubit += other.nqubit
 
     def _check_bounds(self, qubit: int) -> None:

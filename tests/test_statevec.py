@@ -69,7 +69,7 @@ class TestStatevec:
         assert np.allclose(sv.flatten(), np.array([1, 0, 1, 0]) / np.sqrt(2))
         assert sv.nqubit == nqubit
         assert sv.max_qubits == max_qubits
-        assert len(sv.psi) == 2**max_qubits
+        assert len(sv._psi) == 2**max_qubits
 
     @pytest.mark.parametrize("nqubit", range(5))
     def test_init_statevec(self, fx_rng: Generator, nqubit: int) -> None:
