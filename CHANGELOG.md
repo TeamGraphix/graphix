@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.draw` methods allow to show Clifford commands in the outputs.
   - `PauliFlow.extract_circuit` raises `NotImplementedError` if the open graph has Clifford decorations.
 
+- #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
 
 ## [0.3.5] - 2026-03-26
 
