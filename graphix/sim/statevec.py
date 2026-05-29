@@ -109,7 +109,7 @@ class Statevec(DenseState):
         Parameters
         ----------
         data : Data, optional
-            Input data to prepare the state. Can be a classical description or a numerical input, defaults to class:`graphix.states.BasicStates.PLUS`.
+            Input data to prepare the state. Can be a classical description or a numerical input, defaults to :class:`graphix.states.BasicStates.PLUS`.
         nqubit : int | None, optional
             Number of qubits to prepare. If ``None`` (default), it's inferred from ``data``.
         max_qubits : int | None, optional.
