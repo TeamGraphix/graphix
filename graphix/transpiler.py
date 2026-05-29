@@ -1019,7 +1019,7 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        _backend = _initialize_backend(backend, branch_selector)
+        _backend = _initialize_backend(backend, branch_selector, self.width)
 
         if input_state is None:
             _backend.add_nodes(range(self.width))
@@ -1207,6 +1207,7 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
 def _initialize_backend(
     backend: StatevectorBackend | Literal["statevector"],
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> StatevectorBackend: ...
 
 
@@ -1214,6 +1215,7 @@ def _initialize_backend(
 def _initialize_backend(
     backend: DensityMatrixBackend | Literal["densitymatrix"],
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> DensityMatrixBackend: ...
 
 
@@ -1221,12 +1223,14 @@ def _initialize_backend(
 def _initialize_backend(
     backend: DenseStateBackend[_DenseStateT_co],
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> DenseStateBackend[_DenseStateT_co]: ...
 
 
 def _initialize_backend(
     backend: DenseStateBackend[_DenseStateT_co] | _DenseStateBackendLiteral,
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> _BuiltinDenseStateBackend | DenseStateBackend[_DenseStateT_co]:
     """Initialize backend for circuit simulation.
 
@@ -1236,6 +1240,9 @@ def _initialize_backend(
         Simulation backend
     branch_selector: :class:`BranchSelector`
         Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  If ``None``, it defaults to :class:`RandomBranchSelector`.
+    width : int
+        Number of qubits in circuit. It is required to initialize the :class:`StatevectorBackend` with the appropriate
+        capacity.
 
     Returns
     -------
@@ -1252,7 +1259,7 @@ def _initialize_backend(
 
     match backend:
         case "statevector":
-            return StatevectorBackend(branch_selector=branch_selector)
+            return StatevectorBackend.with_capacity(width, branch_selector=branch_selector)
         case "densitymatrix":
             return DensityMatrixBackend(branch_selector=branch_selector)
         case _:
