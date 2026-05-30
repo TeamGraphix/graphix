@@ -24,7 +24,7 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
-    from typing import Any, Literal, Self, TypeAlias, TypeVar
+    from typing import Any, Literal, Self, TypeVar
 
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
@@ -34,14 +34,6 @@ if TYPE_CHECKING:
 
     _ENCODING = Literal["LSB", "MSB"]
     _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
-
-    EvolveSingleJit: TypeAlias = Callable[
-        [npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], None
-    ]  # type introduced in 3.12
-    ExpectationSingleJit: TypeAlias = Callable[  # type introduced in 3.12
-        [npt.NDArray[np.complex128], npt.NDArray[np.complex128], int, int], complex
-    ]
-    EntangleJit: TypeAlias = Callable[[npt.NDArray[np.complex128], int, int, int], None]  # type introduced in 3.12
 
 
 NUM_QUBIT_PARALLEL = 15
@@ -286,8 +278,7 @@ class Statevec(DenseState):
 
         Notes
         -----
-        - This method can extend the size of ``self._psi`` for convenience, but this requires allocating a full new array.
-        - The implementation of this method does not support a parallelized kernel because data is read and written on the same array.
+        This method can extend the size of ``self._psi`` for convenience, but this requires allocating a full new array.
         """
         self.ensure_capacity(required_qubits=self.nqubit + nqubit)
         if nqubit == 1 and data is BasicStates.PLUS:
@@ -306,18 +297,12 @@ class Statevec(DenseState):
         ----------
         qubits : tuple[int, int]
             (control, target) qubit indices.
-
-        Notes
-        -----
-        The JIT kernel switches to a parallel implementation when the
-        number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
         # `_entangle_jit` is not unsafe if calle on out-of-bound indices but
         # we check them for robustness.
         for qubit in qubits:
             self._check_bounds(qubit)
-        kernel = _entangle_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _entangle_jit
-        kernel(self._psi, self.nqubit, *qubits)
+        _entangle_jit(self._psi, self.nqubit, *qubits)
 
     @override
     def evolve_single(self, op: Matrix, qubit: int) -> None:
@@ -330,17 +315,11 @@ class Statevec(DenseState):
             the operator to apply.
         qubit : int
             Target qubit index.
-
-        Notes
-        -----
-        The JIT kernel switches to a parallel implementation when the
-        number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
         """
         self._check_bounds(qubit)
-        kernel = _evolve_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _evolve_single_jit
         # Downcast from Matrix to np.complex128 to match numba signature.
         op_as_complex = _cast_op(op)
-        kernel(self._psi, op_as_complex, self.nqubit, qubit)
+        _evolve_single_jit(self._psi, op_as_complex, self.nqubit, qubit)
 
     @override
     def expectation_single(self, op: Matrix, qubit: int) -> complex:
@@ -361,14 +340,12 @@ class Statevec(DenseState):
 
         Notes
         -----
-        - This method assumes that quantum state represented by ``self.psi`` is normalized. See the class docstring for details.
-        - The JIT kernel switches to a parallel implementation when the number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
+        This method assumes that quantum state represented by ``self.psi`` is normalized. See the class docstring for details.
         """
         self._check_bounds(qubit)
-        kernel = _expectation_single_jit_parallel if self.nqubit > NUM_QUBIT_PARALLEL else _expectation_single_jit
         # Downcast from Matrix to np.complex128 to match numba signature.
         op_as_complex = _cast_op(op)
-        return kernel(self._psi, op_as_complex, self.nqubit, qubit)
+        return _expectation_single_jit(self._psi, op_as_complex, self.nqubit, qubit)
 
     @override
     def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
@@ -660,6 +637,18 @@ class Statevec(DenseState):
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
 
+def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
+    """Format the i-th basis vector as a ket.
+
+    See :meth:`Statevec.to_dict` for additional details.
+    """
+    display_width = nqubit
+    output = f"{i:0{display_width}b}"
+    if encoding == "LSB":
+        return output[::-1]
+    return output
+
+
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):
     """Numba JIT-compiled MBQC statevector backend simulator based on Ref. [1].
@@ -804,10 +793,26 @@ def _swap_jit(psi: npt.NDArray[np.complex128], nqubit: int, q1: int, q2: int) ->
                 psi[j], psi[i] = psi[i], psi[j]
 
 
-def _evolve_single(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int) -> None:
+@nb.njit("(c16[::1], c16[:,:], int32, int32, int32)")
+def _compute_op_psi(
+    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, offset: int, size_half_block: int
+) -> None:
+    i1 = b0 + offset
+    i2 = i1 + size_half_block
+    psi1 = psi[i1]
+    psi2 = psi[i2]
+    psi[i1] = op[0, 0] * psi1 + op[0, 1] * psi2
+    psi[i2] = op[1, 0] * psi1 + op[1, 1] * psi2
+
+
+@nb.njit("(c16[::1], c16[:,:], int32, int32)", parallel=True)
+def _evolve_single_jit(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int) -> None:
     r"""Apply a single-qubit operator.
 
     This function is inspired from Ref. [1].
+
+    The kernel switches to a parallel implementation when the
+    number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
     """
     nblocks = 1 << q
     size_block = 1 << nqubit - q  # 2**(nqubit - q)
@@ -815,30 +820,47 @@ def _evolve_single(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex12
         size_block >> 1
     )  # Left-to-right tensor product encoding (first qubit corresponds to most significant bit). For right-to-left encoding use `size_half_block = 1 << i`
 
-    for b in nb.prange(nblocks):
-        # WARNING: setting `b0 += size_block` may result in a race condition if `parallel=True`
-        b0 = size_block * b
-        for offset in range(size_half_block):
-            i1 = b0 | offset
-            i2 = i1 | size_half_block
-            psi1 = psi[i1]
-            psi2 = psi[i2]
-            psi[i1] = op[0, 0] * psi1 + op[0, 1] * psi2
-            psi[i2] = op[1, 0] * psi1 + op[1, 1] * psi2
+    if nqubit > NUM_QUBIT_PARALLEL:
+        if nblocks > 1:
+            for b in nb.prange(nblocks):
+                # WARNING: setting `b0 += size_block` may result in a race condition if parallel loop.
+                b0 = size_block * b
+                for offset in range(size_half_block):
+                    _compute_op_psi(psi, op, b0, offset, size_half_block)
+        else:
+            for offset in nb.prange(size_half_block):
+                _compute_op_psi(psi, op, 0, offset, size_half_block)
+    else:
+        b0 = 0
+        for _ in range(nblocks):
+            for offset in range(size_half_block):
+                _compute_op_psi(psi, op, b0, offset, size_half_block)
+            b0 += size_block
 
 
-_evolve_single_jit: EvolveSingleJit = nb.njit("(c16[::1], c16[:,:], int32, int32)", parallel=False)(_evolve_single)
-_evolve_single_jit_parallel: EvolveSingleJit = nb.njit("(c16[::1], c16[:,:], int32, int32)", parallel=True)(
-    _evolve_single
-)
+@nb.njit("c16(c16[::1], c16[:,:], int32, int32, int32)")
+def _compute_psic_op_psi(
+    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, offset: int, size_half_block: int
+) -> complex:
+    i1 = b0 + offset
+    i2 = i1 + size_half_block
+    psi1 = psi[i1]
+    psi2 = psi[i2]
+    b1 = op[0, 0] * psi1 + op[0, 1] * psi2
+    b2 = op[1, 0] * psi1 + op[1, 1] * psi2
+    return psi1.conjugate() * b1 + psi2.conjugate() * b2  # type: ignore[no-any-return]
 
 
-def _expectation_single(
+@nb.njit("c16(c16[::1], c16[:,:], int32, int32)", parallel=True)
+def _expectation_single_jit(
     psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int
 ) -> complex:
     """Compute expectation value of single-qubit operator.
 
     This function applies ``op`` on ``psi`` in the same way as :func:`_evolve_single`.
+
+    The kernel switches to a parallel implementation when the
+    number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
     """
     nblocks = 1 << q
     size_block = 1 << nqubit - q
@@ -848,33 +870,34 @@ def _expectation_single(
 
     result = 0.0 + 0.0j
 
-    for b in nb.prange(nblocks):
-        # WARNING: setting `b0 += size_block` may result in a race condition if `parallel=True`
-        b0 = b << nqubit - q
-        for offset in range(size_half_block):
-            i1 = b0 | offset
-            i2 = i1 | size_half_block
-            psi1 = psi[i1]
-            psi2 = psi[i2]
-            b1 = op[0, 0] * psi1 + op[0, 1] * psi2
-            b2 = op[1, 0] * psi1 + op[1, 1] * psi2
-            result += psi1.conjugate() * b1 + psi2.conjugate() * b2
+    if nqubit > NUM_QUBIT_PARALLEL:
+        if nblocks > 1:
+            for b in nb.prange(nblocks):
+                # WARNING: setting `b0 += size_block` may result in a race condition if parallel loop.
+                b0 = size_block * b
+                for offset in range(size_half_block):
+                    result += _compute_psic_op_psi(psi, op, b0, offset, size_half_block)
+        else:
+            for offset in nb.prange(size_half_block):
+                result += _compute_psic_op_psi(psi, op, 0, offset, size_half_block)
+    else:
+        b0 = 0
+        for _ in range(nblocks):
+            for offset in range(size_half_block):
+                result += _compute_psic_op_psi(psi, op, b0, offset, size_half_block)
+            b0 += size_block
 
     return result
 
 
-_expectation_single_jit: ExpectationSingleJit = nb.njit("c16(c16[::1], c16[:,:], int32, int32)", parallel=False)(
-    _expectation_single
-)
-_expectation_single_jit_parallel: ExpectationSingleJit = nb.njit(
-    "c16(c16[::1], c16[:,:], int32, int32)", parallel=True
-)(_expectation_single)
-
-
-def _entangle(psi: npt.NDArray[np.complex128], nqubit: int, control: int, target: int) -> None:
+@nb.njit("(c16[::1], int32, int32, int32)", parallel=True)
+def _entangle_jit(psi: npt.NDArray[np.complex128], nqubit: int, control: int, target: int) -> None:
     """Apply CZ gate on two qubits.
 
     This function is inspired from Ref. [1].
+
+    The kernel switches to a parallel implementation when the
+    number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
     """
     size_sv = 1 << nqubit
     mask_control = 1 << nqubit - 1 - control
@@ -882,16 +905,109 @@ def _entangle(psi: npt.NDArray[np.complex128], nqubit: int, control: int, target
     mask = mask_control | mask_target
     # `mask` is an integer number whose binary representation has 1s at positions `control` and `target` and 0s elsewhere.
 
-    for i in nb.prange(size_sv):
-        if mask & i == mask:
-            psi[i] = -psi[i]
+    if nqubit > NUM_QUBIT_PARALLEL:
+        for i in nb.prange(size_sv):
+            if mask & i == mask:
+                psi[i] = -psi[i]
+    else:
+        for i in range(size_sv):
+            if mask & i == mask:
+                psi[i] = -psi[i]
 
 
-_entangle_jit: EntangleJit = nb.njit("(c16[::1], int32, int32, int32)", parallel=False)(_entangle)
-_entangle_jit_parallel: EntangleJit = nb.njit("(c16[::1], int32, int32, int32)", parallel=True)(_entangle)
+@nb.njit("f8(c16[::1], int32, int32)")
+def _compute_a2(
+    psi: npt.NDArray[np.complex128],
+    b0: int,
+    j: int,
+) -> float:
+    a = psi[b0 + j]
+    a_re = a.real
+    a_im = a.imag
+    return a_re * a_re + a_im * a_im  # type: ignore[no-any-return]
 
 
-@nb.njit("int32(c16[::1], int32, int32, f8)", parallel=False)
+@nb.njit("f8(c16[::1], int32, int32, int32, int32, int32)", parallel=True)
+def _compute_norm(
+    psi: npt.NDArray[np.complex128],
+    nqubit: int,
+    n_blocks: int,
+    size_block: int,
+    size_half_block: int,
+    shift: int,
+) -> float:
+    """Compute the norm of psi.
+
+    The kernel switches to a parallel implementation when the
+    number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
+    """
+    norm2 = 0.0
+    if nqubit > NUM_QUBIT_PARALLEL:
+        if n_blocks > 1:
+            for b in nb.prange(n_blocks):
+                b0 = b * size_block + shift
+                for j in range(size_half_block):
+                    norm2 += _compute_a2(psi, b0, j)
+        else:
+            for j in nb.prange(size_half_block):
+                norm2 += _compute_a2(psi, shift, j)
+    else:
+        for b in range(n_blocks):
+            b0 = b * size_block + shift
+            for j in range(size_half_block):
+                norm2 += _compute_a2(psi, b0, j)
+    return norm2
+
+
+@nb.njit("void(c16[::1], int32, int32, int32, int32, f8)")
+def _scale_psi_kernel(
+    psi: npt.NDArray[np.complex128],
+    n_blocks: int,
+    size_block: int,
+    size_half_block: int,
+    shift: int,
+    inv_norm: float,
+) -> None:
+    """Update ``psi`` with selected and normalized elements.
+
+    The implementation of this function does not support a parallelized
+    kernel because data is read and written on the same array.
+    """
+    b0 = shift
+    k = 0
+    for _ in range(n_blocks):
+        for j in range(size_half_block):
+            psi[k] = psi[b0 + j] * inv_norm
+            k += 1
+        b0 += size_block
+
+
+@nb.njit("void(c16[::1], int32, int32, int32, int32, f8)")
+def _scale_psi(
+    psi: npt.NDArray[np.complex128],
+    n_blocks: int,
+    size_block: int,
+    size_half_block: int,
+    shift: int,
+    inv_norm: float,
+) -> None:
+    """Update ``psi`` with selected and normalized elements."""
+    # If the inner loop in `_scale_psi_kernel` has too few elements
+    # it introduces some overhead and it's best to unroll it.
+    # Numba can do that only if ``size_half_block`` is a constant at
+    # compile time, so we dispatch the relevant cases.
+    # We observe speed improvements of up to 10%.
+    if size_block == 2:
+        _scale_psi_kernel(psi, n_blocks, 2, 1, shift, inv_norm)
+    elif size_block == 4:
+        _scale_psi_kernel(psi, n_blocks, 4, 2, shift, inv_norm)
+    elif size_block == 8:
+        _scale_psi_kernel(psi, n_blocks, 8, 4, shift, inv_norm)
+    else:
+        _scale_psi_kernel(psi, n_blocks, size_block, size_half_block, shift, inv_norm)
+
+
+@nb.njit("int32(c16[::1], int32, int32, f8)")
 def _remove_qubit_jit(
     psi: npt.NDArray[np.complex128],
     nqubit: int,
@@ -902,6 +1018,9 @@ def _remove_qubit_jit(
 
     Argument ``atol`` controls the tolerance below which norm of statevector is 0.
     See :meth:`Statevec.remove_qubit` for additional details on the implementation.
+
+    This implementation benefited from Jérôme Richard's advice.
+    https://stackoverflow.com/questions/79948374/improving-efficiency-of-numba-jit-function
     """
     new_nqubit = nqubit - 1
 
@@ -910,61 +1029,21 @@ def _remove_qubit_jit(
     size_half_block = size_block >> 1
 
     # Compute norm of branch 0
-    norm2 = 0.0
     shift = 0
-    b0 = shift
-    for _ in range(n_blocks):
-        # If parallelization, set `b0 = b * size_block + shift` with `b` the loop variable to avoid race condition.
-        # Parallelization for norm computation is not worth, execution-time controlled by the update loop which can't be parallelized without cache.
-        for j in range(size_half_block):
-            a = psi[b0 | j]
-            a_re = a.real
-            a_im = a.imag
-            norm2 += a_re * a_re + a_im * a_im
-        b0 += size_block
+    norm2 = _compute_norm(psi, nqubit, n_blocks, size_block, size_half_block, shift)
 
     # If norm of branch 0 is 0, compute norm of branch 1 and set shift to branch 1
     if norm2 <= atol:
-        norm2 = 0.0
         shift = size_half_block
-        b0 = shift
-        for _ in range(n_blocks):
-            for j in range(size_half_block):
-                a = psi[b0 | j]
-                a_re = a.real
-                a_im = a.imag
-                norm2 += a_re * a_re + a_im * a_im
-            b0 += size_block
+        norm2 = _compute_norm(psi, nqubit, n_blocks, size_block, size_half_block, shift)
 
     if norm2 <= atol:
         raise RuntimeError(f"Attempted to remove qubit {q} from 0-norm statevector.")
 
-    b0 = shift
-    k = 0
     inv_norm = 1.0 / math.sqrt(norm2)
-
-    # Update `psi` with selected and normalized elements.
-    for _ in range(n_blocks):
-        for j in range(size_half_block):
-            psi[k] = (
-                psi[b0 | j] * inv_norm
-            )  # b0 | j equivalent to b0 + j because the active bits of b0 and j don't overlap.
-            k += 1
-        b0 += size_block
+    _scale_psi(psi, n_blocks, size_block, size_half_block, shift, inv_norm)
 
     return new_nqubit
-
-
-def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
-    """Format the i-th basis vector as a ket.
-
-    See :meth:`Statevec.to_dict` for additional details.
-    """
-    display_width = nqubit
-    output = f"{i:0{display_width}b}"
-    if encoding == "LSB":
-        return output[::-1]
-    return output
 
 
 def _cast_op(op: Matrix) -> npt.NDArray[np.complex128]:
