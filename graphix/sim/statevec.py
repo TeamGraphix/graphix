@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 
 NUM_QUBIT_PARALLEL = 15
-"""This constant determines the number of qubits above which matrix operations
+"""This compilation constant determines the number of qubits above which matrix operations
 are multi-threaded. For lower counts, the overhead does not compensate parallelization.
 This number was determined empirically and it may be platform dependent."""
 
@@ -235,7 +235,8 @@ class Statevec(DenseState):
     def ensure_capacity(self, required_qubits: int) -> None:
         """Extend the state vector if the required qubit capacity exceeds the current one.
 
-        Does nothing if ``required_qubits <= self.max_qubits``.
+        It copies the full vector state if ``required_qubits > self.max_qubits``,
+        otherwise does nothing.
 
         Parameters
         ----------
@@ -252,7 +253,7 @@ class Statevec(DenseState):
     def flatten(self) -> Matrix:
         """Return flattened state.
 
-        A view of only the first ``2**self.nqubit`` elements of ``self.psi`` is returned.
+        A view of only the first ``2**self.nqubit`` elements of ``self._psi`` is returned.
         """
         return self.psi
 
@@ -298,7 +299,7 @@ class Statevec(DenseState):
         qubits : tuple[int, int]
             (control, target) qubit indices.
         """
-        # `_entangle_jit` is not unsafe if calle on out-of-bound indices but
+        # `_entangle_jit` is not unsafe if called on out-of-bound indices but
         # we check them for robustness.
         for qubit in qubits:
             self._check_bounds(qubit)
@@ -317,7 +318,7 @@ class Statevec(DenseState):
             Target qubit index.
         """
         self._check_bounds(qubit)
-        # Downcast from Matrix to np.complex128 to match numba signature.
+        # Downcast from Matrix to npt.NDArray[np.complex128] to match numba signature.
         op_as_complex = _cast_op(op)
         _evolve_single_jit(self._psi, op_as_complex, self.nqubit, qubit)
 
@@ -340,10 +341,11 @@ class Statevec(DenseState):
 
         Notes
         -----
-        This method assumes that quantum state represented by ``self.psi`` is normalized. See the class docstring for details.
+        This method assumes that quantum state represented by ``self.psi`` is normalized.
+        See the class docstring for details.
         """
         self._check_bounds(qubit)
-        # Downcast from Matrix to np.complex128 to match numba signature.
+        # Downcast from Matrix to npt.NDArray[np.complex128] to match numba signature.
         op_as_complex = _cast_op(op)
         return _expectation_single_jit(self._psi, op_as_complex, self.nqubit, qubit)
 
@@ -431,19 +433,14 @@ class Statevec(DenseState):
         :math:`0_{\mathrm{k}}` replaced with :math:`1_{\mathrm{k}}`.
 
         .. warning::
-            This method assumes the qubit ``qarg`` to be separable from the rest,
+            This method assumes the qubit ``qubit`` to be separable from the rest,
             and is implemented as a significantly faster alternative for partial trace to
-            be used after single-qubit measurements.
-            Separability is not checked.
+            be used after single-qubit measurements. Separability is not checked.
 
         Parameters
         ----------
         qubit : int
             Target qubit index.
-
-        Notes
-        -----
-        The implementation of this method does not support a parallelized kernel because data is read and written on the same array.
         """
         self._check_bounds(qubit)
         self._nqubit = _remove_qubit_jit(self._psi, self.nqubit, qubit, atol=1e-10)
@@ -492,7 +489,7 @@ class Statevec(DenseState):
         IndexError
         """
         if not 0 <= qubit < self.nqubit:
-            raise IndexError(f"Qubit index {qubit} out of range [0, {self.nqubit} -1]")
+            raise IndexError(f"Qubit index {qubit} out of range [0, {self.nqubit - 1}]")
 
     def fidelity(self, other: Statevec) -> float:
         r"""Calculate the fidelity against another statevector.
@@ -797,6 +794,7 @@ def _swap_jit(psi: npt.NDArray[np.complex128], nqubit: int, q1: int, q2: int) ->
 def _compute_op_psi(
     psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, offset: int, size_half_block: int
 ) -> None:
+    """Update ``psi`` in place in step of :func:`_evolve_single_jit`."""
     i1 = b0 + offset
     i2 = i1 + size_half_block
     psi1 = psi[i1]
@@ -807,7 +805,7 @@ def _compute_op_psi(
 
 @nb.njit("(c16[::1], c16[:,:], int32, int32)", parallel=True)
 def _evolve_single_jit(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], nqubit: int, q: int) -> None:
-    r"""Apply a single-qubit operator.
+    """Apply a single-qubit operator.
 
     This function is inspired from Ref. [1].
 
