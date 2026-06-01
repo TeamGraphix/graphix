@@ -19,16 +19,25 @@ import numpy.typing as npt
 from typing_extensions import override
 
 from graphix import states
-from graphix.sim.base_backend import DenseState, DenseStateBackend, DenseStateBackendKwargs, Matrix
+from graphix.sim.base_backend import (
+    DenseState,
+    DenseStateBackend,
+    DenseStateBackendKwargs,
+    Matrix,
+    _outcome_to_operator_matrix,
+)
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any, Literal, Self, TypeVar
 
+    from numpy.random import Generator
+
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.measurements import Measurement, Outcome
     from graphix.parameter import ExpressionOrSupportsComplex
     from graphix.sim.data import Data
 
@@ -442,8 +451,76 @@ class Statevec(DenseState):
         qubit : int
             Target qubit index.
         """
+        raise NotImplementedError("This method is deprecated. See :meth:`self.project_qubit`.")
+
+    def project_qubit(self, op: Matrix, qubit: int) -> None:
+        r"""Project-out a qubit from the system and assemble the statevector of the remaining qubits.
+
+        This method evolves the statevector with ``op`` and removes ``qubit``. It assumes that after the application of ``op``, ``qubit`` is a separable qubit.
+
+        Let :math:`\ket{\psi} = P \ket{\psi} = \sum c_i \ket{i}` be the statevector after the application of the projector ``op``,  with sum taken over
+        :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
+        1 \dots 11 ]`, this method returns
+
+        .. math::
+            \begin{align}
+                \ket{\psi}' =&
+                    c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00}
+                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01}
+                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10}
+                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
+                    & + \dots \\
+                    & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11}
+                    \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
+           \end{align}
+
+        (after normalization) for :math:`k =` ``qubit``. If the :math:`k` th qubit is in the :math:`\ket{1}` state, all the amplitudes above will be zero.
+        In that case the returned state will be the one above with
+        :math:`0_{\mathrm{k}}` replaced with :math:`1_{\mathrm{k}}`.
+
+        .. warning::
+            This method assumes that ``op`` is a projector, and therefore that ``qubit`` is a separable ``qubit`` after applying ``op``. It is
+            implemented as a significantly faster alternative for partial trace to
+            be used after single-qubit measurements. Separability is not checked.
+
+        Parameters
+        ----------
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2, 2)` representing
+            the projector to apply.
+        qubit : int
+            Target qubit index.
+
+        Notes
+        -----
+        This method combines :meth:`evolve_single` and :meth:`remove_qubit`.
+
+        First, the relevant entries of ``self.psi`` are partitioned into two
+        disjoint subvectors. The partition depends on the value of ``q``. For a
+        three-qubit statevector ``[a0, a1, a2, a3, a4, a5, a6, a7]``:
+
+        ::
+
+            q = 0: sv0 = [a0, a1, a2, a3], sv1 = [a4, a5, a6, a7]
+            q = 1: sv0 = [a0, a1, a4, a5], sv1 = [a2, a3, a6, a7]
+            q = 2: sv0 = [a0, a2, a4, a6], sv1 = [a1, a3, a5, a7]
+
+        The statevector is then iterated over as in :meth:`evolve_single`,
+        updating ``self.psi`` in place while computing the norm of each
+        partition separately.
+
+        If both resulting subvectors have nonzero norm, they are guaranteed to
+        be identical. The subvector ``sv0`` is normalized and written to the first
+        ``2**(nqubit - 1)`` entries of ``self.psi``.
+
+        If exactly one subvector has nonzero norm, that subvector is selected.
+        If both have zero norm, a ``RuntimeError`` is raised.
+        """
         self._check_bounds(qubit)
-        self._nqubit = _remove_qubit_jit(self._psi, self.nqubit, qubit, atol=1e-10)
+        op_as_complex = _cast_op(op)
+        self._nqubit = _project_qubit_jit(self._psi, op_as_complex, self.nqubit, qubit, atol=1e-10)
 
     @override
     def swap(self, qubits: tuple[int, int]) -> None:
@@ -715,6 +792,57 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
         )
         return cls(state_init, **kwargs)
 
+    @override
+    def measure(
+        self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
+    ) -> Outcome:
+        """Measure a node and trace out the corresponding qubit.
+
+        This method differs from :meth:`DenseStateBackend.measure` in that it calls
+        ``self.state.project_qubit`` instead of ``self.state.evolve_single`` and
+        ``self.state.remove_qubit``. This allows to measure the node in one less pass
+        over ``self.state.psi``.
+
+        Parameters
+        ----------
+        node : int
+            Index of the node to measure.
+        measurement : Measurement
+            Measurement specification defining the measurement plane and angle.
+        rng : Generator, optional
+            Random number generator used for probabilistic outcome sampling.
+        stacklevel : int, default=1
+            Stack level passed to the branch selector for warning reporting.
+
+        Returns
+        -------
+        Outcome
+            Measurement outcome.
+        """
+        loc = self.node_index.index(node)
+        bloch = measurement.to_bloch()
+        vec = bloch.plane.polar(bloch.angle)
+        # op_mat0 may contain the matrix operator associated with the outcome 0,
+        # but the value is computed lazily, i.e., only if needed.
+        op_mat0 = None
+
+        def compute_op_mat0() -> Matrix:
+            nonlocal op_mat0
+            if op_mat0 is None:
+                op_mat0 = _outcome_to_operator_matrix(vec, 0, symbolic=False)
+            return op_mat0
+
+        def f_expectation0() -> float:
+            exp_val = self.state.expectation_single(compute_op_mat0(), loc)
+            assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
+            return exp_val.real
+
+        outcome = self.branch_selector.measure(node, f_expectation0, rng, stacklevel=stacklevel + 1)
+        op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=False) if outcome else compute_op_mat0()
+        self.state.project_qubit(op_mat, loc)
+        self.node_index.remove(node)
+        return outcome
+
 
 @nb.njit("(c16[::1], c16[::1], int32, int32)")
 def _tensor_jit(
@@ -792,10 +920,10 @@ def _swap_jit(psi: npt.NDArray[np.complex128], nqubit: int, q1: int, q2: int) ->
 
 @nb.njit("(c16[::1], c16[:,:], int32, int32, int32)")
 def _compute_op_psi(
-    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, offset: int, size_half_block: int
+    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, j: int, size_half_block: int
 ) -> None:
     """Update ``psi`` in place in step of :func:`_evolve_single_jit`."""
-    i1 = b0 + offset
+    i1 = b0 + j
     i2 = i1 + size_half_block
     psi1 = psi[i1]
     psi2 = psi[i2]
@@ -823,24 +951,24 @@ def _evolve_single_jit(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.compl
             for b in nb.prange(nblocks):
                 # WARNING: setting `b0 += size_block` may result in a race condition if parallel loop.
                 b0 = size_block * b
-                for offset in range(size_half_block):
-                    _compute_op_psi(psi, op, b0, offset, size_half_block)
+                for j in range(size_half_block):
+                    _compute_op_psi(psi, op, b0, j, size_half_block)
         else:
-            for offset in nb.prange(size_half_block):
-                _compute_op_psi(psi, op, 0, offset, size_half_block)
+            for j in nb.prange(size_half_block):
+                _compute_op_psi(psi, op, 0, j, size_half_block)
     else:
         b0 = 0
         for _ in range(nblocks):
-            for offset in range(size_half_block):
-                _compute_op_psi(psi, op, b0, offset, size_half_block)
+            for j in range(size_half_block):
+                _compute_op_psi(psi, op, b0, j, size_half_block)
             b0 += size_block
 
 
 @nb.njit("c16(c16[::1], c16[:,:], int32, int32, int32)")
 def _compute_psic_op_psi(
-    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, offset: int, size_half_block: int
+    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, j: int, size_half_block: int
 ) -> complex:
-    i1 = b0 + offset
+    i1 = b0 + j
     i2 = i1 + size_half_block
     psi1 = psi[i1]
     psi2 = psi[i2]
@@ -862,9 +990,7 @@ def _expectation_single_jit(
     """
     nblocks = 1 << q
     size_block = 1 << nqubit - q
-    size_half_block = (
-        size_block >> 1
-    )  # Left-to-right tensor product encoding (first qubit corresponds to most significant bit). For right-to-left encoding use `size_half_block = 1 << i`
+    size_half_block = size_block >> 1
 
     result = 0.0 + 0.0j
 
@@ -873,16 +999,16 @@ def _expectation_single_jit(
             for b in nb.prange(nblocks):
                 # WARNING: setting `b0 += size_block` may result in a race condition if parallel loop.
                 b0 = size_block * b
-                for offset in range(size_half_block):
-                    result += _compute_psic_op_psi(psi, op, b0, offset, size_half_block)
+                for j in range(size_half_block):
+                    result += _compute_psic_op_psi(psi, op, b0, j, size_half_block)
         else:
-            for offset in nb.prange(size_half_block):
-                result += _compute_psic_op_psi(psi, op, 0, offset, size_half_block)
+            for j in nb.prange(size_half_block):
+                result += _compute_psic_op_psi(psi, op, 0, j, size_half_block)
     else:
         b0 = 0
         for _ in range(nblocks):
-            for offset in range(size_half_block):
-                result += _compute_psic_op_psi(psi, op, b0, offset, size_half_block)
+            for j in range(size_half_block):
+                result += _compute_psic_op_psi(psi, op, b0, j, size_half_block)
             b0 += size_block
 
     return result
@@ -913,48 +1039,71 @@ def _entangle_jit(psi: npt.NDArray[np.complex128], nqubit: int, control: int, ta
                 psi[i] = -psi[i]
 
 
-@nb.njit("f8(c16[::1], int32, int32)")
-def _compute_a2(
-    psi: npt.NDArray[np.complex128],
-    b0: int,
-    j: int,
-) -> float:
-    a = psi[b0 + j]
-    a_re = a.real
-    a_im = a.imag
-    return a_re * a_re + a_im * a_im  # type: ignore[no-any-return]
+@nb.njit("types.UniTuple(f8, 2)(c16[::1], c16[:,:], int32, int32, int32)")
+def _compute_op_psi_a2(
+    psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, j: int, size_half_block: int
+) -> tuple[float, float]:
+    """Update ``psi`` in place in step of :func:`_compute_norm_and_evolve_single_jit` and compute ``abs(psi)**2`` of updated elements."""
+    # WARNING: Updating in-place a two-dimensional np.array for the the norm, e.g.,
+    # `norm2_array[0] += norm2``
+    # may result in a race condition. Return a tuple instead!!
+    i1 = b0 + j
+    i2 = i1 + size_half_block
+    psi1 = psi[i1]
+    psi2 = psi[i2]
+    a1 = op[0, 0] * psi1 + op[0, 1] * psi2
+    a2 = op[1, 0] * psi1 + op[1, 1] * psi2
+    psi[i1] = a1
+    psi[i2] = a2
+
+    a1_re = a1.real
+    a1_im = a1.imag
+    norm2_1 = a1_re * a1_re + a1_im * a1_im
+
+    a2_re = a2.real
+    a2_im = a2.imag
+    norm2_2 = a2_re * a2_re + a2_im * a2_im
+
+    return norm2_1, norm2_2
 
 
-@nb.njit("f8(c16[::1], int32, int32, int32, int32, int32)", parallel=True)
-def _compute_norm(
+@nb.njit("types.UniTuple(f8, 2)(c16[::1], c16[:,:], int32, int32, int32, int32)", parallel=True)
+def _compute_norm_and_evolve_single(
     psi: npt.NDArray[np.complex128],
+    op: npt.NDArray[np.complex128],
     nqubit: int,
     n_blocks: int,
     size_block: int,
     size_half_block: int,
-    shift: int,
-) -> float:
-    """Compute the norm of psi.
+) -> tuple[float, float]:
+    """Evolve the full statevector with ``op`` and compute the norm of ``psi[b0+j]``.
 
     The kernel switches to a parallel implementation when the
     number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
     """
-    norm2 = 0.0
+    norm2_0 = 0.0
+    norm2_1 = 0.0
     if nqubit > NUM_QUBIT_PARALLEL:
         if n_blocks > 1:
             for b in nb.prange(n_blocks):
-                b0 = b * size_block + shift
+                b0 = b * size_block
                 for j in range(size_half_block):
-                    norm2 += _compute_a2(psi, b0, j)
+                    norm2 = _compute_op_psi_a2(psi, op, b0, j, size_half_block)
+                    norm2_0 += norm2[0]
+                    norm2_1 += norm2[1]
         else:
             for j in nb.prange(size_half_block):
-                norm2 += _compute_a2(psi, shift, j)
+                norm2 = _compute_op_psi_a2(psi, op, 0, j, size_half_block)
+                norm2_0 += norm2[0]
+                norm2_1 += norm2[1]
     else:
         for b in range(n_blocks):
-            b0 = b * size_block + shift
+            b0 = b * size_block
             for j in range(size_half_block):
-                norm2 += _compute_a2(psi, b0, j)
-    return norm2
+                norm2 = _compute_op_psi_a2(psi, op, b0, j, size_half_block)
+                norm2_0 += norm2[0]
+                norm2_1 += norm2[1]
+    return norm2_0, norm2_1
 
 
 @nb.njit("void(c16[::1], int32, int32, int32, int32, f8)")
@@ -1005,14 +1154,15 @@ def _scale_psi(
         _scale_psi_kernel(psi, n_blocks, size_block, size_half_block, shift, inv_norm)
 
 
-@nb.njit("int32(c16[::1], int32, int32, f8)")
-def _remove_qubit_jit(
+@nb.njit("int32(c16[::1], c16[:,:], int32, int32, f8)")
+def _project_qubit_jit(
     psi: npt.NDArray[np.complex128],
+    op: npt.NDArray[np.complex128],
     nqubit: int,
     q: int,
     atol: float,
 ) -> int:
-    """Remove qubit.
+    """Evolve the statevector with ``op`` and remove qubit ``q``.
 
     Argument ``atol`` controls the tolerance below which norm of statevector is 0.
     See :meth:`Statevec.remove_qubit` for additional details on the implementation.
@@ -1026,14 +1176,15 @@ def _remove_qubit_jit(
     size_block = 1 << nqubit - q  # 2**(nqubits - q)
     size_half_block = size_block >> 1
 
-    # Compute norm of branch 0
+    # Apply `op` to the full statevector and compute norm of branch 0
     shift = 0
-    norm2 = _compute_norm(psi, nqubit, n_blocks, size_block, size_half_block, shift)
 
-    # If norm of branch 0 is 0, compute norm of branch 1 and set shift to branch 1
+    norm2, norm2_1 = _compute_norm_and_evolve_single(psi, op, nqubit, n_blocks, size_block, size_half_block)
+
+    # If norm of branch 0 is 0, we pick norm of branch 1 and set shift to branch 1.
     if norm2 <= atol:
         shift = size_half_block
-        norm2 = _compute_norm(psi, nqubit, n_blocks, size_block, size_half_block, shift)
+        norm2 = norm2_1
 
     if norm2 <= atol:
         raise RuntimeError(f"Attempted to remove qubit {q} from 0-norm statevector.")

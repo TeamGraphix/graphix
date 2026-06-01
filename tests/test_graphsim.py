@@ -83,20 +83,17 @@ class TestGraphSim:
         g = GraphState(nodes=np.arange(nqubit), edges=edges)
         gstate = graph_state_to_statevec(g)
         g.measure_x(0)
-        gstate.evolve_single(meas_op(0), 0)  # x meas
-        gstate.remove_qubit(0)
+        gstate.project_qubit(meas_op(0), 0)  # x meas
         gstate2 = graph_state_to_statevec(g)
         assert gstate.isclose(gstate2)
 
         g.measure_y(1, choice=0)
-        gstate.evolve_single(meas_op(0.5 * ANGLE_PI), 0)  # y meas
-        gstate.remove_qubit(0)
+        gstate.project_qubit(meas_op(0.5 * ANGLE_PI), 0)  # y meas
         gstate2 = graph_state_to_statevec(g)
         assert gstate.isclose(gstate2)
 
         g.measure_z(3)
-        gstate.evolve_single(meas_op(0.5 * ANGLE_PI, plane=Plane.YZ), 1)  # z meas
-        gstate.remove_qubit(1)
+        gstate.project_qubit(meas_op(0.5 * ANGLE_PI, plane=Plane.YZ), 1)  # z meas
         gstate2 = graph_state_to_statevec(g)
         assert gstate.isclose(gstate2)
 

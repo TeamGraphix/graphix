@@ -777,13 +777,23 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     def measure(
         self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
     ) -> Outcome:
-        """Perform measurement of a node and trace out the qubit.
+        """Measure a node and trace out the corresponding qubit.
 
         Parameters
         ----------
-        node: int
-        measurement: Measurement
-        rng: Generator, optional
+        node : int
+            Index of the node to measure.
+        measurement : Measurement
+            Measurement specification defining the measurement plane and angle.
+        rng : Generator, optional
+            Random number generator used for probabilistic outcome sampling.
+        stacklevel : int, default=1
+            Stack level passed to the branch selector for warning reporting.
+
+        Returns
+        -------
+        Outcome
+            Measurement outcome.
         """
         loc = self.node_index.index(node)
         bloch = measurement.to_bloch()

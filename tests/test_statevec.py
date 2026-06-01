@@ -244,8 +244,11 @@ class TestStatevec:
             ),
         ],
     )
-    def test_remove_qubit(self, sv: Statevec, q: int, sv_ref: Statevec) -> None:
-        sv.remove_qubit(q)
+    def test_project_qubit(self, sv: Statevec, q: int, sv_ref: Statevec) -> None:
+        # This test mimics the behavior of former `remove_qubit`.
+        op = np.eye(2, dtype=np.complex128)
+        sv.project_qubit(op, q)
+        assert np.linalg.norm(sv.psi) == pytest.approx(1)
         assert np.allclose(sv.flatten(), sv_ref.flatten())
 
     @pytest.mark.parametrize(
@@ -270,9 +273,9 @@ class TestStatevec:
         if state is BasicStates.MINUS:
             # Measurement into |-> results in a 0-norm vector
             with pytest.raises(RuntimeError):
-                sv.remove_qubit(k)
+                sv.project_qubit(m_op, k)
         else:
-            sv.remove_qubit(k)
+            sv.project_qubit(m_op, k)
             sv2 = Statevec(nqubit=n - 1)
             assert sv.isclose(sv2)
 
