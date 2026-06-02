@@ -136,12 +136,10 @@ class Clifford(Enum):
             return Clifford(CLIFFORD_MUL[self.value][other.value])
         return NotImplemented
 
-    def measure(self, pauli: Pauli) -> Pauli:
-        """Compute C† P C."""
-        if pauli.symbol == I:
-            return copy.deepcopy(pauli)
+    def measure_axis(self, axis: Axis) -> Pauli:
+        """Compute C† P C with P the Pauli +axis."""
         table = CLIFFORD_MEASURE[self.value]
-        match pauli.symbol:
+        match axis:
             case Axis.X:
                 symbol, sign = table.x
             case Axis.Y:
@@ -149,8 +147,15 @@ class Clifford(Enum):
             case Axis.Z:
                 symbol, sign = table.z
             case _:
-                typing_extensions.assert_never(pauli.symbol)
-        return pauli.unit * Pauli(symbol, ComplexUnit.from_properties(sign=sign))
+                typing_extensions.assert_never(axis)
+        return Pauli(symbol, ComplexUnit.from_properties(sign=sign))
+
+    def measure(self, pauli: Pauli) -> Pauli:
+        """Compute C† P C."""
+        if pauli.symbol == I:
+            return copy.deepcopy(pauli)
+        new_pauli = self.measure_axis(pauli.symbol)
+        return pauli.unit * new_pauli
 
     def commute_domains(self, domains: Domains) -> Domains:
         """

@@ -25,7 +25,6 @@ from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
-from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevec
@@ -47,6 +46,7 @@ if TYPE_CHECKING:
     from graphix.clifford import Clifford
     from graphix.command import CommandType
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
+    from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
@@ -276,7 +276,7 @@ class Pattern:
                 stacklevel=2,
             )
 
-        shift = max(*nodes_p1, *mapping.values()) + 1
+        shift = max((*nodes_p1, *mapping.values())) + 1
         mapping_sequential = {
             node: i for i, node in enumerate(sorted(nodes_p2 - mapping.keys()), start=shift)
         }  # assigns new labels to nodes in other not specified in mapping
@@ -1134,44 +1134,16 @@ class Pattern:
     def extract_opengraph(self) -> OpenGraph[Measurement]:
         r"""Extract the underlying resource-state open graph from the pattern.
 
+        This method standardizes the pattern first to guarantee that
+        Clifford commands are properly encoded in the resulting open graph.
+        Specifically, Cliffords acting on measured nodes are absorbed into measurements,
+        while Cliffords acting on output nodes are stored in ``OpenGraph.output_cliffords``.
+
         Returns
         -------
         OpenGraph[Measurement]
-
-        Raises
-        ------
-        ValueError
-            If `N` commands in the pattern do not represent a :math:`|+\rangle` state.
-
-        Notes
-        -----
-        This operation loses all the information on the Clifford commands.
         """
-        nodes = set(self.input_nodes)
-        edges: set[tuple[int, int]] = set()
-        measurements: dict[int, Measurement] = {}
-
-        for cmd in self.__seq:
-            match cmd.kind:
-                case CommandKind.N:
-                    if cmd.state != BasicStates.PLUS:
-                        raise PatternError(
-                            f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
-                        )
-                    nodes.add(cmd.node)
-                case CommandKind.E:
-                    u, v = cmd.nodes
-                    if u > v:
-                        u, v = v, u
-                    edges.symmetric_difference_update({(u, v)})
-                case CommandKind.M:
-                    measurements[cmd.node] = cmd.measurement
-
-        graph = nx.Graph(edges)
-        graph.add_nodes_from(nodes)
-
-        # Inputs and outputs are casted to `tuple` to replicate the behavior of `:func: graphix.opitmization.StandardizedPattern.extract_opengraph`.
-        return OpenGraph(graph, tuple(self.__input_nodes), tuple(self.__output_nodes), measurements)
+        return optimization.StandardizedPattern.from_pattern(self).extract_opengraph()
 
     def extract_clifford(self) -> dict[int, Clifford]:
         """Extract Clifford commands.
@@ -1438,7 +1410,6 @@ class Pattern:
         *,
         annotations: DrawPatternAnnotations | None = DrawPatternAnnotations.Flow,
         flow_from_pattern: bool = True,
-        show_local_clifford: bool = False,
         stacklevel: int = 1,
         **options: Unpack[DrawKwargs],
     ) -> None:
@@ -1453,8 +1424,6 @@ class Pattern:
                 - ``None``: show the underlying open graph only.
         flow_from_pattern : bool, default=True
             If ``True``, the command sequence of the pattern is used to derive flow or gflow structure. If ``False``, only the underlying opengraph is used.
-        show_local_clifford : bool, default=False
-            If ``True``, the local Clifford operators are printed.
         options : Unpack[DrawKwargs]
             Options controlling graph visualization. See :class:`VisualizationOptions`.
         stacklevel : int, optional
@@ -1470,9 +1439,6 @@ class Pattern:
         -----
         If ``flow_from_pattern==True`` but the pattern is not compatible with a gflow, an attempt to be extract the flow from the underlying open graph will be made while warning the user.
         """
-        lc = self.extract_clifford() if show_local_clifford else None
-        options.setdefault("local_clifford", lc)
-
         if annotations is None:
             og = self.extract_opengraph()
             gv = GraphVisualizer.from_opengraph(og=og, **options)
