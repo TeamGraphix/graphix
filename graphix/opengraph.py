@@ -682,7 +682,10 @@ class OpenGraph(Generic[_AM_co]):
         - :math:`O = (O_1 \cup O_2) \setminus M \cup (O_1 \cap O_2 \cap M)`,
         - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
         - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
-        - Clifford operations on output nodes are propagated to the output nodes of the resulting open graph or incorporated into measurements if the Clifford-decorated nodes were merged with measured nodes.
+        - Clifford operations on output nodes:
+            - if two output nodes :math:`o_1` and :math:`o_2` are merged, then :math:`C(o_1) = C_2(o_2) \circ C_1(o_1)`;
+            - if an output node :math:`o_1` is merged with a measured node :math:`m_2`, then :math:`M(o_1) = M_2(m_2) \circ C_1(o_1)`;
+            - if a measured node :math:`m_1` is merged with an output node :math:`o_2`, then :math:`M(m_1) = M_1(m_1) \circ C_2(o_2)`.
         """
         if not (mapping.keys() <= other.graph.nodes):
             raise ValueError("Keys of mapping must be correspond to nodes of other.")

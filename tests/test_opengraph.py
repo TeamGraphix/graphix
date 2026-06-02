@@ -830,7 +830,7 @@ def _compose_6() -> OpenGraphComposeTestCase:
 
     Graph 2
     [1]_{XY(0)} -- (2)_X
-    
+
     Mapping: 1 -> 2
 
     Expected graph
@@ -873,7 +873,7 @@ def _compose_7() -> OpenGraphComposeTestCase:
 
     Graph 2
     [1]_{XY(0)} -- (2)_Z
-    
+
     Mapping: 2-> 1
 
     Expected graph
