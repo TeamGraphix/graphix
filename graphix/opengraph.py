@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
 from warnings import warn
 
 import networkx as nx
 
+from graphix.clifford import Clifford
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
@@ -48,6 +50,8 @@ class OpenGraph(Generic[_AM_co]):
         An ordered sequence of node labels corresponding to the open graph outputs.
     measurements : Mapping[int, _AM_co]
         A mapping between the non-output nodes of the open graph (``key``) and their corresponding measurement label (``value``). Measurement labels can be specified as `Measurement`, `Plane` or `Axis` instances.
+    output_cliffords: Mapping[int, Clifford]
+        A mapping between output nodes of the open graph (``key``) and Clifford operators. This attribute allows to preserve the semantics of (deterministic) patterns with local-clifford commands when extracting the open graph. See :meth:`Pattern.extract_opengraph`.
 
     Notes
     -----
@@ -70,6 +74,7 @@ class OpenGraph(Generic[_AM_co]):
     input_nodes: Sequence[int]
     output_nodes: Sequence[int]
     measurements: Mapping[int, _AM_co]
+    output_cliffords: Mapping[int, Clifford] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate the correctness of the open graph."""
@@ -91,6 +96,8 @@ class OpenGraph(Generic[_AM_co]):
             raise OpenGraphError("Input nodes contain duplicates.")
         if len(outputs) != len(self.output_nodes):
             raise OpenGraphError("Output nodes contain duplicates.")
+        if not outputs.issuperset(self.output_cliffords.keys()):
+            raise OpenGraphError("Cliffords in `output_cliffords` mapping can only act on output nodes.")
 
     def to_pattern(self: OpenGraph[Measurement], *, stacklevel: int = 1) -> Pattern:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
@@ -145,7 +152,6 @@ class OpenGraph(Generic[_AM_co]):
         from graphix.visualization import GraphVisualizer  # noqa: PLC0415  Avoid circular imports
 
         gv = GraphVisualizer.from_opengraph(og=self, **options)
-
         gv.visualize()
 
     def map(self: OpenGraph[_A], f: Callable[[_A], _B]) -> OpenGraph[_B]:
@@ -177,7 +183,7 @@ class OpenGraph(Generic[_AM_co]):
         {0: Plane.XY, 1: Plane.YZ}
         """
         measurements = {node: f(meas) for node, meas in self.measurements.items()}
-        return OpenGraph(self.graph, self.input_nodes, self.output_nodes, measurements)
+        return OpenGraph(self.graph, self.input_nodes, self.output_nodes, measurements, self.output_cliffords)
 
     def to_bloch(self: OpenGraph[Measurement]) -> OpenGraph[BlochMeasurement]:
         """Return the open graph where all measurements are converted to Bloch.
@@ -288,6 +294,7 @@ class OpenGraph(Generic[_AM_co]):
             - Truly equal underlying graphs (not up to an isomorphism).
             - Equal input and output nodes.
             - Same measurement planes or axes and approximately equal measurement angles if the open graph is of parametric type `Measurement`.
+            - Equal ``output_cliffords`` mappings.
 
         The static typer does not allow an ``isclose`` comparison of two open graphs with different parametric type. For a structural comparison, see :func:`OpenGraph.is_equal_structurally`.
         """
@@ -313,6 +320,7 @@ class OpenGraph(Generic[_AM_co]):
         This method verifies the open graphs have:
             - Truly equal underlying graphs (not up to an isomorphism).
             - Equal input and output nodes. This assumes equal types as well, i.e., if ``self.input_nodes`` is a ``list`` and ``other.input_nodes`` is a ``tuple``, this method will return ``False``.
+            - Equal ``output_cliffords`` mappings.
         It assumes the open graphs are well formed.
 
         The static typer allows comparing the structure of two open graphs with different parametric type.
@@ -321,6 +329,7 @@ class OpenGraph(Generic[_AM_co]):
             nx.utils.graphs_equal(self.graph, other.graph)
             and self.input_nodes == other.input_nodes
             and self.output_nodes == other.output_nodes
+            and self.output_cliffords == other.output_cliffords
         )
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:
@@ -667,26 +676,42 @@ class OpenGraph(Generic[_AM_co]):
         The open graph composition requires that
         - :math:`V \subseteq V_2`.
         - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
-         The returned open graph follows this convention:
+
+        The returned open graph follows this convention:
         - :math:`I = (I_1 \cup I_2) \setminus M \cup (I_1 \cap I_2 \cap M)`,
         - :math:`O = (O_1 \cup O_2) \setminus M \cup (O_1 \cap O_2 \cap M)`,
         - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
         - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
+        - Clifford operations on output nodes:
+            - if two output nodes :math:`o_1` and :math:`o_2` are merged, then :math:`C(o_1) = C_2(o_2) \circ C_1(o_1)`;
+            - if an output node :math:`o_1` is merged with a measured node :math:`m_2`, then :math:`M(o_1) = M_2(m_2) \circ C_1(o_1)`;
+            - if a measured node :math:`m_1` is merged with an output node :math:`o_2`, then :math:`M(m_1) = M_1(m_1) \circ C_2(o_2)`.
         """
         if not (mapping.keys() <= other.graph.nodes):
             raise ValueError("Keys of mapping must be correspond to nodes of other.")
         if len(mapping) != len(set(mapping.values())):
             raise ValueError("Values in mapping contain duplicates.")
 
-        for v, u in mapping.items():
-            if (
-                (vm := other.measurements.get(v)) is not None
-                and (um := self.measurements.get(u)) is not None
-                and not vm.isclose(um)
-            ):
-                raise OpenGraphError(f"Attempted to merge nodes with different measurements: {v, vm} -> {u, um}.")
+        measurements = {**self.measurements}
+        measurements_other = {**other.measurements}
 
-        shift = max(*self.graph.nodes, *mapping.values()) + 1
+        for v, u in mapping.items():
+            vm = other.measurements.get(v)
+            um = self.measurements.get(u)
+
+            # Validate that shared measurements are compatible
+            if vm is not None and um is not None and not vm.isclose(um):
+                raise OpenGraphError(f"Cannot merge nodes with different measurements: {v, vm} -> {u, um}.")
+
+            # Apply other's output Cliffords onto self's measurement
+            if um is not None and (vc := other.output_cliffords.get(v)) is not None:
+                measurements[u] = um.clifford(vc)
+
+            # Apply self's output Cliffords onto other's measurement
+            if vm is not None and (uc := self.output_cliffords.get(u)) is not None:
+                measurements_other[v] = vm.clifford(uc)
+
+        shift = max((*self.graph.nodes, *mapping.values())) + 1
 
         mapping_sequential = {
             node: i for i, node in enumerate(sorted(other.graph.nodes - mapping.keys()), start=shift)
@@ -709,10 +734,19 @@ class OpenGraph(Generic[_AM_co]):
         inputs = merge_ports(self.input_nodes, other.input_nodes)
         outputs = merge_ports(self.output_nodes, other.output_nodes)
 
-        measurements_shifted = {mapping_complete[i]: meas for i, meas in other.measurements.items()}
-        measurements = {**self.measurements, **measurements_shifted}
+        measurements_shifted = {mapping_complete[i]: meas for i, meas in measurements_other.items()}
+        measurements.update(measurements_shifted)
 
-        return OpenGraph(g, inputs, outputs, measurements), mapping_complete
+        oset = set(outputs)
+        output_cliffords = {node: clifford for node, clifford in self.output_cliffords.items() if node in oset}
+        for node, clifford in other.output_cliffords.items():
+            if (mapped_node := mapping_complete[node]) in oset:
+                # if a clifford `C` has been already applied to a node,
+                # applying a clifford `C'` to the same node is equivalent
+                # to applying `C'C` to a fresh node.
+                output_cliffords[mapped_node] = clifford @ output_cliffords.get(mapped_node, Clifford.I)
+
+        return OpenGraph(g, inputs, outputs, measurements, output_cliffords), mapping_complete
 
     def subs(self: OpenGraph[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> OpenGraph[_M]:
         """Substitute a parameter with a value or expression in all measurement angles.
