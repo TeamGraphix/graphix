@@ -200,6 +200,41 @@ def depolarising_channel(prob: float) -> KrausChannel:
     )
 
 
+def amplitude_damping_channel(prob: float) -> KrausChannel:
+    r"""Single-qubit amplitude damping channel.
+
+    Kraus operators:
+
+    .. math::
+        K_0 =
+        \begin{pmatrix}
+            1 & 0 \\
+            0 & \sqrt{1-\gamma}
+        \end{pmatrix},
+        K_1 =
+        \begin{pmatrix}
+            0 & \sqrt{\gamma} \\
+            0 & 0
+        \end{pmatrix}
+
+    Parameters
+    ----------
+    prob : float
+        The damping probability :math:`\gamma` associated to the channel.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        Channel containing the corresponding Kraus operators.
+    """
+    return KrausChannel(
+        [
+            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]])),
+            KrausData(1.0, np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]])),
+        ]
+    )
+
+
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     r"""Single-qubit Pauli channel.
 
@@ -216,6 +251,29 @@ def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
             KrausData(np.sqrt(px / 3.0), Ops.X),
             KrausData(np.sqrt(py / 3.0), Ops.Y),
             KrausData(np.sqrt(pz / 3.0), Ops.Z),
+        ]
+    )
+
+
+def two_qubit_amplitude_damping_channel(prob: float) -> KrausChannel:
+    r"""Two-qubit tensor product of single-qubit amplitude damping channels.
+
+    Parameters
+    ----------
+    prob : float
+        The damping probability :math:`\gamma` associated to each qubit channel.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        Channel containing the tensor-product Kraus operators.
+    """
+    single_qubit_channel = amplitude_damping_channel(prob)
+    return KrausChannel(
+        [
+            KrausData(ki.coef * kj.coef, np.kron(ki.operator, kj.operator))
+            for ki in single_qubit_channel
+            for kj in single_qubit_channel
         ]
     )
 

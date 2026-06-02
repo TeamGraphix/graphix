@@ -8,10 +8,13 @@ import pytest
 from graphix import Pattern
 from graphix.command import CommandKind, M, N
 from graphix.noise_models import (
+    AmplitudeDampingNoise,
+    AmplitudeDampingNoiseModel,
     ApplyNoise,
     ComposeNoiseModel,
     DepolarisingNoise,
     DepolarisingNoiseModel,
+    TwoQubitAmplitudeDampingNoise,
     TwoQubitDepolarisingNoise,
 )
 from graphix.noise_models.noise_model import NoiselessNoiseModel
@@ -84,6 +87,44 @@ def test_compose_noise_model_transpile(fx_rng: Generator) -> None:
             case CommandKind.Z:
                 check_noise_command(next(iterator), 0.5, False)
                 check_noise_command(next(iterator), 0, False)
+
+
+def test_amplitude_damping_noise_model_transpile(fx_rng: Generator) -> None:
+    nqubits = 5
+    depth = 5
+    circuit = rand_circuit(nqubits, depth, rng=fx_rng)
+    pattern = circuit.transpile().pattern
+    noise_model = AmplitudeDampingNoiseModel(
+        prepare_error_prob=0.1,
+        x_error_prob=0.2,
+        z_error_prob=0.3,
+        entanglement_error_prob=0.4,
+        measure_channel_prob=0.5,
+    )
+    noisy_pattern = noise_model.transpile(pattern, rng=fx_rng)
+    iterator = iter(noisy_pattern)
+
+    def check_noise_command(cmd: CommandOrNoise, prob: float, two_qubits: bool) -> None:
+        assert isinstance(cmd, ApplyNoise)
+        if two_qubits:
+            assert isinstance(cmd.noise, TwoQubitAmplitudeDampingNoise)
+        else:
+            assert isinstance(cmd.noise, AmplitudeDampingNoise)
+        assert cmd.noise.prob == prob
+
+    for cmd in pattern:
+        if cmd.kind == CommandKind.M:
+            check_noise_command(next(iterator), 0.5, False)
+        assert next(iterator) == cmd
+        match cmd.kind:
+            case CommandKind.N:
+                check_noise_command(next(iterator), 0.1, False)
+            case CommandKind.E:
+                check_noise_command(next(iterator), 0.4, True)
+            case CommandKind.X:
+                check_noise_command(next(iterator), 0.2, False)
+            case CommandKind.Z:
+                check_noise_command(next(iterator), 0.3, False)
 
 
 def test_compose_noise_model_simulation(fx_rng: Generator) -> None:

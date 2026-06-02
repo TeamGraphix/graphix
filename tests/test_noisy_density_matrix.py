@@ -9,7 +9,7 @@ import pytest
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
-from graphix.noise_models import DepolarisingNoiseModel
+from graphix.noise_models import AmplitudeDampingNoise, AmplitudeDampingNoiseModel, DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
@@ -109,6 +109,35 @@ class TestNoisyDensityMatrixBackend:
             res.rho,
             np.array([[1 - 2 * measure_channel_pr / 3.0, 0.0], [0.0, 2 * measure_channel_pr / 3.0]]),
         )
+
+    def test_amplitude_damping_measure_channel_hadamard(self, fx_rng: Generator) -> None:
+        hadamardpattern = hpat()
+        measure_channel_pr = fx_rng.random()
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(measure_channel_prob=measure_channel_pr),
+            branch_selector=ConstBranchSelector(0),
+            rng=fx_rng,
+        )
+
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(
+            res.rho,
+            np.array(
+                [
+                    [(1 + np.sqrt(1 - measure_channel_pr)) / 2, 0.0],
+                    [0.0, (1 - np.sqrt(1 - measure_channel_pr)) / 2],
+                ],
+            ),
+        )
+
+    def test_amplitude_damping_channel_on_excited_state(self, fx_rng: Generator) -> None:
+        prob = fx_rng.random()
+        state = DensityMatrix(np.array([[0.0, 0.0], [0.0, 1.0]], dtype=np.complex128))
+
+        state.apply_noise([0], AmplitudeDampingNoise(prob))
+
+        assert np.allclose(state.rho, np.array([[prob, 0.0], [0.0, 1 - prob]]))
 
     # test Pauli X error
     @pytest.mark.parametrize("outcome", [0, 1])

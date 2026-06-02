@@ -9,8 +9,10 @@ import graphix.random_objects as randobj
 from graphix.channels import (
     KrausChannel,
     KrausData,
+    amplitude_damping_channel,
     dephasing_channel,
     depolarising_channel,
+    two_qubit_amplitude_damping_channel,
     two_qubit_depolarising_channel,
     two_qubit_depolarising_tensor_channel,
 )
@@ -118,6 +120,45 @@ class TestChannel:
         for i in range(len(depol_channel)):
             assert np.allclose(depol_channel[i].coef, data[i].coef)
             assert np.allclose(depol_channel[i].operator, data[i].operator)
+
+    def test_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        prob = fx_rng.uniform()
+        data = [
+            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]])),
+            KrausData(1.0, np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]])),
+        ]
+
+        damping_channel = amplitude_damping_channel(prob)
+
+        assert isinstance(damping_channel, KrausChannel)
+        assert damping_channel.nqubit == 1
+        assert len(damping_channel) == 2
+
+        for i in range(len(damping_channel)):
+            assert np.allclose(damping_channel[i].coef, data[i].coef)
+            assert np.allclose(damping_channel[i].operator, data[i].operator)
+
+    def test_2_qubit_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        prob = fx_rng.uniform()
+        single_qubit_data = [
+            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]])),
+            KrausData(1.0, np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]])),
+        ]
+        data = [
+            KrausData(ki.coef * kj.coef, np.kron(ki.operator, kj.operator))
+            for ki in single_qubit_data
+            for kj in single_qubit_data
+        ]
+
+        damping_channel_2_qubit = two_qubit_amplitude_damping_channel(prob)
+
+        assert isinstance(damping_channel_2_qubit, KrausChannel)
+        assert damping_channel_2_qubit.nqubit == 2
+        assert len(damping_channel_2_qubit) == 4
+
+        for i in range(len(damping_channel_2_qubit)):
+            assert np.allclose(damping_channel_2_qubit[i].coef, data[i].coef)
+            assert np.allclose(damping_channel_2_qubit[i].operator, data[i].operator)
 
     def test_2_qubit_depolarising_channel(self, fx_rng: Generator) -> None:
         prob = fx_rng.uniform()
