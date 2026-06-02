@@ -19,11 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #507: Introduced new methods `PauliString.__str__`, `PauliString.from_str`, `PauliString.to_tableau`, and `PauliString.from_tableau`.
 
+- #510
+  - Added new attribute `OpenGraph.output_cliffords`
+  - Added `clifford` abstract method to `AbstractMeasurement`. Implemented it for `Plane` and `Axis`.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
 
 - #235, #489: Correct sign for `YZ` measurements in `from_pyzx_graph`. ZX diagrams are now correctly converted into open graphs, even if they are reduced.
+
+- #510
+  - `Pattern.extract_opengraph` returns the same open graph before and after standardization.
+  - The round trip `Pattern` -> `OpenGraph` -> `Flow` -> `XZCorrections` -> `Pattern` is guaranteed for deterministic patterns in the LC fragment.
 
 ### Changed
 
@@ -50,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Field `Pattern.results` and function `incorporate_pauli_results` removed.
 
 - #507: Static method `PauliString.from_measured_node` is subsumed by the function `extraction_ps_from_corrected_node`.
+
+- #510:
+  - `Pattern.extract_opengraph` standardizes the pattern first.
+  - `XZCorrections.to_pattern` applies Cliffords in `OpenGraph.output_cliffords` at the end of the pattern.
+  - `OpenGraph.isclose` and `OpenGraph.is_equal_structurally` check equality of  `OpenGraph.output_cliffords`.
+  - `OpenGraph.compose` merges Clifford decorations with measurements or other Clifford decorations on outputs if required.
+  - `.draw` methods allow to show Clifford commands in the outputs.
+  - `PauliFlow.extract_circuit` raises `NotImplementedError` if the open graph has Clifford decorations.
 
 - #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
 

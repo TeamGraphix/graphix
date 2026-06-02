@@ -89,49 +89,6 @@ class Measurement(AbstractMeasurement):
         return BlochMeasurement(angle, Plane.XZ)
 
     @abstractmethod
-    def clifford(self, clifford_gate: Clifford) -> Self:
-        r"""Return a new measurement command with a :class:`Clifford` applied.
-
-        Parameters
-        ----------
-        clifford_gate : Clifford
-            Clifford gate to apply before the measurement.
-
-        Returns
-        -------
-        Self
-            Equivalent measurement representing the pattern ``MC``.
-
-        Notes
-        -----
-        - The return type is ``Self``, meaning that a Clifford applied
-          to a Bloch measurement returns a Bloch measurement, and a
-          Clifford applied to a Pauli measurement returns a Pauli
-          measurement.
-        - The method :func:`Measurement.clifford` does not always
-          commute with the method :func:`Measurement.to_bloch`: the
-          underlying Pauli measurement will be the same but the Bloch
-          representation can be on different planes.
-
-        Examples
-        --------
-        >>> from graphix.clifford import Clifford
-        >>> from graphix.measurements import Measurement, PauliMeasurement
-        >>> Measurement.XY(0.25).clifford(Clifford.H)
-        Measurement.YZ(1.75)
-        >>> Measurement.X.clifford(Clifford.S)
-        -Measurement.Y
-        >>> for pauli in PauliMeasurement:
-        ...     for clifford in Clifford:
-        ...         assert pauli.to_bloch().clifford(clifford).try_to_pauli() == pauli.clifford(clifford)
-        >>> Measurement.Y.clifford(Clifford.H).to_bloch()
-        Measurement.XY(1.5)
-        >>> Measurement.Y.to_bloch().clifford(Clifford.H)
-        Measurement.YZ(1.5)
-
-        """
-
-    @abstractmethod
     def to_bloch(self) -> BlochMeasurement:
         """Return the measurement description as an angle and a plane on the Bloch sphere.
 
@@ -362,7 +319,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
 
     @override
     def clifford(self, clifford_gate: Clifford) -> BlochMeasurement:
-        new_plane = Plane.from_axes(*(PauliMeasurement(axis).clifford(clifford_gate).axis for axis in self.plane.axes))
+        new_plane = self.plane.clifford(clifford_gate)
         cos_pauli = PauliMeasurement(self.plane.cos).clifford(clifford_gate)
         sin_pauli = PauliMeasurement(self.plane.sin).clifford(clifford_gate)
         exchange = cos_pauli.axis != new_plane.cos
