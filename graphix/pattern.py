@@ -10,7 +10,7 @@ import dataclasses
 import enum
 import itertools
 import warnings
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -35,7 +35,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Container, Iterator, Mapping
+    from collections.abc import Callable, Container, Iterator
     from collections.abc import Set as AbstractSet
     from typing import Any
 
@@ -162,13 +162,47 @@ class Pattern:
         self.clear()
         self.extend(cmds)
 
-    def reindex(self, f: Callable[[Node], Node]) -> Pattern:
-        """Return a pattern whose nodes have been reindexed using ``f``."""
-        new_pattern = Pattern(input_nodes=map(f, self.input_nodes))
+    def reindex(self, f: Callable[[Node], Node] | Mapping[Node, Node] | None = None, *, copy: bool = False) -> Pattern:
+        """Return a pattern whose nodes have been re-indexed using ``f``.
+
+        This method does not verify that ``f`` is injective.  The
+        semantic of the pattern is only preserved when ``f`` is
+        injective.  A non-injective mapping can even break the
+        runnability of the resulting pattern.
+
+        Parameters
+        ----------
+        f : Callable[[Node], Node] | Mapping[Node, Node] | None, optional
+            A function or a mapping that translates the current node
+            indices to new ones.  Indices that are not present in the
+            mapping are left unchanged.  If ``f`` is omitted, a
+            default mapping is applied that re-indexes the nodes
+            consecutively starting at 0.
+
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Pattern
+            The re-indexed pattern. Equal to ``self`` if ``copy`` is ``False``.
+        """
+        if f is None:
+            # Suggested in issue #519
+            f = {node: i for i, node in enumerate(sorted(self.extract_nodes()))}
+        func = (lambda node: f.get(node, node)) if isinstance(f, Mapping) else f
+        new_pattern = Pattern(input_nodes=map(func, self.input_nodes))
         for cmd in self:
-            new_pattern.add(cmd.reindex(f))
-        new_pattern.reorder_output_nodes(map(f, self.output_nodes))
-        return new_pattern
+            new_pattern.add(cmd.reindex(func))
+        new_pattern.reorder_output_nodes(map(func, self.output_nodes))
+        if copy:
+            return new_pattern
+        self.__input_nodes = new_pattern.__input_nodes
+        self.__seq = new_pattern.__seq
+        self.__output_nodes = new_pattern.__output_nodes
+        return self
 
     def compose(
         self, other: Pattern, mapping: Mapping[int, int], preserve_mapping: bool = False

@@ -1070,6 +1070,13 @@ class TestPattern:
             original_pattern.to_bloch().perform_pauli_pushing()
         assert original_pattern.perform_pauli_pushing(copy=True, standardize=True).is_standard()
 
+    def test_reindex(self) -> None:
+        pattern = Pattern(input_nodes=[3], cmds=[N(1), E((1, 3)), M(3), C(1, Clifford.H), X(1, {3}), Z(1, {3})])
+        pattern.reindex()
+        assert pattern.input_nodes == [1]
+        assert list(pattern) == [N(0), E((0, 1)), M(1), C(0, Clifford.H), X(0, {1}), Z(0, {1})]
+        assert pattern.output_nodes == [0]
+
 
 def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
