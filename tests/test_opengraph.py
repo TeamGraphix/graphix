@@ -826,14 +826,15 @@ def _compose_6() -> OpenGraphComposeTestCase:
     """Generate composition test with Cliffords.
 
     Graph 1
-    [1] -- (2)
+    [1]_{XY(0)} -- (2)_H
 
-    Graph 2 = Graph 1
-
+    Graph 2
+    [1]_{XY(0)} -- (2)_X
+    
     Mapping: 1 -> 2
 
     Expected graph
-    [1] -- 2 -- (3)
+    [1]_{XY(0)} -- 2_{YZ(0)} -- (3)_X
 
     """
     g: nx.Graph[int] = nx.Graph([(1, 2)])
@@ -868,7 +869,15 @@ def _compose_7() -> OpenGraphComposeTestCase:
     Mapping: 2 -> 1
 
     Expected graph
-    [3] -- [1] -- (2)
+    [1]_{XY(0)} -- (2)
+
+    Graph 2
+    [1]_{XY(0)} -- (2)_Z
+    
+    Mapping: 2-> 1
+
+    Expected graph
+    [3]_{XY(0)} -- [1]_{XY(1)} -- (2)
 
     """
     g: nx.Graph[int] = nx.Graph([(1, 2)])
@@ -895,14 +904,15 @@ def _compose_8() -> OpenGraphComposeTestCase:
     """Generate composition test with Cliffords.
 
     Graph 1
-    [1] -- (2)
+    [1] -- (2)_H
 
-    Graph 2 = Graph 1
+    Graph 2
+    [1] -- (2)_Z
 
     Mapping: 2 -> 2
 
     Expected graph
-    [1] -- (2) -- [3]
+    [1] -- (2)_{Z.H} -- [3]
 
     """
     g: nx.Graph[int] = nx.Graph([(1, 2)])
@@ -960,14 +970,15 @@ def _compose_10() -> OpenGraphComposeTestCase:
     """Generate composition test with Cliffords.
 
     Graph 1
-    [1] -- (2)
+    [1]_{XY} -- (2)_H
 
-    Graph 2 = Graph 1
+    Graph 2
+    [1]_{XY} -- (2)_X
 
     Mapping: 1 -> 2
 
     Expected graph
-    [1] -- 2 -- (3)
+    [1]_{XY} -- 2_{YZ} -- (3)_X
 
     """
     g: nx.Graph[int] = nx.Graph([(1, 2)])
