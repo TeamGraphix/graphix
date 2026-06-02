@@ -1079,10 +1079,18 @@ class TestPattern:
 
     def test_reindex(self) -> None:
         pattern = Pattern(input_nodes=[3], cmds=[N(1), E((1, 3)), M(3), C(1, Clifford.H), X(1, {3}), Z(1, {3})])
+        pattern_copy = pattern.copy()
+        pattern_reindexed = pattern.reindex(copy=True)
+        assert pattern_reindexed.input_nodes == [1]
+        assert list(pattern_reindexed) == [N(0), E((0, 1)), M(1), C(0, Clifford.H), X(0, {1}), Z(0, {1})]
+        assert pattern_reindexed.output_nodes == [0]
+        assert pattern.input_nodes == pattern_copy.input_nodes
+        assert list(pattern) == list(pattern_copy)
+        assert pattern.output_nodes == pattern_copy.output_nodes
         pattern.reindex()
-        assert pattern.input_nodes == [1]
-        assert list(pattern) == [N(0), E((0, 1)), M(1), C(0, Clifford.H), X(0, {1}), Z(0, {1})]
-        assert pattern.output_nodes == [0]
+        assert pattern.input_nodes == pattern_reindexed.input_nodes
+        assert list(pattern) == list(pattern_reindexed)
+        assert pattern.output_nodes == pattern_reindexed.output_nodes
 
     def test_extract_opengraph_standardization(self) -> None:
         p = Pattern(cmds=[N(0), C(0, Clifford.H), M(0, Measurement.XY(0.3))])
