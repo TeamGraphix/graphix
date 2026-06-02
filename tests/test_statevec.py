@@ -15,7 +15,7 @@ from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.pauli import Pauli
 from graphix.random_objects import rand_unit
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.statevec import NUM_QUBIT_PARALLEL, Statevec, StatevectorBackend
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
@@ -423,8 +423,11 @@ class TestStatevec:
             assert np.isclose(dict_ref[ket], amp2.real)
             assert np.isclose(0, amp2.imag)
 
-    def test_simulation_identity(self, fx_rng: Generator) -> None:
-        nqubits = 3
+    # Run with `nqubits` larger and smaller than ``graphix.sim.statevec.NUM_QUBIT_PARALLEL``
+    # to test parallelized and non-parallelized kernels.
+    # This usually allows to detect race conditions.
+    @pytest.mark.parametrize("nqubits", [3, NUM_QUBIT_PARALLEL + 1])
+    def test_simulation_identity(self, fx_rng: Generator, nqubits: int) -> None:
         qc = Circuit(nqubits)
         angle_1 = 2 * fx_rng.random()
         angle_2 = 2 * fx_rng.random()

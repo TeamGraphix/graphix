@@ -24,7 +24,6 @@ from graphix.sim.base_backend import (
     DenseStateBackend,
     DenseStateBackendKwargs,
     Matrix,
-    _outcome_to_operator_matrix,
 )
 from graphix.states import BasicStates
 
@@ -32,12 +31,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any, Literal, Self, TypeVar
 
-    from numpy.random import Generator
-
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
-    from graphix.measurements import Measurement, Outcome
     from graphix.parameter import ExpressionOrSupportsComplex
     from graphix.sim.data import Data
 
@@ -417,34 +413,7 @@ class Statevec(DenseState):
     def remove_qubit(self, qubit: int) -> None:
         r"""Remove a separable qubit from the system and assemble the statevector of the remaining qubits.
 
-        This is equivalent to the partial trace if ``qubit`` corresponds to a separable qubit.
-
-        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over
-        :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
-        1 \dots 11 ]`, this method returns
-
-        .. math::
-            \begin{align}
-                \ket{\psi}' =&
-                    c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00}
-                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
-                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01}
-                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
-                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10}
-                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
-                    & + \dots \\
-                    & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11}
-                    \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
-           \end{align}
-
-        (after normalization) for :math:`k =` ``qubit``. If the :math:`k` th qubit is in the :math:`\ket{1}` state, all the amplitudes above will be zero.
-        In that case the returned state will be the one above with
-        :math:`0_{\mathrm{k}}` replaced with :math:`1_{\mathrm{k}}`.
-
-        .. warning::
-            This method assumes the qubit ``qubit`` to be separable from the rest,
-            and is implemented as a significantly faster alternative for partial trace to
-            be used after single-qubit measurements. Separability is not checked.
+        This method is deprecated. See :meth:`self.project_qubit`.
 
         Parameters
         ----------
@@ -454,11 +423,11 @@ class Statevec(DenseState):
         raise NotImplementedError("This method is deprecated. See :meth:`self.project_qubit`.")
 
     def project_qubit(self, op: Matrix, qubit: int) -> None:
-        r"""Project-out a qubit from the system and assemble the statevector of the remaining qubits.
+        r"""Project out a qubit from the system and assemble the statevector of the remaining qubits.
 
         This method evolves the statevector with ``op`` and removes ``qubit``. It assumes that after the application of ``op``, ``qubit`` is a separable qubit.
 
-        Let :math:`\ket{\psi} = P \ket{\psi} = \sum c_i \ket{i}` be the statevector after the application of the projector ``op``,  with sum taken over
+        Let :math:`P \ket{\psi} = \sum c_i \ket{i}` be the statevector after the application of the projector :math:`P` (``op``),  with sum taken over
         :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
         1 \dots 11 ]`, this method returns
 
@@ -792,57 +761,6 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
         )
         return cls(state_init, **kwargs)
 
-    @override
-    def measure(
-        self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
-    ) -> Outcome:
-        """Measure a node and trace out the corresponding qubit.
-
-        This method differs from :meth:`DenseStateBackend.measure` in that it calls
-        ``self.state.project_qubit`` instead of ``self.state.evolve_single`` and
-        ``self.state.remove_qubit``. This allows to measure the node in one less pass
-        over ``self.state.psi``.
-
-        Parameters
-        ----------
-        node : int
-            Index of the node to measure.
-        measurement : Measurement
-            Measurement specification defining the measurement plane and angle.
-        rng : Generator, optional
-            Random number generator used for probabilistic outcome sampling.
-        stacklevel : int, default=1
-            Stack level passed to the branch selector for warning reporting.
-
-        Returns
-        -------
-        Outcome
-            Measurement outcome.
-        """
-        loc = self.node_index.index(node)
-        bloch = measurement.to_bloch()
-        vec = bloch.plane.polar(bloch.angle)
-        # op_mat0 may contain the matrix operator associated with the outcome 0,
-        # but the value is computed lazily, i.e., only if needed.
-        op_mat0 = None
-
-        def compute_op_mat0() -> Matrix:
-            nonlocal op_mat0
-            if op_mat0 is None:
-                op_mat0 = _outcome_to_operator_matrix(vec, 0, symbolic=False)
-            return op_mat0
-
-        def f_expectation0() -> float:
-            exp_val = self.state.expectation_single(compute_op_mat0(), loc)
-            assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
-            return exp_val.real
-
-        outcome = self.branch_selector.measure(node, f_expectation0, rng, stacklevel=stacklevel + 1)
-        op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=False) if outcome else compute_op_mat0()
-        self.state.project_qubit(op_mat, loc)
-        self.node_index.remove(node)
-        return outcome
-
 
 @nb.njit("(c16[::1], c16[::1], int32, int32)")
 def _tensor_jit(
@@ -1043,7 +961,7 @@ def _entangle_jit(psi: npt.NDArray[np.complex128], nqubit: int, control: int, ta
 def _compute_op_psi_a2(
     psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, j: int, size_half_block: int
 ) -> tuple[float, float]:
-    """Update ``psi`` in place in step of :func:`_compute_norm_and_evolve_single_jit` and compute ``abs(psi)**2`` of updated elements."""
+    """Update ``psi`` in place in step of :func:`_evolve_single_and_compute_norm_jit` and compute ``abs(psi)**2`` of updated elements."""
     # WARNING: Updating in-place a two-dimensional np.array for the the norm, e.g.,
     # `norm2_array[0] += norm2``
     # may result in a race condition. Return a tuple instead!!
@@ -1068,7 +986,7 @@ def _compute_op_psi_a2(
 
 
 @nb.njit("types.UniTuple(f8, 2)(c16[::1], c16[:,:], int32, int32, int32, int32)", parallel=True)
-def _compute_norm_and_evolve_single(
+def _evolve_single_and_compute_norm(
     psi: npt.NDArray[np.complex128],
     op: npt.NDArray[np.complex128],
     nqubit: int,
@@ -1179,7 +1097,7 @@ def _project_qubit_jit(
     # Apply `op` to the full statevector and compute norm of branch 0
     shift = 0
 
-    norm2, norm2_1 = _compute_norm_and_evolve_single(psi, op, nqubit, n_blocks, size_block, size_half_block)
+    norm2, norm2_1 = _evolve_single_and_compute_norm(psi, op, nqubit, n_blocks, size_block, size_half_block)
 
     # If norm of branch 0 is 0, we pick norm of branch 1 and set shift to branch 1.
     if norm2 <= atol:

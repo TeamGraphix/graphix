@@ -443,6 +443,22 @@ class DenseState(ABC):
             Target qubit index.
         """
 
+    def project_qubit(self, op: Matrix, qubit: int) -> None:
+        r"""Project out a qubit from the system and assemble the statevector of the remaining qubits.
+
+        This method combines :meth:`evolve_single` and :meth:`remove_qubit`. It evolves the statevector with ``op`` and removes ``qubit``. It assumes that after the application of ``op``, ``qubit`` is a separable qubit.
+
+        Parameters
+        ----------
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2, 2)` representing
+            the projector to apply.
+        qubit : int
+            Target qubit index.
+        """
+        self.evolve_single(op, qubit)
+        self.remove_qubit(qubit)
+
     @abstractmethod
     def swap(self, qubits: tuple[int, int]) -> None:
         """Apply SWAP gate between two qubits.
@@ -815,9 +831,8 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
 
         outcome = self.branch_selector.measure(node, f_expectation0, rng, stacklevel=stacklevel + 1)
         op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=self.symbolic) if outcome else compute_op_mat0()
-        self.state.evolve_single(op_mat, loc)
+        self.state.project_qubit(op_mat, loc)
         self.node_index.remove(node)
-        self.state.remove_qubit(loc)
         return outcome
 
     @override
