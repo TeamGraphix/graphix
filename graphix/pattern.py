@@ -192,7 +192,7 @@ class Pattern:
         if f is None:
             # Suggested in issue #519
             f = {node: i for i, node in enumerate(sorted(self.extract_nodes()))}
-        func = (lambda node: f.get(node, node)) if isinstance(f, Mapping) else f
+        func: Callable[[Node], Node] = (lambda node: f.get(node, node)) if isinstance(f, Mapping) else f
         new_pattern = Pattern(input_nodes=map(func, self.input_nodes))
         for cmd in self:
             new_pattern.add(cmd.reindex(func))
