@@ -296,3 +296,53 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
             KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Y)),
         ]
     )
+
+
+def amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Single-qubit amplitude damping channel.
+
+    The channel acts on a density matrix as
+    :math:`\Phi(\rho) = K_1 \rho K_1^\dagger + K_2 \rho K_2^\dagger` with
+
+    .. math::
+        K_1 = \begin{pmatrix} 1 & 0 \\ 0 & \sqrt{1-\gamma} \end{pmatrix}, \quad
+        K_2 = \begin{pmatrix} 0 & \sqrt{\gamma} \\ 0 & 0 \end{pmatrix}.
+
+    It models the decay of the excited state :math:`\lvert 1 \rangle` towards the
+    ground state :math:`\lvert 0 \rangle` with probability ``gamma``.
+
+    Parameters
+    ----------
+    gamma : float
+        Damping parameter, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel`
+        Channel containing the corresponding Kraus operators.
+    """
+    k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1.0 - gamma)]], dtype=np.complex128)
+    k2 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+    return KrausChannel([KrausData(1.0, k1), KrausData(1.0, k2)])
+
+
+def two_qubit_amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Two-qubit amplitude damping channel.
+
+    Tensor product of two independent single-qubit amplitude damping channels
+    sharing the same parameter ``gamma``. Its Kraus operators are the four
+    products :math:`K_i \otimes K_j` of the single-qubit Kraus operators returned
+    by :func:`amplitude_damping_channel`.
+
+    Parameters
+    ----------
+    gamma : float
+        Damping parameter, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel`
+        Channel containing the corresponding Kraus operators.
+    """
+    single = [data.coef * data.operator for data in amplitude_damping_channel(gamma)]
+    return KrausChannel([KrausData(1.0, np.kron(a, b)) for a in single for b in single])
