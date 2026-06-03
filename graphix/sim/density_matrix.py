@@ -21,18 +21,16 @@ from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
 from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, _format_encoding
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-    from typing import Literal, SupportsComplex, SupportsFloat
+    from typing import SupportsComplex, SupportsFloat
 
     from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
-
-    _ENCODING = Literal["LSB", "MSB"]
 
 
 class DensityMatrix(DenseState):
@@ -356,45 +354,6 @@ class DensityMatrix(DenseState):
     def flatten(self) -> Matrix:
         """Return flattened density matrix."""
         return self.rho.flatten()
-
-    def to_dict(
-        self,
-        encoding: _ENCODING = "MSB",
-        *,
-        rtol: float = 0.0,
-        atol: float = 1e-8,
-    ) -> dict[tuple[str, str], np.complex128]:
-        r"""Convert the density matrix to dictionary form.
-
-        This dictionary representation uses ket-bra notation where the dictionary keys
-        are ``(ket, bra)`` pairs of qubit strings for the basis vectors and values are
-        the corresponding complex matrix elements. Elements below a certain threshold
-        are filtered out.
-
-        Parameters
-        ----------
-        encoding : Literal["LSB", "MSB"], default="MSB"
-            Encoding for the basis kets and bras. See :meth:`graphix.sim.statevec.Statevec.to_dict`.
-        rtol : float, default=0.0
-            Relative tolerance used when deciding whether an element should be treated as zero.
-        atol : float, default=1e-8
-            Absolute tolerance used when deciding whether an element should be treated as zero.
-
-        Returns
-        -------
-        dict[tuple[str, str], complex]
-            The density matrix in dictionary form.
-        """
-        result: dict[tuple[str, str], np.complex128] = {}
-        for i in range(2**self.nqubit):
-            for j in range(2**self.nqubit):
-                element = self.rho[i, j]
-                if np.isclose(np.abs(element), 0, rtol=rtol, atol=atol):
-                    continue
-                ket = _format_encoding(self.nqubit, i, encoding)
-                bra = _format_encoding(self.nqubit, j, encoding)
-                result[(ket, bra)] = element
-        return result
 
     def draw(
         self,
