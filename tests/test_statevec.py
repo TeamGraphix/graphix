@@ -8,6 +8,7 @@ import pytest
 
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.pattern import Pattern
+from graphix.pretty_print import OutputFormat, statevec_to_str
 from graphix.sim.statevec import Statevec, _norm_numeric
 from graphix.states import BasicStates, PlanarState
 
@@ -237,6 +238,30 @@ class TestFidelityIsclose:
         for ket, amp2 in sv.to_prob_dict(encoding=encoding).items():
             assert np.isclose(dict_ref[ket], amp2.real)
             assert np.isclose(0, amp2.imag)
+
+
+@pytest.mark.parametrize(
+    ("encoding", "output", "expected"),
+    [
+        ("MSB", OutputFormat.Unicode, "|01⟩"),
+        ("MSB", OutputFormat.ASCII, "|01>"),
+        ("MSB", OutputFormat.LaTeX, r"\(\ket{01}\)"),
+        ("LSB", OutputFormat.Unicode, "|10⟩"),
+    ],
+)
+def test_statevec_draw_single_ket(encoding: _ENCODING, output: OutputFormat, expected: str) -> None:
+    sv = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
+    assert sv.draw(encoding=encoding, output=output) == expected
+    assert statevec_to_str(sv, output, encoding=encoding) == expected
+
+
+def test_statevec_draw_superposition() -> None:
+    sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
+    assert sv.draw(encoding="MSB", output=OutputFormat.Unicode) == "1/2|000⟩ - 1/2|001⟩ + 1/2|010⟩ - 1/2|011⟩"
+    assert statevec_to_str(sv, OutputFormat.Unicode, encoding="MSB") == ("1/2|000⟩ - 1/2|001⟩ + 1/2|010⟩ - 1/2|011⟩")
+    assert sv.draw(encoding="MSB", output=OutputFormat.LaTeX) == (
+        r"\(\frac{1}{2}\ket{000} - \frac{1}{2}\ket{001} + \frac{1}{2}\ket{010} - \frac{1}{2}\ket{011}\)"
+    )
 
 
 def test_normalize() -> None:

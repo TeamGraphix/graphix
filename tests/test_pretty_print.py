@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import cmath
+import math
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -13,7 +15,7 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
-from graphix.pretty_print import OutputFormat, pattern_to_str
+from graphix.pretty_print import OutputFormat, complex_to_str, pattern_to_str
 from graphix.random_objects import rand_circuit
 from graphix.transpiler import Circuit
 
@@ -202,3 +204,40 @@ def test_xzcorr_str() -> None:
         str(flow)
         == "x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}; z(1) = {4, 5}, z(2) = {3, 6}; {1, 2} < {3, 4} < {5, 6}"
     )
+
+
+@pytest.mark.parametrize(
+    ("z", "output", "expected"),
+    [
+        (0.25, OutputFormat.ASCII, "1/4"),
+        (0.25, OutputFormat.Unicode, "1/4"),
+        (0.25, OutputFormat.LaTeX, r"\frac{1}{4}"),
+        (0.25 + 0j, OutputFormat.Unicode, "1/4"),
+        (0.70710678, OutputFormat.ASCII, "sqrt(2)/2"),
+        (0.70710678, OutputFormat.Unicode, "√2/2"),
+        (0.70710678, OutputFormat.LaTeX, r"\frac{\sqrt{2}}{2}"),
+        (math.sqrt(3) / 2, OutputFormat.Unicode, "√3/2"),
+        (math.sqrt(3) / 2, OutputFormat.LaTeX, r"\frac{\sqrt{3}}{2}"),
+        (0.5 + 0.8660254j, OutputFormat.ASCII, "e^(i*pi/3)"),
+        (0.5 + 0.8660254j, OutputFormat.Unicode, "e^(iπ/3)"),
+        (0.5 + 0.8660254j, OutputFormat.LaTeX, r"e^{i\frac{\pi}{3}}"),
+        (cmath.exp(1j * math.pi / 3), OutputFormat.Unicode, "e^(iπ/3)"),
+        (0, OutputFormat.Unicode, "0"),
+        (1, OutputFormat.Unicode, "1"),
+        (-1, OutputFormat.Unicode, "-1"),
+        (1j, OutputFormat.Unicode, "i"),
+        (-1j, OutputFormat.Unicode, "-i"),
+        (0.25 + 0.25j, OutputFormat.ASCII, "1/4 + 1/4 i"),
+        (0.25 + 0.25j, OutputFormat.Unicode, "1/4 + 1/4 i"),
+        (0.25 + 0.25j, OutputFormat.LaTeX, r"\frac{1}{4} + \frac{1}{4} i"),
+    ],
+)
+def test_complex_to_str(z: complex, output: OutputFormat, expected: str) -> None:
+    assert complex_to_str(z, output) == expected
+
+
+def test_complex_to_str_fallback() -> None:
+    z = 0.123 + 0.456j
+    assert complex_to_str(z, OutputFormat.ASCII, max_denominator=1) == "0.123 + 0.456 i"
+    assert complex_to_str(z, OutputFormat.Unicode, max_denominator=1) == "0.123 + 0.456 i"
+    assert complex_to_str(z, OutputFormat.LaTeX, max_denominator=1) == "0.123 + 0.456 i"

@@ -2,30 +2,42 @@
 
 from __future__ import annotations
 
+import cmath
 import enum
 import math
 import string
 from enum import Enum
 from fractions import Fraction
 from math import pi
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat
 
 # `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never
 
 from graphix import command
-from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad, rad_to_angle
+from graphix.fundamentals import (
+    AbstractMeasurement,
+    Axis,
+    Plane,
+    Sign,
+    angle_to_rad,
+    rad_to_angle,
+)
 from graphix.measurements import BlochMeasurement, PauliMeasurement
 from graphix.parameter import AffineExpression
 
 if TYPE_CHECKING:
-    from collections.abc import Container, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Container, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
 
     from graphix.command import Node
     from graphix.flow.core import PauliFlow, XZCorrections
     from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
+    from graphix.sim.density_matrix import DensityMatrix
+    from graphix.sim.statevec import Statevec
+
+_ENCODING = Literal["LSB", "MSB"]
 
 
 class OutputFormat(Enum):
@@ -37,7 +49,11 @@ class OutputFormat(Enum):
 
 
 def angle_to_str(
-    angle: Angle, output: OutputFormat, max_denominator: int = 1000, multiplication_sign: bool = False
+    angle: Angle,
+    output: OutputFormat,
+    max_denominator: int = 1000,
+    multiplication_sign: bool = False,
+    abs_tol: float = 0.0,
 ) -> str:
     r"""
     Return a string representation of an angle given in units of π.
@@ -61,6 +77,8 @@ def angle_to_str(
         ``2×π`` in Unicode, ``2 \times \pi`` in LaTeX, and ``2*pi`` in ASCII.
         If ``False``, the multiplication sign is implicit:
         ``2π`` in Unicode, ``2\pi`` in LaTeX, ``2pi`` in ASCII.
+    abs_tol : float, optional
+        Absolute tolerance passed to :func:`math.isclose` (default: ``0.0``).
 
     Returns
     -------
@@ -69,7 +87,7 @@ def angle_to_str(
     """
     frac = Fraction(angle).limit_denominator(max_denominator)
 
-    if not math.isclose(angle, float(frac)):
+    if not math.isclose(angle, float(frac), abs_tol=abs_tol):
         rad = angle_to_rad(angle)
 
         return f"{rad}"
@@ -108,6 +126,391 @@ def angle_to_str(
     den_str = f"{den}"
     num_str = pi if num == 1 else f"{num}{mul}{pi}"
     return f"{sign}{mkfrac(num_str, den_str)}"
+
+
+_MAX_RADICAND = 10
+
+
+def _format_helpers(
+    output: OutputFormat,
+) -> tuple[Callable[[str, str], str], Callable[[int], str]]:
+    if output == OutputFormat.LaTeX:
+
+        def mkfrac(num: str, den: str) -> str:
+            return rf"\frac{{{num}}}{{{den}}}"
+
+        def sqrt(n: int) -> str:
+            return rf"\sqrt{{{n}}}"
+
+    elif output == OutputFormat.Unicode:
+
+        def mkfrac(num: str, den: str) -> str:
+            return f"{num}/{den}"
+
+        def sqrt(n: int) -> str:
+            return f"√{n}"
+
+    else:
+
+        def mkfrac(num: str, den: str) -> str:
+            return f"{num}/{den}"
+
+        def sqrt(n: int) -> str:
+            return f"sqrt({n})"
+
+    return mkfrac, sqrt
+
+
+def _real_scalar_to_str(
+    x: float,
+    output: OutputFormat,
+    *,
+    max_denominator: int = 1000,
+    rel_tol: float = 1e-9,
+    abs_tol: float = 1e-8,
+    max_radicand: int = _MAX_RADICAND,
+) -> str | None:
+    mkfrac, sqrt = _format_helpers(output)
+
+    frac = Fraction(x).limit_denominator(max_denominator)
+    if math.isclose(x, float(frac), rel_tol=rel_tol, abs_tol=abs_tol):
+        num, den = frac.numerator, frac.denominator
+        sign = "-" if num < 0 else ""
+        num = abs(num)
+        if den == 1:
+            return f"{sign}{num}"
+        return f"{sign}{mkfrac(str(num), str(den))}"
+
+    for n in range(1, max_radicand + 1):
+        root = math.sqrt(n)
+        for d in range(1, max_denominator + 1):
+            val = root / d
+            if math.isclose(x, val, rel_tol=rel_tol, abs_tol=abs_tol):
+                num_str = sqrt(n) if n != 1 else "1"
+                return num_str if d == 1 else mkfrac(num_str, str(d))
+            if math.isclose(x, -val, rel_tol=rel_tol, abs_tol=abs_tol):
+                num_str = sqrt(n) if n != 1 else "1"
+                formatted = num_str if d == 1 else mkfrac(num_str, str(d))
+                return f"-{formatted}"
+
+    return None
+
+
+def _scalar_or_decimal(
+    x: float,
+    output: OutputFormat,
+    *,
+    max_denominator: int,
+    rel_tol: float,
+    abs_tol: float,
+) -> str:
+    result = _real_scalar_to_str(x, output, max_denominator=max_denominator, rel_tol=rel_tol, abs_tol=abs_tol)
+    if result:
+        return result
+    return f"{x:g}"
+
+
+def _imag_unit_str(coeff: str) -> str:
+    return "i" if coeff == "1" else f"{coeff} i"
+
+
+def _exp_i_to_str(angle_str: str, output: OutputFormat) -> str:
+    match output:
+        case OutputFormat.LaTeX:
+            return rf"e^{{i{angle_str}}}"
+        case OutputFormat.Unicode:
+            return f"e^(i{angle_str})"
+        case OutputFormat.ASCII:
+            return f"e^(i*{angle_str})"
+        case _:
+            assert_never(output)
+
+
+def _cartesian_to_str(
+    z: complex,
+    output: OutputFormat,
+    *,
+    max_denominator: int,
+    rel_tol: float,
+    abs_tol: float,
+) -> str:
+    real_zero = math.isclose(z.real, 0.0, rel_tol=rel_tol, abs_tol=abs_tol)
+    imag_zero = math.isclose(z.imag, 0.0, rel_tol=rel_tol, abs_tol=abs_tol)
+
+    if imag_zero:
+        return _scalar_or_decimal(
+            z.real,
+            output,
+            max_denominator=max_denominator,
+            rel_tol=rel_tol,
+            abs_tol=abs_tol,
+        )
+
+    imag_coeff = _scalar_or_decimal(
+        abs(z.imag),
+        output,
+        max_denominator=max_denominator,
+        rel_tol=rel_tol,
+        abs_tol=abs_tol,
+    )
+    imag_part = _imag_unit_str(imag_coeff)
+
+    if real_zero:
+        return f"-{imag_part}" if z.imag < 0 else imag_part
+
+    real_str = _scalar_or_decimal(
+        z.real,
+        output,
+        max_denominator=max_denominator,
+        rel_tol=rel_tol,
+        abs_tol=abs_tol,
+    )
+    if z.imag >= 0:
+        return f"{real_str} + {imag_part}"
+    return f"{real_str} - {imag_part}"
+
+
+def complex_to_str(
+    z: complex | SupportsComplex,
+    output: OutputFormat,
+    *,
+    max_denominator: int = 1000,
+    rel_tol: float = 1e-9,
+    abs_tol: float = 1e-8,
+) -> str:
+    r"""
+    Return a string representation of a complex number.
+
+    Common values are rendered symbolically:
+
+    - rational reals such as ``0.25`` as ``1/4``,
+    - radical rationals such as ``0.70710678`` as ``√2/2``,
+    - unit-modulus values such as ``0.5 + 0.8660254j`` as ``e^(iπ/3)``.
+
+    Parameters
+    ----------
+    z : complex
+        The complex number to format.
+    output : OutputFormat
+        Desired formatting style: Unicode, LaTeX, or ASCII.
+    max_denominator : int, optional
+        Maximum denominator for detecting simple fractions and radical forms (default: 1000).
+    rel_tol : float, optional
+        Relative tolerance passed to :func:`math.isclose` (default: ``1e-9``).
+    abs_tol : float, optional
+        Absolute tolerance passed to :func:`math.isclose` (default: ``1e-8``).
+
+    Returns
+    -------
+    str
+        The formatted complex number.
+    """
+    z = complex(z)
+
+    if math.isclose(z.real, 0.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
+        z.imag, 0.0, rel_tol=rel_tol, abs_tol=abs_tol
+    ):
+        return "0"
+
+    if math.isclose(abs(z), 1.0, rel_tol=rel_tol, abs_tol=abs_tol):
+        if math.isclose(z.real, 1.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
+            z.imag, 0.0, rel_tol=rel_tol, abs_tol=abs_tol
+        ):
+            return "1"
+        if math.isclose(z.real, -1.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
+            z.imag, 0.0, rel_tol=rel_tol, abs_tol=abs_tol
+        ):
+            return "-1"
+        if math.isclose(z.real, 0.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
+            z.imag, 1.0, rel_tol=rel_tol, abs_tol=abs_tol
+        ):
+            return "i"
+        if math.isclose(z.real, 0.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
+            z.imag, -1.0, rel_tol=rel_tol, abs_tol=abs_tol
+        ):
+            return "-i"
+
+        angle = cmath.phase(z) / pi
+        frac = Fraction(angle).limit_denominator(max_denominator)
+        if math.isclose(angle, float(frac), rel_tol=rel_tol, abs_tol=abs_tol):
+            angle_str = angle_to_str(angle, output, max_denominator=max_denominator, abs_tol=abs_tol)
+            return _exp_i_to_str(angle_str, output)
+
+    return _cartesian_to_str(z, output, max_denominator=max_denominator, rel_tol=rel_tol, abs_tol=abs_tol)
+
+
+def _ket_to_str(bits: str, output: OutputFormat) -> str:
+    match output:
+        case OutputFormat.LaTeX:
+            return rf"\ket{{{bits}}}"
+        case OutputFormat.Unicode:
+            return f"|{bits}⟩"
+        case OutputFormat.ASCII:
+            return f"|{bits}>"
+        case _:
+            assert_never(output)
+
+
+def _format_statevec_term(
+    amp: complex,
+    ket: str,
+    output: OutputFormat,
+    *,
+    max_denominator: int,
+    rel_tol: float,
+    abs_tol: float,
+) -> tuple[str, str]:
+    coeff = complex_to_str(amp, output, max_denominator=max_denominator, rel_tol=rel_tol, abs_tol=abs_tol)
+    ket_str = _ket_to_str(ket, output)
+    if coeff == "1":
+        return "+", ket_str
+    if coeff == "-1":
+        return "-", ket_str
+    if coeff.startswith("-"):
+        return "-", f"{coeff[1:]}{ket_str}"
+    return "+", f"{coeff}{ket_str}"
+
+
+def _join_statevec_terms(terms: list[tuple[str, str]]) -> str:
+    if not terms:
+        return "0"
+    sign, body = terms[0]
+    result = f"-{body}" if sign == "-" else body
+    for sign, body in terms[1:]:
+        result += f" - {body}" if sign == "-" else f" + {body}"
+    return result
+
+
+def statevec_to_str(
+    statevec: Statevec,
+    output: OutputFormat,
+    encoding: _ENCODING = "MSB",
+    *,
+    rtol: float = 0.0,
+    atol: float = 1e-8,
+    max_denominator: int = 1000,
+    rel_tol: float = 1e-9,
+    abs_tol: float = 1e-8,
+) -> str:
+    r"""
+    Return a string representation of a statevector in ket notation.
+
+    Uses :meth:`graphix.sim.statevec.Statevec.to_dict` to obtain non-zero amplitudes,
+    and formats each amplitude with :func:`complex_to_str`.
+
+    Parameters
+    ----------
+    statevec : Statevec
+        The statevector to format.
+    output : OutputFormat
+        Desired formatting style: Unicode, LaTeX, or ASCII.
+    encoding : Literal["LSB", "MSB"], default="MSB"
+        Encoding for the basis kets. See :meth:`graphix.sim.statevec.Statevec.to_dict`.
+    rtol : float, default=0.0
+        Relative tolerance for filtering zero amplitudes, passed to :meth:`Statevec.to_dict`.
+    atol : float, default=1e-8
+        Absolute tolerance for filtering zero amplitudes, passed to :meth:`Statevec.to_dict`.
+    max_denominator : int, optional
+        Maximum denominator for detecting simple amplitudes (default: 1000).
+    rel_tol : float, optional
+        Relative tolerance passed to :func:`complex_to_str` (default: ``1e-9``).
+    abs_tol : float, optional
+        Absolute tolerance passed to :func:`complex_to_str` (default: ``1e-8``).
+
+    Returns
+    -------
+    str
+        The formatted statevector as a sum of ket terms.
+    """
+    amplitudes = statevec.to_dict(encoding=encoding, rtol=rtol, atol=atol)
+    terms = [
+        _format_statevec_term(
+            complex(amp),
+            ket,
+            output,
+            max_denominator=max_denominator,
+            rel_tol=rel_tol,
+            abs_tol=abs_tol,
+        )
+        for ket, amp in amplitudes.items()
+    ]
+    result = _join_statevec_terms(terms)
+    if output == OutputFormat.LaTeX:
+        return f"\\({result}\\)"
+    return result
+
+
+def density_matrix_to_str(
+    density_matrix: DensityMatrix,
+    output: OutputFormat,
+    *,
+    rtol: float = 0.0,
+    atol: float = 1e-8,
+    max_denominator: int = 1000,
+    rel_tol: float = 1e-9,
+    abs_tol: float = 1e-8,
+) -> str:
+    r"""
+    Return a string representation of a density matrix.
+
+    Formats each matrix element with :func:`complex_to_str`.
+
+    Parameters
+    ----------
+    density_matrix : DensityMatrix
+        The density matrix to format.
+    output : OutputFormat
+        Desired formatting style: Unicode, LaTeX, or ASCII.
+    rtol : float, default=0.0
+        Relative tolerance for displaying negligible elements as ``0``.
+    atol : float, default=1e-8
+        Absolute tolerance for displaying negligible elements as ``0``.
+    max_denominator : int, optional
+        Maximum denominator for detecting simple matrix elements (default: 1000).
+    rel_tol : float, optional
+        Relative tolerance passed to :func:`complex_to_str` (default: ``1e-9``).
+    abs_tol : float, optional
+        Absolute tolerance passed to :func:`complex_to_str` (default: ``1e-8``).
+
+    Returns
+    -------
+    str
+        The formatted density matrix.
+    """
+    rho = density_matrix.rho
+    nrows, ncols = rho.shape
+
+    def format_cell(value: complex) -> str:
+        if math.isclose(abs(value), 0.0, rel_tol=rtol, abs_tol=atol):
+            return "0"
+        return complex_to_str(
+            value,
+            output,
+            max_denominator=max_denominator,
+            rel_tol=rel_tol,
+            abs_tol=abs_tol,
+        )
+
+    cells = [[format_cell(complex(rho[i, j])) for j in range(ncols)] for i in range(nrows)]
+    col_widths = [max(len(cells[i][j]) for i in range(nrows)) for j in range(ncols)]
+
+    if output == OutputFormat.LaTeX:
+        rows = [" & ".join(cell.rjust(col_widths[j]) for j, cell in enumerate(row)) for row in cells]
+        body = r" \\ ".join(rows)
+        return rf"\(\begin{{pmatrix}} {body} \end{{pmatrix}}\)"
+
+    lines: list[str] = []
+    for i, row in enumerate(cells):
+        inner = ", ".join(cell.rjust(col_widths[j]) for j, cell in enumerate(row))
+        if nrows == 1:
+            lines.append(f"[[{inner}]]")
+        elif i == 0:
+            lines.append(f"[[{inner}],")
+        elif i == nrows - 1:
+            lines.append(f" [{inner}]]")
+        else:
+            lines.append(f" [{inner}],")
+    return "\n".join(lines)
 
 
 def domain_to_str(domain: set[Node]) -> str:
@@ -299,7 +702,10 @@ def set_to_str(objects: Iterable[object], output: OutputFormat) -> str:
 
 
 def correction_function_to_str(
-    correction_function: Mapping[int, AbstractSet[int]], cf_name: str, output: OutputFormat, multiline: bool = False
+    correction_function: Mapping[int, AbstractSet[int]],
+    cf_name: str,
+    output: OutputFormat,
+    multiline: bool = False,
 ) -> str:
     """Convert a correction function mapping to a formatted string representation.
 
@@ -411,7 +817,11 @@ def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, mult
     )
 
 
-def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputFormat, multiline: bool = False) -> str:
+def xzcorr_to_str(
+    xzcorr: XZCorrections[AbstractMeasurement],
+    output: OutputFormat,
+    multiline: bool = False,
+) -> str:
     """Convert an XZCorrections object to a formatted string representation.
 
     Parameters

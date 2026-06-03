@@ -16,6 +16,7 @@ from typing_extensions import override
 
 from graphix import parameter, states
 from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
+from graphix.pretty_print import OutputFormat, statevec_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
@@ -485,6 +486,38 @@ class Statevec(DenseState):
         {'10': np.complex128(1+0j)}
         """
         return self._to_dict_map(lambda x: x, encoding, rtol=rtol, atol=atol)
+
+    def draw(
+        self,
+        encoding: _ENCODING = "MSB",
+        output: OutputFormat = OutputFormat.Unicode,
+        *,
+        rtol: float = 0.0,
+        atol: float = 1e-8,
+    ) -> str:
+        r"""Return a pretty-printed string representation of the statevector in ket notation.
+
+        Parameters
+        ----------
+        encoding : Literal["LSB", "MSB"], default="MSB"
+            Encoding for the basis kets. See :meth:`to_dict` for additional information.
+        output : OutputFormat, default=OutputFormat.Unicode
+            Desired formatting style: Unicode, LaTeX, or ASCII.
+        rtol : float, default=0.0
+            Relative tolerance for filtering zero amplitudes. See :meth:`to_dict`.
+        atol : float, default=1e-8
+            Absolute tolerance for filtering zero amplitudes. See :meth:`to_dict`.
+
+        Returns
+        -------
+        str
+            The formatted statevector as a sum of ket terms.
+
+        See Also
+        --------
+        :func:`graphix.pretty_print.statevec_to_str`
+        """
+        return statevec_to_str(self, output, encoding, rtol=rtol, atol=atol)
 
     def to_prob_dict(
         self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8

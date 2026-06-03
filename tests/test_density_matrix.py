@@ -15,6 +15,7 @@ from graphix.branch_selector import ConstBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
+from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.simulator import DefaultMeasureMethod
@@ -929,3 +930,49 @@ class TestDensityMatrixBackend:
             else np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         )
         assert np.allclose(backend.state.rho, expected_matrix)
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        (OutputFormat.Unicode, "[[0, 0, 0, 0],\n [0, 1, 0, 0],\n [0, 0, 0, 0],\n [0, 0, 0, 0]]"),
+        (OutputFormat.ASCII, "[[0, 0, 0, 0],\n [0, 1, 0, 0],\n [0, 0, 0, 0],\n [0, 0, 0, 0]]"),
+        (
+            OutputFormat.LaTeX,
+            r"\(\begin{pmatrix} 0 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{pmatrix}\)",
+        ),
+    ],
+)
+def test_density_matrix_draw_pure_state(output: OutputFormat, expected: str) -> None:
+    dm = DensityMatrix(data=[BasicStates.ZERO, BasicStates.ONE])
+    assert dm.rho.shape == (4, 4)
+    assert dm.draw(output=output) == expected
+    assert density_matrix_to_str(dm, output) == expected
+
+
+def test_density_matrix_draw_superposition() -> None:
+    dm = DensityMatrix(data=BasicStates.PLUS)
+    assert dm.draw(output=OutputFormat.Unicode) == "[[1/2, 1/2],\n [1/2, 1/2]]"
+    assert density_matrix_to_str(dm, OutputFormat.Unicode) == "[[1/2, 1/2],\n [1/2, 1/2]]"
+    assert dm.draw(output=OutputFormat.LaTeX) == (
+        r"\(\begin{pmatrix} \frac{1}{2} & \frac{1}{2} \\ \frac{1}{2} & \frac{1}{2} \end{pmatrix}\)"
+    )
+
+
+def test_density_matrix_draw_4x4() -> None:
+    sv = Statevec(data=np.array([1, 0, 0, 1], dtype=np.complex128) / np.sqrt(2))
+    dm = DensityMatrix(data=sv)
+    assert dm.rho.shape == (4, 4)
+    assert (
+        dm.draw(output=OutputFormat.Unicode)
+        == "[[1/2, 0, 0, 1/2],\n [  0, 0, 0,   0],\n [  0, 0, 0,   0],\n [1/2, 0, 0, 1/2]]"
+    )
+    assert density_matrix_to_str(dm, OutputFormat.Unicode) == (
+        "[[1/2, 0, 0, 1/2],\n [  0, 0, 0,   0],\n [  0, 0, 0,   0],\n [1/2, 0, 0, 1/2]]"
+    )
+    assert dm.draw(output=OutputFormat.LaTeX) == (
+        r"\(\begin{pmatrix} \frac{1}{2} & 0 & 0 & \frac{1}{2} \\ "
+        r"          0 & 0 & 0 &           0 \\ "
+        r"          0 & 0 & 0 &           0 \\ "
+        r"\frac{1}{2} & 0 & 0 & \frac{1}{2} \end{pmatrix}\)"
+    )

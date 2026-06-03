@@ -23,6 +23,12 @@ This modules provides functions to format patterns and flows.
 
 .. autofunction:: angle_to_str
 
+.. autofunction:: complex_to_str
+
+.. autofunction:: statevec_to_str
+
+.. autofunction:: density_matrix_to_str
+
 .. autofunction:: command_to_str
 
 .. autofunction:: pattern_to_str
