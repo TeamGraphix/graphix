@@ -8,7 +8,7 @@ import string
 from enum import Enum
 from fractions import Fraction
 from math import pi
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 # `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never
@@ -26,6 +26,8 @@ if TYPE_CHECKING:
     from graphix.flow.core import PauliFlow, XZCorrections
     from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
+    from graphix.sim.density_matrix import DensityMatrix
+    from graphix.sim.statevec import _ENCODING, Statevec
 
 
 class OutputFormat(Enum):
@@ -439,3 +441,375 @@ def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputForm
             partial_order_to_str(xzcorr.partial_order_layers, output),
         )
     )
+
+
+# --- Complex amplitude and quantum-state pretty-printing ---------------------
+#
+# The recognition of "nice" real numbers (fractions, square roots) relies on a
+# square-then-rationalize trick: a real ``x`` is matched against ``sqrt(p / q)``
+# by approximating ``x ** 2`` with a rational ``p / q``. This single mechanism
+# uniformly handles plain fractions (``1/4``), surds (``√2/2``, ``√3/2``) and,
+# combined with :func:`angle_to_str`, the phase of exponentials (``e^{iπ/3}``).
+
+_DEFAULT_MAX_DENOMINATOR = 1000
+_DEFAULT_ATOL = 1e-9
+
+
+def _squarefree_decomposition(n: int) -> tuple[int, int]:
+    """Decompose a non-negative integer as ``outer ** 2 * inner`` with ``inner`` squarefree.
+
+    Parameters
+    ----------
+    n : int
+        Non-negative integer to decompose.
+
+    Returns
+    -------
+    tuple[int, int]
+        ``(outer, inner)`` such that ``outer ** 2 * inner == n`` and ``inner`` is
+        squarefree. ``n == 0`` returns ``(0, 1)``.
+    """
+    if n == 0:
+        return 0, 1
+    outer = 1
+    inner = n
+    d = 2
+    while d * d <= inner:
+        while inner % (d * d) == 0:
+            inner //= d * d
+            outer *= d
+        d += 1
+    return outer, inner
+
+
+def _recognize_real(x: float, max_denominator: int, atol: float) -> tuple[int, int, int] | None:
+    """Recognize a real number as ``signed_num * sqrt(inner) / den``.
+
+    The recognition approximates ``x ** 2`` by a rational ``p / q``; on success,
+    ``x = ±sqrt(p / q)`` is rewritten with a rationalized, fully-reduced
+    denominator.
+
+    Parameters
+    ----------
+    x : float
+        Real number to recognize.
+    max_denominator : int
+        Maximum denominator allowed when approximating ``x ** 2`` by a rational.
+    atol : float
+        Absolute tolerance for that rational approximation.
+
+    Returns
+    -------
+    tuple[int, int, int] or None
+        ``(signed_num, inner, den)`` with ``den > 0`` and ``inner`` a positive
+        squarefree integer, encoding ``x = signed_num * sqrt(inner) / den``.
+        Returns ``None`` when ``x`` is not recognized as such a value.
+    """
+    if x == 0:
+        return 0, 1, 1
+    square = Fraction(x * x).limit_denominator(max_denominator)
+    if not math.isclose(x * x, float(square), abs_tol=atol):
+        return None
+    num_outer, num_inner = _squarefree_decomposition(square.numerator)
+    den_outer, den_inner = _squarefree_decomposition(square.denominator)
+    # x = ±(num_outer √num_inner) / (den_outer √den_inner); rationalize by √den_inner.
+    combined_outer, inner = _squarefree_decomposition(num_inner * den_inner)
+    num = num_outer * combined_outer
+    den = den_outer * den_inner
+    divisor = math.gcd(num, den)
+    num //= divisor
+    den //= divisor
+    sign = -1 if x < 0 else 1
+    return sign * num, inner, den
+
+
+def _imaginary_unit(output: OutputFormat) -> str:
+    return r"\mathrm{i}" if output == OutputFormat.LaTeX else "i"
+
+
+def _sqrt_str(inner: int, output: OutputFormat) -> str:
+    """Return the string for ``sqrt(inner)`` (empty when ``inner == 1``)."""
+    if inner == 1:
+        return ""
+    if output == OutputFormat.LaTeX:
+        return rf"\sqrt{{{inner}}}"
+    if output == OutputFormat.Unicode:
+        return f"√{inner}"
+    return f"sqrt({inner})"
+
+
+def _fraction_str(num: str, den: str, output: OutputFormat) -> str:
+    if output == OutputFormat.LaTeX:
+        return rf"\frac{{{num}}}{{{den}}}"
+    return f"{num}/{den}"
+
+
+def _render_real(signed_num: int, inner: int, den: int, output: OutputFormat) -> str:
+    """Render ``signed_num * sqrt(inner) / den`` produced by :func:`_recognize_real`."""
+    if signed_num == 0:
+        return "0"
+    sign = "-" if signed_num < 0 else ""
+    magnitude = abs(signed_num)
+    sqrt_part = _sqrt_str(inner, output)
+    if inner == 1:
+        numerator = f"{magnitude}"
+    elif magnitude == 1:
+        numerator = sqrt_part
+    else:
+        numerator = f"{magnitude}{sqrt_part}"
+    if den == 1:
+        return f"{sign}{numerator}"
+    return f"{sign}{_fraction_str(numerator, str(den), output)}"
+
+
+def _real_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
+    rec = _recognize_real(x, max_denominator, atol)
+    if rec is None:
+        return None
+    return _render_real(*rec, output)
+
+
+def _imaginary_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
+    """Render a purely imaginary value ``x * i``."""
+    rec = _recognize_real(x, max_denominator, atol)
+    if rec is None:
+        return None
+    signed_num, inner, den = rec
+    unit = _imaginary_unit(output)
+    # A unit coefficient collapses to just ``±i``.
+    if abs(signed_num) == 1 and inner == 1 and den == 1:
+        return f"{'-' if signed_num < 0 else ''}{unit}"
+    return f"{_render_real(signed_num, inner, den, output)}{unit}"
+
+
+def _recognize_angle_over_pi(theta: float, max_denominator: int, atol: float) -> Fraction | None:
+    """Return ``theta / pi`` as a simple fraction, or ``None`` if it is not one."""
+    value = theta / pi
+    frac = Fraction(value).limit_denominator(max_denominator)
+    if math.isclose(value, float(frac), abs_tol=atol):
+        return frac
+    return None
+
+
+def _exponential_to_str(z: complex, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
+    """Render ``z`` as ``r e^{iθ}`` when both ``r`` and ``θ / π`` are recognized."""
+    theta = math.atan2(z.imag, z.real)
+    angle_frac = _recognize_angle_over_pi(theta, max_denominator, atol)
+    if angle_frac is None or angle_frac == 0:
+        return None
+    radius = _real_to_str(math.hypot(z.real, z.imag), output, max_denominator, atol)
+    if radius is None:
+        return None
+    sign = "-" if angle_frac < 0 else ""
+    angle_str = angle_to_str(float(abs(angle_frac)), output)
+    unit = _imaginary_unit(output)
+    e_sym = r"\mathrm{e}" if output == OutputFormat.LaTeX else "e"
+    unit_sep = " " if output == OutputFormat.LaTeX else "*" if output == OutputFormat.ASCII else ""
+    exponent = f"{sign}{unit}{unit_sep}{angle_str}"
+    body = f"{e_sym}^{{{exponent}}}" if output == OutputFormat.LaTeX else f"{e_sym}^({exponent})"
+    if radius == "1":
+        return body
+    prefix_sep = " " if output == OutputFormat.LaTeX else "·" if output == OutputFormat.Unicode else "*"
+    return f"{radius}{prefix_sep}{body}"
+
+
+def _cartesian_to_str(re: float, im: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
+    """Render ``re + im i`` when both parts are recognized as nice reals."""
+    re_str = _real_to_str(re, output, max_denominator, atol)
+    im_rec = _recognize_real(im, max_denominator, atol)
+    if re_str is None or im_rec is None:
+        return None
+    signed_num, inner, den = im_rec
+    connector = " - " if signed_num < 0 else " + "
+    unit = _imaginary_unit(output)
+    if abs(signed_num) == 1 and inner == 1 and den == 1:
+        imag = unit
+    else:
+        imag = f"{_render_real(abs(signed_num), inner, den, output)}{unit}"
+    return f"{re_str}{connector}{imag}"
+
+
+def _decimal_to_str(z: complex, output: OutputFormat) -> str:
+    """Fallback formatting using rounded decimals."""
+    unit = _imaginary_unit(output)
+    if abs(z.imag) <= _DEFAULT_ATOL:
+        return f"{z.real:.4g}"
+    if abs(z.real) <= _DEFAULT_ATOL:
+        return f"{z.imag:.4g}{unit}"
+    return f"{z.real:.4g}{z.imag:+.4g}{unit}"
+
+
+def complex_to_str(
+    value: object,
+    output: OutputFormat,
+    *,
+    max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
+    atol: float = _DEFAULT_ATOL,
+) -> str:
+    r"""Return a human-friendly string representation of a complex number.
+
+    Common values are rendered exactly rather than as floating-point numbers:
+    fractions (``0.25`` → ``1/4``), square roots (``0.7071…`` → ``√2/2``) and
+    complex exponentials (``0.5 + 0.866…j`` → ``e^(iπ/3)``). Values that are not
+    recognized fall back to a rounded decimal representation, and inputs that
+    cannot be interpreted as complex numbers (e.g. symbolic parameters) are
+    returned via :func:`str`.
+
+    Parameters
+    ----------
+    value : object
+        The number to format. Anything supporting conversion to ``complex`` is
+        accepted; other objects are stringified.
+    output : OutputFormat
+        Desired formatting style: ``Unicode`` (``√``, ``π``), ``LaTeX``
+        (``\sqrt``, ``\pi``) or ``ASCII`` (``sqrt``, ``pi``).
+    max_denominator : int, optional
+        Maximum denominator used when recognizing rational magnitudes and phases
+        (default: ``1000``).
+    atol : float, optional
+        Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+
+    Returns
+    -------
+    str
+        The formatted complex number.
+
+    Examples
+    --------
+    >>> complex_to_str(0.25, OutputFormat.ASCII)
+    '1/4'
+    >>> complex_to_str(2**-0.5, OutputFormat.Unicode)
+    '√2/2'
+    >>> complex_to_str(0.5 + 0.8660254037844386j, OutputFormat.Unicode)
+    'e^(iπ/3)'
+    """
+    if not isinstance(value, (bool, int, float, complex, SupportsComplex)):
+        return str(value)
+    z = complex(value)
+    if abs(z.real) <= atol and abs(z.imag) <= atol:
+        return "0"
+    if abs(z.imag) <= atol:
+        return _real_to_str(z.real, output, max_denominator, atol) or _decimal_to_str(z, output)
+    if abs(z.real) <= atol:
+        return _imaginary_to_str(z.imag, output, max_denominator, atol) or _decimal_to_str(z, output)
+    exponential = _exponential_to_str(z, output, max_denominator, atol)
+    if exponential is not None:
+        return exponential
+    cartesian = _cartesian_to_str(z.real, z.imag, output, max_denominator, atol)
+    if cartesian is not None:
+        return cartesian
+    return _decimal_to_str(z, output)
+
+
+def _ket_str(ket: str, output: OutputFormat) -> str:
+    if output == OutputFormat.LaTeX:
+        return rf"\lvert {ket}\rangle"
+    if output == OutputFormat.Unicode:
+        return f"|{ket}⟩"
+    return f"|{ket}>"
+
+
+def _needs_parentheses(coefficient: str) -> bool:
+    """Whether a coefficient is a sum and must be parenthesized before a ket."""
+    return " + " in coefficient or " - " in coefficient
+
+
+def statevec_to_str(
+    statevec: Statevec,
+    output: OutputFormat,
+    *,
+    encoding: _ENCODING = "MSB",
+    max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
+    atol: float = _DEFAULT_ATOL,
+    rtol: float = 0.0,
+) -> str:
+    r"""Return a ket-notation string representation of a statevector.
+
+    Amplitudes close to zero are omitted (see :meth:`graphix.sim.statevec.Statevec.to_dict`)
+    and the remaining ones are pretty-printed with :func:`complex_to_str`.
+
+    Parameters
+    ----------
+    statevec : Statevec
+        The statevector to format.
+    output : OutputFormat
+        Desired formatting style (``ASCII``, ``LaTeX`` or ``Unicode``).
+    encoding : {"LSB", "MSB"}, optional
+        Bit-ordering convention for the basis kets (default: ``"MSB"``).
+        See :meth:`graphix.sim.statevec.Statevec.to_dict`.
+    max_denominator : int, optional
+        Maximum denominator used by the amplitude recognition (default: ``1000``).
+    atol : float, optional
+        Absolute tolerance used both to drop near-zero amplitudes and for the
+        recognition heuristics (default: ``1e-9``).
+    rtol : float, optional
+        Relative tolerance used to drop near-zero amplitudes (default: ``0.0``).
+
+    Returns
+    -------
+    str
+        The formatted statevector, e.g. ``√2/2|00⟩ + √2/2|01⟩``.
+    """
+    amplitudes = statevec.to_dict(encoding, rtol=rtol, atol=atol)
+    if not amplitudes:
+        return "0"
+    result = ""
+    for index, (ket, amplitude) in enumerate(amplitudes.items()):
+        coefficient = complex_to_str(amplitude, output, max_denominator=max_denominator, atol=atol)
+        ket_str = _ket_str(ket, output)
+        if coefficient == "1":
+            term = ket_str
+        elif coefficient == "-1":
+            term = f"-{ket_str}"
+        elif _needs_parentheses(coefficient):
+            term = f"({coefficient}){ket_str}"
+        else:
+            term = f"{coefficient}{ket_str}"
+        if index == 0:
+            result = term
+        elif term.startswith("-"):
+            result += f" - {term[1:]}"
+        else:
+            result += f" + {term}"
+    return result
+
+
+def density_matrix_to_str(
+    density_matrix: DensityMatrix,
+    output: OutputFormat,
+    *,
+    max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
+    atol: float = _DEFAULT_ATOL,
+) -> str:
+    r"""Return a matrix-form string representation of a density matrix.
+
+    Each entry is pretty-printed with :func:`complex_to_str`. ``LaTeX`` output
+    uses a ``pmatrix`` environment; ``ASCII`` and ``Unicode`` outputs produce a
+    column-aligned grid.
+
+    Parameters
+    ----------
+    density_matrix : DensityMatrix
+        The density matrix to format.
+    output : OutputFormat
+        Desired formatting style (``ASCII``, ``LaTeX`` or ``Unicode``).
+    max_denominator : int, optional
+        Maximum denominator used by the entry recognition (default: ``1000``).
+    atol : float, optional
+        Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+
+    Returns
+    -------
+    str
+        The formatted density matrix.
+    """
+    rows = [
+        [complex_to_str(entry, output, max_denominator=max_denominator, atol=atol) for entry in row]
+        for row in density_matrix.rho
+    ]
+    if output == OutputFormat.LaTeX:
+        body = r" \\ ".join(" & ".join(row) for row in rows)
+        return rf"\begin{{pmatrix}}{body}\end{{pmatrix}}"
+    widths = [max(len(row[col]) for row in rows) for col in range(len(rows[0]))] if rows else []
+    lines = ["  ".join(entry.rjust(widths[col]) for col, entry in enumerate(row)) for row in rows]
+    return "\n".join(f"[ {line} ]" for line in lines)

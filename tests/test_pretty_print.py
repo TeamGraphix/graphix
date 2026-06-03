@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -13,8 +14,11 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
-from graphix.pretty_print import OutputFormat, pattern_to_str
+from graphix.pretty_print import OutputFormat, complex_to_str, pattern_to_str
 from graphix.random_objects import rand_circuit
+from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
+from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -202,3 +206,72 @@ def test_xzcorr_str() -> None:
         str(flow)
         == "x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}; z(1) = {4, 5}, z(2) = {3, 6}; {1, 2} < {3, 4} < {5, 6}"
     )
+
+
+def test_complex_to_str_issue_examples() -> None:
+    # The three canonical examples from the issue.
+    assert complex_to_str(0.25, OutputFormat.ASCII) == "1/4"
+    assert complex_to_str(2**-0.5, OutputFormat.Unicode) == "√2/2"
+    assert complex_to_str(0.5 + math.sqrt(3) / 2 * 1j, OutputFormat.Unicode) == "e^(iπ/3)"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (0, "0"),
+        (1e-12, "0"),
+        (1, "1"),
+        (-1, "-1"),
+        (2, "2"),
+        (0.5, "1/2"),
+        (-0.25, "-1/4"),
+        (2**-0.5, "√2/2"),
+        (math.sqrt(3) / 2, "√3/2"),
+        (1j, "i"),
+        (-1j, "-i"),
+        (0.5j, "1/2i"),
+        (-(2**-0.5) * 1j, "-√2/2i"),
+    ],
+)
+def test_complex_to_str_unicode_values(value: complex, expected: str) -> None:
+    assert complex_to_str(value, OutputFormat.Unicode) == expected
+
+
+def test_complex_to_str_exponentials() -> None:
+    assert complex_to_str(1j, OutputFormat.Unicode) == "i"
+    assert complex_to_str(math.cos(math.pi / 4) + math.sin(math.pi / 4) * 1j, OutputFormat.Unicode) == "e^(iπ/4)"
+    # Negative phase keeps the sign inside the exponent.
+    assert complex_to_str(math.cos(math.pi / 3) - math.sin(math.pi / 3) * 1j, OutputFormat.Unicode) == "e^(-iπ/3)"
+    assert complex_to_str(0.5 + math.sqrt(3) / 2 * 1j, OutputFormat.ASCII) == "e^(i*pi/3)"
+
+
+def test_complex_to_str_latex() -> None:
+    assert complex_to_str(2**-0.5, OutputFormat.LaTeX) == r"\frac{\sqrt{2}}{2}"
+    assert complex_to_str(0.25, OutputFormat.LaTeX) == r"\frac{1}{4}"
+    assert complex_to_str(0.5 + math.sqrt(3) / 2 * 1j, OutputFormat.LaTeX) == r"\mathrm{e}^{\mathrm{i} \frac{\pi}{3}}"
+
+
+def test_complex_to_str_fallback_and_symbolic() -> None:
+    # An unrecognized value falls back to a rounded decimal.
+    assert complex_to_str(0.123456, OutputFormat.ASCII) == "0.1235"
+    # A non-numeric object is stringified rather than raising.
+    assert complex_to_str("alpha", OutputFormat.ASCII) == "alpha"
+
+
+def test_statevec_draw() -> None:
+    bell = Statevec([2**-0.5, 0, 0, 2**-0.5])
+    assert bell.draw(OutputFormat.Unicode) == "√2/2|00⟩ + √2/2|11⟩"
+    assert bell.draw(OutputFormat.ASCII) == "sqrt(2)/2|00> + sqrt(2)/2|11>"
+
+
+def test_statevec_draw_single_basis_state() -> None:
+    state = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
+    assert state.draw(OutputFormat.Unicode) == "|01⟩"
+    # LSB encoding reverses the ket label.
+    assert state.draw(OutputFormat.Unicode, encoding="LSB") == "|10⟩"
+
+
+def test_density_matrix_draw() -> None:
+    dm = DensityMatrix(data=[BasicStates.ZERO])
+    assert dm.draw(OutputFormat.ASCII) == "[ 1  0 ]\n[ 0  0 ]"
+    assert dm.draw(OutputFormat.LaTeX) == r"\begin{pmatrix}1 & 0 \\ 0 & 0\end{pmatrix}"
