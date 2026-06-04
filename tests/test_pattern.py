@@ -1077,6 +1077,12 @@ class TestPattern:
             original_pattern.to_bloch().perform_pauli_pushing()
         assert original_pattern.perform_pauli_pushing(copy=True, standardize=True).is_standard()
 
+    def test_node_mapping(self) -> None:
+        pattern = Pattern(input_nodes=[3], cmds=[N(1), E((1, 3)), M(3), C(1, Clifford.H), X(1, {3}), Z(1, {3})])
+        assert pattern.node_mapping() == {1: 0, 3: 1}
+        assert pattern.node_mapping({3: 1}, start=1) == {1: 2, 3: 1}
+        assert pattern.node_mapping(start=1, preserves={1}) == {3: 2}
+
     def test_reindex(self) -> None:
         pattern = Pattern(input_nodes=[3], cmds=[N(1), E((1, 3)), M(3), C(1, Clifford.H), X(1, {3}), Z(1, {3})])
         pattern_copy = pattern.copy()

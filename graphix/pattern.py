@@ -36,7 +36,7 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from collections.abc import Callable, Container, Iterator
     from collections.abc import Set as AbstractSet
-    from typing import Any
+    from typing import Any, TypeVar
 
     from numpy.random import Generator
 
@@ -55,6 +55,9 @@ if TYPE_CHECKING:
     from graphix.space_minimization import SpaceMinimizationHeuristic
     from graphix.states import State
     from graphix.visualization import DrawKwargs
+
+    K = TypeVar("K")
+    V = TypeVar("V")
 
 _BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
 
@@ -162,7 +165,61 @@ class Pattern:
         self.clear()
         self.extend(cmds)
 
-    def reindex(self, f: Callable[[Node], Node] | Mapping[Node, Node] | None = None, *, copy: bool = False) -> Pattern:
+    def node_mapping(
+        self,
+        mapping: Mapping[Node, Node] | None = None,
+        *,
+        start: int = 0,
+        avoids: Iterable[Node] | None = None,
+        preserves: AbstractSet[Node] | None = None,
+    ) -> dict[Node, Node]:
+        """Compute an injective mapping of node indices.
+
+        The resulting mapping can be passed to :meth:`reindex`.
+        Fresh indices are allocated in increasing order, starting at ``start`` and skipping any values already used.
+
+        Parameters
+        ----------
+        mapping: Mapping[Node, Node] | None, optional
+            An initial (partial) mapping that will be extended.
+            A ``ValueError`` is raised if the supplied mapping is not injective.
+        start: int, optional
+            The starting index from which fresh indices are allocated.
+        avoids: Iterable[Node] | None, optional
+            Indices that must not be assigned to a node.
+        preserves: AbstractSet[Node] | None, optional
+            Nodes that should not appear in the mapping.  Their index will not be changed by :meth:`reindex`.
+
+        Returns
+        -------
+        dict[Node, Node]
+            A dictionary that maps each node of ``self`` (except those listed in ``preserves``) to a distinct integer index.
+        """
+        if mapping is None:
+            result = {}
+        else:
+            result = dict(mapping)
+            duplicates = _duplicates_in_mapping(result)
+            if duplicates:
+                reason = ", ".join(f"{antecedents} are mapped to {value}" for value, antecedents in duplicates.items())
+                raise ValueError(f"Initial mapping is not injective: {reason}")
+        used_indices = set(avoids or ())
+        used_indices.update(result.values())
+        if preserves:
+            used_indices.update(preserves)
+        candidate = start
+        for node in sorted(self.extract_nodes()):
+            if node in result or (preserves and node in preserves):
+                continue
+            while candidate in used_indices:
+                candidate += 1
+            result[node] = candidate
+            candidate += 1
+        return result
+
+    def reindex(
+        self, mapping: Callable[[Node], Node] | Mapping[Node, Node] | None = None, *, copy: bool = False
+    ) -> Pattern:
         """Return a pattern whose nodes have been re-indexed using ``f``.
 
         This method does not verify that ``f`` is injective.  The
@@ -172,12 +229,11 @@ class Pattern:
 
         Parameters
         ----------
-        f : Callable[[Node], Node] | Mapping[Node, Node] | None, optional
+        mapping : Callable[[Node], Node] | Mapping[Node, Node] | None, optional
             A function or a mapping that translates the current node
             indices to new ones.  Indices that are not present in the
             mapping are left unchanged.  If ``f`` is omitted, a
-            default mapping is applied that re-indexes the nodes
-            consecutively starting at 0.
+            default mapping is computed by using :meth:`node_mapping`.
 
         copy : bool, optional
             If ``True``, the current pattern remains unchanged and a
@@ -189,10 +245,12 @@ class Pattern:
         Pattern
             The re-indexed pattern. Equal to ``self`` if ``copy`` is ``False``.
         """
-        if f is None:
+        if mapping is None:
             # Suggested in issue #519
-            f = {node: i for i, node in enumerate(sorted(self.extract_nodes()))}
-        func: Callable[[Node], Node] = (lambda node: f.get(node, node)) if isinstance(f, Mapping) else f
+            mapping = self.node_mapping()
+        func: Callable[[Node], Node] = (
+            (lambda node: mapping.get(node, node)) if isinstance(mapping, Mapping) else mapping
+        )
         new_pattern = Pattern(input_nodes=map(func, self.input_nodes))
         for cmd in self:
             new_pattern.add(cmd.reindex(func))
@@ -277,18 +335,12 @@ class Pattern:
             )
 
         shift = max((*nodes_p1, *mapping.values())) + 1
-        mapping_sequential = {
-            node: i for i, node in enumerate(sorted(nodes_p2 - mapping.keys()), start=shift)
-        }  # assigns new labels to nodes in other not specified in mapping
-
-        mapping_complete = {**mapping, **mapping_sequential}
-
-        mapped_inputs = [mapping_complete[n] for n in other.input_nodes]
-        mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
+        mapping_complete = other.node_mapping(mapping, start=shift)
+        other = other.reindex(mapping_complete, copy=True)
 
         merged = mapping_values_set.intersection(self.__output_nodes)
 
-        inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
+        inputs = self.__input_nodes + [n for n in other.input_nodes if n not in merged]
 
         if preserve_mapping and not (len(merged) == len(other.input_nodes) == len(other.output_nodes)):
             warnings.warn(
@@ -298,14 +350,12 @@ class Pattern:
             preserve_mapping = False
 
         if preserve_mapping:
-            io_mapping = {
-                mapping[i]: mapping_complete[o] for i, o in zip(other.input_nodes, other.output_nodes, strict=True)
-            }
+            io_mapping = dict(zip(other.input_nodes, other.output_nodes, strict=True))
             outputs = [io_mapping[n] if n in merged else n for n in self.__output_nodes]
         else:
-            outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
+            outputs = [n for n in self.__output_nodes if n not in merged] + other.output_nodes
 
-        seq = [*self.__seq, *(c.reindex(lambda node: mapping_complete[node]) for c in other)]
+        seq = [*self.__seq, *other]
 
         p = Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq)
 
@@ -1909,3 +1959,60 @@ def shift_outcomes(outcomes: Mapping[int, Outcome], signal_dict: Mapping[int, Ab
         node: toggle_outcome(outcome) if sum(outcomes[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
         for node, outcome in outcomes.items()
     }
+
+
+def _reverse_mapping(m: Mapping[K, V]) -> dict[V, list[K]]:
+    """
+    Build a reverse mapping of ``m``.
+
+    For each key-value pair ``k → v`` in the input mapping ``m``, the
+    returned dictionary contains an entry ``v → [k1, k2, …]`` where the
+    list holds all keys that were associated with ``v`` in ``m``.
+    The order of keys inside each list corresponds to their first
+    appearance while iterating over ``m``.
+
+    Parameters
+    ----------
+    m: Mapping[K, V]
+        The mapping to be inspected.
+
+    Returns
+    -------
+    dict[V, list[K]]
+        A new dictionary where each distinct value from ``m`` maps to a list
+        of all keys that originally pointed to that value.
+    """
+    result: dict[V, list[K]] = {}
+
+    for k, v in m.items():
+        if (antecedents := result.get(v)) is not None:
+            antecedents.append(k)
+        else:
+            result[v] = [k]
+
+    return result
+
+
+def _duplicates_in_mapping(m: Mapping[K, V]) -> dict[V, list[K]]:
+    """
+    Return a dictionary of values that appear more than once in ``m``.
+
+    For each value that is mapped to by multiple keys, the resulting
+    dictionary contains an entry ``value → [key1, key2, …]`` where the list
+    holds all keys that map to that value (the order follows the
+    iteration order of ``m.items()``).
+
+    Parameters
+    ----------
+    m : Mapping[K, V]
+        The mapping to be inspected.
+
+    Returns
+    -------
+    dict[V, list[K]]
+        A dictionary whose keys are the duplicated values and whose values are
+        lists of the keys that map to them.  If the input mapping is injective,
+        an empty dictionary is returned.
+    """
+    reversed_mapping = _reverse_mapping(m)
+    return {v: antedents for v, antedents in reversed_mapping.items() if len(antedents) > 1}
