@@ -296,3 +296,58 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
             KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Y)),
         ]
     )
+
+
+def amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Single-qubit amplitude damping channel.
+
+    Kraus operators:
+
+    .. math::
+        K_1 = \begin{pmatrix} 1 & 0 \\ 0 & \sqrt{1-\gamma} \end{pmatrix}, \quad
+        K_2 = \begin{pmatrix} 0 & \sqrt{\gamma} \\ 0 & 0 \end{pmatrix}
+
+    Parameters
+    ----------
+    gamma : float
+        Damping parameter, between 0 and 1. Represents the probability of a
+        qubit decaying from |1> to |0>.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        containing the corresponding Kraus operators
+    """
+    if not (0.0 <= gamma <= 1.0):
+        raise ValueError("gamma must be between 0 and 1.")
+    k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)
+    k2 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+    return KrausChannel([KrausData(1.0, k1), KrausData(1.0, k2)])
+
+
+def two_qubit_amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Two-qubit amplitude damping channel (tensor product of two single-qubit channels).
+
+    The channel is the tensor product :math:`\mathcal{E} \otimes \mathcal{E}` of two independent
+    single-qubit amplitude damping channels with the same parameter ``gamma``.
+
+    Kraus operators are :math:`K_i \otimes K_j` for all pairs :math:`(i, j) \in \{1, 2\}^2`.
+
+    Parameters
+    ----------
+    gamma : float
+        Damping parameter, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        containing the corresponding Kraus operators
+    """
+    if not (0.0 <= gamma <= 1.0):
+        raise ValueError("gamma must be between 0 and 1.")
+    k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)
+    k2 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+    single_kraus = [k1, k2]
+    return KrausChannel(
+        [KrausData(1.0, np.kron(ka, kb)) for ka in single_kraus for kb in single_kraus]
+    )
