@@ -21,7 +21,8 @@ import pytest
 
 from graphix import Measurement, OpenGraph, Pattern
 from graphix.command import E, M, N, X, Z
-from graphix.flow.core import _solve_gf2
+from graphix.flow.core import XZCorrections, _solve_gf2
+from graphix.flow.exceptions import FlowError
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -174,3 +175,26 @@ def test_solve_gf2_inconsistent_returns_none() -> None:
 
 def test_solve_gf2_no_equations() -> None:
     assert _solve_gf2([], [], 3) == [0, 0, 0]
+
+
+def test_to_pauli_flow_raises_when_no_flow_exists() -> None:
+    # A measured input node that must correct itself (Z axis) admits no Pauli flow,
+    # because the correction set's image cannot contain an input node.
+    og1 = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.Z})
+    with pytest.raises(FlowError):
+        XZCorrections(og1, {}, {}, [{1}, {0}]).to_pauli_flow()
+
+    # An isolated node measured in the XY plane cannot satisfy proposition P4
+    # (it must lie in the odd neighbourhood of its correction set), so the GF(2)
+    # system has no solution and no Pauli flow exists.
+    graph: nx.Graph[int] = nx.Graph()
+    graph.add_node(0)
+    graph.add_edge(1, 2)
+    og2 = OpenGraph(
+        graph=graph,
+        input_nodes=[],
+        output_nodes=[2],
+        measurements={0: Measurement.XY(0.1), 1: Measurement.XY(0.1)},
+    )
+    with pytest.raises(FlowError):
+        XZCorrections(og2, {}, {}, [{2}, {1}, {0}]).to_pauli_flow()
