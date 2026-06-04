@@ -1082,6 +1082,10 @@ class TestPattern:
         assert pattern.node_mapping() == {1: 0, 3: 1}
         assert pattern.node_mapping({3: 1}, start=1) == {1: 2, 3: 1}
         assert pattern.node_mapping(start=1, preserves={1}) == {3: 2}
+        with pytest.raises(ValueError, match="Initial mapping is not injective"):
+            pattern.node_mapping({1: 0, 3: 0})
+        with pytest.raises(ValueError, match="Some keys in the initial mapping are not nodes"):
+            pattern.node_mapping({2: 0})
 
     def test_reindex(self) -> None:
         pattern = Pattern(input_nodes=[3], cmds=[N(1), E((1, 3)), M(3), C(1, Clifford.H), X(1, {3}), Z(1, {3})])

@@ -195,10 +195,15 @@ class Pattern:
         dict[Node, Node]
             A dictionary that maps each node of ``self`` (except those listed in ``preserves``) to a distinct integer index.
         """
+        nodes = self.extract_nodes()
         if mapping is None:
             result = {}
         else:
             result = dict(mapping)
+            unknown_nodes = [node for node in mapping if node not in nodes]
+            if unknown_nodes:
+                unknown_nodes_str = ", ".join(map(str, unknown_nodes))
+                raise ValueError(f"Some keys in the initial mapping are not nodes: {unknown_nodes_str}")
             duplicates = _duplicates_in_mapping(result)
             if duplicates:
                 reason = ", ".join(f"{antecedents} are mapped to {value}" for value, antecedents in duplicates.items())
@@ -208,7 +213,7 @@ class Pattern:
         if preserves:
             used_indices.update(preserves)
         candidate = start
-        for node in sorted(self.extract_nodes()):
+        for node in sorted(nodes):
             if node in result or (preserves and node in preserves):
                 continue
             while candidate in used_indices:
