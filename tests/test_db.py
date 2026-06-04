@@ -112,11 +112,11 @@ def generate_clifford_pauli_decomposition(rng: Generator) -> tuple[tuple[PauliMe
                 ):
                     patterns[clifford.value] = measurement_list
 
-    n = 0
-    explore(0)
-    while any(pattern is None for pattern in patterns):
-        n += 1
+    for n in range(4):
         explore(n)
+
+    if any(pattern is None for pattern in patterns):
+        raise RuntimeError("Local Cliffords are guaranteed to have a decomposition in 3 or less measured nodes.")
 
     return tuple(map(unwrap, patterns))
 
