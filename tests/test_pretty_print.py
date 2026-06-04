@@ -4,6 +4,7 @@ import math
 from typing import TYPE_CHECKING
 
 import networkx as nx
+import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
@@ -309,8 +310,10 @@ def test_statevec_draw_negative_and_parenthesized() -> None:
     # Negative amplitudes use a `-` separator between terms.
     neg = Statevec([0.5, -0.5, 0.5, 0.5])
     assert neg.draw(OutputFormat.Unicode) == "1/2|00⟩ - 1/2|01⟩ + 1/2|10⟩ + 1/2|11⟩"
-    # A compound (cartesian) amplitude is parenthesized before the ket.
-    binomial = Statevec([0.5 + 0.25j, (1 - abs(0.5 + 0.25j) ** 2) ** 0.5])
+    # A compound (cartesian) amplitude is parenthesized before the ket. Build from a
+    # numpy array so the amplitudes are ``numpy.complex128`` (Python's ``complex`` only
+    # gained ``__complex__`` in 3.11, so a bare ``complex`` is rejected on 3.10).
+    binomial = Statevec(np.array([0.5 + 0.25j, (1 - abs(0.5 + 0.25j) ** 2) ** 0.5]))
     assert binomial.draw(OutputFormat.Unicode) == "(1/2 + 1/4i)|0⟩ + √11/4|1⟩"
     # A unit negative amplitude collapses to a bare `-|ket⟩`.
-    assert Statevec([-1.0 + 0j, 0j]).draw(OutputFormat.Unicode) == "-|0⟩"
+    assert Statevec([-1.0, 0.0]).draw(OutputFormat.Unicode) == "-|0⟩"
