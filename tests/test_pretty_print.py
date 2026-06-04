@@ -275,3 +275,42 @@ def test_density_matrix_draw() -> None:
     dm = DensityMatrix(data=[BasicStates.ZERO])
     assert dm.draw(OutputFormat.ASCII) == "[ 1  0 ]\n[ 0  0 ]"
     assert dm.draw(OutputFormat.LaTeX) == r"\begin{pmatrix}1 & 0 \\ 0 & 0\end{pmatrix}"
+
+
+def test_complex_to_str_exponential_with_radius() -> None:
+    # |z| != 1: the radius prefixes the exponential form (1 + i = √2 e^{iπ/4}).
+    assert complex_to_str(1 + 1j, OutputFormat.Unicode) == "√2·e^(iπ/4)"
+    assert complex_to_str(1 + 1j, OutputFormat.ASCII) == "sqrt(2)*e^(i*pi/4)"
+    assert complex_to_str(1 + 1j, OutputFormat.LaTeX) == r"\sqrt{2} \mathrm{e}^{\mathrm{i} \frac{\pi}{4}}"
+
+
+def test_complex_to_str_cartesian_form() -> None:
+    # Both parts are recognized but the phase is not a simple fraction of π, so the
+    # cartesian form is used instead of the exponential one.
+    assert complex_to_str(0.5 + 0.25j, OutputFormat.Unicode) == "1/2 + 1/4i"
+    assert complex_to_str(0.5 + 0.25j, OutputFormat.LaTeX) == r"\frac{1}{2} + \frac{1}{4}\mathrm{i}"
+
+
+def test_complex_to_str_complex_decimal_fallback() -> None:
+    # Neither part is a recognized value -> rounded decimal real and imaginary parts.
+    assert complex_to_str(0.123456 + 0.234567j, OutputFormat.Unicode) == "0.1235+0.2346i"
+
+
+def test_complex_to_str_imaginary_formats() -> None:
+    assert complex_to_str(0.5j, OutputFormat.LaTeX) == r"\frac{1}{2}\mathrm{i}"
+    assert complex_to_str(0.5j, OutputFormat.ASCII) == "1/2i"
+
+
+def test_complex_to_str_integer_times_sqrt() -> None:
+    assert complex_to_str(math.sqrt(12), OutputFormat.Unicode) == "2√3"
+
+
+def test_statevec_draw_negative_and_parenthesized() -> None:
+    # Negative amplitudes use a `-` separator between terms.
+    neg = Statevec([0.5, -0.5, 0.5, 0.5])
+    assert neg.draw(OutputFormat.Unicode) == "1/2|00⟩ - 1/2|01⟩ + 1/2|10⟩ + 1/2|11⟩"
+    # A compound (cartesian) amplitude is parenthesized before the ket.
+    binomial = Statevec([0.5 + 0.25j, (1 - abs(0.5 + 0.25j) ** 2) ** 0.5])
+    assert binomial.draw(OutputFormat.Unicode) == "(1/2 + 1/4i)|0⟩ + √11/4|1⟩"
+    # A unit negative amplitude collapses to a bare `-|ket⟩`.
+    assert Statevec([-1.0 + 0j, 0j]).draw(OutputFormat.Unicode) == "-|0⟩"
