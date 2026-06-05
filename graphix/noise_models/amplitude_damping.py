@@ -179,7 +179,7 @@ class AmplitudeDampingNoiseModel(NoiseModel):
     def confuse_result(
         self, cmd: BaseM, result: Outcome, rng: Generator | None = None, *, stacklevel: int = 1
     ) -> Outcome:
-        """Assign wrong measurement result cmd = \"M\"."""
+        """Assign wrong measurement result cmd = "M"."""
         rng = ensure_rng(rng, stacklevel=stacklevel + 1)
         if rng.uniform() < self.measure_error_prob:
             return toggle_outcome(result)
