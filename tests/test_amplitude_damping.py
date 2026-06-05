@@ -64,11 +64,10 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
+from graphix.pattern import Pattern
 from graphix.channels import KrausChannel, amplitude_damping_channel, two_qubit_amplitude_damping_channel
 from graphix.command import CommandKind, E, M, N, X, Z
-from graphix.fundamentals import Plane
 from graphix.noise_models import AmplitudeDampingNoise, AmplitudeDampingNoiseModel, TwoQubitAmplitudeDampingNoise
-from graphix.noise_models.noise_model import ApplyNoise, NoiselessNoiseModel
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.transpiler import Circuit
 
@@ -79,6 +78,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _apply_kraus(channel: KrausChannel, rho: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
     """Apply a KrausChannel to density matrix rho manually."""
@@ -98,6 +98,7 @@ def _ket_to_dm(ket: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
 # ---------------------------------------------------------------------------
 # Channel unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestAmplitudeDampingChannel:
     """Tests for amplitude_damping_channel() factory."""
@@ -130,7 +131,7 @@ class TestAmplitudeDampingChannel:
             assert np.allclose(result, expected), f"Excited state decay wrong for gamma={gamma}"
 
     def test_amplitude_damping_channel_gamma_zero_is_identity(self) -> None:
-        """gamma=0 must act as the identity channel on any state."""
+        """Gamma=0 must act as the identity channel on any state."""
         rho = np.array([[0.6, 0.3 + 0.1j], [0.3 - 0.1j, 0.4]], dtype=np.complex128)
         channel = amplitude_damping_channel(0.0)
         result = _apply_kraus(channel, rho)
@@ -155,7 +156,7 @@ class TestAmplitudeDampingChannel:
         assert np.isclose(np.trace(result), 1.0)
 
     def test_amplitude_damping_channel_invalid_gamma(self) -> None:
-        """gamma outside [0, 1] must raise ValueError."""
+        """Gamma outside [0, 1] must raise ValueError."""
         with pytest.raises(ValueError):
             amplitude_damping_channel(-0.1)
         with pytest.raises(ValueError):
@@ -211,7 +212,7 @@ class TestTwoQubitAmplitudeDampingChannel:
         # State |01> = |0> tensor |1>
         rho_0 = np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.complex128)
         rho_1 = np.array([[0.0, 0.0], [0.0, 1.0]], dtype=np.complex128)
-        rho_01 = np.kron(rho_0, rho_1)
+        rho_01 = np.kron(rho_0, rho_1).astype(np.complex128)
 
         result_2q = _apply_kraus(channel_2q, rho_01)
 
@@ -226,6 +227,7 @@ class TestTwoQubitAmplitudeDampingChannel:
 # ---------------------------------------------------------------------------
 # Noise class unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestAmplitudeDampingNoiseClasses:
     """Tests for AmplitudeDampingNoise and TwoQubitAmplitudeDampingNoise."""
@@ -250,6 +252,7 @@ class TestAmplitudeDampingNoiseClasses:
 # ---------------------------------------------------------------------------
 # NoiseModel structure tests
 # ---------------------------------------------------------------------------
+
 
 class TestAmplitudeDampingNoiseModelStructure:
     """Test that AmplitudeDampingNoiseModel wraps commands correctly."""
@@ -323,7 +326,8 @@ class TestAmplitudeDampingNoiseModelStructure:
 # Integration tests — full pattern simulation
 # ---------------------------------------------------------------------------
 
-def hpat():
+
+def hpat() -> Pattern:
     circ = Circuit(1)
     circ.h(0)
     return circ.transpile().pattern
