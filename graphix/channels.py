@@ -348,6 +348,4 @@ def two_qubit_amplitude_damping_channel(gamma: float) -> KrausChannel:
     k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)
     k2 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
     single_kraus = [k1, k2]
-    return KrausChannel(
-        [KrausData(1.0, np.kron(ka, kb)) for ka in single_kraus for kb in single_kraus]
-    )
+    return KrausChannel([KrausData(1.0, np.kron(ka, kb)) for ka in single_kraus for kb in single_kraus])
