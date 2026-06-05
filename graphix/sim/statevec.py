@@ -529,6 +529,7 @@ class Statevec(DenseState):
         max_denominator: int = 1000,
         atol: float = 1e-9,
         rtol: float = 0.0,
+        precision: int = 4,
     ) -> str:
         r"""Return a pretty-printed ket-notation representation of the statevector.
 
@@ -550,6 +551,9 @@ class Statevec(DenseState):
             recognition heuristics (default: ``1e-9``).
         rtol : float, optional
             Relative tolerance for dropping near-zero amplitudes (default: ``0.0``).
+        precision : int, optional
+            Number of significant digits to use for amplitudes that fall back to
+            a decimal representation (default: ``4``).
 
         Returns
         -------
@@ -565,7 +569,15 @@ class Statevec(DenseState):
         >>> print(circuit.simulate_statevector().statevec.draw())
         √2/2|00⟩ + √2/2|01⟩
         """
-        return statevec_to_str(self, output, encoding=encoding, max_denominator=max_denominator, atol=atol, rtol=rtol)
+        return statevec_to_str(
+            self,
+            output,
+            encoding=encoding,
+            max_denominator=max_denominator,
+            atol=atol,
+            rtol=rtol,
+            precision=precision,
+        )
 
     def _to_dict_map(
         self,

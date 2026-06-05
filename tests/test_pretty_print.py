@@ -317,3 +317,11 @@ def test_statevec_draw_negative_and_parenthesized() -> None:
     assert binomial.draw(OutputFormat.Unicode) == "(1/2 + 1/4i)|0⟩ + √11/4|1⟩"
     # A unit negative amplitude collapses to a bare `-|ket⟩`.
     assert Statevec([-1.0, 0.0]).draw(OutputFormat.Unicode) == "-|0⟩"
+
+
+def test_complex_to_str_precision_is_configurable() -> None:
+    z = 0.123456 + 0.234567j
+    assert complex_to_str(z, OutputFormat.ASCII, precision=2) == "0.12+0.23i"
+    assert complex_to_str(z, OutputFormat.ASCII, precision=6) == "0.123456+0.234567i"
+    # The default keeps the previous behaviour (four significant digits).
+    assert complex_to_str(z, OutputFormat.ASCII) == "0.1235+0.2346i"

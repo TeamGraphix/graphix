@@ -453,6 +453,7 @@ def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputForm
 
 _DEFAULT_MAX_DENOMINATOR = 1000
 _DEFAULT_ATOL = 1e-9
+_DEFAULT_PRECISION = 4
 
 
 def _squarefree_decomposition(n: int) -> tuple[int, int]:
@@ -482,12 +483,12 @@ def _squarefree_decomposition(n: int) -> tuple[int, int]:
     return outer, inner
 
 
-def _recognize_real(x: float, max_denominator: int, atol: float) -> tuple[int, int, int] | None:
+def _recognize_sqrt(x: float, max_denominator: int, atol: float) -> tuple[int, int, int] | None:
     """Recognize a real number as ``signed_num * sqrt(inner) / den``.
 
     The recognition approximates ``x ** 2`` by a rational ``p / q``; on success,
     ``x = ±sqrt(p / q)`` is rewritten with a rationalized, fully-reduced
-    denominator.
+    denominator. Pure rationals are covered as the special case ``inner == 1``.
 
     Parameters
     ----------
@@ -545,7 +546,7 @@ def _fraction_str(num: str, den: str, output: OutputFormat) -> str:
 
 
 def _render_real(signed_num: int, inner: int, den: int, output: OutputFormat) -> str:
-    """Render ``signed_num * sqrt(inner) / den`` produced by :func:`_recognize_real`."""
+    """Render ``signed_num * sqrt(inner) / den`` produced by :func:`_recognize_sqrt`."""
     if signed_num == 0:
         return "0"
     sign = "-" if signed_num < 0 else ""
@@ -563,7 +564,7 @@ def _render_real(signed_num: int, inner: int, den: int, output: OutputFormat) ->
 
 
 def _real_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
-    rec = _recognize_real(x, max_denominator, atol)
+    rec = _recognize_sqrt(x, max_denominator, atol)
     if rec is None:
         return None
     return _render_real(*rec, output)
@@ -571,7 +572,7 @@ def _real_to_str(x: float, output: OutputFormat, max_denominator: int, atol: flo
 
 def _imaginary_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
     """Render a purely imaginary value ``x * i``."""
-    rec = _recognize_real(x, max_denominator, atol)
+    rec = _recognize_sqrt(x, max_denominator, atol)
     if rec is None:
         return None
     signed_num, inner, den = rec
@@ -616,7 +617,7 @@ def _exponential_to_str(z: complex, output: OutputFormat, max_denominator: int, 
 def _cartesian_to_str(re: float, im: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
     """Render ``re + im i`` when both parts are recognized as nice reals."""
     re_str = _real_to_str(re, output, max_denominator, atol)
-    im_rec = _recognize_real(im, max_denominator, atol)
+    im_rec = _recognize_sqrt(im, max_denominator, atol)
     if re_str is None or im_rec is None:
         return None
     signed_num, inner, den = im_rec
@@ -629,14 +630,14 @@ def _cartesian_to_str(re: float, im: float, output: OutputFormat, max_denominato
     return f"{re_str}{connector}{imag}"
 
 
-def _decimal_to_str(z: complex, output: OutputFormat) -> str:
-    """Fallback formatting using rounded decimals."""
+def _decimal_to_str(z: complex, output: OutputFormat, precision: int) -> str:
+    """Fallback formatting using rounded decimals with ``precision`` significant digits."""
     unit = _imaginary_unit(output)
     if abs(z.imag) <= _DEFAULT_ATOL:
-        return f"{z.real:.4g}"
+        return f"{z.real:.{precision}g}"
     if abs(z.real) <= _DEFAULT_ATOL:
-        return f"{z.imag:.4g}{unit}"
-    return f"{z.real:.4g}{z.imag:+.4g}{unit}"
+        return f"{z.imag:.{precision}g}{unit}"
+    return f"{z.real:.{precision}g}{z.imag:+.{precision}g}{unit}"
 
 
 def complex_to_str(
@@ -645,6 +646,7 @@ def complex_to_str(
     *,
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
     atol: float = _DEFAULT_ATOL,
+    precision: int = _DEFAULT_PRECISION,
 ) -> str:
     r"""Return a human-friendly string representation of a complex number.
 
@@ -668,6 +670,9 @@ def complex_to_str(
         (default: ``1000``).
     atol : float, optional
         Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+    precision : int, optional
+        Number of significant digits to use for the decimal fallback when a
+        value is not recognized as an exact form (default: ``4``).
 
     Returns
     -------
@@ -682,6 +687,8 @@ def complex_to_str(
     '√2/2'
     >>> complex_to_str(0.5 + 0.8660254037844386j, OutputFormat.Unicode)
     'e^(iπ/3)'
+    >>> complex_to_str(0.123456 + 0.234567j, OutputFormat.ASCII, precision=2)
+    '0.12+0.23i'
     """
     if not isinstance(value, (bool, int, float, complex, SupportsComplex)):
         return str(value)
@@ -689,16 +696,16 @@ def complex_to_str(
     if abs(z.real) <= atol and abs(z.imag) <= atol:
         return "0"
     if abs(z.imag) <= atol:
-        return _real_to_str(z.real, output, max_denominator, atol) or _decimal_to_str(z, output)
+        return _real_to_str(z.real, output, max_denominator, atol) or _decimal_to_str(z, output, precision)
     if abs(z.real) <= atol:
-        return _imaginary_to_str(z.imag, output, max_denominator, atol) or _decimal_to_str(z, output)
+        return _imaginary_to_str(z.imag, output, max_denominator, atol) or _decimal_to_str(z, output, precision)
     exponential = _exponential_to_str(z, output, max_denominator, atol)
     if exponential is not None:
         return exponential
     cartesian = _cartesian_to_str(z.real, z.imag, output, max_denominator, atol)
     if cartesian is not None:
         return cartesian
-    return _decimal_to_str(z, output)
+    return _decimal_to_str(z, output, precision)
 
 
 def _ket_str(ket: str, output: OutputFormat) -> str:
@@ -722,6 +729,7 @@ def statevec_to_str(
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
     atol: float = _DEFAULT_ATOL,
     rtol: float = 0.0,
+    precision: int = _DEFAULT_PRECISION,
 ) -> str:
     r"""Return a ket-notation string representation of a statevector.
 
@@ -744,6 +752,9 @@ def statevec_to_str(
         recognition heuristics (default: ``1e-9``).
     rtol : float, optional
         Relative tolerance used to drop near-zero amplitudes (default: ``0.0``).
+    precision : int, optional
+        Number of significant digits to use for amplitudes that fall back to a
+        decimal representation (default: ``4``).
 
     Returns
     -------
@@ -755,7 +766,7 @@ def statevec_to_str(
         return "0"
     result = ""
     for index, (ket, amplitude) in enumerate(amplitudes.items()):
-        coefficient = complex_to_str(amplitude, output, max_denominator=max_denominator, atol=atol)
+        coefficient = complex_to_str(amplitude, output, max_denominator=max_denominator, atol=atol, precision=precision)
         ket_str = _ket_str(ket, output)
         if coefficient == "1":
             term = ket_str
@@ -780,6 +791,7 @@ def density_matrix_to_str(
     *,
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
     atol: float = _DEFAULT_ATOL,
+    precision: int = _DEFAULT_PRECISION,
 ) -> str:
     r"""Return a matrix-form string representation of a density matrix.
 
@@ -797,6 +809,9 @@ def density_matrix_to_str(
         Maximum denominator used by the entry recognition (default: ``1000``).
     atol : float, optional
         Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+    precision : int, optional
+        Number of significant digits to use for entries that fall back to a
+        decimal representation (default: ``4``).
 
     Returns
     -------
@@ -804,7 +819,10 @@ def density_matrix_to_str(
         The formatted density matrix.
     """
     rows = [
-        [complex_to_str(entry, output, max_denominator=max_denominator, atol=atol) for entry in row]
+        [
+            complex_to_str(entry, output, max_denominator=max_denominator, atol=atol, precision=precision)
+            for entry in row
+        ]
         for row in density_matrix.rho
     ]
     if output == OutputFormat.LaTeX:
