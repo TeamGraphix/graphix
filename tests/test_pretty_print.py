@@ -248,6 +248,11 @@ def test_xzcorr_str() -> None:
         (0.25 - 0.25j, OutputFormat.Unicode, "1/4 - i/4"),
         (2 - 3j, OutputFormat.ASCII, "2 - 3i"),
         (2 - 3j, OutputFormat.LaTeX, r"2 - 3\mathrm{i}"),
+        (2 + 1j, OutputFormat.Unicode, "2 + i"),
+        (0.75j, OutputFormat.LaTeX, r"\frac{3\mathrm{i}}{4}"),
+        (math.sqrt(2) / 2 * 1j, OutputFormat.Unicode, "√2i/2"),
+        (math.sqrt(2) / 2 * 1j, OutputFormat.LaTeX, r"\frac{\sqrt{2}\mathrm{i}}{2}"),
+        (2 + math.sqrt(2) / 2 * 1j, OutputFormat.Unicode, "2 + √2i/2"),
     ],
 )
 def test_complex_to_str(z: complex, output: OutputFormat, expected: str) -> None:
@@ -264,6 +269,13 @@ def test_complex_to_str_fallback() -> None:
 @pytest.mark.parametrize(
     ("angle", "output", "expected"),
     [
+        (0, OutputFormat.Unicode, "0"),
+        (0, OutputFormat.ASCII, "0"),
+        (0, OutputFormat.LaTeX, "0"),
+        (2, OutputFormat.Unicode, "2π"),
+        (2, OutputFormat.ASCII, "2pi"),
+        (2, OutputFormat.LaTeX, r"2\pi"),
+        (-3, OutputFormat.Unicode, "-3π"),
         (0.5, OutputFormat.Unicode, "π/2"),
         (0.5, OutputFormat.ASCII, "pi/2"),
         (0.5, OutputFormat.LaTeX, r"\frac{\pi}{2}"),

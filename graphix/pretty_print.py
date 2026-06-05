@@ -227,7 +227,7 @@ def _imag_scalar_to_str(
     if math.isclose(x, 1.0, rel_tol=rel_tol, abs_tol=abs_tol):
         return i
 
-    mkfrac, sqrt = _format_helpers(output)
+    _, sqrt = _format_helpers(output)
 
     frac = Fraction(x).limit_denominator(max_denominator)
     if math.isclose(x, float(frac), rel_tol=rel_tol, abs_tol=abs_tol):
