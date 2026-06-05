@@ -255,6 +255,19 @@ def test_statevec_draw_single_ket(encoding: _ENCODING, output: OutputFormat, exp
     assert statevec_to_str(sv, output, encoding=encoding) == expected
 
 
+def test_statevec_draw_single_ket_negative_amplitude() -> None:
+    sv = Statevec(data=np.array([0, -1], dtype=np.complex128))
+    assert statevec_to_str(sv, OutputFormat.Unicode) == "-|1⟩"
+    assert statevec_to_str(sv, OutputFormat.ASCII) == "-|1>"
+    assert statevec_to_str(sv, OutputFormat.LaTeX) == r"\(-\ket{1}\)"
+
+
+def test_statevec_draw_empty() -> None:
+    sv = Statevec(data=BasicStates.PLUS)
+    assert statevec_to_str(sv, OutputFormat.Unicode, atol=1.0) == "0"
+    assert statevec_to_str(sv, OutputFormat.LaTeX, atol=1.0) == r"\(0\)"
+
+
 def test_statevec_draw_superposition() -> None:
     sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
     assert sv.draw(encoding="MSB", output=OutputFormat.Unicode) == "1/2|000⟩ - 1/2|001⟩ + 1/2|010⟩ - 1/2|011⟩"

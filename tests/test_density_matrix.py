@@ -959,6 +959,13 @@ def test_density_matrix_draw_superposition() -> None:
     )
 
 
+def test_density_matrix_draw_single_row() -> None:
+    dm = DensityMatrix(nqubit=0, data=np.array([[1.0]], dtype=np.complex128))
+    assert density_matrix_to_str(dm, OutputFormat.Unicode) == "[[1]]"
+    assert density_matrix_to_str(dm, OutputFormat.ASCII) == "[[1]]"
+    assert density_matrix_to_str(dm, OutputFormat.LaTeX) == r"\(\begin{pmatrix} 1 \end{pmatrix}\)"
+
+
 def test_density_matrix_draw_4x4() -> None:
     sv = Statevec(data=np.array([1, 0, 0, 1], dtype=np.complex128) / np.sqrt(2))
     dm = DensityMatrix(data=sv)

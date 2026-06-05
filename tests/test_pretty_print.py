@@ -15,7 +15,7 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
-from graphix.pretty_print import OutputFormat, complex_to_str, pattern_to_str
+from graphix.pretty_print import OutputFormat, angle_to_str, complex_to_str, pattern_to_str
 from graphix.random_objects import rand_circuit
 from graphix.transpiler import Circuit
 
@@ -216,20 +216,38 @@ def test_xzcorr_str() -> None:
         (0.70710678, OutputFormat.ASCII, "sqrt(2)/2"),
         (0.70710678, OutputFormat.Unicode, "√2/2"),
         (0.70710678, OutputFormat.LaTeX, r"\frac{\sqrt{2}}{2}"),
+        (-0.70710678, OutputFormat.ASCII, "-sqrt(2)/2"),
+        (-0.70710678, OutputFormat.Unicode, "-√2/2"),
+        (-0.70710678, OutputFormat.LaTeX, r"-\frac{\sqrt{2}}{2}"),
         (math.sqrt(3) / 2, OutputFormat.Unicode, "√3/2"),
         (math.sqrt(3) / 2, OutputFormat.LaTeX, r"\frac{\sqrt{3}}{2}"),
+        (-math.sqrt(3) / 2, OutputFormat.Unicode, "-√3/2"),
+        (-math.sqrt(2), OutputFormat.Unicode, "-√2"),
+        (-math.sqrt(2), OutputFormat.LaTeX, r"-\sqrt{2}"),
         (0.5 + 0.8660254j, OutputFormat.ASCII, "e^(i*pi/3)"),
         (0.5 + 0.8660254j, OutputFormat.Unicode, "e^(iπ/3)"),
-        (0.5 + 0.8660254j, OutputFormat.LaTeX, r"e^{i\frac{\pi}{3}}"),
+        (0.5 + 0.8660254j, OutputFormat.LaTeX, r"\mathrm{e}^{\mathrm{i}\frac{\pi}{3}}"),
         (cmath.exp(1j * math.pi / 3), OutputFormat.Unicode, "e^(iπ/3)"),
         (0, OutputFormat.Unicode, "0"),
         (1, OutputFormat.Unicode, "1"),
         (-1, OutputFormat.Unicode, "-1"),
+        (2, OutputFormat.Unicode, "2"),
+        (-3, OutputFormat.ASCII, "-3"),
+        (2, OutputFormat.LaTeX, "2"),
+        (2j, OutputFormat.Unicode, "2i"),
+        (-2j, OutputFormat.LaTeX, r"-2\mathrm{i}"),
+        (0.25j, OutputFormat.Unicode, "i/4"),
+        (-0.25j, OutputFormat.LaTeX, r"-\frac{\mathrm{i}}{4}"),
         (1j, OutputFormat.Unicode, "i"),
+        (1j, OutputFormat.LaTeX, r"\mathrm{i}"),
         (-1j, OutputFormat.Unicode, "-i"),
-        (0.25 + 0.25j, OutputFormat.ASCII, "1/4 + 1/4 i"),
-        (0.25 + 0.25j, OutputFormat.Unicode, "1/4 + 1/4 i"),
-        (0.25 + 0.25j, OutputFormat.LaTeX, r"\frac{1}{4} + \frac{1}{4} i"),
+        (-1j, OutputFormat.LaTeX, r"-\mathrm{i}"),
+        (0.25 + 0.25j, OutputFormat.ASCII, "1/4 + i/4"),
+        (0.25 + 0.25j, OutputFormat.Unicode, "1/4 + i/4"),
+        (0.25 + 0.25j, OutputFormat.LaTeX, r"\frac{1}{4} + \frac{\mathrm{i}}{4}"),
+        (0.25 - 0.25j, OutputFormat.Unicode, "1/4 - i/4"),
+        (2 - 3j, OutputFormat.ASCII, "2 - 3i"),
+        (2 - 3j, OutputFormat.LaTeX, r"2 - 3\mathrm{i}"),
     ],
 )
 def test_complex_to_str(z: complex, output: OutputFormat, expected: str) -> None:
@@ -238,6 +256,28 @@ def test_complex_to_str(z: complex, output: OutputFormat, expected: str) -> None
 
 def test_complex_to_str_fallback() -> None:
     z = 0.123 + 0.456j
-    assert complex_to_str(z, OutputFormat.ASCII, max_denominator=1) == "0.123 + 0.456 i"
-    assert complex_to_str(z, OutputFormat.Unicode, max_denominator=1) == "0.123 + 0.456 i"
-    assert complex_to_str(z, OutputFormat.LaTeX, max_denominator=1) == "0.123 + 0.456 i"
+    assert complex_to_str(z, OutputFormat.ASCII, max_denominator=1) == "0.123 + 0.456i"
+    assert complex_to_str(z, OutputFormat.Unicode, max_denominator=1) == "0.123 + 0.456i"
+    assert complex_to_str(z, OutputFormat.LaTeX, max_denominator=1) == "0.123 + 0.456\\mathrm{i}"
+
+
+@pytest.mark.parametrize(
+    ("angle", "output", "expected"),
+    [
+        (0.5, OutputFormat.Unicode, "π/2"),
+        (0.5, OutputFormat.ASCII, "pi/2"),
+        (0.5, OutputFormat.LaTeX, r"\frac{\pi}{2}"),
+    ],
+)
+def test_angle_to_str_fraction(angle: float, output: OutputFormat, expected: str) -> None:
+    assert angle_to_str(angle, output) == expected
+
+
+@pytest.mark.parametrize("output", list(OutputFormat))
+def test_angle_to_str_radian_fallback(output: OutputFormat) -> None:
+    angle = 0.123456789
+    assert angle_to_str(angle, output) == f"{angle * math.pi:.2f}"
+
+
+def test_angle_to_str_radian_fallback_max_denominator() -> None:
+    assert angle_to_str(0.7, OutputFormat.Unicode, max_denominator=3) == f"{0.7 * math.pi:.2f}"

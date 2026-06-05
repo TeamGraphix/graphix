@@ -48,6 +48,10 @@ class OutputFormat(Enum):
     Unicode = enum.auto()
 
 
+def _validate_output_format(output: OutputFormat) -> None:
+    assert output in (OutputFormat.ASCII, OutputFormat.LaTeX, OutputFormat.Unicode)
+
+
 def angle_to_str(
     angle: Angle,
     output: OutputFormat,
@@ -85,12 +89,11 @@ def angle_to_str(
     str
         The formatted angle.
     """
+    _validate_output_format(output)
     frac = Fraction(angle).limit_denominator(max_denominator)
 
     if not math.isclose(angle, float(frac), abs_tol=abs_tol):
-        rad = angle_to_rad(angle)
-
-        return f"{rad}"
+        return f"{angle_to_rad(angle):.2f}"
 
     num, den = frac.numerator, frac.denominator
     sign = "-" if num < 0 else ""
@@ -210,20 +213,56 @@ def _scalar_or_decimal(
     return f"{x:g}"
 
 
-def _imag_unit_str(coeff: str) -> str:
-    return "i" if coeff == "1" else f"{coeff} i"
+def _imag_scalar_to_str(
+    x: float,
+    output: OutputFormat,
+    *,
+    max_denominator: int,
+    rel_tol: float,
+    abs_tol: float,
+) -> str:
+    i = r"\mathrm{i}" if output == OutputFormat.LaTeX else "i"
+    x = abs(x)
+
+    if math.isclose(x, 1.0, rel_tol=rel_tol, abs_tol=abs_tol):
+        return i
+
+    mkfrac, sqrt = _format_helpers(output)
+
+    frac = Fraction(x).limit_denominator(max_denominator)
+    if math.isclose(x, float(frac), rel_tol=rel_tol, abs_tol=abs_tol):
+        num, den = abs(frac.numerator), frac.denominator
+        if den == 1:
+            return f"{num}{i}"
+        if num == 1:
+            return f"{i}/{den}" if output != OutputFormat.LaTeX else rf"\frac{{{i}}}{{{den}}}"
+        if output == OutputFormat.LaTeX:
+            return rf"\frac{{{num}{i}}}{{{den}}}"
+        return f"{num}{i}/{den}"
+
+    for n in range(1, _MAX_RADICAND + 1):
+        root = math.sqrt(n)
+        for d in range(1, max_denominator + 1):
+            val = root / d
+            if math.isclose(x, val, rel_tol=rel_tol, abs_tol=abs_tol):
+                num_str = sqrt(n) if n != 1 else "1"
+                if d == 1:
+                    return i if num_str == "1" else f"{num_str}{i}"
+                if num_str == "1":
+                    return f"{i}/{d}" if output != OutputFormat.LaTeX else rf"\frac{{{i}}}{{{d}}}"
+                if output == OutputFormat.LaTeX:
+                    return rf"\frac{{{num_str}{i}}}{{{d}}}"
+                return f"{num_str}{i}/{d}"
+
+    return f"{x:g}{i}"
 
 
 def _exp_i_to_str(angle_str: str, output: OutputFormat) -> str:
-    match output:
-        case OutputFormat.LaTeX:
-            return rf"e^{{i{angle_str}}}"
-        case OutputFormat.Unicode:
-            return f"e^(i{angle_str})"
-        case OutputFormat.ASCII:
-            return f"e^(i*{angle_str})"
-        case _:
-            assert_never(output)
+    if output == OutputFormat.LaTeX:
+        return rf"\mathrm{{e}}^{{\mathrm{{i}}{angle_str}}}"
+    if output == OutputFormat.Unicode:
+        return f"e^(i{angle_str})"
+    return f"e^(i*{angle_str})"
 
 
 def _cartesian_to_str(
@@ -246,14 +285,13 @@ def _cartesian_to_str(
             abs_tol=abs_tol,
         )
 
-    imag_coeff = _scalar_or_decimal(
-        abs(z.imag),
+    imag_part = _imag_scalar_to_str(
+        z.imag,
         output,
         max_denominator=max_denominator,
         rel_tol=rel_tol,
         abs_tol=abs_tol,
     )
-    imag_part = _imag_unit_str(imag_coeff)
 
     if real_zero:
         return f"-{imag_part}" if z.imag < 0 else imag_part
@@ -305,6 +343,7 @@ def complex_to_str(
     str
         The formatted complex number.
     """
+    _validate_output_format(output)
     z = complex(z)
 
     if math.isclose(z.real, 0.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
@@ -324,11 +363,11 @@ def complex_to_str(
         if math.isclose(z.real, 0.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
             z.imag, 1.0, rel_tol=rel_tol, abs_tol=abs_tol
         ):
-            return "i"
+            return r"\mathrm{i}" if output == OutputFormat.LaTeX else "i"
         if math.isclose(z.real, 0.0, rel_tol=rel_tol, abs_tol=abs_tol) and math.isclose(
             z.imag, -1.0, rel_tol=rel_tol, abs_tol=abs_tol
         ):
-            return "-i"
+            return r"-\mathrm{i}" if output == OutputFormat.LaTeX else "-i"
 
         angle = cmath.phase(z) / pi
         frac = Fraction(angle).limit_denominator(max_denominator)
@@ -340,15 +379,11 @@ def complex_to_str(
 
 
 def _ket_to_str(bits: str, output: OutputFormat) -> str:
-    match output:
-        case OutputFormat.LaTeX:
-            return rf"\ket{{{bits}}}"
-        case OutputFormat.Unicode:
-            return f"|{bits}⟩"
-        case OutputFormat.ASCII:
-            return f"|{bits}>"
-        case _:
-            assert_never(output)
+    if output == OutputFormat.LaTeX:
+        return rf"\ket{{{bits}}}"
+    if output == OutputFormat.Unicode:
+        return f"|{bits}⟩"
+    return f"|{bits}>"
 
 
 def _format_statevec_term(
@@ -422,6 +457,7 @@ def statevec_to_str(
     str
         The formatted statevector as a sum of ket terms.
     """
+    _validate_output_format(output)
     amplitudes = statevec.to_dict(encoding=encoding, rtol=rtol, atol=atol)
     terms = [
         _format_statevec_term(
@@ -477,6 +513,7 @@ def density_matrix_to_str(
     str
         The formatted density matrix.
     """
+    _validate_output_format(output)
     rho = density_matrix.rho
     nrows, ncols = rho.shape
 
