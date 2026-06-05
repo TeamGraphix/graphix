@@ -21,8 +21,9 @@ import pytest
 
 from graphix import Measurement, OpenGraph, Pattern
 from graphix.command import E, M, N, X, Z
-from graphix.flow.core import XZCorrections, _solve_gf2
+from graphix.flow.core import XZCorrections
 from graphix.flow.exceptions import FlowError
+from graphix.opengraph import OpenGraphError
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -117,9 +118,9 @@ def test_extract_pauli_flow_pauli_opengraph() -> None:
 
 
 _MEASUREMENTS: list[Callable[[Generator], Measurement]] = [
-    lambda r: Measurement.XY(round(float(r.random()), 3)),
-    lambda r: Measurement.XZ(round(float(r.random()), 3)),
-    lambda r: Measurement.YZ(round(float(r.random()), 3)),
+    lambda r: Measurement.XY(float(r.random())),
+    lambda r: Measurement.XZ(float(r.random())),
+    lambda r: Measurement.YZ(float(r.random())),
     lambda _r: Measurement.X,
     lambda _r: Measurement.Y,
     lambda _r: Measurement.Z,
@@ -151,30 +152,13 @@ def test_extract_pauli_flow_randomized_round_trip() -> None:
             pattern = OpenGraph(
                 graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements
             ).to_pattern()
-        except Exception:  # noqa: BLE001, S112  open graph without a flow -> not a valid test case
+        except OpenGraphError:
+            # The randomly drawn open graph does not admit a flow (the only documented
+            # raise condition of `OpenGraph.to_pattern`) -> not a valid test case.
             continue
         _assert_round_trip(pattern)
         tested += 1
     assert tested >= 30  # ensure the randomized sweep actually exercised the extraction
-
-
-def test_solve_gf2_unique_solution() -> None:
-    # x0 + x1 = 1, x1 = 1  ->  x0 = 0, x1 = 1
-    assert _solve_gf2([[1, 1], [0, 1]], [1, 1], 2) == [0, 1]
-
-
-def test_solve_gf2_free_variable_set_to_zero() -> None:
-    # x0 + x1 = 0  ->  free x1 = 0, x0 = 0
-    assert _solve_gf2([[1, 1]], [0], 2) == [0, 0]
-
-
-def test_solve_gf2_inconsistent_returns_none() -> None:
-    # x0 = 0 and x0 = 1 simultaneously.
-    assert _solve_gf2([[1, 0], [1, 0]], [0, 1], 2) is None
-
-
-def test_solve_gf2_no_equations() -> None:
-    assert _solve_gf2([], [], 3) == [0, 0, 0]
 
 
 def test_to_pauli_flow_raises_when_no_flow_exists() -> None:

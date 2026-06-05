@@ -11,10 +11,12 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
+import numpy as np
 
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
+from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.circ_ext.extraction import (
     CliffordMap,
     ExtractionResult,
@@ -286,8 +288,10 @@ class XZCorrections(Generic[_AM_co]):
         of ``i``; the free variables are the anachronical (non-future, X/Y-measured) candidates
         and, where the proposition allows it, ``i`` itself; and the equations encode the
         odd-neighbourhood constraints, namely the Z-corrections on the future nodes (P-future),
-        the vanishing of the odd neighbourhood on past non-(Y/Z) nodes (P2) and the local
-        proposition on ``i`` (P4-P9). The system is solved with :func:`_solve_gf2`.
+        the vanishing of the odd neighbourhood on past non-(Y/Z) nodes (P2), the coupling on
+        past Y-measured nodes (P3) and the local proposition on ``i`` (P4-P9). The system is
+        reduced with :meth:`graphix._linalg.MatGF2.gauss_elimination` and solved with
+        :func:`graphix._linalg.solve_f2_linear_system`.
 
         Returns
         -------
@@ -296,7 +300,9 @@ class XZCorrections(Generic[_AM_co]):
         Raises
         ------
         FlowError
-            If no Pauli flow is compatible with the XZ-corrections.
+            If no Pauli flow is compatible with the XZ-corrections (raised by
+            :func:`_reconstruct_pauli_correction_function` when the GF(2) system has no
+            solution for at least one measured node).
 
         Notes
         -----
@@ -308,7 +314,12 @@ class XZCorrections(Generic[_AM_co]):
         """
         correction_function = _reconstruct_pauli_correction_function(self)
         pf: PauliFlow[_AM_co] = PauliFlow(self.og, correction_function, self.partial_order_layers)
-        pf.check_well_formed()  # Raises a `FlowError` if the reconstructed flow is not well formed.
+        # Defensive: by construction the GF(2) equations of `_reconstruct_pauli_correction_function`
+        # encode propositions P2-P9 exactly, and the anachronical candidates are restricted to X/Y
+        # axes which guarantees P1; the general flow properties are also satisfied by construction
+        # (the correction function is defined on the measured nodes and its image is included in
+        # the non-input nodes). This check is kept as a regression guard.
+        pf.check_well_formed()
         return pf
 
     def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
@@ -1438,52 +1449,6 @@ def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
         raise PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer=first_layer)
 
 
-def _solve_gf2(matrix: list[list[int]], rhs: list[int], n_vars: int) -> list[int] | None:
-    """Return one solution of the GF(2) linear system ``matrix @ x = rhs``.
-
-    Gaussian elimination over GF(2) is used; free variables are assigned 0.
-
-    Parameters
-    ----------
-    matrix : list[list[int]]
-        Coefficient rows, each of length ``n_vars`` with entries in ``{0, 1}``.
-    rhs : list[int]
-        Right-hand side column (entries in ``{0, 1}``), one entry per row.
-    n_vars : int
-        Number of variables (columns).
-
-    Returns
-    -------
-    list[int] | None
-        A particular solution, or ``None`` if the system is inconsistent.
-    """
-    rows = [row[:] for row in matrix]
-    consts = list(rhs)
-    n_rows = len(rows)
-    pivot_cols: list[int] = []
-    pivot_row = 0
-    for col in range(n_vars):
-        sel = next((r for r in range(pivot_row, n_rows) if rows[r][col]), None)
-        if sel is None:
-            continue
-        rows[pivot_row], rows[sel] = rows[sel], rows[pivot_row]
-        consts[pivot_row], consts[sel] = consts[sel], consts[pivot_row]
-        for r in range(n_rows):
-            if r != pivot_row and rows[r][col]:
-                rows[r] = [a ^ b for a, b in zip(rows[r], rows[pivot_row], strict=True)]
-                consts[r] ^= consts[pivot_row]
-        pivot_cols.append(col)
-        pivot_row += 1
-        if pivot_row == n_rows:
-            break
-    if any(consts[r] and not any(rows[r]) for r in range(n_rows)):
-        return None
-    solution = [0] * n_vars
-    for idx, col in enumerate(pivot_cols):
-        solution[col] = consts[idx]
-    return solution
-
-
 def _solve_pauli_correction_set(
     xz: XZCorrections[AbstractMeasurement],
     node: int,
@@ -1563,12 +1528,26 @@ def _solve_pauli_correction_set(
         matrix.append(row_at(node))
         rhs.append(target ^ const_at(node))
 
-    solution = _solve_gf2(matrix, rhs, len(variables))
-    if solution is None:
-        return None
+    n_vars = len(variables)
+    if not matrix:
+        # No constraints: free variables default to 0, so the correction set is exactly
+        # the part of ``p(node)`` pinned by the X-corrections and the local proposition.
+        return set(fixed_in_p)
+
+    # Reduce the augmented matrix ``[A | b]`` to row echelon form together so that the
+    # row operations propagate to the right-hand side. Inconsistent systems leave a row
+    # ``[0...0 | 1]`` after reduction, which signals that no Pauli flow exists.
+    augmented = np.array([[*row, c] for row, c in zip(matrix, rhs, strict=True)], dtype=np.uint8).view(MatGF2)
+    augmented = augmented.gauss_elimination(ncols=n_vars)
+    lhs = MatGF2(augmented[:, :n_vars])
+    b = augmented[:, n_vars]
+    for i in range(lhs.shape[0]):
+        if not lhs[i].any() and b[i] != 0:
+            return None
+    solution = solve_f2_linear_system(lhs, MatGF2(b))
 
     correction_set = set(fixed_in_p)
-    correction_set.update(v for v, bit in zip(variables, solution, strict=True) if bit)
+    correction_set.update(v for v, bit in zip(variables, solution, strict=True) if int(bit))
     return correction_set
 
 
