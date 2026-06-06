@@ -9,8 +9,10 @@ import graphix.random_objects as randobj
 from graphix.channels import (
     KrausChannel,
     KrausData,
+    amplitude_damping_channel,
     dephasing_channel,
     depolarising_channel,
+    two_qubit_amplitude_damping_channel,
     two_qubit_depolarising_channel,
     two_qubit_depolarising_tensor_channel,
 )
@@ -118,6 +120,41 @@ class TestChannel:
         for i in range(len(depol_channel)):
             assert np.allclose(depol_channel[i].coef, data[i].coef)
             assert np.allclose(depol_channel[i].operator, data[i].operator)
+
+    def test_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        prob = fx_rng.uniform()
+        data = [
+            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]])),
+            KrausData(1.0, np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]])),
+        ]
+
+        channel = amplitude_damping_channel(prob)
+
+        assert isinstance(channel, KrausChannel)
+        assert channel.nqubit == 1
+        assert len(channel) == 2
+
+        for i in range(len(channel)):
+            assert np.allclose(channel[i].coef, data[i].coef)
+            assert np.allclose(channel[i].operator, data[i].operator)
+
+    def test_2_qubit_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        prob = fx_rng.uniform()
+        operators = [
+            np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]]),
+            np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]]),
+        ]
+        data = [KrausData(1.0, np.kron(left, right)) for left in operators for right in operators]
+
+        channel = two_qubit_amplitude_damping_channel(prob)
+
+        assert isinstance(channel, KrausChannel)
+        assert channel.nqubit == 2
+        assert len(channel) == 4
+
+        for i in range(len(channel)):
+            assert np.allclose(channel[i].coef, data[i].coef)
+            assert np.allclose(channel[i].operator, data[i].operator)
 
     def test_2_qubit_depolarising_channel(self, fx_rng: Generator) -> None:
         prob = fx_rng.uniform()

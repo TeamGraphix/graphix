@@ -200,6 +200,51 @@ def depolarising_channel(prob: float) -> KrausChannel:
     )
 
 
+def amplitude_damping_channel(prob: float) -> KrausChannel:
+    r"""Single-qubit amplitude damping channel.
+
+    .. math::
+        K_0 = \begin{pmatrix}1 & 0 \\ 0 & \sqrt{1-p}\end{pmatrix},
+        K_1 = \begin{pmatrix}0 & \sqrt{p} \\ 0 & 0\end{pmatrix}
+
+    Parameters
+    ----------
+    prob : float
+        The probability associated to the channel.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        containing the corresponding Kraus operators.
+    """
+    return KrausChannel(
+        [
+            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]])),
+            KrausData(1.0, np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]])),
+        ]
+    )
+
+
+def two_qubit_amplitude_damping_channel(prob: float) -> KrausChannel:
+    r"""Two-qubit tensor channel of single-qubit amplitude damping channels.
+
+    Parameters
+    ----------
+    prob : float
+        The probability associated to each single-qubit amplitude damping channel.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        containing the corresponding Kraus operators.
+    """
+    operators = [
+        np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]]),
+        np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]]),
+    ]
+    return KrausChannel([KrausData(1.0, np.kron(left, right)) for left in operators for right in operators])
+
+
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     r"""Single-qubit Pauli channel.
 

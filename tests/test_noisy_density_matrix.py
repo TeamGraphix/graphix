@@ -9,7 +9,7 @@ import pytest
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
-from graphix.noise_models import DepolarisingNoiseModel
+from graphix.noise_models import AmplitudeDampingNoiseModel, DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
@@ -183,6 +183,35 @@ class TestNoisyDensityMatrixBackend:
             res.rho,
             np.array([[1 - 2 * prepare_error_pr / 3.0, 0.0], [0.0, 2 * prepare_error_pr / 3.0]]),
         )
+
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_amplitude_damping_x_hadamard(self, fx_rng: Generator, outcome: Outcome) -> None:
+        hadamardpattern = hpat()
+        x_error_pr = fx_rng.random()
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(x_error_prob=x_error_pr),
+            branch_selector=ConstBranchSelector(outcome),
+            rng=fx_rng,
+        )
+
+        assert isinstance(res, DensityMatrix)
+        if outcome == 0:
+            assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        else:
+            assert np.allclose(res.rho, np.array([[x_error_pr, 0.0], [0.0, 1 - x_error_pr]]))
+
+    def test_amplitude_damping_preparation_hadamard(self, fx_rng: Generator) -> None:
+        hadamardpattern = hpat()
+        prepare_error_pr = fx_rng.random()
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(prepare_error_prob=prepare_error_pr),
+            rng=fx_rng,
+        )
+
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
 
     # Test rz gate
 
