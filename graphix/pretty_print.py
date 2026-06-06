@@ -49,7 +49,8 @@ class OutputFormat(Enum):
 
 
 def _validate_output_format(output: OutputFormat) -> None:
-    assert output in (OutputFormat.ASCII, OutputFormat.LaTeX, OutputFormat.Unicode)
+    if output not in (OutputFormat.ASCII, OutputFormat.LaTeX, OutputFormat.Unicode):
+        raise ValueError(f"unsupported output format: {output!r}")
 
 
 def angle_to_str(

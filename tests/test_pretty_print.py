@@ -293,3 +293,8 @@ def test_angle_to_str_radian_fallback(output: OutputFormat) -> None:
 
 def test_angle_to_str_radian_fallback_max_denominator() -> None:
     assert angle_to_str(0.7, OutputFormat.Unicode, max_denominator=3) == f"{0.7 * math.pi:.2f}"
+
+
+def test_validate_output_format() -> None:
+    with pytest.raises(ValueError, match="unsupported output format"):
+        complex_to_str(1, object())  # type: ignore[arg-type]
