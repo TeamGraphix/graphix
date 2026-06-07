@@ -343,6 +343,11 @@ def complex_to_str(
     -------
     str
         The formatted complex number.
+
+    Notes
+    -----
+    This function expects a concrete numeric value. Symbolic expressions such as
+    :class:`~graphix.parameter.Placeholder` are not supported.
     """
     _validate_output_format(output)
     z = complex(z)
@@ -387,6 +392,18 @@ def _ket_to_str(bits: str, output: OutputFormat) -> str:
     return f"|{bits}>"
 
 
+def _coeff_needs_parens(coeff: str) -> bool:
+    return " + " in coeff or " - " in coeff
+
+
+def _coeff_ket_body(coeff: str, ket_str: str, output: OutputFormat) -> str:
+    if _coeff_needs_parens(coeff):
+        if output == OutputFormat.LaTeX:
+            return rf"\left({coeff}\right){ket_str}"
+        return f"({coeff}){ket_str}"
+    return f"{coeff}{ket_str}"
+
+
 def _format_statevec_term(
     amp: complex,
     ket: str,
@@ -402,9 +419,11 @@ def _format_statevec_term(
         return "+", ket_str
     if coeff == "-1":
         return "-", ket_str
+    if _coeff_needs_parens(coeff):
+        return "+", _coeff_ket_body(coeff, ket_str, output)
     if coeff.startswith("-"):
-        return "-", f"{coeff[1:]}{ket_str}"
-    return "+", f"{coeff}{ket_str}"
+        return "-", _coeff_ket_body(coeff[1:], ket_str, output)
+    return "+", _coeff_ket_body(coeff, ket_str, output)
 
 
 def _join_statevec_terms(terms: list[tuple[str, str]]) -> str:
@@ -457,6 +476,14 @@ def statevec_to_str(
     -------
     str
         The formatted statevector as a sum of ket terms.
+
+    Notes
+    -----
+    This function formats concrete numeric amplitudes only. Symbolic or
+    parametric values (for example :class:`~graphix.parameter.Placeholder`) are
+    not supported. Substitute parameters with :meth:`~graphix.sim.statevec.Statevec.subs`
+    or :meth:`~graphix.sim.statevec.Statevec.xreplace` before calling this
+    function, or use ``str(statevec)`` for a raw representation.
     """
     _validate_output_format(output)
     amplitudes = statevec.to_dict(encoding=encoding, rtol=rtol, atol=atol)
@@ -513,6 +540,14 @@ def density_matrix_to_str(
     -------
     str
         The formatted density matrix.
+
+    Notes
+    -----
+    This function formats concrete numeric entries only. Symbolic or parametric
+    values (for example :class:`~graphix.parameter.Placeholder`) are not
+    supported. Substitute parameters with :meth:`~graphix.sim.density_matrix.DensityMatrix.subs`
+    or :meth:`~graphix.sim.density_matrix.DensityMatrix.xreplace` before calling
+    this function, or use ``str(density_matrix)`` for a raw representation.
     """
     _validate_output_format(output)
     rho = density_matrix.rho

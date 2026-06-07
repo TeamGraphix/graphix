@@ -277,6 +277,20 @@ def test_statevec_draw_superposition() -> None:
     )
 
 
+def test_statevec_draw_mixed_amplitude() -> None:
+    amp = 0.25 + 0.25j
+    other = np.sqrt(1 - abs(amp) ** 2)
+    sv = Statevec(data=np.array([amp, other], dtype=np.complex128))
+    assert statevec_to_str(sv, OutputFormat.Unicode) == "(1/4 + i/4)|0⟩ + 0.935414|1⟩"
+    assert statevec_to_str(sv, OutputFormat.LaTeX) == (
+        r"\(\left(\frac{1}{4} + \frac{\mathrm{i}}{4}\right)\ket{0} + 0.935414\ket{1}\)"
+    )
+
+    neg_amp = -0.25 - 0.25j
+    sv_neg = Statevec(data=np.array([neg_amp, other], dtype=np.complex128))
+    assert statevec_to_str(sv_neg, OutputFormat.Unicode) == "(-1/4 - i/4)|0⟩ + 0.935414|1⟩"
+
+
 def test_normalize() -> None:
     statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
     statevec.remove_qubit(0)

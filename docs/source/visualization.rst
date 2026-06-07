@@ -17,6 +17,12 @@ If flow or gflow exist, the tool take them into account and show the information
 
 This modules provides functions to format patterns and flows.
 
+``complex_to_str``, ``statevec_to_str``, and ``density_matrix_to_str`` format
+concrete numeric amplitudes and matrix elements. They do not support symbolic
+parameters such as :class:`~graphix.parameter.Placeholder`; substitute
+parameters before calling these functions, or use ``str(...)`` on the
+statevector or density matrix object for a raw representation.
+
 .. currentmodule:: graphix.pretty_print
 
 .. autoclass:: OutputFormat

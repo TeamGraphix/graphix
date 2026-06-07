@@ -513,6 +513,11 @@ class Statevec(DenseState):
         str
             The formatted statevector as a sum of ket terms.
 
+        Notes
+        -----
+        Requires concrete numeric amplitudes. For parametric states, substitute
+        with :meth:`subs` or :meth:`xreplace` first, or use ``str(self)``.
+
         See Also
         --------
         :func:`graphix.pretty_print.statevec_to_str`

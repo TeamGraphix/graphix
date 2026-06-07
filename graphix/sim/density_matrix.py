@@ -378,6 +378,12 @@ class DensityMatrix(DenseState):
         str
             The formatted density matrix.
 
+        Notes
+        -----
+        Requires concrete numeric entries. For parametric density matrices,
+        substitute with :meth:`subs` or :meth:`xreplace` first, or use
+        ``str(self)``.
+
         See Also
         --------
         :func:`graphix.pretty_print.density_matrix_to_str`
