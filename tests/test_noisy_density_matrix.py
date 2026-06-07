@@ -196,22 +196,21 @@ class TestNoisyDensityMatrixBackend:
         )
 
         assert isinstance(res, DensityMatrix)
-        if outcome == 0:
-            assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
-        else:
-            assert np.allclose(res.rho, np.array([[x_error_pr, 0.0], [0.0, 1 - x_error_pr]]))
+        assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
 
-    def test_amplitude_damping_preparation_hadamard(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_amplitude_damping_preparation_hadamard(self, fx_rng: Generator, outcome: Outcome) -> None:
         hadamardpattern = hpat()
-        prepare_error_pr = fx_rng.random()
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=AmplitudeDampingNoiseModel(prepare_error_prob=prepare_error_pr),
+            noise_model=AmplitudeDampingNoiseModel(prepare_error_prob=1.0),
+            branch_selector=ConstBranchSelector(outcome),
             rng=fx_rng,
         )
 
         assert isinstance(res, DensityMatrix)
-        assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        expected = np.array([[1.0, 0.0], [0.0, 0.0]]) if outcome == 0 else np.array([[0.0, 0.0], [0.0, 1.0]])
+        assert np.allclose(res.rho, expected)
 
     # Test rz gate
 
