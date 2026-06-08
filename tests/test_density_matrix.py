@@ -12,7 +12,7 @@ import pytest
 import graphix.random_objects as randobj
 from graphix import command
 from graphix.branch_selector import ConstBranchSelector
-from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
+from graphix.channels import KrausChannel, amplitude_damping_channel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
@@ -637,6 +637,21 @@ class TestDensityMatrix:
         ) ** 2 * np.outer(psi_evolvedb, psi_evolvedb.conj())
 
         # compare
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
+
+    def test_apply_amplitude_damping_channel(self) -> None:
+        gamma = 0.25
+        dm = DensityMatrix(BasicStates.ONE)
+
+        channel = amplitude_damping_channel(gamma)
+
+        assert isinstance(channel, KrausChannel)
+
+        dm.apply_channel(channel, [0])
+
+        expected_dm = np.array([[gamma, 0.0], [0.0, 1 - gamma]])
+
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)
 

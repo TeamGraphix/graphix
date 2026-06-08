@@ -200,6 +200,81 @@ def depolarising_channel(prob: float) -> KrausChannel:
     )
 
 
+def amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Single-qubit amplitude damping channel.
+
+    The channel is defined by the Kraus operators
+
+    .. math::
+        K_0 = \begin{pmatrix}1 & 0 \\ 0 & \sqrt{1-\gamma}\end{pmatrix},
+        \quad
+        K_1 = \begin{pmatrix}0 & \sqrt{\gamma} \\ 0 & 0\end{pmatrix}.
+
+    Parameters
+    ----------
+    gamma : float
+        Damping probability, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        Channel containing the corresponding Kraus operators.
+    """
+    if not 0 <= gamma <= 1:
+        raise ValueError("gamma must be between 0 and 1.")
+
+    return KrausChannel(
+        [
+            KrausData(
+                1.0,
+                np.array(
+                    [
+                        [1.0, 0.0],
+                        [0.0, np.sqrt(1 - gamma)],
+                    ],
+                    dtype=np.complex128,
+                ),
+            ),
+            KrausData(
+                1.0,
+                np.array(
+                    [
+                        [0.0, np.sqrt(gamma)],
+                        [0.0, 0.0],
+                    ],
+                    dtype=np.complex128,
+                ),
+            ),
+        ]
+    )
+
+
+def two_qubit_amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Two-qubit independent amplitude damping channel.
+
+    This is the tensor product of two identical one-qubit amplitude damping
+    channels with damping probability ``gamma``.
+
+    Parameters
+    ----------
+    gamma : float
+        Damping probability, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        Channel containing the tensor-product Kraus operators.
+    """
+    channel = amplitude_damping_channel(gamma)
+    return KrausChannel(
+        [
+            KrausData(left.coef * right.coef, np.kron(left.operator, right.operator))
+            for left in channel
+            for right in channel
+        ]
+    )
+
+
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     r"""Single-qubit Pauli channel.
 
