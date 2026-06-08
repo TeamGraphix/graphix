@@ -13,7 +13,7 @@ from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
-from graphix.transpiler import Circuit, decompose_ccx, transpile_swaps
+from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
 from tests.test_branch_selector import CheckedBranchSelector
 
 if TYPE_CHECKING:
@@ -158,11 +158,7 @@ class TestTranspilerUnitGates:
         assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
         state = circuit.simulate_statevector(rng=rng).statevec
         state2 = circuit2.simulate_statevector(rng=rng).statevec
-        qubits: list[int] = []
-        for qubit in transpiled_swaps.qubits:
-            assert qubit is not None
-            qubits.append(qubit)
-        state2.psi = np.transpose(state2.psi, qubits)
+        state2.psi = transpiled_swaps.swap_statevec(state2.psi)
         assert state.isclose(state2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -177,7 +173,6 @@ class TestTranspilerUnitGates:
         assert not any(instr.kind == InstructionKind.J for instr in circuit2.instruction)
         state = circuit.simulate_statevector(rng=rng).statevec
         state2 = circuit2.simulate_statevector(rng=rng).statevec
-        print(state.fidelity(state2))
         assert state.fidelity(state2) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -201,7 +196,11 @@ class TestTranspilerUnitGates:
         state2 = circuit2.simulate_statevector(
             rng=rng, input_state=input_state, branch_selector=branch_selector
         ).statevec
-        assert transpiled_swaps.qubits == (2, None, 1)
+        assert transpiled_swaps.outputs == (
+            OutputIndex(OutputKind.Qubit, 2),
+            OutputIndex(OutputKind.Bit, 0),
+            OutputIndex(OutputKind.Qubit, 1),
+        )
         state2.swap((0, 1))
         assert state.isclose(state2)
 

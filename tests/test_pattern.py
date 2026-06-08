@@ -675,6 +675,7 @@ class TestPattern:
         circuit_1.h(0)
         circuit_1.rz(0, alpha)
         p1 = circuit_1.transpile().pattern
+        p1.remove_input_nodes()
         p1 = p1.infer_pauli_measurements()
         p1.remove_pauli_measurements()
 

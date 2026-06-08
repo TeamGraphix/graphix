@@ -57,6 +57,7 @@ def test_standardize_clifford_entanglement(fx_rng: Generator) -> None:
                 assert state_p.isclose(state_ref)
 
 
+@pytest.mark.parametrize("jumps", range(1, 11))
 def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 3

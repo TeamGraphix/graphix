@@ -6,10 +6,13 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 
 from __future__ import annotations
 
+import enum
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar
 
 import networkx as nx
+import numpy as np
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -28,15 +31,20 @@ from graphix.sim.statevec import Statevec, StatevectorBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+    from typing import Any
 
+    import numpy.typing as npt
     from numpy.random import Generator
 
+    from graphix.command import Node
     from graphix.fundamentals import ParameterizedAngle
     from graphix.instruction import InstructionType
     from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.pattern import Pattern
     from graphix.sim import Data
     from graphix.sim.base_backend import Matrix
+
+    _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
 
 _R = TypeVar("_R", bound="Pattern | CausalFlow[BlochMeasurement]")
 _CO = TypeVar("_CO", bound="tuple[int, ...] | dict[int, command.M]")
@@ -493,7 +501,7 @@ class Circuit:
         f: CausalFlow[BlochMeasurement] = CausalFlow(og, x_corrections, partial_order_layers)
         return TranspileResult(f, classical_outputs)
 
-    def transpile(self) -> TranspileResult[Pattern, tuple[int, ...]]:
+    def transpile(self, transpile_swaps: bool = True) -> TranspileResult[Pattern, tuple[int, ...]]:
         """Transpile a circuit via J-∧z decomposition to a pattern.
 
         Parameters
@@ -504,7 +512,13 @@ class Circuit:
         -------
             the result of the transpilation: a pattern and classical outputs.
         """
-        return _transpile_cflow_to_pattern(self.transpile_to_cflow())
+        if not transpile_swaps:
+            return _transpile_cflow_to_pattern(self.transpile_to_cflow())
+        swap = _transpile_swaps(self)
+        result = _transpile_cflow_to_pattern(swap.circuit.transpile_to_cflow())
+        result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
+        classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
+        return TranspileResult(result.pattern, classical_outputs)
 
     def simulate_statevector(
         self,
@@ -909,24 +923,76 @@ class TranspileSwapsResult:
     circuit: Circuit
     """Circuit without SWAP gates."""
 
-    qubits: tuple[int | None, ...]
+    outputs: tuple[OutputIndex, ...]
     """
     Tuple which has the same width as the circuit and which for
     every qubit of the original circuit provides the index of the
-    corresponding qubit in the output of the returned
-    circuit. Measured qubits are mapped to ``None`` in this tuple.
+    corresponding qubit in the output of the swapped circuit
+    (either measured or not).
     """
+
+    def extract_outputs(self, kind: OutputKind) -> tuple[int, ...]:
+        """Return the sequence of outputs of the given kind."""
+        return tuple(output.index for output in self.outputs if output.kind == kind)
+
+    def extract_output_node_indices(self) -> tuple[int, ...]:
+        """Return for each output node, sorted in the order of the original circuit, the index of the corresponding output node in the order of the swapped circuit."""
+        reduced_index = {}
+        reduced_counter = 0
+        for index, output in enumerate(self.outputs):
+            if output.kind == OutputKind.Qubit:
+                reduced_index[index] = reduced_counter
+                reduced_counter += 1
+        return tuple(reduced_index[index] for index in self.extract_outputs(OutputKind.Qubit))
+
+    def swap_statevec(self, statevec: npt.NDArray[_ScalarT]) -> npt.NDArray[_ScalarT]:
+        """Reorder the elements of a statevector obtained from a swapped circuit to restore the qubit ordering of the original circuit."""
+        return np.transpose(statevec, self.extract_output_node_indices())
+
+    def swap_output_nodes(self, output_nodes: Sequence[Node]) -> tuple[Node, ...]:
+        """Reorder the output nodes of a pattern obtained from a swapped circuit to restore the qubit ordering of the original circuit."""
+        return tuple(output_nodes[index] for index in self.extract_output_node_indices())
+
+    def swap_classical_outputs(self, classical_outputs: Sequence[Node]) -> tuple[int, ...]:
+        """Reorder the classical outpus of a pattern obtained from a swapped circuit to restore the output ordering of the original circuit."""
+        return tuple(classical_outputs[index] for index in self.extract_outputs(OutputKind.Bit))
+
+
+class OutputKind(Enum):
+    """Specify whether a qubit is measured or not."""
+
+    Qubit = enum.auto()
+    Bit = enum.auto()
+
+
+@dataclass(frozen=True)
+class OutputIndex:
+    """Index of a swapped qubit.
+
+    If the qubit is measured, ``kind`` equals to `OutputKind.Bit` and
+    ``index`` is the index of the measurement.
+
+    If the qubit is not measured, ``kind`` equals to `OutputKind.qubit`
+    and ``index`` is the index of the qubit in the swapped circuit.
+    """
+
+    kind: OutputKind
+    index: int
 
 
 class _TranspileSwapVisitor(InstructionVisitor):
-    qubits: list[int | None]
+    outputs: list[OutputIndex]
 
     def __init__(self, width: int) -> None:
-        self.qubits = list(range(width))
+        self.outputs = [OutputIndex(OutputKind.Qubit, index) for index in range(width)]
 
     @override
     def visit_qubit(self, qubit: int) -> int:
-        return _check_target(self.qubits, qubit)
+        target = self.outputs[qubit]
+        if target.kind == OutputKind.Bit:
+            msg = f"Qubit {qubit} has already been measured."
+            raise ValueError(msg)
+        return target.index
 
 
 def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
@@ -941,24 +1007,32 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
     -------
     TranspileSwapsResult
         The field ``circuit`` contains an equivalent circuit without
-        SWAP gates.
-        The field ``qubits`` contains a tuple which has the same width
-        as the circuit and which for every qubit of the original
-        circuit provides the index of the corresponding qubit in the
-        output of the returned circuit. Measured qubits are mapped to
-        ``None`` in this tuple.
+        SWAP gates.  The field ``outputs`` contains a tuple which has
+        the same width as the circuit. For every qubit of the original
+        circuit, either the qubit is not measured, and ``outputs``
+        provides the index of the corresponding qubit in the output of
+        the returned circuit; or the qubit has been measured, and
+        ``outputs`` provides the index of the measurement.
     """
     new_circuit = Circuit(circuit.width)
     visitor = _TranspileSwapVisitor(circuit.width)
+    measurement_index = 0
     for instr in circuit.instruction:
         if instr.kind == InstructionKind.SWAP:
             u, v = instr.targets
-            visitor.qubits[u], visitor.qubits[v] = visitor.qubits[v], visitor.qubits[u]
+            # We apply the visitor to check that the qubits have not been measured.
+            visitor.visit_qubit(u)
+            visitor.visit_qubit(v)
+            visitor.outputs[u], visitor.outputs[v] = visitor.outputs[v], visitor.outputs[u]
         else:
             new_circuit.add(instr.visit(visitor))
             if instr.kind == InstructionKind.M:
-                visitor.qubits[instr.target] = None
-    return TranspileSwapsResult(new_circuit, tuple(visitor.qubits))
+                visitor.outputs[instr.target] = OutputIndex(OutputKind.Bit, measurement_index)
+                measurement_index += 1
+    return TranspileSwapsResult(new_circuit, tuple(visitor.outputs))
+
+
+_transpile_swaps = transpile_swaps
 
 
 def _transpile_cflow_to_pattern(
