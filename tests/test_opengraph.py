@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING, NamedTuple
 import networkx as nx
 import pytest
 
-from graphix.command import E
+from graphix.clifford import Clifford
+from graphix.command import C, E
 from graphix.fundamentals import ANGLE_PI, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
@@ -820,6 +821,186 @@ def _compose_5() -> OpenGraphComposeTestCase:
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
+# Merge clifford with measurement
+@register_open_graph_compose_test_case
+def _compose_6() -> OpenGraphComposeTestCase:
+    """Generate composition test with Cliffords.
+
+    Graph 1
+    [1]_{XY(0)} -- (2)_H
+
+    Graph 2
+    [1]_{XY(0)} -- (2)_X
+
+    Mapping: 1 -> 2
+
+    Expected graph
+    [1]_{XY(0)} -- 2_{YZ(0)} -- (3)_X
+
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2)])
+    inputs = [1]
+    outputs = [2]
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.XY(0))
+    og1 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.H})
+    og2 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.X})
+    og_ref = OpenGraph(
+        nx.Graph([(1, 2), (2, 3)]),
+        input_nodes=[1],
+        output_nodes=[3],
+        measurements={1: Measurement.XY(0), 2: Measurement.YZ(0)},
+        output_cliffords={3: Clifford.X},
+    )
+
+    mapping = {1: 2}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Merge clifford with measurement
+@register_open_graph_compose_test_case
+def _compose_7() -> OpenGraphComposeTestCase:
+    """Generate composition test with Cliffords.
+
+    Graph 1
+    [1] -- (2)
+
+    Graph 2 = Graph 1
+
+    Mapping: 2 -> 1
+
+    Expected graph
+    [1]_{XY(0)} -- (2)
+
+    Graph 2
+    [1]_{XY(0)} -- (2)_Z
+
+    Mapping: 2-> 1
+
+    Expected graph
+    [3]_{XY(0)} -- [1]_{XY(1)} -- (2)
+
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2)])
+    inputs = [1]
+    outputs = [2]
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.XY(0))
+    og1 = OpenGraph(g, inputs, outputs, meas)
+    og2 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.Z})
+    og_ref = OpenGraph(
+        nx.Graph([(1, 2), (1, 3)]),
+        input_nodes=[3],
+        output_nodes=[2],
+        measurements={1: Measurement.XY(1), 3: Measurement.XY(0)},
+    )
+
+    mapping = {2: 1}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Merge outputs with Cliffords
+@register_open_graph_compose_test_case
+def _compose_8() -> OpenGraphComposeTestCase:
+    """Generate composition test with Cliffords.
+
+    Graph 1
+    [1] -- (2)_H
+
+    Graph 2
+    [1] -- (2)_Z
+
+    Mapping: 2 -> 2
+
+    Expected graph
+    [1] -- (2)_{Z.H} -- [3]
+
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2)])
+    inputs = [1]
+    outputs = [2]
+    meas = dict.fromkeys(g.nodes - set(outputs), Measurement.XY(0))
+    og1 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.H})
+    og2 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.Z})
+    og_ref = OpenGraph(
+        nx.Graph([(1, 2), (2, 3)]),
+        input_nodes=[1, 3],
+        output_nodes=[2],
+        measurements={1: Measurement.XY(0), 3: Measurement.XY(0)},
+        output_cliffords={2: Clifford.Z @ Clifford.H},
+    )
+
+    mapping = {2: 2}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Parallel composition for single-node graph with empty mapping
+@register_open_graph_compose_test_case
+def _compose_9() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    [(0)]
+
+    Graph 2 = Graph 1
+
+    Mapping: {}
+
+    Expected graph
+    [(0)] [(1)]
+
+    """
+    g: nx.Graph[int] = nx.Graph()
+    g = nx.Graph()
+    g.add_node(0)
+    og: OpenGraph[Measurement] = OpenGraph(graph=g, input_nodes=[0], output_nodes=[0], measurements={})
+
+    g_ref: nx.Graph[int] = nx.Graph()
+    g_ref.add_nodes_from((0, 1))
+    og_ref: OpenGraph[Measurement] = OpenGraph(graph=g_ref, input_nodes=[0, 1], output_nodes=[0, 1], measurements={})
+
+    mapping: dict[int, int] = {}
+
+    return OpenGraphComposeTestCase(og, og, og_ref, mapping)
+
+
+# Merge clifford with measurement
+@register_open_graph_compose_test_case
+def _compose_10() -> OpenGraphComposeTestCase:
+    """Generate composition test with Cliffords.
+
+    Graph 1
+    [1]_{XY} -- (2)_H
+
+    Graph 2
+    [1]_{XY} -- (2)_X
+
+    Mapping: 1 -> 2
+
+    Expected graph
+    [1]_{XY} -- 2_{YZ} -- (3)_X
+
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2)])
+    inputs = [1]
+    outputs = [2]
+    meas = dict.fromkeys(g.nodes - set(outputs), Plane.XY)
+    og1 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.H})
+    og2 = OpenGraph(g, inputs, outputs, meas, output_cliffords={2: Clifford.X})
+    og_ref = OpenGraph(
+        nx.Graph([(1, 2), (2, 3)]),
+        input_nodes=[1],
+        output_nodes=[3],
+        measurements={1: Plane.XY, 2: Plane.YZ},
+        output_cliffords={3: Clifford.X},
+    )
+
+    mapping = {1: 2}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
     """Verify if the input pattern is deterministic."""
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
@@ -999,12 +1180,14 @@ class TestOpenGraph:
             input_nodes=[0],
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Axis.X),
+            output_cliffords={3: Clifford.H},
         )
         og_2 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Axis.Y),
+            output_cliffords={3: Clifford.H},
         )
 
         assert not og_1.isclose(og_2)
@@ -1017,30 +1200,35 @@ class TestOpenGraph:
             input_nodes=[0],
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Measurement.XY(0.15)),
+            output_cliffords={3: Clifford.X},
         )
         og_2 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Measurement.XY(0.1)),
+            output_cliffords={3: Clifford.X},
         )
         og_3 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Plane.XY),
+            output_cliffords={3: Clifford.H @ Clifford.Z @ Clifford.H},
         )
         og_4 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Axis.X),
+            output_cliffords={3: Clifford.X @ Clifford.I},
         )
         og_5 = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (2, 3), (0, 3)]),
             input_nodes=[0],
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Axis.X),
+            output_cliffords={3: Clifford.H},
         )
         assert og_1.is_equal_structurally(og_2)
         assert og_1.is_equal_structurally(og_3)
@@ -1067,7 +1255,7 @@ class TestOpenGraph:
         with pytest.raises(
             OpenGraphError,
             match=re.escape(
-                "Attempted to merge nodes with different measurements: (0, Measurement.Y) -> (0, Measurement.X)."
+                "Cannot merge nodes with different measurements: (0, Measurement.Y) -> (0, Measurement.X)."
             ),
         ):
             og1.compose(og2, mapping)
@@ -1077,9 +1265,26 @@ class TestOpenGraph:
 
         with pytest.raises(
             OpenGraphError,
-            match=re.escape("Attempted to merge nodes with different measurements: (0, Plane.XZ) -> (0, Plane.XY)."),
+            match=re.escape("Cannot merge nodes with different measurements: (0, Plane.XZ) -> (0, Plane.XY)."),
         ):
             og3.compose(og4, mapping)
+
+    def test_compose_clifford(self, fx_rng: Generator) -> None:
+        """Tests if open graph composition with Cliffords preserves the semantics of pattern composition with Cliffords."""
+        p1 = Pattern(input_nodes=[0], cmds=[C(0, Clifford.Z)])
+        p2 = Pattern(input_nodes=[0], cmds=[C(0, Clifford.H)])
+        mapping = {0: 0}
+        pc, _ = p1.compose(p2, mapping)
+
+        og1 = p1.extract_opengraph()
+        og2 = p2.extract_opengraph()
+        og_c, _ = og1.compose(og2, mapping)
+        pc_test = og_c.to_pattern()
+
+        sv = pc.simulate_pattern(rng=fx_rng)
+        sv_test = pc_test.simulate_pattern(rng=fx_rng)
+
+        assert sv.isclose(sv_test)
 
     def test_subs(self) -> None:
         alpha = Placeholder("alpha")

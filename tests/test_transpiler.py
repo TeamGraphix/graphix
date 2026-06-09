@@ -11,6 +11,8 @@ from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
+from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
@@ -18,12 +20,14 @@ from tests.test_branch_selector import CheckedBranchSelector
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import TypeAlias
+    from typing import Literal, TypeAlias
 
     from graphix.instruction import InstructionType
     from graphix.measurements import Outcome
 
     InstructionTestCase: TypeAlias = Callable[[Generator], InstructionType]
+    _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
+
 
 INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
     lambda _rng: instruction.CCX(0, (1, 2)),
@@ -74,20 +78,30 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_measure(self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
+    def test_measure(
+        self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome, backend: _DenseStateBackendLiteral
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         circuit = Circuit(2)
         circuit.cnot(0, 1)
         circuit.m(0, axis)
         input_state = rand_state_vector(2, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
-        state = circuit.simulate_statevector(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+        state = circuit.simulate_statevector(
+            rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend
+        ).statevec
         pattern = circuit.transpile().pattern
-        state_mbqc = pattern.simulate_pattern(rng=rng, input_state=input_state, branch_selector=branch_selector)
-        assert state_mbqc.isclose(state)
+        state_mbqc = pattern.simulate_pattern(
+            rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend
+        )
+        if isinstance(state_mbqc, Statevec) and isinstance(state, Statevec):
+            assert state_mbqc.isclose(state)
+        elif isinstance(state_mbqc, DensityMatrix) and isinstance(state, DensityMatrix):
+            assert np.allclose(state_mbqc.rho, state.rho)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
@@ -158,7 +172,7 @@ class TestTranspilerUnitGates:
         assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
         state = circuit.simulate_statevector(rng=rng).statevec
         state2 = circuit2.simulate_statevector(rng=rng).statevec
-        state2.psi = transpiled_swaps.swap_statevec(state2.psi)
+        state2 = transpiled_swaps.swap_statevec(state2)
         assert state.isclose(state2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -304,3 +318,87 @@ class TestCircuits:
         circuit.rz(1, 0.5)
         circuit2 = Circuit(3, instr=circuit.instruction)
         assert circuit.instruction == circuit2.instruction
+
+    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
+    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
+        circuit = Circuit(3, instr=[instruction(fx_rng)])
+        pattern = circuit.transpile().pattern
+        flow = pattern.to_bloch().extract_causal_flow()
+        flow.check_well_formed()
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
+    def test_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        circuit = Circuit(3, instr=[instruction(rng)])
+        pattern = circuit.transpile().pattern
+        input_state = rand_state_vector(3, rng=rng)
+        state = circuit.simulate_statevector(input_state=input_state).statevec
+        state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
+        assert state_mbqc.isclose(state)
+
+    def test_simple(self) -> None:
+        rng = np.random.default_rng(420)
+        circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
+        pattern = circuit.transpile().pattern
+        pattern.minimize_space()
+        input_state = rand_state_vector(3, rng=rng)
+        state = circuit.simulate_statevector(input_state=input_state).statevec
+        state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
+        assert state_mbqc.isclose(state)
+
+    @pytest.mark.parametrize("jumps", range(1, 3))
+    def test_dm_backend(self, fx_bg: PCG64, jumps: int) -> None:
+        nqubits = 2
+        rng = Generator(fx_bg.jumped(jumps))
+        circuit = rand_circuit(nqubits, 3, rng)
+        pattern = circuit.transpile().pattern
+        pattern.minimize_space()
+        input_state = rand_state_vector(nqubits, rng=rng)
+        state = circuit.simulate_statevector(input_state=input_state, backend="densitymatrix").statevec
+        state_mbqc = pattern.simulate_pattern(input_state=input_state, backend="densitymatrix", rng=rng)
+        assert np.allclose(state_mbqc.rho, state.rho)
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 4
+    depth = 6
+    circuit = rand_circuit(nqubits, depth, rng, use_ccx=True, use_rzz=True)
+    assert any(instr.kind == InstructionKind.SWAP for instr in circuit.instruction)
+    transpiled_swaps = transpile_swaps(circuit)
+    circuit2 = transpiled_swaps.circuit
+    assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
+    state = circuit.simulate_statevector(rng=rng).statevec
+    state2 = circuit2.simulate_statevector(rng=rng).statevec
+    state2 = transpiled_swaps.swap_statevec(state2)
+    assert state.isclose(state2)
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+@pytest.mark.parametrize("outcome", [0, 1])
+def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    circuit = Circuit(3)
+    circuit.swap(0, 1)
+    circuit.swap(0, 2)
+    circuit.cnot(1, 2)
+    circuit.m(1, axis)
+    circuit.i(0)
+    transpiled_swaps = transpile_swaps(circuit)
+    circuit2 = transpiled_swaps.circuit
+    assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
+    assert I(2) in circuit2.instruction
+    input_state = rand_state_vector(3, rng=rng)
+    branch_selector = ConstBranchSelector(outcome)
+    state = circuit.simulate_statevector(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+    state2 = circuit2.simulate_statevector(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+    assert transpiled_swaps.outputs == (
+        OutputIndex(OutputKind.Qubit, 2),
+        OutputIndex(OutputKind.Bit, 0),
+        OutputIndex(OutputKind.Qubit, 1),
+    )
+    state2.swap((0, 1))
+    assert state.isclose(state2)
