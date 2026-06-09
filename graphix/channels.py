@@ -220,9 +220,6 @@ def amplitude_damping_channel(gamma: float) -> KrausChannel:
     :class:`graphix.channels.KrausChannel` object
         Channel containing the corresponding Kraus operators.
     """
-    if not 0 <= gamma <= 1:
-        raise ValueError("gamma must be between 0 and 1.")
-
     return KrausChannel(
         [
             KrausData(

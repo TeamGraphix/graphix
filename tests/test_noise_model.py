@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from graphix import Pattern
-from graphix.command import CommandKind, E, M, N, X, Z
+from graphix.command import CommandKind, M, N
 from graphix.noise_models import (
     AmplitudeDampingNoise,
     AmplitudeDampingNoiseModel,
@@ -17,7 +17,7 @@ from graphix.noise_models import (
     TwoQubitAmplitudeDampingNoise,
     TwoQubitDepolarisingNoise,
 )
-from graphix.noise_models.noise_model import NoiselessNoiseModel
+from graphix.noise_models.noise_model import NoiselessNoiseModel, NoiseModel
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import DefaultMeasureMethod
@@ -103,7 +103,7 @@ def test_compose_noise_model_simulation(fx_rng: Generator) -> None:
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
 
 
-def test_amplitude_damping_noise_model_transpile() -> None:
+def test_amplitude_damping_noise_model_transpile(fx_rng: Generator) -> None:
     noise_model = AmplitudeDampingNoiseModel(
         prepare_error_gamma=0.1,
         entanglement_error_gamma=0.2,
@@ -111,20 +111,25 @@ def test_amplitude_damping_noise_model_transpile() -> None:
         x_error_gamma=0.4,
         z_error_gamma=0.5,
     )
-    commands: list[CommandOrNoise] = [N(0), E((0, 1)), M(0), X(1, {0}), Z(1, {0})]
+    nqubits = 5
+    depth = 5
+    pattern = rand_circuit(nqubits, depth, rng=fx_rng).transpile().pattern
+    noisy_pattern = noise_model.transpile(pattern, rng=fx_rng)
+    iterator = iter(noisy_pattern)
 
-    noisy_commands = noise_model.transpile(commands)
-
-    assert noisy_commands[0] == commands[0]
-    assert_apply_noise(noisy_commands[1], AmplitudeDampingNoise, 0.1, [0])
-    assert noisy_commands[2] == commands[1]
-    assert_apply_noise(noisy_commands[3], TwoQubitAmplitudeDampingNoise, 0.2, [0, 1])
-    assert_apply_noise(noisy_commands[4], AmplitudeDampingNoise, 0.3, [0])
-    assert noisy_commands[5] == commands[2]
-    assert noisy_commands[6] == commands[3]
-    assert_apply_noise(noisy_commands[7], AmplitudeDampingNoise, 0.4, [1], {0})
-    assert noisy_commands[8] == commands[4]
-    assert_apply_noise(noisy_commands[9], AmplitudeDampingNoise, 0.5, [1], {0})
+    for cmd in pattern:
+        if cmd.kind == CommandKind.M:
+            assert_apply_noise(next(iterator), AmplitudeDampingNoise, 0.3, [cmd.node])
+        assert next(iterator) == cmd
+        match cmd.kind:
+            case CommandKind.N:
+                assert_apply_noise(next(iterator), AmplitudeDampingNoise, 0.1, [cmd.node])
+            case CommandKind.E:
+                assert_apply_noise(next(iterator), TwoQubitAmplitudeDampingNoise, 0.2, list(cmd.nodes))
+            case CommandKind.X:
+                assert_apply_noise(next(iterator), AmplitudeDampingNoise, 0.4, [cmd.node], cmd.domain)
+            case CommandKind.Z:
+                assert_apply_noise(next(iterator), AmplitudeDampingNoise, 0.5, [cmd.node], cmd.domain)
 
 
 def test_amplitude_damping_noise_model_input_nodes() -> None:
@@ -134,14 +139,11 @@ def test_amplitude_damping_noise_model_input_nodes() -> None:
     assert_apply_noise(input_noise[1], AmplitudeDampingNoise, 0.2, [4])
 
 
-def test_amplitude_damping_noise_model_confuse_result(fx_rng: Generator) -> None:
-    noise_model = AmplitudeDampingNoiseModel(measure_error_prob=1.0)
-
-    assert noise_model.confuse_result(M(0), 0, rng=fx_rng) == 1
-    assert noise_model.confuse_result(M(0), 1, rng=fx_rng) == 0
-
-
-def test_confuse_result(fx_rng: Generator) -> None:
+@pytest.mark.parametrize(
+    "noise_model",
+    [DepolarisingNoiseModel(measure_error_prob=1), AmplitudeDampingNoiseModel(measure_error_prob=1)],
+)
+def test_confuse_result(fx_rng: Generator, noise_model: NoiseModel) -> None:
     # Pattern that measures 0 on qubit 0 with probability 1.
     pattern = Pattern(cmds=[N(0), M(0)])
     measure_method = DefaultMeasureMethod()
@@ -149,7 +151,6 @@ def test_confuse_result(fx_rng: Generator) -> None:
         backend="densitymatrix", noise_model=NoiselessNoiseModel(), rng=fx_rng, measure_method=measure_method
     )
     assert measure_method.results[0] == 0
-    noise_model = DepolarisingNoiseModel(measure_error_prob=1)
     measure_method = DefaultMeasureMethod()
     pattern.simulate_pattern(
         backend="densitymatrix", noise_model=noise_model, rng=fx_rng, measure_method=measure_method

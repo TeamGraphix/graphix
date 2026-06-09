@@ -640,17 +640,26 @@ class TestDensityMatrix:
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)
 
-    def test_apply_amplitude_damping_channel(self) -> None:
-        gamma = 0.25
-        dm = DensityMatrix(BasicStates.ONE)
+    def test_apply_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        nqubits = int(fx_rng.integers(2, 5))
+        i = int(fx_rng.integers(0, nqubits))
+        psi = _randstate_raw(nqubits, fx_rng)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
 
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+        gamma = fx_rng.uniform()
         channel = amplitude_damping_channel(gamma)
 
         assert isinstance(channel, KrausChannel)
 
-        dm.apply_channel(channel, [0])
+        dm.apply_channel(channel, [i])
 
-        expected_dm = np.array([[gamma, 0.0], [0.0, 1 - gamma]])
+        expected_dm = np.zeros_like(dm.rho)
+        for kraus_data in channel:
+            psi_evolved = np.tensordot(kraus_data.operator, psi.reshape((2,) * nqubits), (1, i))
+            psi_evolved = np.moveaxis(psi_evolved, 0, i)
+            psi_evolved = np.reshape(psi_evolved, (2**nqubits))
+            expected_dm += kraus_data.coef**2 * np.outer(psi_evolved, psi_evolved.conj())
 
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)

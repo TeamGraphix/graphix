@@ -95,13 +95,6 @@ class AmplitudeDampingNoiseModel(NoiseModel):
         Classical measurement result flip probability.
     """
 
-    prepare_error_gamma = Probability()
-    x_error_gamma = Probability()
-    z_error_gamma = Probability()
-    entanglement_error_gamma = Probability()
-    measure_channel_gamma = Probability()
-    measure_error_prob = Probability()
-
     def __init__(
         self,
         prepare_error_gamma: float = 0.0,
