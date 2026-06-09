@@ -23,7 +23,7 @@ from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     from graphix.flow.core import PauliFlow
 
@@ -219,44 +219,42 @@ def test_complex_to_str_issue_examples() -> None:
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        (0, "0"),
-        (1e-12, "0"),
-        (1, "1"),
-        (-1, "-1"),
-        (2, "2"),
-        (0.5, "1/2"),
-        (-0.25, "-1/4"),
-        (2**-0.5, "√2/2"),
-        (math.sqrt(3) / 2, "√3/2"),
-        (1j, "i"),
-        (-1j, "-i"),
-        (0.5j, "1/2i"),
-        (-(2**-0.5) * 1j, "-√2/2i"),
+        (0, {OutputFormat.Unicode: "0"}),
+        (1e-12, {OutputFormat.Unicode: "0"}),
+        (1, {OutputFormat.Unicode: "1"}),
+        (-1, {OutputFormat.Unicode: "-1"}),
+        (2, {OutputFormat.Unicode: "2"}),
+        (0.5, {OutputFormat.Unicode: "1/2"}),
+        (0.25, {OutputFormat.LaTeX: r"\frac{1}{4}"}),
+        (-0.25, {OutputFormat.Unicode: "-1/4"}),
+        (2**-0.5, {OutputFormat.Unicode: "√2/2", OutputFormat.LaTeX: r"\frac{\sqrt{2}}{2}"}),
+        (math.sqrt(3) / 2, {OutputFormat.Unicode: "√3/2"}),
+        (1j, {OutputFormat.Unicode: "i"}),
+        (-1j, {OutputFormat.Unicode: "-i"}),
+        # The imaginary unit leads the numerator (i/2, not 1/2i).
+        (0.5j, {OutputFormat.Unicode: "i/2", OutputFormat.ASCII: "i/2", OutputFormat.LaTeX: r"\frac{\mathrm{i}}{2}"}),
+        (-(2**-0.5) * 1j, {OutputFormat.Unicode: "-i√2/2"}),
+        # Complex exponentials on the unit circle.
+        (math.cos(math.pi / 4) + math.sin(math.pi / 4) * 1j, {OutputFormat.Unicode: "e^(iπ/4)"}),
+        # Negative phase keeps the sign inside the exponent.
+        (math.cos(math.pi / 3) - math.sin(math.pi / 3) * 1j, {OutputFormat.Unicode: "e^(-iπ/3)"}),
+        (
+            0.5 + math.sqrt(3) / 2 * 1j,
+            {
+                OutputFormat.Unicode: "e^(iπ/3)",
+                OutputFormat.ASCII: "e^(i*pi/3)",
+                OutputFormat.LaTeX: r"\mathrm{e}^{\mathrm{i} \frac{\pi}{3}}",
+            },
+        ),
+        # An unrecognized value falls back to a rounded decimal.
+        (0.123456, {OutputFormat.ASCII: "0.1235"}),
+        # A non-numeric object is stringified rather than raising.
+        ("alpha", {OutputFormat.ASCII: "alpha"}),
     ],
 )
-def test_complex_to_str_unicode_values(value: complex, expected: str) -> None:
-    assert complex_to_str(value, OutputFormat.Unicode) == expected
-
-
-def test_complex_to_str_exponentials() -> None:
-    assert complex_to_str(1j, OutputFormat.Unicode) == "i"
-    assert complex_to_str(math.cos(math.pi / 4) + math.sin(math.pi / 4) * 1j, OutputFormat.Unicode) == "e^(iπ/4)"
-    # Negative phase keeps the sign inside the exponent.
-    assert complex_to_str(math.cos(math.pi / 3) - math.sin(math.pi / 3) * 1j, OutputFormat.Unicode) == "e^(-iπ/3)"
-    assert complex_to_str(0.5 + math.sqrt(3) / 2 * 1j, OutputFormat.ASCII) == "e^(i*pi/3)"
-
-
-def test_complex_to_str_latex() -> None:
-    assert complex_to_str(2**-0.5, OutputFormat.LaTeX) == r"\frac{\sqrt{2}}{2}"
-    assert complex_to_str(0.25, OutputFormat.LaTeX) == r"\frac{1}{4}"
-    assert complex_to_str(0.5 + math.sqrt(3) / 2 * 1j, OutputFormat.LaTeX) == r"\mathrm{e}^{\mathrm{i} \frac{\pi}{3}}"
-
-
-def test_complex_to_str_fallback_and_symbolic() -> None:
-    # An unrecognized value falls back to a rounded decimal.
-    assert complex_to_str(0.123456, OutputFormat.ASCII) == "0.1235"
-    # A non-numeric object is stringified rather than raising.
-    assert complex_to_str("alpha", OutputFormat.ASCII) == "alpha"
+def test_complex_to_str_values(value: object, expected: Mapping[OutputFormat, str]) -> None:
+    for output, text in expected.items():
+        assert complex_to_str(value, output) == text
 
 
 def test_statevec_draw() -> None:
@@ -279,10 +277,17 @@ def test_density_matrix_draw() -> None:
 
 
 def test_complex_to_str_exponential_with_radius() -> None:
-    # |z| != 1: the radius prefixes the exponential form (1 + i = √2 e^{iπ/4}).
-    assert complex_to_str(1 + 1j, OutputFormat.Unicode) == "√2·e^(iπ/4)"
-    assert complex_to_str(1 + 1j, OutputFormat.ASCII) == "sqrt(2)*e^(i*pi/4)"
-    assert complex_to_str(1 + 1j, OutputFormat.LaTeX) == r"\sqrt{2} \mathrm{e}^{\mathrm{i} \frac{\pi}{4}}"
+    # |z| != 1 with nice Cartesian parts: the Cartesian form is preferred over the
+    # radius-prefixed exponential (1 + i rather than √2·e^(iπ/4)).
+    assert complex_to_str(1 + 1j, OutputFormat.Unicode) == "1 + i"
+    assert complex_to_str(1 + 1j, OutputFormat.ASCII) == "1 + i"
+    assert complex_to_str(1 + 1j, OutputFormat.LaTeX) == r"1 + \mathrm{i}"
+    # When the Cartesian parts are not recognized, the radius-prefixed exponential is
+    # used as a last resort before the decimal fallback.
+    z = 2 * (math.cos(math.pi / 5) + math.sin(math.pi / 5) * 1j)
+    assert complex_to_str(z, OutputFormat.Unicode) == "2·e^(iπ/5)"
+    assert complex_to_str(z, OutputFormat.ASCII) == "2*e^(i*pi/5)"
+    assert complex_to_str(z, OutputFormat.LaTeX) == r"2 \mathrm{e}^{\mathrm{i} \frac{\pi}{5}}"
 
 
 def test_complex_to_str_cartesian_form() -> None:
@@ -295,11 +300,6 @@ def test_complex_to_str_cartesian_form() -> None:
 def test_complex_to_str_complex_decimal_fallback() -> None:
     # Neither part is a recognized value -> rounded decimal real and imaginary parts.
     assert complex_to_str(0.123456 + 0.234567j, OutputFormat.Unicode) == "0.1235+0.2346i"
-
-
-def test_complex_to_str_imaginary_formats() -> None:
-    assert complex_to_str(0.5j, OutputFormat.LaTeX) == r"\frac{1}{2}\mathrm{i}"
-    assert complex_to_str(0.5j, OutputFormat.ASCII) == "1/2i"
 
 
 def test_complex_to_str_integer_times_sqrt() -> None:

@@ -570,17 +570,29 @@ def _real_to_str(x: float, output: OutputFormat, max_denominator: int, atol: flo
     return _render_real(*rec, output)
 
 
+def _render_imaginary(signed_num: int, inner: int, den: int, output: OutputFormat) -> str:
+    """Render ``signed_num * sqrt(inner) / den * i`` with the unit leading the numerator.
+
+    The imaginary unit is placed at the front of the numerator (e.g. ``i/2``,
+    ``i√2/2``, ``3i/4``) so that it reads as ``i`` times a real magnitude, with a
+    unit coefficient collapsing to a bare ``±i``.
+    """
+    sign = "-" if signed_num < 0 else ""
+    magnitude = abs(signed_num)
+    unit = _imaginary_unit(output)
+    coefficient = "" if magnitude == 1 else f"{magnitude}"
+    numerator = f"{coefficient}{unit}{_sqrt_str(inner, output)}"
+    if den == 1:
+        return f"{sign}{numerator}"
+    return f"{sign}{_fraction_str(numerator, str(den), output)}"
+
+
 def _imaginary_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
     """Render a purely imaginary value ``x * i``."""
     rec = _recognize_sqrt(x, max_denominator, atol)
     if rec is None:
         return None
-    signed_num, inner, den = rec
-    unit = _imaginary_unit(output)
-    # A unit coefficient collapses to just ``±i``.
-    if abs(signed_num) == 1 and inner == 1 and den == 1:
-        return f"{'-' if signed_num < 0 else ''}{unit}"
-    return f"{_render_real(signed_num, inner, den, output)}{unit}"
+    return _render_imaginary(*rec, output)
 
 
 def _recognize_angle_over_pi(theta: float, max_denominator: int, atol: float) -> Fraction | None:
@@ -700,17 +712,23 @@ def complex_to_str(
     if abs(z.real) <= atol:
         return _imaginary_to_str(z.imag, output, max_denominator, atol) or _decimal_to_str(z, output, precision)
     exponential = _exponential_to_str(z, output, max_denominator, atol)
-    if exponential is not None:
+    # The exponential form is the clearest representation on the unit circle, but for
+    # other moduli a Cartesian form (e.g. ``1 + i`` rather than ``√2·e^(iπ/4)``) reads
+    # better, so it is preferred when both parts are recognized.
+    if exponential is not None and math.isclose(math.hypot(z.real, z.imag), 1.0, abs_tol=atol):
         return exponential
     cartesian = _cartesian_to_str(z.real, z.imag, output, max_denominator, atol)
     if cartesian is not None:
         return cartesian
+    # Fall back to a radius-prefixed exponential when the Cartesian parts are not nice.
+    if exponential is not None:
+        return exponential
     return _decimal_to_str(z, output, precision)
 
 
 def _ket_str(ket: str, output: OutputFormat) -> str:
     if output == OutputFormat.LaTeX:
-        return rf"\lvert {ket}\rangle"
+        return rf"\ket{{{ket}}}"
     if output == OutputFormat.Unicode:
         return f"|{ket}⟩"
     return f"|{ket}>"
