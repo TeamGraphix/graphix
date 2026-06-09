@@ -2020,4 +2020,4 @@ def _duplicates_in_mapping(m: Mapping[K, V]) -> dict[V, list[K]]:
         an empty dictionary is returned.
     """
     reversed_mapping = _reverse_mapping(m)
-    return {v: antedents for v, antedents in reversed_mapping.items() if len(antedents) > 1}
+    return {v: antecedents for v, antecedents in reversed_mapping.items() if len(antecedents) > 1}
