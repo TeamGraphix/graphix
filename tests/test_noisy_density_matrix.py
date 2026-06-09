@@ -9,7 +9,7 @@ import pytest
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
-from graphix.noise_models import DepolarisingNoiseModel
+from graphix.noise_models import AmplitudeDampingNoiseModel, DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
@@ -26,6 +26,18 @@ if TYPE_CHECKING:
 def rz_exact_res(alpha: Angle) -> npt.NDArray[np.float64]:
     rad = angle_to_rad(alpha)
     return 0.5 * np.array([[1, np.exp(-1j * rad)], [np.exp(1j * rad), 1]])
+
+
+def single_qubit_amplitude_damping_exact(
+    rho: npt.NDArray[np.complex128 | np.float64], gamma: float
+) -> npt.NDArray[np.complex128]:
+    return np.array(
+        [
+            [rho[0, 0] + gamma * rho[1, 1], np.sqrt(1 - gamma) * rho[0, 1]],
+            [np.sqrt(1 - gamma) * rho[1, 0], (1 - gamma) * rho[1, 1]],
+        ],
+        dtype=np.complex128,
+    )
 
 
 def hpat() -> Pattern:
@@ -402,6 +414,50 @@ class TestNoisyDensityMatrixBackend:
                     ],
                 ),
             )
+
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
+    def test_amplitude_damping_x_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+        gamma = fx_rng.random()
+
+        m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
+        results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
+
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(x_error_gamma=gamma),
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
+        )
+
+        exact = rz_exact_res(alpha).astype(np.complex128)
+        expected = single_qubit_amplitude_damping_exact(exact, gamma) if x_outcome == 1 else exact
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, expected)
+
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
+    def test_amplitude_damping_z_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+        gamma = fx_rng.random()
+
+        m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
+        results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
+
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(z_error_gamma=gamma),
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
+        )
+
+        exact = rz_exact_res(alpha).astype(np.complex128)
+        expected = single_qubit_amplitude_damping_exact(exact, gamma) if z_outcome == 1 else exact
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, expected)
 
     @pytest.mark.parametrize("z_outcome", [0, 1])
     @pytest.mark.parametrize("x_outcome", [0, 1])
