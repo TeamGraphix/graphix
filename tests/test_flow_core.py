@@ -399,6 +399,173 @@ class TestFlowPatternConversion:
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
 
+
+class TestToPauliFlow:
+    """Bundle for unit tests of :meth:`XZCorrections.to_pauli_flow` and :meth:`Pattern.extract_pauli_flow`.
+
+    Reconstructing a Pauli flow from XZ-corrections is the inverse of :meth:`PauliFlow.to_corrections`.
+    The challenge is that anachronical corrections (corrections on Pauli-measured nodes in the past or
+    present of the corrected node) are absorbed by the measurement and do not appear in the corrections,
+    so the correction function cannot be read off them directly (compare Theorems 2 and 4 in
+    Browne et al., 2007 New J. Phys. 9 250).
+    """
+
+    @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
+    def test_to_pauli_flow_roundtrip(self, test_case: XZCorrectionsTestCase) -> None:
+        # A causal flow and a gflow are also Pauli flows, so every test case admits a Pauli flow.
+        corrections = test_case.flow.to_corrections()
+        flow = corrections.to_pauli_flow()
+        flow.check_well_formed()
+        # The reconstructed flow induces exactly the input corrections.
+        reconstructed = flow.to_corrections()
+        assert reconstructed.x_corrections == test_case.x_corr
+        assert reconstructed.z_corrections == test_case.z_corr
+
+    @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
+    def test_extract_pauli_flow_from_pattern(self, test_case: XZCorrectionsTestCase) -> None:
+        if test_case.pattern is None:
+            return
+        # The hand-written pattern and the fixture flow implement the same unitary but may have
+        # different partial orders, hence different corrections. The reconstruction must reproduce
+        # the pattern's own corrections.
+        expected = test_case.pattern.extract_xzcorrections()
+        flow = test_case.pattern.extract_pauli_flow()
+        flow.check_well_formed()
+        reconstructed = flow.to_corrections()
+        assert reconstructed.x_corrections == expected.x_corrections
+        assert reconstructed.z_corrections == expected.z_corrections
+
+    def test_extract_pauli_flow_pauli_only(self) -> None:
+        """Pattern with a Pauli flow but neither causal flow nor gflow (issue example).
+
+        Open graph structure (SWAP implemented with X-measurements):
+
+            [0]-1-2-(3)
+        """
+        pattern = Pattern(
+            input_nodes=[0],
+            cmds=[
+                N(1),
+                N(2),
+                N(3),
+                E((0, 1)),
+                E((1, 2)),
+                E((2, 3)),
+                M(0, Measurement.X),
+                X(3, {0}),
+                M(1, Measurement.X),
+                Z(3, {1}),
+                M(2, Measurement.X),
+                X(3, {2}),
+            ],
+            output_nodes=[3],
+        )
+        # Causal-flow and gflow extraction require planar (Bloch) measurements and therefore reject
+        # the Pauli (axis) measurements of this open graph.
+        with pytest.raises(TypeError):
+            pattern.extract_causal_flow()
+        with pytest.raises(TypeError):
+            pattern.extract_gflow()
+
+        flow = pattern.extract_pauli_flow()
+        flow.check_well_formed()
+        assert flow.correction_function == {0: frozenset({1, 3}), 1: frozenset({2}), 2: frozenset({3})}
+
+        corrections = pattern.extract_xzcorrections()
+        reconstructed = flow.to_corrections()
+        assert reconstructed.x_corrections == corrections.x_corrections
+        assert reconstructed.z_corrections == corrections.z_corrections
+
+    def test_to_pauli_flow_anachronical_reconstruction(self) -> None:
+        """Reconstruction recovers anachronical correctors absorbed by Pauli measurements."""
+        flow = generate_pauli_flow_1()
+        flow.check_well_formed()
+        # The original flow has anachronical correctors, e.g. nodes 2 (X) and 5 (Y) in p(0).
+        assert {2, 5}.issubset(flow.correction_function[0])
+
+        corrections = flow.to_corrections()
+        reconstructed_flow = corrections.to_pauli_flow()
+        reconstructed_flow.check_well_formed()
+
+        # The reconstruction need not equal the original flow, but it must induce the same corrections.
+        induced = reconstructed_flow.to_corrections()
+        assert induced.x_corrections == corrections.x_corrections
+        assert induced.z_corrections == corrections.z_corrections
+
+    def test_to_pauli_flow_infeasible(self) -> None:
+        """Corrections not induced by any Pauli flow raise a `FlowGenericError`."""
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: Plane.XY},
+        )
+        # Node 1 cannot be Z-corrected: 1 is never in the odd neighbourhood of any subset of {1}.
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {1}}, z_corrections={0: {1}})
+        with pytest.raises(FlowGenericError) as exc_info:
+            corrections.to_pauli_flow()
+        assert exc_info.value.reason == FlowGenericErrorReason.NoCompatiblePauliFlow
+        assert "not induced by any Pauli flow" in str(exc_info.value)
+
+    def test_to_pauli_flow_infeasible_with_anachronical_candidates(self) -> None:
+        """Infeasibility with a non-trivial GF(2) system (the corrected node has free variables).
+
+        Open graph structure (all X-measured):
+
+            [0]-1-2-(3)
+
+        Node 0 has anachronical candidates 1 and 2 (free variables), but the demanded Z-correction
+        on 3 forces ``2 in p(0)`` while (P2) forces ``2 not in Odd(p(0))``, i.e. ``2 not in p(0)``.
+        """
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys([0, 1, 2], Measurement.X),
+        )
+        corrections = XZCorrections(
+            og=og,
+            x_corrections={0: frozenset({3})},
+            z_corrections={0: frozenset({3})},
+            partial_order_layers=[frozenset({3}), frozenset({0, 1, 2})],
+        )
+        with pytest.raises(FlowGenericError) as exc_info:
+            corrections.to_pauli_flow()
+        assert exc_info.value.reason == FlowGenericErrorReason.NoCompatiblePauliFlow
+
+    def test_to_pauli_flow_input_measured_along_pauli_axis(self) -> None:
+        """An input measured along Z must belong to its own correcting set (P8), which is impossible."""
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: Measurement.Z},
+        )
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {1}})
+        with pytest.raises(FlowGenericError) as exc_info:
+            corrections.to_pauli_flow()
+        assert exc_info.value.reason == FlowGenericErrorReason.NoCompatiblePauliFlow
+
+    def test_to_pauli_flow_partial_order_missing_node(self) -> None:
+        """A partial order that omits a measured node raises a `FlowError`, not a `KeyError`."""
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: Measurement.XY(0.1)},
+        )
+        # The measured node 0 is missing from the partial order layers, so the reconstructed
+        # correction function is incomplete and rejected by `check_well_formed`.
+        corrections = XZCorrections(
+            og=og,
+            x_corrections={0: frozenset({1})},
+            z_corrections={},
+            partial_order_layers=[frozenset({1})],
+        )
+        with pytest.raises(FlowGenericError) as exc_info:
+            corrections.to_pauli_flow()
+        assert exc_info.value.reason == FlowGenericErrorReason.IncorrectCorrectionFunctionDomain
+
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
         if test_case.pattern is not None:

@@ -11,10 +11,12 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
+import numpy as np
 
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
+from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.circ_ext.extraction import (
     CliffordMap,
     ExtractionResult,
@@ -265,6 +267,55 @@ class XZCorrections(Generic[_AM_co]):
         gf = GFlow(self.og, correction_function, self.partial_order_layers)
         gf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible.
         return gf
+
+    def to_pauli_flow(self) -> PauliFlow[_AM_co]:
+        r"""Extract a Pauli flow from XZ-corrections.
+
+        Contrary to :meth:`to_causal_flow` and :meth:`to_gflow`, the correction function of a
+        Pauli flow cannot be read off the XZ-corrections directly. Corrections applied to
+        Pauli-measured qubits in the past or the present of the corrected node ("anachronical"
+        corrections) are absorbed by the measurement (:math:`M^X X = M^X`, :math:`M^Y Y = M^Y`
+        and :math:`M^Z Z = M^Z`) and therefore leave no trace in the pattern; compare the
+        pattern of Theorem 2 (gflow), where the corrections coincide with the correction
+        function, with that of Theorem 4 (Pauli flow), where only the future part
+        :math:`p(i) \cap \{j : j > i\}` of each correcting set appears (Ref. [1]).
+
+        The reconstruction is performed node by node. For a measured node :math:`i`, the future
+        part of the correcting set is fixed by the X-corrections, and the anachronical part is
+        recovered by solving the linear system over :math:`\mathbb{F}_2` whose equations are the
+        Pauli-flow conditions (P1)-(P9) together with the requirement that the induced
+        XZ-corrections match ``self`` (i.e. :math:`Odd(p(i)) \cap \{j : j > i\}` equals the
+        Z-corrections of :math:`i`). The resulting flow is then validated with
+        :meth:`PauliFlow.check_well_formed`.
+
+        Returns
+        -------
+        PauliFlow[_AM_co]
+
+        Raises
+        ------
+        FlowError
+            If the XZ-corrections are not induced by any Pauli flow, or if the partial order is
+            incompatible with the reconstructed correction function.
+
+        Notes
+        -----
+        See Definition 5 and Theorem 4 in Ref. [1]. The induced corrections are recovered by
+        :meth:`PauliFlow.to_corrections`, which is the left inverse of this method on
+        XZ-corrections extracted from a Pauli flow.
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+        """
+        correction_function = _reconstruct_pauli_correction_function(self)
+        pf = PauliFlow(self.og, correction_function, self.partial_order_layers)
+        # The reconstruction enforces propositions (P1)-(P9) by construction, but `check_well_formed`
+        # additionally validates the user-supplied partial order: it rejects, for instance,
+        # XZ-corrections without output nodes (which admit no flow) or a partial order that does not
+        # cover every measured node. It raises a `FlowError` in those cases.
+        pf.check_well_formed()
+        return pf
 
     def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
         """Return the XZ-corrections where all measurements in the open graph are converted to Bloch.
@@ -1391,3 +1442,226 @@ def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
     o_set = set(flow.og.output_nodes)
     if first_layer != o_set or not first_layer:
         raise PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer=first_layer)
+
+
+def _solve_f2(rows: list[tuple[set[int], int]], n_vars: int) -> list[int] | None:
+    """Return one solution of a linear system over GF(2), or ``None`` if it is inconsistent.
+
+    The equations are assembled into an augmented matrix ``[A | b]`` which is reduced to row
+    echelon form with :meth:`graphix._linalg.MatGF2.gauss_elimination` and solved with
+    :func:`graphix._linalg.solve_f2_linear_system`. A row that is zero on the coefficient side but
+    non-zero on the constant side witnesses an inconsistent system.
+
+    Parameters
+    ----------
+    rows : list[tuple[set[int], int]]
+        Each equation is a pair ``(coefficients, rhs)`` where ``coefficients`` is the set of
+        variable indices whose coefficient is ``1`` and ``rhs`` is the right-hand-side bit.
+    n_vars : int
+        Number of variables.
+
+    Returns
+    -------
+    list[int] | None
+        A solution vector of length ``n_vars`` (free variables set to ``0``), or ``None`` if the
+        system is inconsistent.
+    """
+    if n_vars == 0:
+        # No variables: the system is consistent if and only if every constant vanishes.
+        return [] if all(rhs % 2 == 0 for _, rhs in rows) else None
+    # With at least one variable there is always at least one equation (each free variable is
+    # constrained by a self, (P2) or (P3) proposition), so the augmented matrix is never empty.
+    augmented = np.zeros((len(rows), n_vars + 1), dtype=np.uint8)
+    for i, (coefficients, rhs) in enumerate(rows):
+        for j in coefficients:
+            augmented[i, j] = 1
+        augmented[i, n_vars] = rhs & 1
+    reduced = augmented.view(MatGF2).gauss_elimination(ncols=n_vars, copy=True)
+    coefficients_block = np.asarray(reduced[:, :n_vars])
+    constants_block = np.asarray(reduced[:, n_vars])
+    if (constants_block.astype(bool) & ~coefficients_block.any(axis=1)).any():
+        return None
+    solution = solve_f2_linear_system(MatGF2(coefficients_block), MatGF2(constants_block))
+    return [int(bit) for bit in solution]
+
+
+def _odd_neighbourhood_equation(
+    graph: nx.Graph[int],
+    inputs: AbstractSet[int],
+    free_index: Mapping[int, int],
+    fixed: Mapping[int, int],
+    target: int,
+) -> tuple[set[int], int]:
+    r"""Express :math:`target \in Odd(p)` as a linear form over the free membership variables.
+
+    Parameters
+    ----------
+    graph : nx.Graph[int]
+        Graph of the open graph.
+    inputs : AbstractSet[int]
+        Input nodes (never belong to a correcting set).
+    free_index : Mapping[int, int]
+        Map from a node with free membership to its variable index.
+    fixed : Mapping[int, int]
+        Map from a node with fixed membership to its value (``0`` or ``1``).
+    target : int
+        Node whose odd-neighbourhood membership is expressed.
+
+    Returns
+    -------
+    tuple[set[int], int]
+        ``(coefficients, constant)`` such that ``[target in Odd(p)]`` equals the parity of the
+        selected free variables XORed with ``constant``.
+    """
+    coefficients: set[int] = set()
+    constant = 0
+    for neighbor in graph.neighbors(target):
+        if neighbor in free_index:
+            coefficients ^= {free_index[neighbor]}
+        elif neighbor not in inputs:
+            constant ^= fixed[neighbor]
+    return coefficients, constant
+
+
+def _membership_coefficients(free_index: Mapping[int, int], target: int) -> set[int]:
+    """Return the coefficients of the membership variable ``[target in p]``.
+
+    This helper is only used for nodes measured along axis Y, which are always free variables
+    (when non-input) or inputs (which can never be corrected and contribute ``0``). It therefore
+    never needs to handle a node whose membership is fixed to ``1``.
+
+    Parameters
+    ----------
+    free_index : Mapping[int, int]
+        Map from a node with free membership to its variable index.
+    target : int
+        Node whose membership is expressed.
+
+    Returns
+    -------
+    set[int]
+        ``{index}`` if ``target`` is a free variable, the empty set otherwise.
+    """
+    index = free_index.get(target)
+    return set() if index is None else {index}
+
+
+def _reconstruct_pauli_correction_function(xz: XZCorrections[_AM_co]) -> dict[int, frozenset[int]]:
+    r"""Reconstruct the correction function of a Pauli flow inducing the given XZ-corrections.
+
+    See :meth:`XZCorrections.to_pauli_flow` for the rationale. For every measured node, the
+    future part of the correcting set is fixed by the X-corrections and the anachronical part is
+    recovered by solving over :math:`\mathbb{F}_2` the Pauli-flow conditions (P1)-(P9) together
+    with the constraint that the induced Z-corrections match ``xz``.
+
+    Parameters
+    ----------
+    xz : XZCorrections[_AM_co]
+
+    Returns
+    -------
+    dict[int, frozenset[int]]
+        The reconstructed correction function.
+
+    Raises
+    ------
+    FlowError
+        If no Pauli flow induces the XZ-corrections of ``xz``.
+
+    References
+    ----------
+    [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+    """
+    og = xz.og
+    graph = og.graph
+    inputs = set(og.input_nodes)
+    measurements = og.measurements
+    layers = xz.partial_order_layers
+
+    # future(node): the nodes lying in strictly earlier-measured layers (i.e. smaller index).
+    cumulative: list[frozenset[int]] = []
+    accumulated: set[int] = set()
+    for layer in layers:
+        cumulative.append(frozenset(accumulated))
+        accumulated |= set(layer)
+    layer_of = {node: k for k, layer in enumerate(layers) for node in layer}
+
+    correction_function: dict[int, frozenset[int]] = {}
+
+    for node, measurement in measurements.items():
+        if node not in layer_of:
+            # The partial order does not cover this measured node; the reconstructed correction
+            # function will be incomplete and rejected by `PauliFlow.check_well_formed`.
+            continue
+        label = measurement.to_plane_or_axis()
+        x_future = xz.x_corrections.get(node, frozenset())
+        z_future = xz.z_corrections.get(node, frozenset())
+        future = cumulative[layer_of[node]]
+
+        # Membership of each non-input node in p(node): either fixed (0/1) or a free variable.
+        # (P1) restricts anachronical correctors to nodes measured along the X or Y axes.
+        fixed: dict[int, int] = {}
+        free_index: dict[int, int] = {}
+        for candidate in graph.nodes:
+            if candidate in inputs:
+                continue
+            if candidate in future:
+                fixed[candidate] = 1 if candidate in x_future else 0
+            elif candidate == node:
+                if label == Plane.XY:  # (P4): node ∉ p.
+                    fixed[candidate] = 0
+                elif label in {Plane.XZ, Plane.YZ, Axis.Z}:  # (P5)/(P6)/(P8): node ∈ p.
+                    fixed[candidate] = 1
+                else:  # Axis.X or Axis.Y: self-membership is free.
+                    free_index[candidate] = len(free_index)
+            elif (other := measurements.get(candidate)) is not None and other.to_plane_or_axis() in {Axis.X, Axis.Y}:
+                free_index[candidate] = len(free_index)
+            else:
+                fixed[candidate] = 0
+
+        rows: list[tuple[set[int], int]] = []
+
+        # Induced Z-corrections must match: Odd(p(node)) ∩ future = z_future.
+        for future_node in future:
+            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, future_node)
+            rows.append((coefficients, (1 if future_node in z_future else 0) ^ constant))
+
+        # Self conditions on the odd neighbourhood (P4)-(P9).
+        if label in {Plane.XY, Plane.XZ, Axis.X}:  # (P4)/(P5)/(P7): node ∈ Odd(p).
+            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, node)
+            rows.append((coefficients, 1 ^ constant))
+        elif label == Plane.YZ:  # (P6): node ∉ Odd(p).
+            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, node)
+            rows.append((coefficients, constant))
+        elif label == Axis.Y:  # (P9): exactly one of node ∈ p and node ∈ Odd(p).
+            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, node)
+            rows.append((coefficients ^ _membership_coefficients(free_index, node), 1 ^ constant))
+        # Axis.Z: (P8) only constrains the fixed membership; no condition on the odd neighbourhood.
+
+        # Conditions on the other non-future nodes (P2) and (P3).
+        for other_node in graph.nodes:
+            if other_node == node or other_node in future or other_node not in measurements:
+                continue
+            other_label = measurements[other_node].to_plane_or_axis()
+            if other_label in {Plane.XY, Plane.XZ, Plane.YZ, Axis.X}:  # (P2): other_node ∉ Odd(p).
+                coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, other_node)
+                rows.append((coefficients, constant))
+            elif other_label == Axis.Y:  # (P3): other_node ∈ p ⇔ other_node ∈ Odd(p).
+                coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, other_node)
+                rows.append((coefficients ^ _membership_coefficients(free_index, other_node), constant))
+            # Axis.Z: no constraint (an anachronical Z-correction is absorbed by the measurement).
+
+        # A measured input node cannot belong to its own correcting set, contradicting (P5)/(P6)/(P8).
+        if node in inputs and label in {Plane.XZ, Plane.YZ, Axis.Z}:
+            rows.append((set(), 1))
+
+        solution = _solve_f2(rows, len(free_index))
+        if solution is None:
+            # The local linear system has no solution: no Pauli flow induces these corrections.
+            raise FlowGenericError(FlowGenericErrorReason.NoCompatiblePauliFlow)
+
+        correcting_set = {member for member, bit in fixed.items() if bit}
+        correcting_set |= {member for member, index in free_index.items() if solution[index]}
+        correction_function[node] = frozenset(correcting_set)
+
+    return correction_function

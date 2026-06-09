@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added new attribute `OpenGraph.output_cliffords`
   - Added `clifford` abstract method to `AbstractMeasurement`. Implemented it for `Plane` and `Axis`.
 
+- #432: Added new methods `XZCorrections.to_pauli_flow` and `Pattern.extract_pauli_flow`, which reconstruct a Pauli flow from XZ-corrections. The reconstruction recovers the anachronical corrections that are absorbed by Pauli measurements and therefore absent from the pattern.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
