@@ -972,6 +972,36 @@ class TestPattern:
             with pytest.raises(FlowError):
                 test_case.pattern.extract_gflow()
 
+    def test_extract_pauli_flow_user_example(self) -> None:
+        """Extract Pauli flow directly from a pattern with no causal flow or gflow."""
+        pattern = Pattern(
+            input_nodes=[0],
+            cmds=[
+                N(1),
+                N(2),
+                N(3),
+                E((0, 1)),
+                E((1, 2)),
+                E((2, 3)),
+                M(0, Measurement.X),
+                X(3, {0}),
+                M(1, Measurement.X),
+                Z(3, {1}),
+                M(2, Measurement.X),
+                X(3, {2}),
+            ],
+            output_nodes=[3],
+        )
+
+        pauli_flow = pattern.extract_pauli_flow()
+
+        assert pauli_flow.correction_function[0] == frozenset({1, 3})
+        assert pauli_flow.correction_function[1] == frozenset({2})
+        assert pauli_flow.correction_function[2] == frozenset({3})
+
+        pauli_flow_og = pattern.extract_opengraph().extract_pauli_flow()
+        assert pauli_flow.correction_function == pauli_flow_og.correction_function
+
     # From open graph
     def test_extract_cflow_og(self, fx_rng: Generator) -> None:
         alpha = 2 * np.pi * fx_rng.random()

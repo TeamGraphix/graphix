@@ -413,6 +413,21 @@ class TestFlowPatternConversion:
                     state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
                     assert state.isclose(state_ref)
 
+    @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
+    def test_corrections_to_pauli_flow(self, test_case: XZCorrectionsTestCase) -> None:
+        """Tests the round trip Flow -> XZCorrections -> PauliFlow -> XZCorrections."""
+        flow = test_case.flow
+        flow.check_well_formed()
+        corrections = flow.to_corrections()
+        corrections.check_well_formed()
+        pauli_flow = corrections.to_pauli_flow()
+        pauli_flow.check_well_formed()
+        assert pauli_flow.correction_function == flow.correction_function
+        assert pauli_flow.partial_order_layers == flow.partial_order_layers
+        round_trip = pauli_flow.to_corrections()
+        assert round_trip.x_corrections == corrections.x_corrections
+        assert round_trip.z_corrections == corrections.z_corrections
+
 
 class TestFlow:
     """Bundle for unit tests of :class:`PauliFlow` and children."""

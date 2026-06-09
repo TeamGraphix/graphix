@@ -22,7 +22,7 @@ from typing_extensions import assert_never
 
 from graphix import command, optimization
 from graphix.command import CommandKind, Node
-from graphix.flow.exceptions import FlowError
+from graphix.flow.exceptions import FlowError, XZCorrectionsError
 from graphix.fundamentals import Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
 from graphix.pretty_print import OutputFormat, pattern_to_str
@@ -991,6 +991,41 @@ class Pattern:
         """
         return self.extract_xzcorrections().downcast_bloch().to_gflow()
 
+    def extract_pauli_flow(self) -> PauliFlow[Measurement]:
+        r"""Extract the Pauli flow structure from the current measurement pattern.
+
+        This method does not call the flow-extraction routine on the underlying open graph,
+        but constructs the Pauli flow from the pattern corrections instead. Unlike open-graph
+        flow extraction, this guarantees a flow that generates *this* pattern: the decisive
+        criterion is that :meth:`PauliFlow.to_corrections` reproduces the pattern's
+        XZ-corrections exactly.
+
+        Returns
+        -------
+        PauliFlow[Measurement]
+            The Pauli flow associated with the current pattern.
+
+        Raises
+        ------
+        FlowError
+            If the pattern is empty or if the extracted structure does not satisfy
+            the well-formedness conditions required for a valid Pauli flow.
+        ValueError
+            If `N` commands in the pattern do not represent a :math:`|+\rangle` state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        The notes provided in :func:`self.extract_causal_flow` apply here as well.
+        Anachronical corrections omitted from the pattern (Theorem 4 in Ref. [1]) are
+        recovered in :meth:`XZCorrections.to_pauli_flow`; see that method for the GF(2)
+        reconstruction strategy.
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+        """
+        return self.extract_xzcorrections().to_pauli_flow()
+
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
         """Extract the XZ-corrections from the current measurement pattern.
 
@@ -1425,20 +1460,23 @@ class Pattern:
 
                     if flow_from_pattern:
                         try:
-                            xz_corrections = self.extract_xzcorrections().downcast_bloch()
-                        except TypeError:
+                            xz_corrections = self.extract_xzcorrections()
+                        except (XZCorrectionsError, ValueError):
                             pass
                         else:
                             try:
-                                flow = xz_corrections.to_causal_flow()
-                            except FlowError:
+                                flow = xz_corrections.downcast_bloch().to_causal_flow()
+                            except (TypeError, FlowError):
                                 try:
-                                    flow = xz_corrections.to_gflow()
-                                except FlowError:
-                                    warn(
-                                        "The pattern is not consistent with a causal flow or a gflow. An attempt to be extract the flow from the underlying open graph will be made.",
-                                        stacklevel=stacklevel,
-                                    )
+                                    flow = xz_corrections.downcast_bloch().to_gflow()
+                                except (TypeError, FlowError):
+                                    try:
+                                        flow = xz_corrections.to_pauli_flow()
+                                    except FlowError:
+                                        warn(
+                                            "The pattern is not consistent with a causal flow, a gflow or a Pauli flow. An attempt to be extract the flow from the underlying open graph will be made.",
+                                            stacklevel=stacklevel,
+                                        )
 
                     if flow is None:
                         og = self.extract_opengraph()
