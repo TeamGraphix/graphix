@@ -258,6 +258,62 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
     )
 
 
+def amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Single-qubit amplitude damping channel.
+
+    .. math::
+        K_0 = \begin{pmatrix} 1 & 0 \\ 0 & \sqrt{1 - \gamma} \end{pmatrix},
+        \quad
+        K_1 = \begin{pmatrix} 0 & \sqrt{\gamma} \\ 0 & 0 \end{pmatrix}
+
+    Parameters
+    ----------
+    gamma : float
+        Normalized damping parameter, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel`
+        Kraus channel for amplitude damping.
+    """
+    k0 = np.array([[1.0, 0.0], [0.0, np.sqrt(1.0 - gamma)]], dtype=np.complex128)
+    k1 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+    return KrausChannel(
+        [
+            KrausData(1.0, k0),
+            KrausData(1.0, k1),
+        ]
+    )
+
+
+def two_qubit_amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Two-qubit amplitude damping channel.
+
+    Independent amplitude damping on each qubit, with Kraus operators
+    :math:`K_i \otimes K_j` for :math:`i, j \in \{0, 1\}`.
+
+    Parameters
+    ----------
+    gamma : float
+        Normalized damping parameter, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel`
+        Kraus channel for two-qubit amplitude damping.
+    """
+    k0 = np.array([[1.0, 0.0], [0.0, np.sqrt(1.0 - gamma)]], dtype=np.complex128)
+    k1 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+    return KrausChannel(
+        [
+            KrausData(1.0, np.kron(k0, k0)),
+            KrausData(1.0, np.kron(k0, k1)),
+            KrausData(1.0, np.kron(k1, k0)),
+            KrausData(1.0, np.kron(k1, k1)),
+        ]
+    )
+
+
 def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
     r"""Two-qubit tensor channel of single-qubit depolarising channels with same probability.
 

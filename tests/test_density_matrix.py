@@ -12,7 +12,7 @@ import pytest
 import graphix.random_objects as randobj
 from graphix import command
 from graphix.branch_selector import ConstBranchSelector
-from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
+from graphix.channels import KrausChannel, amplitude_damping_channel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
@@ -733,6 +733,56 @@ class TestDensityMatrix:
         )
 
         # compare
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
+
+    def test_apply_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        dm = DensityMatrix(randobj.rand_dm(2, fx_rng))
+        rho_test = dm.rho.astype(np.complex128)
+
+        gamma = fx_rng.uniform()
+        ad_channel = amplitude_damping_channel(gamma)
+
+        assert isinstance(ad_channel, KrausChannel)
+
+        dm.apply_channel(ad_channel, [0])
+
+        k0 = np.array([[1.0, 0.0], [0.0, np.sqrt(1.0 - gamma)]], dtype=np.complex128)
+        k1 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+        expected_dm = k0 @ rho_test @ k0.conj().T + k1 @ rho_test @ k1.conj().T
+
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
+
+        nqubits = int(fx_rng.integers(2, 5))
+        i = int(fx_rng.integers(0, nqubits))
+
+        psi = _randstate_raw(nqubits, fx_rng)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+
+        gamma = fx_rng.uniform()
+        ad_channel = amplitude_damping_channel(gamma)
+
+        assert isinstance(ad_channel, KrausChannel)
+
+        dm.apply_channel(ad_channel, [i])
+
+        k0 = np.array([[1.0, 0.0], [0.0, np.sqrt(1.0 - gamma)]], dtype=np.complex128)
+        k1 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+        psi_tensor = psi.reshape((2,) * nqubits)
+
+        psi_k0 = np.tensordot(k0, psi_tensor, (1, i))
+        psi_k0 = np.moveaxis(psi_k0, 0, i)
+
+        psi_k1 = np.tensordot(k1, psi_tensor, (1, i))
+        psi_k1 = np.moveaxis(psi_k1, 0, i)
+
+        psi_k0 = np.reshape(psi_k0, (2**nqubits))
+        psi_k1 = np.reshape(psi_k1, (2**nqubits))
+        expected_dm = np.outer(psi_k0, psi_k0.conj()) + np.outer(psi_k1, psi_k1.conj())
+
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)
 

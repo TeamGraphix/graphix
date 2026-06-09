@@ -14,9 +14,13 @@ Kraus channel
 
 .. autofunction:: depolarising_channel
 
+.. autofunction:: amplitude_damping_channel
+
 .. autofunction:: pauli_channel
 
 .. autofunction:: two_qubit_depolarising_channel
+
+.. autofunction:: two_qubit_amplitude_damping_channel
 
 .. autofunction:: two_qubit_depolarising_tensor_channel
 
@@ -51,4 +55,15 @@ Noise model classes
     :members:
 
 .. autoclass:: DepolarisingNoiseModel
+    :members:
+
+.. currentmodule:: graphix.noise_models.amplitude_damping
+
+.. autoclass:: AmplitudeDampingNoise
+    :members:
+
+.. autoclass:: TwoQubitAmplitudeDampingNoise
+    :members:
+
+.. autoclass:: AmplitudeDampingNoiseModel
     :members:
