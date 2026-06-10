@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
-    from graphix.clifford import Clifford
     from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 
     _Point: TypeAlias = tuple[float, float]
@@ -115,8 +114,8 @@ class DrawKwargs(TypedDict, total=False):
 
     pauli_measurements: bool
     measurement_labels: bool
+    local_clifford: bool
     node_labels: bool | Mapping[int, str]
-    local_clifford: Mapping[int, Clifford] | None
     node_distance: tuple[float, float]
     legend: bool
     figsize: tuple[int, int] | None
@@ -133,12 +132,11 @@ class VisualizationOptions:
         If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
     measurement_labels : bool, default=False
         If ``True``, measurement labels (planes and axis) are displayed in the visualization.
+    local_clifford : bool, default=False
+        If ``True``, Clifford operations are displayed in the visualization.
     node_labels : bool | Mapping[int, str], default=True
         If ``True``, display numeric node labels. If a mapping, use custom labels
         for nodes specified in the mapping.
-    local_clifford : Mapping[int, Clifford] | None, default=None
-        Mapping of node identifiers to local Clifford operators. If provided,
-        operators are displayed on their corresponding nodes.
     node_distance : tuple[float, float], default=(1, 1)
         Scaling factors (x_scale, y_scale) applied to node positions.
     legend : bool, default=True
@@ -152,8 +150,8 @@ class VisualizationOptions:
 
     pauli_measurements: bool = True
     measurement_labels: bool = False
+    local_clifford: bool = False
     node_labels: bool | Mapping[int, str] = True
-    local_clifford: Mapping[int, Clifford] | None = None
     node_distance: tuple[float, float] = (1, 1)
     legend: bool = True
     figsize: tuple[int, int] | None = None
@@ -322,7 +320,7 @@ class GraphVisualizer:
         if self.options.measurement_labels:
             self._draw_measurements_labels()
 
-        if self.options.local_clifford is not None:
+        if self.options.local_clifford:
             self._draw_local_clifford()
 
         self._set_plot_lims(plot_lims)
@@ -553,10 +551,9 @@ class GraphVisualizer:
 
     def _draw_local_clifford(self) -> None:
         """Add text labels indicating Clifford commands."""
-        assert self.options.local_clifford is not None
-        for node in self.options.local_clifford:
+        for node, clifford in self.og.output_cliffords.items():
             x, y = self.pos[node] + np.array([0.2, 0.2])
-            plt.text(x, y, f"{self.options.local_clifford[node]}", fontsize=LC_MEAS_FS, zorder=3)
+            plt.text(x, y, f"{clifford}", fontsize=LC_MEAS_FS, zorder=3)
 
     def _draw_legend(self) -> None:
         """Add legend to plot.
