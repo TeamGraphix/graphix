@@ -1378,13 +1378,20 @@ def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
         - The nodes in the partial order are the nodes in the open graph.
         - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
     """
+    if len(flow.og.graph.nodes) == 0:
+
+        return
+
+
     if not _check_correction_function_domain(flow.og, flow.correction_function):
         raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain)
 
     if not _check_correction_function_image(flow.og, flow.correction_function):
         raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionImage)
 
-    if len(flow.partial_order_layers) == 0:
+    if len(flow.partial_order_layers) == 0 and len(flow.og.graph.nodes) > 0:
+        if not flow.og.graph:
+            return
         raise PartialOrderError(PartialOrderErrorReason.Empty)
 
     first_layer = flow.partial_order_layers[0]
