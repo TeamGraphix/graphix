@@ -39,7 +39,9 @@ def _norm(corrections: Mapping[int, AbstractSet[int]]) -> dict[int, frozenset[in
 
 def _assert_round_trip(pattern: Pattern) -> None:
     xz = pattern.extract_xzcorrections()
-    pf = xz.to_pauli_flow()  # `check_well_formed` runs inside `to_pauli_flow`.
+    pf = xz.to_pauli_flow()
+    # `to_pauli_flow` no longer runs `check_well_formed` in production; the
+    # well-formedness is asserted here, in the test-suite, instead.
     assert pf.is_well_formed()
     rt = pf.to_corrections()
     assert _norm(rt.x_corrections) == _norm(xz.x_corrections)
@@ -100,7 +102,6 @@ def test_extract_pauli_flow_pauli_example() -> None:
     _assert_round_trip(pattern)
 
 
-@pytest.mark.filterwarnings("ignore:Open graph with non-inferred Pauli measurements.")
 def test_extract_pauli_flow_pauli_opengraph() -> None:
     og = OpenGraph(
         graph=nx.Graph([(0, 2), (2, 4), (3, 4), (4, 6), (1, 4), (1, 6), (2, 3), (3, 5), (2, 6), (3, 6)]),
@@ -127,7 +128,6 @@ _MEASUREMENTS: list[Callable[[Generator], Measurement]] = [
 ]
 
 
-@pytest.mark.filterwarnings("ignore:Open graph with non-inferred Pauli measurements.")
 def test_extract_pauli_flow_randomized_round_trip() -> None:
     # Generate random open graphs; those that admit a Pauli flow (so that `to_pattern`
     # succeeds) are converted to a pattern, and the reconstructed flow is checked to be
@@ -159,6 +159,15 @@ def test_extract_pauli_flow_randomized_round_trip() -> None:
         _assert_round_trip(pattern)
         tested += 1
     assert tested >= 30  # ensure the randomized sweep actually exercised the extraction
+
+
+def test_to_pauli_flow_empty_pattern() -> None:
+    # Regression for the production manifestation of #531: an empty pattern has a trivial
+    # Pauli flow, so `to_pauli_flow` must not raise. The well-formedness sanity check is no
+    # longer run systematically in production (it lives in the test-suite); `check_well_formed`'s
+    # own behaviour on an empty partial order is tracked separately in #531.
+    pf = Pattern().extract_xzcorrections().to_pauli_flow()
+    assert dict(pf.correction_function) == {}
 
 
 def test_to_pauli_flow_raises_when_no_flow_exists() -> None:

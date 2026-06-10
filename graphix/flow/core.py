@@ -314,12 +314,12 @@ class XZCorrections(Generic[_AM_co]):
         """
         correction_function = _reconstruct_pauli_correction_function(self)
         pf: PauliFlow[_AM_co] = PauliFlow(self.og, correction_function, self.partial_order_layers)
-        # Defensive: by construction the GF(2) equations of `_reconstruct_pauli_correction_function`
-        # encode propositions P2-P9 exactly, and the anachronical candidates are restricted to X/Y
-        # axes which guarantees P1; the general flow properties are also satisfied by construction
-        # (the correction function is defined on the measured nodes and its image is included in
-        # the non-input nodes). This check is kept as a regression guard.
-        pf.check_well_formed()
+        # By construction the GF(2) equations of `_reconstruct_pauli_correction_function` encode
+        # propositions P2-P9 exactly, the anachronical candidates are restricted to X/Y axes which
+        # guarantees P1, and the general flow properties hold (the correction function is defined on
+        # the measured nodes and its image is included in the non-input nodes). The well-formedness
+        # is therefore not re-checked here in production; it is exercised in the test-suite instead
+        # (see `tests/test_pauli_flow_extraction.py`).
         return pf
 
     def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
