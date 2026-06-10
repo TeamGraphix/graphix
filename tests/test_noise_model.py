@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from graphix import Pattern
-from graphix.command import CommandKind, M, N
+from graphix.command import CommandKind, M, N, S, T
 from graphix.noise_models import (
     AmplitudeDampingNoise,
     AmplitudeDampingNoiseModel,
@@ -137,6 +137,27 @@ def test_amplitude_damping_noise_model_input_nodes() -> None:
 
     assert_apply_noise(input_noise[0], AmplitudeDampingNoise, 0.2, [2])
     assert_apply_noise(input_noise[1], AmplitudeDampingNoise, 0.2, [4])
+
+
+def test_amplitude_damping_noise_channels() -> None:
+    one_qubit_noise = AmplitudeDampingNoise(0.2)
+    two_qubit_noise = TwoQubitAmplitudeDampingNoise(0.3)
+
+    assert one_qubit_noise.nqubits == 1
+    assert two_qubit_noise.nqubits == 2
+    assert one_qubit_noise.to_kraus_channel().nqubit == 1
+    assert two_qubit_noise.to_kraus_channel().nqubit == 2
+
+
+def test_amplitude_damping_noise_model_passthrough_and_signal() -> None:
+    noise_model = AmplitudeDampingNoiseModel()
+    apply_noise = ApplyNoise(noise=AmplitudeDampingNoise(0.2), nodes=[0])
+    tick = T()
+
+    assert noise_model.command(tick) == [tick]
+    assert noise_model.command(apply_noise) == [apply_noise]
+    with pytest.raises(ValueError, match="Unexpected signal"):
+        noise_model.command(S(0))
 
 
 @pytest.mark.parametrize(
