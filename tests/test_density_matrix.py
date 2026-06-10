@@ -302,10 +302,10 @@ class TestDensityMatrix:
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.cnot(edge)
-        psi = psi.reshape((2, 2))
-        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
-        psi = np.moveaxis(psi, (0, 1), edge)
-        expected_matrix2 = np.outer(psi, psi.conj())
+        psi_tensor = psi.reshape((2, 2))
+        psi_tensor = np.tensordot(CNOT_TENSOR, psi_tensor, ((2, 3), edge))
+        psi_tensor = np.moveaxis(psi_tensor, (0, 1), edge)
+        expected_matrix2 = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(dm.rho, expected_matrix2)
 
         # test on arbitrary number of qubits and random pair
@@ -320,10 +320,10 @@ class TestDensityMatrix:
         u, v = tuple(random.sample(range(n), 2))
         edge = (u, v)
         dm.cnot(edge)
-        psi = psi.reshape((2,) * n)
-        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
-        psi = np.moveaxis(psi, (0, 1), edge)
-        expected_matrix3 = np.outer(psi, psi.conj())
+        psi_tensor = psi.reshape((2,) * n)
+        psi_tensor = np.tensordot(CNOT_TENSOR, psi_tensor, ((2, 3), edge))
+        psi_tensor = np.moveaxis(psi_tensor, (0, 1), edge)
+        expected_matrix3 = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(dm.rho, expected_matrix3)
 
     def test_swap_fail(self) -> None:
@@ -654,12 +654,12 @@ class TestDensityMatrix:
 
         dm.apply_channel(channel, [i])
 
-        expected_dm = np.zeros_like(dm.rho)
+        expected_dm = np.zeros(dm.rho.shape, dtype=np.complex128)
         for kraus_data in channel:
             psi_evolved = np.tensordot(kraus_data.operator, psi.reshape((2,) * nqubits), (1, i))
             psi_evolved = np.moveaxis(psi_evolved, 0, i)
             psi_evolved = np.reshape(psi_evolved, (2**nqubits))
-            expected_dm += kraus_data.coef**2 * np.outer(psi_evolved, psi_evolved.conj())
+            expected_dm += complex(kraus_data.coef) ** 2 * np.outer(psi_evolved, psi_evolved.conj())
 
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)
