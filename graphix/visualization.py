@@ -66,6 +66,9 @@ XZ_C = "tab:brown"
 # Layers
 LAYER_C = "gray"
 LAYER_FS = 10
+LAYER_LABEL_OFFSET_PT = 30
+LAYER_ANNOTATION_PADDING_PT = 8
+LAYER_ANNOTATION_BOTTOM_PT = LAYER_LABEL_OFFSET_PT + LAYER_FS + LAYER_ANNOTATION_PADDING_PT
 
 # Other labels
 LABEL_MEAS_FS = 9.5
@@ -315,6 +318,7 @@ class GraphVisualizer:
         self._draw_nodes()
 
         if self.n_layers:
+            self._set_plot_lims(plot_lims)
             plot_lims = self._draw_layers(plot_lims)
 
         if self.options.measurement_labels:
@@ -374,8 +378,14 @@ class GraphVisualizer:
             Current plot limits in axis coordinates.
         """
         offset = 0.7
+        ymin = plot_lims.ymin - offset
+        ymax = plot_lims.ymax + offset
+        if ymax - ymin < 2 * offset:
+            mid = (plot_lims.ymin + plot_lims.ymax) / 2
+            ymin = mid - offset
+            ymax = mid + offset
         plt.xlim(plot_lims.xmin - offset, plot_lims.xmax + offset)
-        plt.ylim(plot_lims.ymin - offset, plot_lims.ymax + offset)
+        plt.ylim(ymin, ymax)
 
     def _draw_nodes(self) -> None:
         """Draw graph nodes with style indicating their role and measurement type.
@@ -523,7 +533,7 @@ class GraphVisualizer:
                 arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
             )
 
-        offset = mtransforms.ScaledTranslation(0, -30 / 72, fig.dpi_scale_trans)
+        offset = mtransforms.ScaledTranslation(0, -LAYER_LABEL_OFFSET_PT / 72, fig.dpi_scale_trans)
         mid_x = (self.n_layers - 1) / 2 * self.options.node_distance[0]
         plt.text(
             mid_x,
@@ -536,8 +546,9 @@ class GraphVisualizer:
             transform=base + offset,
         )
 
-        # Update plot_lims to take into account label
-        trans = base + offset
+        # Update plot_lims to take into account label and arrow below the nodes.
+        bottom_offset = mtransforms.ScaledTranslation(0, -LAYER_ANNOTATION_BOTTOM_PT / 72, fig.dpi_scale_trans)
+        trans = base + bottom_offset
         _, ydisp = trans.transform((0, plot_lims.ymin))
         return replace(plot_lims, ymin=base.inverted().transform((0, ydisp))[1])
 
