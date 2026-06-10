@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -9,18 +9,27 @@ import pytest
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
-from graphix.noise_models import AmplitudeDampingNoiseModel, DepolarisingNoiseModel
-from graphix.noise_models.noise_model import NoiselessNoiseModel
+from graphix.noise_models import (
+    AmplitudeDampingNoise,
+    AmplitudeDampingNoiseModel,
+    DepolarisingNoiseModel,
+    TwoQubitAmplitudeDampingNoise,
+)
+from graphix.noise_models.noise_model import ApplyNoise, NoiselessNoiseModel
 from graphix.ops import Ops
+from graphix.pattern import Pattern
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from numpy.random import Generator
 
+    from graphix.command import CommandType
     from graphix.fundamentals import Angle
     from graphix.measurements import Outcome
-    from graphix.pattern import Pattern
+    from graphix.noise_models import CommandOrNoise
 
 
 def rz_exact_res(alpha: Angle) -> npt.NDArray[np.float64]:
@@ -50,6 +59,68 @@ def rzpat(alpha: Angle) -> Pattern:
     circ = Circuit(1)
     circ.rz(0, alpha)
     return circ.transpile().pattern
+
+
+def rz_measurement_results(rzpattern: Pattern, z_outcome: Outcome, x_outcome: Outcome) -> dict[int, Outcome]:
+    m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
+    return {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
+
+
+def amplitude_damping_reference_pattern(rzpattern: Pattern, noise_model: AmplitudeDampingNoiseModel) -> Pattern:
+    cmds: list[CommandOrNoise] = list(noise_model.input_nodes(rzpattern.input_nodes))
+    for cmd in rzpattern:
+        match cmd.kind:
+            case CommandKind.N:
+                cmds.extend(
+                    [cmd, ApplyNoise(noise=AmplitudeDampingNoise(noise_model.prepare_error_gamma), nodes=[cmd.node])]
+                )
+            case CommandKind.E:
+                cmds.extend(
+                    [
+                        cmd,
+                        ApplyNoise(
+                            noise=TwoQubitAmplitudeDampingNoise(noise_model.entanglement_error_gamma),
+                            nodes=list(cmd.nodes),
+                        ),
+                    ],
+                )
+            case CommandKind.M:
+                cmds.extend(
+                    [
+                        ApplyNoise(noise=AmplitudeDampingNoise(noise_model.measure_channel_gamma), nodes=[cmd.node]),
+                        cmd,
+                    ],
+                )
+            case CommandKind.X:
+                cmds.extend(
+                    [
+                        cmd,
+                        ApplyNoise(
+                            noise=AmplitudeDampingNoise(noise_model.x_error_gamma),
+                            nodes=[cmd.node],
+                            domain=cmd.domain,
+                        ),
+                    ],
+                )
+            case CommandKind.Z:
+                cmds.extend(
+                    [
+                        cmd,
+                        ApplyNoise(
+                            noise=AmplitudeDampingNoise(noise_model.z_error_gamma),
+                            nodes=[cmd.node],
+                            domain=cmd.domain,
+                        ),
+                    ],
+                )
+            case _:
+                cmds.append(cmd)
+
+    return Pattern(
+        input_nodes=rzpattern.input_nodes,
+        cmds=cast("Iterable[CommandType]", cmds),
+        output_nodes=rzpattern.output_nodes,
+    )
 
 
 class TestNoisyDensityMatrixBackend:
@@ -348,8 +419,7 @@ class TestNoisyDensityMatrixBackend:
         print(f"x_error_pr = {x_error_pr}, outcome_z = {z_outcome}, outcome_x = {x_outcome}")
 
         # M(0) determines Z, M(1) determines X
-        m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
-        results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
+        results = rz_measurement_results(rzpattern, z_outcome, x_outcome)
 
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
@@ -422,8 +492,7 @@ class TestNoisyDensityMatrixBackend:
         rzpattern = rzpat(alpha)
         gamma = fx_rng.random()
 
-        m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
-        results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
+        results = rz_measurement_results(rzpattern, z_outcome, x_outcome)
 
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
@@ -444,8 +513,7 @@ class TestNoisyDensityMatrixBackend:
         rzpattern = rzpat(alpha)
         gamma = fx_rng.random()
 
-        m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
-        results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
+        results = rz_measurement_results(rzpattern, z_outcome, x_outcome)
 
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
@@ -458,6 +526,51 @@ class TestNoisyDensityMatrixBackend:
         expected = single_qubit_amplitude_damping_exact(exact, gamma) if z_outcome == 1 else exact
         assert isinstance(res, DensityMatrix)
         assert np.allclose(res.rho, expected)
+
+    @pytest.mark.parametrize(
+        "stage",
+        ["preparation", "entanglement", "measurement"],
+    )
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
+    def test_amplitude_damping_rz_noise_stages(
+        self,
+        fx_rng: Generator,
+        stage: str,
+        z_outcome: Outcome,
+        x_outcome: Outcome,
+    ) -> None:
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+        gamma = fx_rng.random()
+        results = rz_measurement_results(rzpattern, z_outcome, x_outcome)
+
+        match stage:
+            case "preparation":
+                noise_model = AmplitudeDampingNoiseModel(prepare_error_gamma=gamma)
+            case "entanglement":
+                noise_model = AmplitudeDampingNoiseModel(entanglement_error_gamma=gamma)
+            case "measurement":
+                noise_model = AmplitudeDampingNoiseModel(measure_channel_gamma=gamma)
+            case _:
+                raise ValueError("Unexpected amplitude damping stage")
+
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=noise_model,
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
+        )
+        expected = amplitude_damping_reference_pattern(rzpattern, noise_model).simulate_pattern(
+            backend="densitymatrix",
+            noise_model=NoiselessNoiseModel(),
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
+        )
+
+        assert isinstance(res, DensityMatrix)
+        assert isinstance(expected, DensityMatrix)
+        assert np.allclose(res.rho, expected.rho)
 
     @pytest.mark.parametrize("z_outcome", [0, 1])
     @pytest.mark.parametrize("x_outcome", [0, 1])
