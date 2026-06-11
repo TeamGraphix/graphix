@@ -1091,7 +1091,7 @@ class IllformedCircuitError(Exception):
 
     def __init__(self) -> None:
         """Build the exception."""
-        super().__init__("Ill-formed pattern")
+        super().__init__("Ill-formed circuit")
 
 
 @overload
