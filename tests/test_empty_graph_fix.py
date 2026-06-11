@@ -1,3 +1,4 @@
+from typing import Any
 from __future__ import annotations
 
 import networkx as nx
@@ -10,7 +11,7 @@ def test_empty_graph_well_formed() -> None:
 
     This is a regression test for issue #531.
     """
-    og: OpenGraph = OpenGraph(graph=nx.Graph(), input_nodes=[], output_nodes=[], measurements={})
+    og: OpenGraph[Any] = OpenGraph(graph=nx.Graph(), input_nodes=[], output_nodes=[], measurements={})
     pf = og.extract_causal_flow()
     pf.check_well_formed()
     assert True
