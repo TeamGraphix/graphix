@@ -453,6 +453,7 @@ def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputForm
 
 _DEFAULT_MAX_DENOMINATOR = 1000
 _DEFAULT_ATOL = 1e-9
+_DEFAULT_RTOL = 0.0
 _DEFAULT_PRECISION = 4
 
 
@@ -483,7 +484,7 @@ def _squarefree_decomposition(n: int) -> tuple[int, int]:
     return outer, inner
 
 
-def _recognize_sqrt(x: float, max_denominator: int, atol: float) -> tuple[int, int, int] | None:
+def _recognize_sqrt(x: float, max_denominator: int, atol: float, rtol: float) -> tuple[int, int, int] | None:
     """Recognize a real number as ``signed_num * sqrt(inner) / den``.
 
     The recognition approximates ``x ** 2`` by a rational ``p / q``; on success,
@@ -498,6 +499,8 @@ def _recognize_sqrt(x: float, max_denominator: int, atol: float) -> tuple[int, i
         Maximum denominator allowed when approximating ``x ** 2`` by a rational.
     atol : float
         Absolute tolerance for that rational approximation.
+    rtol : float
+        Relative tolerance for that rational approximation.
 
     Returns
     -------
@@ -509,7 +512,7 @@ def _recognize_sqrt(x: float, max_denominator: int, atol: float) -> tuple[int, i
     if x == 0:
         return 0, 1, 1
     square = Fraction(x * x).limit_denominator(max_denominator)
-    if not math.isclose(x * x, float(square), abs_tol=atol):
+    if not math.isclose(x * x, float(square), rel_tol=rtol, abs_tol=atol):
         return None
     num_outer, num_inner = _squarefree_decomposition(square.numerator)
     den_outer, den_inner = _squarefree_decomposition(square.denominator)
@@ -563,8 +566,8 @@ def _render_real(signed_num: int, inner: int, den: int, output: OutputFormat) ->
     return f"{sign}{_fraction_str(numerator, str(den), output)}"
 
 
-def _real_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
-    rec = _recognize_sqrt(x, max_denominator, atol)
+def _real_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float, rtol: float) -> str | None:
+    rec = _recognize_sqrt(x, max_denominator, atol, rtol)
     if rec is None:
         return None
     return _render_real(*rec, output)
@@ -587,30 +590,30 @@ def _render_imaginary(signed_num: int, inner: int, den: int, output: OutputForma
     return f"{sign}{_fraction_str(numerator, str(den), output)}"
 
 
-def _imaginary_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
+def _imaginary_to_str(x: float, output: OutputFormat, max_denominator: int, atol: float, rtol: float) -> str | None:
     """Render a purely imaginary value ``x * i``."""
-    rec = _recognize_sqrt(x, max_denominator, atol)
+    rec = _recognize_sqrt(x, max_denominator, atol, rtol)
     if rec is None:
         return None
     return _render_imaginary(*rec, output)
 
 
-def _recognize_angle_over_pi(theta: float, max_denominator: int, atol: float) -> Fraction | None:
+def _recognize_angle_over_pi(theta: float, max_denominator: int, atol: float, rtol: float) -> Fraction | None:
     """Return ``theta / pi`` as a simple fraction, or ``None`` if it is not one."""
     value = theta / pi
     frac = Fraction(value).limit_denominator(max_denominator)
-    if math.isclose(value, float(frac), abs_tol=atol):
+    if math.isclose(value, float(frac), rel_tol=rtol, abs_tol=atol):
         return frac
     return None
 
 
-def _exponential_to_str(z: complex, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
+def _exponential_to_str(z: complex, output: OutputFormat, max_denominator: int, atol: float, rtol: float) -> str | None:
     """Render ``z`` as ``r e^{iθ}`` when both ``r`` and ``θ / π`` are recognized."""
     theta = math.atan2(z.imag, z.real)
-    angle_frac = _recognize_angle_over_pi(theta, max_denominator, atol)
+    angle_frac = _recognize_angle_over_pi(theta, max_denominator, atol, rtol)
     if angle_frac is None or angle_frac == 0:
         return None
-    radius = _real_to_str(math.hypot(z.real, z.imag), output, max_denominator, atol)
+    radius = _real_to_str(math.hypot(z.real, z.imag), output, max_denominator, atol, rtol)
     if radius is None:
         return None
     sign = "-" if angle_frac < 0 else ""
@@ -626,10 +629,12 @@ def _exponential_to_str(z: complex, output: OutputFormat, max_denominator: int, 
     return f"{radius}{prefix_sep}{body}"
 
 
-def _cartesian_to_str(re: float, im: float, output: OutputFormat, max_denominator: int, atol: float) -> str | None:
+def _cartesian_to_str(
+    re: float, im: float, output: OutputFormat, max_denominator: int, atol: float, rtol: float
+) -> str | None:
     """Render ``re + im i`` when both parts are recognized as nice reals."""
-    re_str = _real_to_str(re, output, max_denominator, atol)
-    im_rec = _recognize_sqrt(im, max_denominator, atol)
+    re_str = _real_to_str(re, output, max_denominator, atol, rtol)
+    im_rec = _recognize_sqrt(im, max_denominator, atol, rtol)
     if re_str is None or im_rec is None:
         return None
     signed_num, inner, den = im_rec
@@ -642,12 +647,12 @@ def _cartesian_to_str(re: float, im: float, output: OutputFormat, max_denominato
     return f"{re_str}{connector}{imag}"
 
 
-def _decimal_to_str(z: complex, output: OutputFormat, precision: int) -> str:
+def _decimal_to_str(z: complex, output: OutputFormat, precision: int, atol: float) -> str:
     """Fallback formatting using rounded decimals with ``precision`` significant digits."""
     unit = _imaginary_unit(output)
-    if abs(z.imag) <= _DEFAULT_ATOL:
+    if abs(z.imag) <= atol:
         return f"{z.real:.{precision}g}"
-    if abs(z.real) <= _DEFAULT_ATOL:
+    if abs(z.real) <= atol:
         return f"{z.imag:.{precision}g}{unit}"
     return f"{z.real:.{precision}g}{z.imag:+.{precision}g}{unit}"
 
@@ -658,6 +663,7 @@ def complex_to_str(
     *,
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
     atol: float = _DEFAULT_ATOL,
+    rtol: float = _DEFAULT_RTOL,
     precision: int = _DEFAULT_PRECISION,
 ) -> str:
     r"""Return a human-friendly string representation of a complex number.
@@ -682,6 +688,8 @@ def complex_to_str(
         (default: ``1000``).
     atol : float, optional
         Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+    rtol : float, optional
+        Relative tolerance for the recognition heuristics (default: ``0.0``).
     precision : int, optional
         Number of significant digits to use for the decimal fallback when a
         value is not recognized as an exact form (default: ``4``).
@@ -708,22 +716,24 @@ def complex_to_str(
     if abs(z.real) <= atol and abs(z.imag) <= atol:
         return "0"
     if abs(z.imag) <= atol:
-        return _real_to_str(z.real, output, max_denominator, atol) or _decimal_to_str(z, output, precision)
+        return _real_to_str(z.real, output, max_denominator, atol, rtol) or _decimal_to_str(z, output, precision, atol)
     if abs(z.real) <= atol:
-        return _imaginary_to_str(z.imag, output, max_denominator, atol) or _decimal_to_str(z, output, precision)
-    exponential = _exponential_to_str(z, output, max_denominator, atol)
+        return _imaginary_to_str(z.imag, output, max_denominator, atol, rtol) or _decimal_to_str(
+            z, output, precision, atol
+        )
+    exponential = _exponential_to_str(z, output, max_denominator, atol, rtol)
     # The exponential form is the clearest representation on the unit circle, but for
     # other moduli a Cartesian form (e.g. ``1 + i`` rather than ``√2·e^(iπ/4)``) reads
     # better, so it is preferred when both parts are recognized.
-    if exponential is not None and math.isclose(math.hypot(z.real, z.imag), 1.0, abs_tol=atol):
+    if exponential is not None and math.isclose(math.hypot(z.real, z.imag), 1.0, rel_tol=rtol, abs_tol=atol):
         return exponential
-    cartesian = _cartesian_to_str(z.real, z.imag, output, max_denominator, atol)
+    cartesian = _cartesian_to_str(z.real, z.imag, output, max_denominator, atol, rtol)
     if cartesian is not None:
         return cartesian
     # Fall back to a radius-prefixed exponential when the Cartesian parts are not nice.
     if exponential is not None:
         return exponential
-    return _decimal_to_str(z, output, precision)
+    return _decimal_to_str(z, output, precision, atol)
 
 
 def _ket_str(ket: str, output: OutputFormat) -> str:
@@ -769,7 +779,8 @@ def statevec_to_str(
         Absolute tolerance used both to drop near-zero amplitudes and for the
         recognition heuristics (default: ``1e-9``).
     rtol : float, optional
-        Relative tolerance used to drop near-zero amplitudes (default: ``0.0``).
+        Relative tolerance used both to drop near-zero amplitudes and for the
+        recognition heuristics (default: ``0.0``).
     precision : int, optional
         Number of significant digits to use for amplitudes that fall back to a
         decimal representation (default: ``4``).
@@ -784,7 +795,9 @@ def statevec_to_str(
         return "0"
     result = ""
     for index, (ket, amplitude) in enumerate(amplitudes.items()):
-        coefficient = complex_to_str(amplitude, output, max_denominator=max_denominator, atol=atol, precision=precision)
+        coefficient = complex_to_str(
+            amplitude, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision
+        )
         ket_str = _ket_str(ket, output)
         if coefficient == "1":
             term = ket_str
@@ -809,6 +822,7 @@ def density_matrix_to_str(
     *,
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
     atol: float = _DEFAULT_ATOL,
+    rtol: float = _DEFAULT_RTOL,
     precision: int = _DEFAULT_PRECISION,
 ) -> str:
     r"""Return a matrix-form string representation of a density matrix.
@@ -827,6 +841,8 @@ def density_matrix_to_str(
         Maximum denominator used by the entry recognition (default: ``1000``).
     atol : float, optional
         Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+    rtol : float, optional
+        Relative tolerance for the recognition heuristics (default: ``0.0``).
     precision : int, optional
         Number of significant digits to use for entries that fall back to a
         decimal representation (default: ``4``).
@@ -838,7 +854,7 @@ def density_matrix_to_str(
     """
     rows = [
         [
-            complex_to_str(entry, output, max_denominator=max_denominator, atol=atol, precision=precision)
+            complex_to_str(entry, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision)
             for entry in row
         ]
         for row in density_matrix.rho

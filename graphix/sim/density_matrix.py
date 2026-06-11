@@ -124,6 +124,7 @@ class DensityMatrix(DenseState):
         *,
         max_denominator: int = 1000,
         atol: float = 1e-9,
+        rtol: float = 0.0,
         precision: int = 4,
     ) -> str:
         r"""Return a pretty-printed matrix representation of the density matrix.
@@ -140,6 +141,8 @@ class DensityMatrix(DenseState):
             Maximum denominator used by the entry recognition (default: ``1000``).
         atol : float, optional
             Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+        rtol : float, optional
+            Relative tolerance for the recognition heuristics (default: ``0.0``).
         precision : int, optional
             Number of significant digits to use for entries that fall back to a
             decimal representation (default: ``4``).
@@ -149,7 +152,9 @@ class DensityMatrix(DenseState):
         str
             The formatted density matrix.
         """
-        return density_matrix_to_str(self, output, max_denominator=max_denominator, atol=atol, precision=precision)
+        return density_matrix_to_str(
+            self, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision
+        )
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:

@@ -250,6 +250,28 @@ def test_complex_to_str_issue_examples() -> None:
         (0.123456, {OutputFormat.ASCII: "0.1235"}),
         # A non-numeric object is stringified rather than raising.
         ("alpha", {OutputFormat.ASCII: "alpha"}),
+        # |z| != 1 with nice Cartesian parts: the Cartesian form is preferred over the
+        # radius-prefixed exponential (1 + i rather than √2·e^(iπ/4)).
+        (1 + 1j, {OutputFormat.Unicode: "1 + i", OutputFormat.ASCII: "1 + i", OutputFormat.LaTeX: r"1 + \mathrm{i}"}),
+        # When the Cartesian parts are not recognized, the radius-prefixed exponential is the
+        # last resort before the decimal fallback.
+        (
+            2 * (math.cos(math.pi / 5) + math.sin(math.pi / 5) * 1j),
+            {
+                OutputFormat.Unicode: "2·e^(iπ/5)",
+                OutputFormat.ASCII: "2*e^(i*pi/5)",
+                OutputFormat.LaTeX: r"2 \mathrm{e}^{\mathrm{i} \frac{\pi}{5}}",
+            },
+        ),
+        # Both parts recognized but the phase is not a simple fraction of π: Cartesian form.
+        (
+            0.5 + 0.25j,
+            {OutputFormat.Unicode: "1/2 + 1/4i", OutputFormat.LaTeX: r"\frac{1}{2} + \frac{1}{4}\mathrm{i}"},
+        ),
+        # Neither part recognized -> rounded decimal real and imaginary parts.
+        (0.123456 + 0.234567j, {OutputFormat.Unicode: "0.1235+0.2346i"}),
+        # Integer multiple of a surd.
+        (math.sqrt(12), {OutputFormat.Unicode: "2√3"}),
     ],
 )
 def test_complex_to_str_values(value: object, expected: Mapping[OutputFormat, str]) -> None:
@@ -261,11 +283,15 @@ def test_statevec_draw() -> None:
     bell = Statevec([2**-0.5, 0, 0, 2**-0.5])
     assert bell.draw(OutputFormat.Unicode) == "√2/2|00⟩ + √2/2|11⟩"
     assert bell.draw(OutputFormat.ASCII) == "sqrt(2)/2|00> + sqrt(2)/2|11>"
+    # LaTeX uses the \ket{...} macro for the basis kets.
+    assert bell.draw(OutputFormat.LaTeX) == r"\frac{\sqrt{2}}{2}\ket{00} + \frac{\sqrt{2}}{2}\ket{11}"
 
 
 def test_statevec_draw_single_basis_state() -> None:
     state = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
     assert state.draw(OutputFormat.Unicode) == "|01⟩"
+    # LaTeX ket notation for a bare basis state.
+    assert state.draw(OutputFormat.LaTeX) == r"\ket{01}"
     # LSB encoding reverses the ket label.
     assert state.draw(OutputFormat.Unicode, encoding="LSB") == "|10⟩"
 
@@ -274,36 +300,6 @@ def test_density_matrix_draw() -> None:
     dm = DensityMatrix(data=[BasicStates.ZERO])
     assert dm.draw(OutputFormat.ASCII) == "[ 1  0 ]\n[ 0  0 ]"
     assert dm.draw(OutputFormat.LaTeX) == r"\begin{pmatrix}1 & 0 \\ 0 & 0\end{pmatrix}"
-
-
-def test_complex_to_str_exponential_with_radius() -> None:
-    # |z| != 1 with nice Cartesian parts: the Cartesian form is preferred over the
-    # radius-prefixed exponential (1 + i rather than √2·e^(iπ/4)).
-    assert complex_to_str(1 + 1j, OutputFormat.Unicode) == "1 + i"
-    assert complex_to_str(1 + 1j, OutputFormat.ASCII) == "1 + i"
-    assert complex_to_str(1 + 1j, OutputFormat.LaTeX) == r"1 + \mathrm{i}"
-    # When the Cartesian parts are not recognized, the radius-prefixed exponential is
-    # used as a last resort before the decimal fallback.
-    z = 2 * (math.cos(math.pi / 5) + math.sin(math.pi / 5) * 1j)
-    assert complex_to_str(z, OutputFormat.Unicode) == "2·e^(iπ/5)"
-    assert complex_to_str(z, OutputFormat.ASCII) == "2*e^(i*pi/5)"
-    assert complex_to_str(z, OutputFormat.LaTeX) == r"2 \mathrm{e}^{\mathrm{i} \frac{\pi}{5}}"
-
-
-def test_complex_to_str_cartesian_form() -> None:
-    # Both parts are recognized but the phase is not a simple fraction of π, so the
-    # cartesian form is used instead of the exponential one.
-    assert complex_to_str(0.5 + 0.25j, OutputFormat.Unicode) == "1/2 + 1/4i"
-    assert complex_to_str(0.5 + 0.25j, OutputFormat.LaTeX) == r"\frac{1}{2} + \frac{1}{4}\mathrm{i}"
-
-
-def test_complex_to_str_complex_decimal_fallback() -> None:
-    # Neither part is a recognized value -> rounded decimal real and imaginary parts.
-    assert complex_to_str(0.123456 + 0.234567j, OutputFormat.Unicode) == "0.1235+0.2346i"
-
-
-def test_complex_to_str_integer_times_sqrt() -> None:
-    assert complex_to_str(math.sqrt(12), OutputFormat.Unicode) == "2√3"
 
 
 def test_statevec_draw_negative_and_parenthesized() -> None:
@@ -325,3 +321,18 @@ def test_complex_to_str_precision_is_configurable() -> None:
     assert complex_to_str(z, OutputFormat.ASCII, precision=6) == "0.123456+0.234567i"
     # The default keeps the previous behaviour (four significant digits).
     assert complex_to_str(z, OutputFormat.ASCII) == "0.1235+0.2346i"
+
+
+def test_complex_to_str_rtol_controls_recognition() -> None:
+    # A value slightly off 1/2: with the default (tight) tolerances it is not recognized as a
+    # fraction and falls back to a decimal; a looser relative tolerance recognizes it as 1/2.
+    x = 0.500001
+    assert complex_to_str(x, OutputFormat.Unicode) == "0.5"
+    assert complex_to_str(x, OutputFormat.Unicode, rtol=1e-4) == "1/2"
+
+
+def test_density_matrix_draw_rtol() -> None:
+    # `rtol` is accepted by `DensityMatrix.draw` and threaded to the entry recognition.
+    dm = DensityMatrix(data=[BasicStates.PLUS])
+    assert dm.draw(OutputFormat.Unicode) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
+    assert dm.draw(OutputFormat.Unicode, rtol=1e-4) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
