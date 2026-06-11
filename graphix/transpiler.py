@@ -501,8 +501,7 @@ class Circuit:
         )
         z_corrections: dict[int, set[int]] = {}
         for node, correctors in x_corrections.items():
-            (corrector,) = correctors
-            z_targets = set(graph.neighbors(corrector)) - {node}
+            z_targets = og.neighbors(correctors) - {node}
             if z_targets:
                 z_corrections[node] = z_targets
         partial_order_layers = _corrections_to_partial_order_layers(og, x_corrections, z_corrections)
