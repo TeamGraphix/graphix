@@ -22,7 +22,7 @@ import pytest
 from graphix import Measurement, OpenGraph, Pattern
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import XZCorrections
-from graphix.flow.exceptions import FlowError
+from graphix.flow.exceptions import FlowGenericError, FlowGenericErrorReason
 from graphix.opengraph import OpenGraphError
 
 if TYPE_CHECKING:
@@ -128,37 +128,32 @@ _MEASUREMENTS: list[Callable[[Generator], Measurement]] = [
 ]
 
 
-def test_extract_pauli_flow_randomized_round_trip() -> None:
-    # Generate random open graphs; those that admit a Pauli flow (so that `to_pattern`
-    # succeeds) are converted to a pattern, and the reconstructed flow is checked to be
-    # well formed and to reproduce the pattern's corrections.
-    tested = 0
-    for seed in range(400):
-        rng = np.random.default_rng(seed)
-        n = int(rng.integers(4, 10))
-        graph = nx.gnp_random_graph(n, 0.45, seed=seed)
-        if graph.number_of_edges() == 0:
-            continue
-        nodes = list(graph.nodes())
-        rng.shuffle(nodes)
-        n_out = int(rng.integers(1, max(2, n // 2)))
-        n_in = int(rng.integers(0, max(1, n // 2)))
-        outputs = nodes[:n_out]
-        inputs = nodes[n_out : n_out + n_in]
-        measurements = {
-            m: _MEASUREMENTS[int(rng.integers(0, len(_MEASUREMENTS)))](rng) for m in nodes if m not in outputs
-        }
-        try:
-            pattern = OpenGraph(
-                graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements
-            ).to_pattern()
-        except OpenGraphError:
-            # The randomly drawn open graph does not admit a flow (the only documented
-            # raise condition of `OpenGraph.to_pattern`) -> not a valid test case.
-            continue
-        _assert_round_trip(pattern)
-        tested += 1
-    assert tested >= 30  # ensure the randomized sweep actually exercised the extraction
+@pytest.mark.parametrize("seed", range(400))
+def test_extract_pauli_flow_randomized_round_trip(seed: int) -> None:
+    # For each seed, draw a random open graph. Seeds with no edges, or whose open graph does not
+    # admit a Pauli flow (so `to_pattern` raises `OpenGraphError`), are skipped; the rest are
+    # converted to a pattern and round-tripped. Passing the seed as a parameter keeps each case
+    # independently reproducible and easy to debug when one fails.
+    rng = np.random.default_rng(seed)
+    n = int(rng.integers(4, 10))
+    graph = nx.gnp_random_graph(n, 0.45, seed=seed)
+    if graph.number_of_edges() == 0:
+        pytest.skip("empty graph")
+    nodes = list(graph.nodes())
+    rng.shuffle(nodes)
+    n_out = int(rng.integers(1, max(2, n // 2)))
+    n_in = int(rng.integers(0, max(1, n // 2)))
+    outputs = nodes[:n_out]
+    inputs = nodes[n_out : n_out + n_in]
+    measurements = {m: _MEASUREMENTS[int(rng.integers(0, len(_MEASUREMENTS)))](rng) for m in nodes if m not in outputs}
+    try:
+        pattern = OpenGraph(
+            graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements
+        ).to_pattern()
+    except OpenGraphError:
+        # The only documented raise condition of `OpenGraph.to_pattern`: no flow -> not a test case.
+        pytest.skip("open graph does not admit a flow")
+    _assert_round_trip(pattern)
 
 
 def test_to_pauli_flow_empty_pattern() -> None:
@@ -170,24 +165,31 @@ def test_to_pauli_flow_empty_pattern() -> None:
     assert dict(pf.correction_function) == {}
 
 
-def test_to_pauli_flow_raises_when_no_flow_exists() -> None:
-    # A measured input node that must correct itself (Z axis) admits no Pauli flow,
-    # because the correction set's image cannot contain an input node.
-    og1 = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.Z})
-    with pytest.raises(FlowError):
-        XZCorrections(og1, {}, {}, [{1}, {0}]).to_pauli_flow()
-
-    # An isolated node measured in the XY plane cannot satisfy proposition P4
-    # (it must lie in the odd neighbourhood of its correction set), so the GF(2)
-    # system has no solution and no Pauli flow exists.
-    graph: nx.Graph[int] = nx.Graph()
-    graph.add_node(0)
-    graph.add_edge(1, 2)
-    og2 = OpenGraph(
-        graph=graph,
-        input_nodes=[],
-        output_nodes=[2],
-        measurements={0: Measurement.XY(0.1), 1: Measurement.XY(0.1)},
-    )
-    with pytest.raises(FlowError):
-        XZCorrections(og2, {}, {}, [{2}, {1}, {0}]).to_pauli_flow()
+@pytest.mark.parametrize(
+    ("measurements", "inputs", "outputs", "edges", "extra_nodes", "layers"),
+    [
+        # A measured input node pinned into its own correction set (Z/XZ/YZ) admits no Pauli flow,
+        # because the correction set's image cannot contain an input node.
+        ({0: Measurement.Z}, [0], [1], [(0, 1)], [], [{1}, {0}]),
+        ({0: Measurement.XZ(0.1)}, [0], [1], [(0, 1)], [], [{1}, {0}]),
+        ({0: Measurement.YZ(0.1)}, [0], [1], [(0, 1)], [], [{1}, {0}]),
+        # An isolated node measured in the XY plane cannot satisfy proposition P4 (it must lie in
+        # the odd neighbourhood of its correction set), so the GF(2) system has no solution.
+        ({0: Measurement.XY(0.1), 1: Measurement.XY(0.1)}, [], [2], [(1, 2)], [0], [{2}, {1}, {0}]),
+    ],
+    ids=["z-input", "xz-input", "yz-input", "isolated-xy"],
+)
+def test_to_pauli_flow_raises_when_no_flow_exists(
+    measurements: dict[int, Measurement],
+    inputs: list[int],
+    outputs: list[int],
+    edges: list[tuple[int, int]],
+    extra_nodes: list[int],
+    layers: list[set[int]],
+) -> None:
+    graph: nx.Graph[int] = nx.Graph(edges)
+    graph.add_nodes_from(extra_nodes)
+    og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
+    with pytest.raises(FlowGenericError) as exc_info:
+        XZCorrections(og, {}, {}, layers).to_pauli_flow()
+    assert exc_info.value.reason == FlowGenericErrorReason.NoPauliFlow
