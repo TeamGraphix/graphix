@@ -302,9 +302,7 @@ class TestDensityMatrix:
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.cnot(edge)
-        psi_tensor = psi.reshape((2, 2))
-        psi_tensor = np.tensordot(CNOT_TENSOR, psi_tensor, ((2, 3), edge))
-        psi_tensor = np.moveaxis(psi_tensor, (0, 1), edge)
+        psi_tensor = np.moveaxis(np.tensordot(CNOT_TENSOR, psi.reshape((2, 2)), ((2, 3), edge)), (0, 1), edge)
         expected_matrix2 = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(dm.rho, expected_matrix2)
 
@@ -320,9 +318,7 @@ class TestDensityMatrix:
         u, v = tuple(random.sample(range(n), 2))
         edge = (u, v)
         dm.cnot(edge)
-        psi_tensor = psi.reshape((2,) * n)
-        psi_tensor = np.tensordot(CNOT_TENSOR, psi_tensor, ((2, 3), edge))
-        psi_tensor = np.moveaxis(psi_tensor, (0, 1), edge)
+        psi_tensor = np.moveaxis(np.tensordot(CNOT_TENSOR, psi.reshape((2,) * n), ((2, 3), edge)), (0, 1), edge)
         expected_matrix3 = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(dm.rho, expected_matrix3)
 
@@ -354,10 +350,8 @@ class TestDensityMatrix:
         edge = (0, 1)
         dm.swap(edge)
         rho = dm.rho
-        psi = psi.reshape((2, 2))
-        psi = np.tensordot(SWAP_TENSOR, psi, ((2, 3), edge))
-        psi = np.moveaxis(psi, (0, 1), edge)
-        expected_matrix2 = np.outer(psi, psi.conj())
+        psi_tensor = np.moveaxis(np.tensordot(SWAP_TENSOR, psi.reshape((2, 2)), ((2, 3), edge)), (0, 1), edge)
+        expected_matrix2 = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(rho, expected_matrix2)
 
     def test_entangle_fail(self) -> None:
@@ -392,10 +386,8 @@ class TestDensityMatrix:
         edge = (0, 1)
         dm.entangle(edge)
         rho = dm.rho
-        psi = psi.reshape((2, 2))
-        psi = np.tensordot(CZ_TENSOR, psi, ((2, 3), edge))
-        psi = np.moveaxis(psi, (0, 1), edge)
-        expected_matrix2 = np.outer(psi, psi.conj())
+        psi_tensor = np.moveaxis(np.tensordot(CZ_TENSOR, psi.reshape((2, 2)), ((2, 3), edge)), (0, 1), edge)
+        expected_matrix2 = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(rho, expected_matrix2)
 
     def test_evolve_success(self, fx_rng: Generator) -> None:
@@ -443,10 +435,12 @@ class TestDensityMatrix:
         dm.evolve(op, edge)
         rho = dm.rho
 
-        psi = psi.reshape((2,) * nqubits)
-        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((2, 3), edge))
-        psi = np.moveaxis(psi, (0, 1), edge)
-        expected_matrix = np.outer(psi, psi.conj())
+        psi_tensor = np.moveaxis(
+            np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi.reshape((2,) * nqubits), ((2, 3), edge)),
+            (0, 1),
+            edge,
+        )
+        expected_matrix = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(rho, expected_matrix)
 
         # 3-qubit gate
@@ -468,10 +462,12 @@ class TestDensityMatrix:
         dm.evolve(op, targets)
         rho = dm.rho
 
-        psi = psi.reshape((2,) * nqubits)
-        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((3, 4, 5), targets))
-        psi = np.moveaxis(psi, (0, 1, 2), targets)
-        expected_matrix = np.outer(psi, psi.conj())
+        psi_tensor = np.moveaxis(
+            np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi.reshape((2,) * nqubits), ((3, 4, 5), targets)),
+            (0, 1, 2),
+            targets,
+        )
+        expected_matrix = np.outer(psi_tensor, psi_tensor.conj())
         assert np.allclose(rho, expected_matrix)
 
     def test_evolve_fail(self, fx_rng: Generator) -> None:
@@ -641,6 +637,21 @@ class TestDensityMatrix:
         assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        dm = DensityMatrix(randobj.rand_dm(2, fx_rng))
+        rho_test = np.asarray(dm.rho, dtype=np.complex128)
+
+        gamma = fx_rng.uniform()
+        channel = amplitude_damping_channel(gamma)
+
+        dm.apply_channel(channel, [0])
+
+        first_op = np.asarray(channel[0].operator, dtype=np.complex128)
+        second_op = np.asarray(channel[1].operator, dtype=np.complex128)
+        expected_dm = first_op @ rho_test @ first_op.conj().T + second_op @ rho_test @ second_op.conj().T
+
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
+
         nqubits = int(fx_rng.integers(2, 5))
         i = int(fx_rng.integers(0, nqubits))
         psi = _randstate_raw(nqubits, fx_rng)

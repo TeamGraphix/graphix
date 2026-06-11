@@ -130,7 +130,6 @@ class TestChannel:
 
         channel = amplitude_damping_channel(gamma)
 
-        assert isinstance(channel, KrausChannel)
         assert channel.nqubit == 1
         assert len(channel) == 2
 

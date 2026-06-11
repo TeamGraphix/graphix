@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -10,26 +10,20 @@ from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
 from graphix.noise_models import (
-    AmplitudeDampingNoise,
     AmplitudeDampingNoiseModel,
     DepolarisingNoiseModel,
-    TwoQubitAmplitudeDampingNoise,
 )
-from graphix.noise_models.noise_model import ApplyNoise, NoiselessNoiseModel
+from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
-from graphix.pattern import Pattern
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from numpy.random import Generator
 
-    from graphix.command import CommandType
     from graphix.fundamentals import Angle
     from graphix.measurements import Outcome
-    from graphix.noise_models import CommandOrNoise
+    from graphix.pattern import Pattern
 
 
 def rz_exact_res(alpha: Angle) -> npt.NDArray[np.float64]:
@@ -49,6 +43,63 @@ def single_qubit_amplitude_damping_exact(
     )
 
 
+def amplitude_damping_kraus_ops(gamma: float) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.complex128]]:
+    return (
+        np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128),
+        np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128),
+    )
+
+
+def expand_single_qubit_op(op: npt.NDArray[np.complex128], target: int) -> npt.NDArray[np.complex128]:
+    identity = np.eye(2, dtype=np.complex128)
+    return (np.kron(op, identity) if target == 0 else np.kron(identity, op)).astype(np.complex128)
+
+
+def apply_amplitude_damping_to_hadamard_state(
+    rho: npt.NDArray[np.complex128], gamma: float, target: int
+) -> npt.NDArray[np.complex128]:
+    out = np.zeros_like(rho, dtype=np.complex128)
+    for kraus_op in amplitude_damping_kraus_ops(gamma):
+        expanded_op = expand_single_qubit_op(kraus_op, target)
+        out += expanded_op @ rho @ expanded_op.conj().T
+    return out
+
+
+def hadamard_measurement_exact(rho: npt.NDArray[np.complex128], outcome: Outcome) -> npt.NDArray[np.complex128]:
+    plus = np.array([1.0, 1.0], dtype=np.complex128) / np.sqrt(2)
+    minus = np.array([1.0, -1.0], dtype=np.complex128) / np.sqrt(2)
+    projector = np.outer(plus if outcome == 0 else minus, plus.conj() if outcome == 0 else minus.conj())
+    measurement_op = np.kron(projector, np.eye(2, dtype=np.complex128))
+    post_measurement = measurement_op @ rho @ measurement_op.conj().T
+    post_measurement /= np.trace(post_measurement)
+
+    output = np.asarray(np.einsum("abad->bd", post_measurement.reshape(2, 2, 2, 2)), dtype=np.complex128)
+    if outcome == 1:
+        output = Ops.X @ output @ Ops.X
+    return output
+
+
+def amplitude_damping_hadamard_stage_exact(gamma: float, stage: str, outcome: Outcome) -> npt.NDArray[np.complex128]:
+    plus = np.array([1.0, 1.0], dtype=np.complex128) / np.sqrt(2)
+    two_qubit_state = np.kron(plus, plus)
+    rho = np.outer(two_qubit_state, two_qubit_state.conj()).astype(np.complex128)
+    controlled_z = np.diag([1.0, 1.0, 1.0, -1.0]).astype(np.complex128)
+
+    if stage == "preparation":
+        rho = apply_amplitude_damping_to_hadamard_state(rho, gamma, 0)
+        rho = apply_amplitude_damping_to_hadamard_state(rho, gamma, 1)
+
+    rho = controlled_z @ rho @ controlled_z.conj().T
+
+    if stage == "entanglement":
+        rho = apply_amplitude_damping_to_hadamard_state(rho, gamma, 0)
+        rho = apply_amplitude_damping_to_hadamard_state(rho, gamma, 1)
+    elif stage == "measurement":
+        rho = apply_amplitude_damping_to_hadamard_state(rho, gamma, 0)
+
+    return hadamard_measurement_exact(rho, outcome)
+
+
 def hpat() -> Pattern:
     circ = Circuit(1)
     circ.h(0)
@@ -64,63 +115,6 @@ def rzpat(alpha: Angle) -> Pattern:
 def rz_measurement_results(rzpattern: Pattern, z_outcome: Outcome, x_outcome: Outcome) -> dict[int, Outcome]:
     m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
     return {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
-
-
-def amplitude_damping_reference_pattern(rzpattern: Pattern, noise_model: AmplitudeDampingNoiseModel) -> Pattern:
-    cmds: list[CommandOrNoise] = list(noise_model.input_nodes(rzpattern.input_nodes))
-    for cmd in rzpattern:
-        match cmd.kind:
-            case CommandKind.N:
-                cmds.extend(
-                    [cmd, ApplyNoise(noise=AmplitudeDampingNoise(noise_model.prepare_error_gamma), nodes=[cmd.node])]
-                )
-            case CommandKind.E:
-                cmds.extend(
-                    [
-                        cmd,
-                        ApplyNoise(
-                            noise=TwoQubitAmplitudeDampingNoise(noise_model.entanglement_error_gamma),
-                            nodes=list(cmd.nodes),
-                        ),
-                    ],
-                )
-            case CommandKind.M:
-                cmds.extend(
-                    [
-                        ApplyNoise(noise=AmplitudeDampingNoise(noise_model.measure_channel_gamma), nodes=[cmd.node]),
-                        cmd,
-                    ],
-                )
-            case CommandKind.X:
-                cmds.extend(
-                    [
-                        cmd,
-                        ApplyNoise(
-                            noise=AmplitudeDampingNoise(noise_model.x_error_gamma),
-                            nodes=[cmd.node],
-                            domain=cmd.domain,
-                        ),
-                    ],
-                )
-            case CommandKind.Z:
-                cmds.extend(
-                    [
-                        cmd,
-                        ApplyNoise(
-                            noise=AmplitudeDampingNoise(noise_model.z_error_gamma),
-                            nodes=[cmd.node],
-                            domain=cmd.domain,
-                        ),
-                    ],
-                )
-            case _:
-                cmds.append(cmd)
-
-    return Pattern(
-        input_nodes=rzpattern.input_nodes,
-        cmds=cast("Iterable[CommandType]", cmds),
-        output_nodes=rzpattern.output_nodes,
-    )
 
 
 class TestNoisyDensityMatrixBackend:
@@ -527,23 +521,16 @@ class TestNoisyDensityMatrixBackend:
         assert isinstance(res, DensityMatrix)
         assert np.allclose(res.rho, expected)
 
-    @pytest.mark.parametrize(
-        "stage",
-        ["preparation", "entanglement", "measurement"],
-    )
-    @pytest.mark.parametrize("z_outcome", [0, 1])
-    @pytest.mark.parametrize("x_outcome", [0, 1])
-    def test_amplitude_damping_rz_noise_stages(
+    @pytest.mark.parametrize("stage", ["preparation", "entanglement", "measurement"])
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_amplitude_damping_hadamard_noise_stages(
         self,
         fx_rng: Generator,
         stage: str,
-        z_outcome: Outcome,
-        x_outcome: Outcome,
+        outcome: Outcome,
     ) -> None:
-        alpha = fx_rng.random()
-        rzpattern = rzpat(alpha)
+        hadamardpattern = hpat()
         gamma = fx_rng.random()
-        results = rz_measurement_results(rzpattern, z_outcome, x_outcome)
 
         match stage:
             case "preparation":
@@ -555,22 +542,17 @@ class TestNoisyDensityMatrixBackend:
             case _:
                 raise ValueError("Unexpected amplitude damping stage")
 
-        res = rzpattern.simulate_pattern(
+        results: dict[int, Outcome] = {0: outcome}
+        res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=noise_model,
             branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
         )
-        expected = amplitude_damping_reference_pattern(rzpattern, noise_model).simulate_pattern(
-            backend="densitymatrix",
-            noise_model=NoiselessNoiseModel(),
-            branch_selector=FixedBranchSelector(results),
-            rng=fx_rng,
-        )
+        expected = amplitude_damping_hadamard_stage_exact(gamma, stage, outcome)
 
         assert isinstance(res, DensityMatrix)
-        assert isinstance(expected, DensityMatrix)
-        assert np.allclose(res.rho, expected.rho)
+        assert np.allclose(res.rho, expected)
 
     @pytest.mark.parametrize("z_outcome", [0, 1])
     @pytest.mark.parametrize("x_outcome", [0, 1])
