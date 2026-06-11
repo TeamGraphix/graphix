@@ -436,7 +436,7 @@ class Circuit:
         self.instruction.append(instruction.M(target=qubit, axis=axis))
         self.active_qubits.remove(qubit)
 
-    def transpile_to_cflow(self) -> TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]]:
+    def transpile_to_causal_flow(self) -> TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]]:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
 
         Parameters
@@ -520,9 +520,9 @@ class Circuit:
             the result of the transpilation: a pattern and classical outputs.
         """
         if not transpile_swaps:
-            return _transpile_cflow_to_pattern(self.transpile_to_cflow())
+            return _transpile_cflow_to_pattern(self.transpile_to_causal_flow())
         swap = _transpile_swaps(self)
-        result = _transpile_cflow_to_pattern(swap.circuit.transpile_to_cflow())
+        result = _transpile_cflow_to_pattern(swap.circuit.transpile_to_causal_flow())
         result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
         classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
         return TranspileResult(result.pattern, classical_outputs)

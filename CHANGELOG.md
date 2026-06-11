@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #484: J & CZ transpilation.
   - Replaced `Circuit.transpile()` with a new approach based decomposing circuits into J & CZ gates.
-  - Added `Circuit.transpile_to_cflow()` to produce `CausalFlow` using the same decomposition.
+  - Added `Circuit.transpile_to_causal_flow()` to produce `CausalFlow` using the same decomposition.
   - Added `instruction.J` class.
   - Added `Circuit.transpile_j_to_rzh()` method to prepare circuits with J gates for export to OpenQASM.
   - Added `transpile` argument to `qasm3_exporter.circuit_to_qasm3` and `qasm3_exporter.circuit_to_qasm3_lines`, which defaults to true and applies `Circuit.transpile_j_to_rzh` and `Circuit.transpile_measurements_to_z_axis` methods.

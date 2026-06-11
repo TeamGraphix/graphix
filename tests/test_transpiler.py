@@ -53,7 +53,7 @@ class TestTranspilerUnitGates:
     def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
         circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
-        circuit.transpile_to_cflow().flow.check_well_formed()
+        circuit.transpile_to_causal_flow().flow.check_well_formed()
         flow = pattern.to_bloch().extract_causal_flow()
         flow.check_well_formed()
 
