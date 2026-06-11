@@ -6,7 +6,7 @@ from typing import Any
 
 import networkx as nx
 
-from graphix.opengraph import OpenGraph[Any]
+from graphix.opengraph import OpenGraph
 
 
 def test_empty_graph_well_formed() -> None:
