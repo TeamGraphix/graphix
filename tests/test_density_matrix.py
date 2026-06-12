@@ -12,7 +12,13 @@ import pytest
 import graphix.random_objects as randobj
 from graphix import command
 from graphix.branch_selector import ConstBranchSelector
-from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
+from graphix.channels import (
+    KrausChannel,
+    amplitude_damping_channel,
+    dephasing_channel,
+    depolarising_channel,
+    two_qubit_amplitude_damping_channel,
+)
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
@@ -735,6 +741,92 @@ class TestDensityMatrix:
         # compare
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)
+
+    def test_apply_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        # check on single qubit first, against the by-hand Kraus sum
+        dm = DensityMatrix(randobj.rand_dm(2, fx_rng))
+        rho_test = dm.rho
+
+        gamma = fx_rng.uniform()
+        ad_channel = amplitude_damping_channel(gamma)
+
+        assert isinstance(ad_channel, KrausChannel)
+
+        dm.apply_channel(ad_channel, [0])
+
+        k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)
+        k2 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+        expected_dm = k1 @ rho_test @ k1.conj().T + k2 @ rho_test @ k2.conj().T
+
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
+
+        # check embedded in a larger random register
+        nqubits = int(fx_rng.integers(2, 5))
+        i = int(fx_rng.integers(0, nqubits))
+
+        psi = _randstate_raw(nqubits, fx_rng)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+
+        gamma = fx_rng.uniform()
+        ad_channel = amplitude_damping_channel(gamma)
+        dm.apply_channel(ad_channel, [i])
+
+        expected_dm = np.zeros((2**nqubits, 2**nqubits), dtype=np.complex128)
+        for elem in ad_channel:
+            psi_evolved = np.tensordot(elem.operator, psi.reshape((2,) * nqubits), (1, i))
+            psi_evolved = np.moveaxis(psi_evolved, 0, i).reshape(2**nqubits)
+            expected_dm += elem.coef * np.conj(elem.coef) * np.outer(psi_evolved, psi_evolved.conj())
+
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
+
+    @pytest.mark.parametrize("gamma", [0.0, 0.2, 0.5, 0.9, 1.0])
+    def test_amplitude_damping_ground_state_fixed(self, gamma: float) -> None:
+        #``|0><0|`` is a fixed point of amplitude damping for any gamma.
+        ket0 = np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.complex128)
+        dm = DensityMatrix(data=BasicStates.ZERO)
+        dm.apply_channel(amplitude_damping_channel(gamma), [0])
+        assert np.allclose(dm.rho, ket0)
+
+    @pytest.mark.parametrize("gamma", [0.0, 0.2, 0.5, 0.9, 1.0])
+    def test_amplitude_damping_excited_state_decays(self, gamma: float) -> None:
+        #``|1><1| -> (1 - gamma)|1><1| + gamma|0><0|`` (directional T1 decay).
+        ket0 = np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.complex128)
+        ket1 = np.array([[0.0, 0.0], [0.0, 1.0]], dtype=np.complex128)
+        dm = DensityMatrix(data=BasicStates.ONE)
+        dm.apply_channel(amplitude_damping_channel(gamma), [0])
+        assert np.allclose(dm.rho, (1 - gamma) * ket1 + gamma * ket0)
+
+    @pytest.mark.parametrize("gamma", [0.1, 0.4, 0.8])
+    def test_amplitude_damping_coherence_decay(self, gamma: float) -> None:
+        #Off-diagonal coherences scale by ``sqrt(1 - gamma)`` (distinct from dephasing).
+        dm = DensityMatrix(data=BasicStates.PLUS)
+        dm.apply_channel(amplitude_damping_channel(gamma), [0])
+        assert np.isclose(dm.rho[0, 1], np.sqrt(1 - gamma) / 2)
+        assert np.isclose(dm.rho[1, 0], np.sqrt(1 - gamma) / 2)
+
+    @pytest.mark.parametrize("gamma", [0.0, 0.25, 0.6, 1.0])
+    def test_apply_two_qubit_amplitude_damping_channel(self, gamma: float, fx_rng: Generator) -> None:
+        #The two-qubit channel equals independent damping on each factor.
+        a = _randstate_raw(1, fx_rng)
+        a /= np.sqrt(np.sum(np.abs(a) ** 2))
+        b = _randstate_raw(1, fx_rng)
+        b /= np.sqrt(np.sum(np.abs(b) ** 2))
+        rho_a = np.outer(a, a.conj())
+        rho_b = np.outer(b, b.conj())
+
+        dm = DensityMatrix(data=np.kron(rho_a, rho_b))
+        dm.apply_channel(two_qubit_amplitude_damping_channel(gamma), [0, 1])
+
+        k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)
+        k2 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+        single = lambda rho: k1 @ rho @ k1.conj().T + k2 @ rho @ k2.conj().T  # noqa: E731
+        expected = np.kron(single(rho_a), single(rho_b))
+
+        assert np.allclose(expected.trace(), 1.0)
+        assert np.allclose(dm.rho, expected)
 
     def test_apply_random_channel_one_qubit(self, fx_rng: Generator) -> None:
         """Test using complex parameters."""
