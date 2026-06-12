@@ -991,6 +991,31 @@ class Pattern:
         """
         return self.extract_xzcorrections().downcast_bloch().to_gflow()
 
+    def extract_pauli_flow(self) -> PauliFlow[Measurement]:
+        r"""Extract the Pauli flow structure from the current measurement pattern.
+
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs
+        the Pauli flow from the pattern corrections instead.
+
+        Returns
+        -------
+        PauliFlow[Measurement]
+            The Pauli flow associated with the current pattern.
+
+        Raises
+        ------
+        FlowError
+            If the pattern is empty or if the extracted structure does not satisfy
+            the well-formedness conditions required for a valid Pauli flow.
+        ValueError
+            If `N` commands in the pattern do not represent a :math:`|+\rangle` state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        The notes provided in :func:`self.extract_causal_flow` apply here as well.
+        """
+        return self.extract_xzcorrections().to_pauli_flow()
+
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
         """Extract the XZ-corrections from the current measurement pattern.
 

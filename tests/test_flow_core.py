@@ -384,6 +384,10 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
     return test_cases
 
 
+def prepare_test_pauli_flow_xzcorrections() -> list[XZCorrectionsTestCase]:
+    return [test_case for test_case in prepare_test_xzcorrections() if isinstance(test_case.flow, PauliFlow)]
+
+
 class TestFlowPatternConversion:
     """Bundle for unit tests of the flow to XZ-corrections to pattern methods.
 
@@ -398,6 +402,18 @@ class TestFlowPatternConversion:
         corrections.check_well_formed()
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
+
+    @pytest.mark.parametrize("test_case", prepare_test_pauli_flow_xzcorrections())
+    def test_corrections_to_pauli_flow(self, test_case: XZCorrectionsTestCase) -> None:
+        corrections = test_case.flow.to_corrections()
+        flow = corrections.to_pauli_flow()
+
+        flow.check_well_formed()
+        extracted_corrections = flow.to_corrections()
+
+        assert extracted_corrections.x_corrections == corrections.x_corrections
+        assert extracted_corrections.z_corrections == corrections.z_corrections
+        assert flow.partial_order_layers == corrections.partial_order_layers
 
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:

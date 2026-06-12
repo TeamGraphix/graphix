@@ -56,6 +56,8 @@ Pattern Manipulation
 
     .. automethod:: extract_gflow
 
+    .. automethod:: extract_pauli_flow
+
     .. automethod:: extract_opengraph
 
     .. automethod:: extract_measurement_commands

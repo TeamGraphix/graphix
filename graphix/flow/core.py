@@ -266,6 +266,49 @@ class XZCorrections(Generic[_AM_co]):
         gf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible.
         return gf
 
+    def to_pauli_flow(self) -> PauliFlow[_AM_co]:
+        r"""Extract a Pauli flow from XZ-corrections.
+
+        This method does not invoke the Pauli-flow extraction routine on the underlying open graph.
+        Instead, it reconstructs a correction function compatible with the XZ-corrections and the
+        intrinsic partial order, then verifies the result using :meth:`PauliFlow.check_well_formed`.
+
+        Returns
+        -------
+        PauliFlow[_AM_co]
+
+        Raises
+        ------
+        FlowError
+            If no Pauli-flow correction function is compatible with the XZ-corrections and partial order.
+
+        Notes
+        -----
+        XZ-corrections only record corrections applied to nodes in the future of a measurement. For
+        Pauli flow, a correcting set can also contain nodes in the measurement's past or present when
+        their measurement labels allow it. The missing part of each correcting set is therefore obtained
+        by solving the Pauli-flow parity constraints over GF(2).
+        """
+        self.check_well_formed()
+
+        if len(self.partial_order_layers) == 0:
+            raise PartialOrderError(PartialOrderErrorReason.Empty)
+
+        future: set[int] = set(self.partial_order_layers[0])
+        correction_function: dict[int, AbstractSet[int]] = {}
+
+        for layer in self.partial_order_layers[1:]:
+            for measured_node in layer:
+                correction_function[measured_node] = _xz_corrections_to_pauli_correction_set(
+                    self, measured_node, future
+                )
+
+            future |= set(layer)
+
+        pf = PauliFlow(self.og, correction_function, self.partial_order_layers)
+        pf.check_well_formed()
+        return pf
+
     def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
         """Return the XZ-corrections where all measurements in the open graph are converted to Bloch.
 
@@ -1339,6 +1382,189 @@ def _corrections_to_partial_order_layers(
     if oset:
         return oset, *generations[::-1]
     return generations[::-1]
+
+
+def _xz_corrections_to_pauli_correction_set(
+    xz_corrections: XZCorrections[_AM_co], measured_node: int, future: AbstractSet[int]
+) -> frozenset[int]:
+    fixed_correction_nodes = set(xz_corrections.x_corrections.get(measured_node, set()))
+    expected_odd_future = set(xz_corrections.z_corrections.get(measured_node, set()))
+    candidate_nodes = sorted(set(xz_corrections.og.graph.nodes) - set(xz_corrections.og.input_nodes) - set(future))
+    variable_index = {node: index for index, node in enumerate(candidate_nodes)}
+    equations: list[tuple[set[int], int]] = []
+
+    for node in future:
+        _append_odd_neighborhood_equation(
+            equations,
+            xz_corrections.og.graph,
+            node,
+            variable_index,
+            fixed_correction_nodes,
+            int(node in expected_odd_future),
+        )
+
+    past_and_present_nodes = set(xz_corrections.og.measurements) - set(future)
+
+    for node in past_and_present_nodes - {measured_node}:
+        meas = xz_corrections.og.measurements[node].to_plane_or_axis()
+        if meas not in {Axis.X, Axis.Y}:
+            _append_membership_equation(equations, node, variable_index, fixed_correction_nodes, 0)
+        if meas not in {Axis.Y, Axis.Z}:
+            _append_odd_neighborhood_equation(
+                equations, xz_corrections.og.graph, node, variable_index, fixed_correction_nodes, 0
+            )
+        if meas == Axis.Y:
+            _append_closed_odd_neighborhood_equation(
+                equations, xz_corrections.og.graph, node, variable_index, fixed_correction_nodes, 0
+            )
+
+    _append_pauli_flow_self_condition(
+        equations,
+        xz_corrections.og.graph,
+        measured_node,
+        xz_corrections.og.measurements[measured_node].to_plane_or_axis(),
+        variable_index,
+        fixed_correction_nodes,
+    )
+
+    solution = _solve_binary_linear_system(equations, len(candidate_nodes))
+    if solution is None:
+        raise FlowGenericError(FlowGenericErrorReason.NoCorrectionFunction)
+
+    correction_set = set(fixed_correction_nodes)
+    correction_set.update(node for node, index in variable_index.items() if solution[index])
+    return frozenset(correction_set)
+
+
+def _append_pauli_flow_self_condition(
+    equations: list[tuple[set[int], int]],
+    graph: nx.Graph[int],
+    node: int,
+    meas: Plane | Axis,
+    variable_index: Mapping[int, int],
+    fixed_correction_nodes: AbstractSet[int],
+) -> None:
+    match meas:
+        case Plane.XY:
+            _append_membership_equation(equations, node, variable_index, fixed_correction_nodes, 0)
+            _append_odd_neighborhood_equation(equations, graph, node, variable_index, fixed_correction_nodes, 1)
+        case Plane.XZ:
+            _append_membership_equation(equations, node, variable_index, fixed_correction_nodes, 1)
+            _append_odd_neighborhood_equation(equations, graph, node, variable_index, fixed_correction_nodes, 1)
+        case Plane.YZ:
+            _append_membership_equation(equations, node, variable_index, fixed_correction_nodes, 1)
+            _append_odd_neighborhood_equation(equations, graph, node, variable_index, fixed_correction_nodes, 0)
+        case Axis.X:
+            _append_odd_neighborhood_equation(equations, graph, node, variable_index, fixed_correction_nodes, 1)
+        case Axis.Z:
+            _append_membership_equation(equations, node, variable_index, fixed_correction_nodes, 1)
+        case Axis.Y:
+            _append_closed_odd_neighborhood_equation(equations, graph, node, variable_index, fixed_correction_nodes, 1)
+        case _:
+            assert_never(meas)
+
+
+def _append_membership_equation(
+    equations: list[tuple[set[int], int]],
+    node: int,
+    variable_index: Mapping[int, int],
+    fixed_correction_nodes: AbstractSet[int],
+    value: int,
+) -> None:
+    coefficients, fixed_value = _membership_terms(node, variable_index, fixed_correction_nodes)
+    equations.append((coefficients, value ^ fixed_value))
+
+
+def _append_odd_neighborhood_equation(
+    equations: list[tuple[set[int], int]],
+    graph: nx.Graph[int],
+    node: int,
+    variable_index: Mapping[int, int],
+    fixed_correction_nodes: AbstractSet[int],
+    value: int,
+) -> None:
+    coefficients, fixed_value = _odd_neighborhood_terms(graph, node, variable_index, fixed_correction_nodes)
+    equations.append((coefficients, value ^ fixed_value))
+
+
+def _append_closed_odd_neighborhood_equation(
+    equations: list[tuple[set[int], int]],
+    graph: nx.Graph[int],
+    node: int,
+    variable_index: Mapping[int, int],
+    fixed_correction_nodes: AbstractSet[int],
+    value: int,
+) -> None:
+    coefficients, fixed_value = _membership_terms(node, variable_index, fixed_correction_nodes)
+    odd_coefficients, odd_fixed_value = _odd_neighborhood_terms(graph, node, variable_index, fixed_correction_nodes)
+
+    for coefficient in odd_coefficients:
+        _toggle_coefficient(coefficients, coefficient)
+
+    equations.append((coefficients, value ^ fixed_value ^ odd_fixed_value))
+
+
+def _membership_terms(
+    node: int, variable_index: Mapping[int, int], fixed_correction_nodes: AbstractSet[int]
+) -> tuple[set[int], int]:
+    if node in variable_index:
+        return {variable_index[node]}, 0
+    return set(), int(node in fixed_correction_nodes)
+
+
+def _odd_neighborhood_terms(
+    graph: nx.Graph[int],
+    node: int,
+    variable_index: Mapping[int, int],
+    fixed_correction_nodes: AbstractSet[int],
+) -> tuple[set[int], int]:
+    coefficients: set[int] = set()
+    fixed_value = 0
+
+    for neighbor in graph.neighbors(node):
+        if neighbor in variable_index:
+            _toggle_coefficient(coefficients, variable_index[neighbor])
+        elif neighbor in fixed_correction_nodes:
+            fixed_value ^= 1
+
+    return coefficients, fixed_value
+
+
+def _toggle_coefficient(coefficients: set[int], coefficient: int) -> None:
+    if coefficient in coefficients:
+        coefficients.remove(coefficient)
+    else:
+        coefficients.add(coefficient)
+
+
+def _solve_binary_linear_system(equations: Sequence[tuple[set[int], int]], n_variables: int) -> list[int] | None:
+    matrix = [[sum(1 << coefficient for coefficient in coefficients), value] for coefficients, value in equations]
+    pivot_columns: list[int] = []
+    pivot_row = 0
+
+    for column in range(n_variables):
+        pivot = next((row for row in range(pivot_row, len(matrix)) if matrix[row][0] & (1 << column)), None)
+        if pivot is None:
+            continue
+
+        matrix[pivot_row], matrix[pivot] = matrix[pivot], matrix[pivot_row]
+
+        for row, _ in enumerate(matrix):
+            if row != pivot_row and matrix[row][0] & (1 << column):
+                matrix[row][0] ^= matrix[pivot_row][0]
+                matrix[row][1] ^= matrix[pivot_row][1]
+
+        pivot_columns.append(column)
+        pivot_row += 1
+
+    if any(mask == 0 and value for mask, value in matrix):
+        return None
+
+    solution = [0] * n_variables
+    for row, column in enumerate(pivot_columns):
+        solution[column] = matrix[row][1]
+
+    return solution
 
 
 def _check_correction_function_domain(

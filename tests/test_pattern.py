@@ -972,6 +972,37 @@ class TestPattern:
             with pytest.raises(FlowError):
                 test_case.pattern.extract_gflow()
 
+    def test_extract_pauli_flow(self) -> None:
+        pattern = Pattern(
+            input_nodes=[0],
+            cmds=[
+                N(1),
+                N(2),
+                N(3),
+                E((0, 1)),
+                E((1, 2)),
+                E((2, 3)),
+                M(0, Measurement.X),
+                X(3, {0}),
+                M(1, Measurement.X),
+                Z(3, {1}),
+                M(2, Measurement.X),
+                X(3, {2}),
+            ],
+            output_nodes=[3],
+        )
+
+        corrections = pattern.extract_xzcorrections()
+        flow = pattern.extract_pauli_flow()
+
+        flow.check_well_formed()
+        extracted_corrections = flow.to_corrections()
+
+        assert extracted_corrections.x_corrections == corrections.x_corrections
+        assert extracted_corrections.z_corrections == corrections.z_corrections
+        assert flow.partial_order_layers == corrections.partial_order_layers
+        assert flow.correction_function == {0: {1, 3}, 1: {2}, 2: {3}}
+
     # From open graph
     def test_extract_cflow_og(self, fx_rng: Generator) -> None:
         alpha = 2 * np.pi * fx_rng.random()
