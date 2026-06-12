@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import cmath
 import math
 from typing import TYPE_CHECKING
 
@@ -281,10 +282,11 @@ def test_complex_to_str_values(value: object, expected: Mapping[OutputFormat, st
 
 def test_statevec_draw() -> None:
     bell = Statevec([2**-0.5, 0, 0, 2**-0.5])
-    assert bell.draw(OutputFormat.Unicode) == "√2/2|00⟩ + √2/2|11⟩"
-    assert bell.draw(OutputFormat.ASCII) == "sqrt(2)/2|00> + sqrt(2)/2|11>"
+    # A magnitude shared by every amplitude is factored out.
+    assert bell.draw(OutputFormat.Unicode) == "√2/2(|00⟩ + |11⟩)"
+    assert bell.draw(OutputFormat.ASCII) == "sqrt(2)/2(|00> + |11>)"
     # LaTeX uses the \ket{...} macro for the basis kets.
-    assert bell.draw(OutputFormat.LaTeX) == r"\frac{\sqrt{2}}{2}\ket{00} + \frac{\sqrt{2}}{2}\ket{11}"
+    assert bell.draw(OutputFormat.LaTeX) == r"\frac{\sqrt{2}}{2}(\ket{00} + \ket{11})"
 
 
 def test_statevec_draw_single_basis_state() -> None:
@@ -303,9 +305,9 @@ def test_density_matrix_draw() -> None:
 
 
 def test_statevec_draw_negative_and_parenthesized() -> None:
-    # Negative amplitudes use a `-` separator between terms.
+    # The shared 1/2 magnitude is factored out, with the signs kept inside the parentheses.
     neg = Statevec([0.5, -0.5, 0.5, 0.5])
-    assert neg.draw(OutputFormat.Unicode) == "1/2|00⟩ - 1/2|01⟩ + 1/2|10⟩ + 1/2|11⟩"
+    assert neg.draw(OutputFormat.Unicode) == "1/2(|00⟩ - |01⟩ + |10⟩ + |11⟩)"
     # A compound (cartesian) amplitude is parenthesized before the ket. Build from a
     # numpy array so the amplitudes are ``numpy.complex128`` (Python's ``complex`` only
     # gained ``__complex__`` in 3.11, so a bare ``complex`` is rejected on 3.10).
@@ -336,3 +338,26 @@ def test_density_matrix_draw_rtol() -> None:
     dm = DensityMatrix(data=[BasicStates.PLUS])
     assert dm.draw(OutputFormat.Unicode) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
     assert dm.draw(OutputFormat.Unicode, rtol=1e-4) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
+
+
+def test_complex_to_str_edge_cases() -> None:
+    # A tiny non-zero real collapses to "0" (zero branches of the square-free
+    # decomposition and the real renderer).
+    assert complex_to_str(1e-7, OutputFormat.Unicode) == "0"
+    # A purely imaginary value with no nice form falls back to a decimal imaginary part.
+    assert complex_to_str(0.234567j, OutputFormat.Unicode) == "0.2346i"
+    # A recognized phase with an unrecognized radius (π·e^(iπ/4)) cannot use the exponential
+    # or Cartesian forms and falls back to a decimal.
+    assert complex_to_str(math.pi * cmath.exp(1j * math.pi / 4), OutputFormat.Unicode) == "2.221+2.221i"
+
+
+def test_statevec_draw_all_amplitudes_dropped() -> None:
+    # A tolerance large enough to drop every amplitude prints the statevector as "0".
+    bell = Statevec([2**-0.5, 0, 0, 2**-0.5])
+    assert bell.draw(OutputFormat.Unicode, atol=1.0) == "0"
+
+
+def test_statevec_draw_non_uniform_not_factored() -> None:
+    # Amplitudes with different magnitudes are not factored; each term keeps its coefficient.
+    state = Statevec([math.sqrt(3) / 2, 0.5])
+    assert state.draw(OutputFormat.Unicode) == "√3/2|0⟩ + 1/2|1⟩"

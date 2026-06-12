@@ -509,8 +509,6 @@ def _recognize_sqrt(x: float, max_denominator: int, atol: float, rtol: float) ->
         squarefree integer, encoding ``x = signed_num * sqrt(inner) / den``.
         Returns ``None`` when ``x`` is not recognized as such a value.
     """
-    if x == 0:
-        return 0, 1, 1
     square = Fraction(x * x).limit_denominator(max_denominator)
     if not math.isclose(x * x, float(square), rel_tol=rtol, abs_tol=atol):
         return None
@@ -749,6 +747,37 @@ def _needs_parentheses(coefficient: str) -> bool:
     return " + " in coefficient or " - " in coefficient
 
 
+def _factor_uniform_magnitude(coefficients: Sequence[str], kets: Sequence[str]) -> str | None:
+    """Factor a magnitude shared by every amplitude, e.g. ``√2/2(|00⟩ + |11⟩)``.
+
+    Returns the factored string when all amplitudes have the same non-unit magnitude
+    (up to sign), or ``None`` when no such common factor exists (in which case the
+    caller falls back to the term-by-term rendering).
+    """
+    if len(coefficients) < 2:
+        return None
+    magnitudes: list[str] = []
+    signs: list[str] = []
+    for coefficient in coefficients:
+        # A compound (Cartesian) coefficient has no single magnitude to factor out.
+        if _needs_parentheses(coefficient):
+            return None
+        if coefficient.startswith("-"):
+            signs.append("-")
+            magnitudes.append(coefficient[1:])
+        else:
+            signs.append("+")
+            magnitudes.append(coefficient)
+    common = magnitudes[0]
+    # Nothing to factor when the magnitude is the unit coefficient, or it is not shared.
+    if common == "1" or any(magnitude != common for magnitude in magnitudes):
+        return None
+    body = kets[0] if signs[0] == "+" else f"-{kets[0]}"
+    for sign, ket in zip(signs[1:], kets[1:], strict=True):
+        body += f" {sign} {ket}"
+    return f"{common}({body})"
+
+
 def statevec_to_str(
     statevec: Statevec,
     output: OutputFormat,
@@ -788,17 +817,22 @@ def statevec_to_str(
     Returns
     -------
     str
-        The formatted statevector, e.g. ``√2/2|00⟩ + √2/2|01⟩``.
+        The formatted statevector, e.g. ``√2/2(|00⟩ + |01⟩)``.
     """
     amplitudes = statevec.to_dict(encoding, rtol=rtol, atol=atol)
     if not amplitudes:
         return "0"
+    coefficients = [
+        complex_to_str(amplitude, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision)
+        for amplitude in amplitudes.values()
+    ]
+    kets = [_ket_str(ket, output) for ket in amplitudes]
+    # When every amplitude shares the same magnitude, factor it out, e.g. ``√2/2(|00⟩ + |11⟩)``.
+    factored = _factor_uniform_magnitude(coefficients, kets)
+    if factored is not None:
+        return factored
     result = ""
-    for index, (ket, amplitude) in enumerate(amplitudes.items()):
-        coefficient = complex_to_str(
-            amplitude, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision
-        )
-        ket_str = _ket_str(ket, output)
+    for index, (coefficient, ket_str) in enumerate(zip(coefficients, kets, strict=True)):
         if coefficient == "1":
             term = ket_str
         elif coefficient == "-1":

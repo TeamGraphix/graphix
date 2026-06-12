@@ -567,7 +567,7 @@ class Statevec(DenseState):
         >>> circuit.h(0)
         >>> circuit.cz(0, 1)
         >>> print(circuit.simulate_statevector().statevec.draw())
-        √2/2|00⟩ + √2/2|01⟩
+        √2/2(|00⟩ + |01⟩)
         """
         return statevec_to_str(
             self,
