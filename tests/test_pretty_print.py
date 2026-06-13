@@ -359,5 +359,7 @@ def test_statevec_draw_all_amplitudes_dropped() -> None:
 
 def test_statevec_draw_non_uniform_not_factored() -> None:
     # Amplitudes with different magnitudes are not factored; each term keeps its coefficient.
-    state = Statevec([math.sqrt(3) / 2, 0.5])
-    assert state.draw(OutputFormat.Unicode) == "√3/2|0⟩ + 1/2|1⟩"
+    # The negative second amplitude also exercises the ` - ` separator in the term-by-term
+    # fallback (the factoring path handles the uniform-magnitude negative case separately).
+    state = Statevec([math.sqrt(3) / 2, -0.5])
+    assert state.draw(OutputFormat.Unicode) == "√3/2|0⟩ - 1/2|1⟩"
