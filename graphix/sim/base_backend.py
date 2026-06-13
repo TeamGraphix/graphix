@@ -443,6 +443,17 @@ class DenseState(ABC):
             (control, target) qubit indices
         """
 
+    @abstractmethod
+    def permute(self, permutation: Sequence[int]) -> None:
+        """Reorder the qubits.
+
+        Parameters
+        ----------
+        permutation: Sequence[int]
+            The permutation to apply.  For each position in the resulting order,
+            the value gives the index of the qubit in the original ordering.
+        """
+
     def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:  # noqa: ARG002
         """Apply noise.
 
@@ -659,7 +670,7 @@ class Backend(Generic[_StateT_co]):
         """
 
     @abstractmethod
-    def finalize(self, output_nodes: Iterable[int]) -> None:
+    def finalize(self, output_nodes: Sequence[int]) -> None:
         """To be run at the end of pattern simulation to convey the order of output nodes."""
 
     @abstractmethod
@@ -818,18 +829,10 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         loc = self.node_index.index(node)
         self.state.evolve_single(clifford.matrix, loc)
 
-    def sort_qubits(self, output_nodes: Iterable[int]) -> None:
-        """Sort the qubit order in internal statevector."""
-        for i, ind in enumerate(output_nodes):
-            if self.node_index.index(ind) != i:
-                move_from = self.node_index.index(ind)
-                self.state.swap((i, move_from))
-                self.node_index.swap(i, move_from)
-
     @override
-    def finalize(self, output_nodes: Iterable[int]) -> None:
+    def finalize(self, output_nodes: Sequence[int]) -> None:
         """To be run at the end of pattern simulation."""
-        self.sort_qubits(output_nodes)
+        self.state.permute([self.node_index.index(node) for node in output_nodes])
 
     @property
     def nqubit(self) -> int:

@@ -333,6 +333,10 @@ class Statevec(DenseState):
         # sort back axes
         self.psi = np.moveaxis(psi, (0, 1), qubits)
 
+    @override
+    def permute(self, permutation: Sequence[int]) -> None:
+        self.psi = np.transpose(self.psi, permutation)
+
     def normalize(self) -> None:
         """Normalize the state in-place."""
         # Note that the following calls to `astype` are guaranteed to

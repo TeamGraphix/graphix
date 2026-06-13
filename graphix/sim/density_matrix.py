@@ -285,6 +285,15 @@ class DensityMatrix(DenseState):
         """
         self.evolve(SWAP_TENSOR.reshape(4, 4), qubits)
 
+    @override
+    def permute(self, permutation: Sequence[int]) -> None:
+        tensor_shape = [2] * (2 * self.nqubit)
+        perm_cols = [i + self.nqubit for i in permutation]
+        full_permutation = [*permutation, *perm_cols]
+        rho_tensor = self.rho.reshape(tensor_shape)
+        rho_permuted_tensor = np.transpose(rho_tensor, axes=full_permutation)
+        self.rho = rho_permuted_tensor.reshape((2**self.nqubit, 2**self.nqubit))
+
     def entangle(self, edge: tuple[int, int]) -> None:
         """Connect graph nodes.
 

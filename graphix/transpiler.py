@@ -12,7 +12,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, overload
 
 import networkx as nx
-import numpy as np
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -986,11 +985,6 @@ class TranspileSwapsResult:
                 reduced_index[index] = reduced_counter
                 reduced_counter += 1
         return tuple(reduced_index[index] for index in self.extract_outputs(OutputKind.Qubit))
-
-    def swap_statevec(self, statevec: Statevec) -> Statevec:
-        """Reorder the elements of a statevector obtained from a swapped circuit to restore the qubit ordering of the original circuit."""
-        psi = np.transpose(statevec.psi, self.extract_output_node_indices())
-        return Statevec(psi.flatten(), statevec.nqubit)
 
     def swap_output_nodes(self, output_nodes: Sequence[Node]) -> tuple[Node, ...]:
         """Reorder the output nodes of a pattern obtained from a swapped circuit to restore the qubit ordering of the original circuit."""

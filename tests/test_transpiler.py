@@ -172,7 +172,7 @@ class TestTranspilerUnitGates:
         assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
         state = circuit.simulate_statevector(rng=rng).statevec
         state2 = circuit2.simulate_statevector(rng=rng).statevec
-        state2 = transpiled_swaps.swap_statevec(state2)
+        state2.permute(transpiled_swaps.extract_output_node_indices())
         assert state.isclose(state2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -372,7 +372,7 @@ def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
     assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
     state = circuit.simulate_statevector(rng=rng).statevec
     state2 = circuit2.simulate_statevector(rng=rng).statevec
-    state2 = transpiled_swaps.swap_statevec(state2)
+    state2.permute(transpiled_swaps.extract_output_node_indices())
     assert state.isclose(state2)
 
 
