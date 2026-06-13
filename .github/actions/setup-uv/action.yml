@@ -1,6 +1,14 @@
 name: Set up uv
 description: Install the pinned version of uv and cache its package cache
-
+inputs:
+  enable-cache:
+    description: Enable cache
+    required: false
+    type: boolean
+  python-version:
+    description: Python version
+    required: false
+    type: string
 runs:
   using: composite
   steps:
@@ -8,7 +16,15 @@ runs:
       shell: bash
       run: pip install -r .github/uv-requirements.txt
 
+    - name: Pin Python version ${{ inputs.python-version }}
+      if: ${{ inputs.python-version != '' }}
+      shell: bash
+      run: uv python pin "$PYTHON_VERSION"
+      env:
+        PYTHON_VERSION: ${{ inputs.python-version }}
+
     - name: Cache uv packages
+      if: ${{ inputs.enable-cache == 'true' }}
       uses: actions/cache@v4
       with:
         path: ~/.cache/uv
