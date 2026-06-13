@@ -1048,8 +1048,6 @@ class TestPattern:
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
-        p_test = p_test.infer_pauli_measurements()
-
         p_ref = p_ref.infer_pauli_measurements()
         p_ref.remove_pauli_measurements()
         p_test = p_test.infer_pauli_measurements()
