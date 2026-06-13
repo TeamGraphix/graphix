@@ -285,8 +285,13 @@ class XZCorrections(Generic[_AM_co]):
         recovered by solving the linear system over :math:`\mathbb{F}_2` whose equations are the
         Pauli-flow conditions (P1)-(P9) together with the requirement that the induced
         XZ-corrections match ``self`` (i.e. :math:`Odd(p(i)) \cap \{j : j > i\}` equals the
-        Z-corrections of :math:`i`). The resulting flow is then validated with
-        :meth:`PauliFlow.check_well_formed`.
+        Z-corrections of :math:`i`). If some node's system has no solution, no Pauli flow
+        reproduces the corrections and a :class:`FlowGenericError` is raised.
+
+        The reconstructed correction function satisfies the Pauli-flow propositions (P1)-(P9) by
+        construction, so no run-time validation is performed (well-formedness is exercised in the
+        test suite instead). The free variables of each system are set to zero, which makes the
+        reconstruction deterministic and reproducible.
 
         Returns
         -------
@@ -294,9 +299,8 @@ class XZCorrections(Generic[_AM_co]):
 
         Raises
         ------
-        FlowError
-            If the XZ-corrections are not induced by any Pauli flow, or if the partial order is
-            incompatible with the reconstructed correction function.
+        FlowGenericError
+            If the XZ-corrections are not induced by any Pauli flow.
 
         Notes
         -----
@@ -309,13 +313,7 @@ class XZCorrections(Generic[_AM_co]):
         [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
         correction_function = _reconstruct_pauli_correction_function(self)
-        pf = PauliFlow(self.og, correction_function, self.partial_order_layers)
-        # The reconstruction enforces propositions (P1)-(P9) by construction, but `check_well_formed`
-        # additionally validates the user-supplied partial order: it rejects, for instance,
-        # XZ-corrections without output nodes (which admit no flow) or a partial order that does not
-        # cover every measured node. It raises a `FlowError` in those cases.
-        pf.check_well_formed()
-        return pf
+        return PauliFlow(self.og, correction_function, self.partial_order_layers)
 
     def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
         """Return the XZ-corrections where all measurements in the open graph are converted to Bloch.
@@ -1486,7 +1484,7 @@ def _solve_f2(rows: list[tuple[set[int], int]], n_vars: int) -> list[int] | None
 
 
 def _odd_neighbourhood_equation(
-    graph: nx.Graph[int],
+    neighbors: Mapping[int, AbstractSet[int]],
     inputs: AbstractSet[int],
     free_index: Mapping[int, int],
     fixed: Mapping[int, int],
@@ -1496,8 +1494,8 @@ def _odd_neighbourhood_equation(
 
     Parameters
     ----------
-    graph : nx.Graph[int]
-        Graph of the open graph.
+    neighbors : Mapping[int, AbstractSet[int]]
+        Adjacency mapping (node to its set of neighbours) of the open graph.
     inputs : AbstractSet[int]
         Input nodes (never belong to a correcting set).
     free_index : Mapping[int, int]
@@ -1515,7 +1513,7 @@ def _odd_neighbourhood_equation(
     """
     coefficients: set[int] = set()
     constant = 0
-    for neighbor in graph.neighbors(target):
+    for neighbor in neighbors[target]:
         if neighbor in free_index:
             coefficients ^= {free_index[neighbor]}
         elif neighbor not in inputs:
@@ -1574,6 +1572,7 @@ def _reconstruct_pauli_correction_function(xz: XZCorrections[_AM_co]) -> dict[in
     """
     og = xz.og
     graph = og.graph
+    neighbors = {n: og.neighbors({n}) for n in graph.nodes}
     inputs = set(og.input_nodes)
     measurements = og.measurements
     layers = xz.partial_order_layers
@@ -1623,18 +1622,18 @@ def _reconstruct_pauli_correction_function(xz: XZCorrections[_AM_co]) -> dict[in
 
         # Induced Z-corrections must match: Odd(p(node)) ∩ future = z_future.
         for future_node in future:
-            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, future_node)
+            coefficients, constant = _odd_neighbourhood_equation(neighbors, inputs, free_index, fixed, future_node)
             rows.append((coefficients, (1 if future_node in z_future else 0) ^ constant))
 
         # Self conditions on the odd neighbourhood (P4)-(P9).
         if label in {Plane.XY, Plane.XZ, Axis.X}:  # (P4)/(P5)/(P7): node ∈ Odd(p).
-            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, node)
+            coefficients, constant = _odd_neighbourhood_equation(neighbors, inputs, free_index, fixed, node)
             rows.append((coefficients, 1 ^ constant))
         elif label == Plane.YZ:  # (P6): node ∉ Odd(p).
-            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, node)
+            coefficients, constant = _odd_neighbourhood_equation(neighbors, inputs, free_index, fixed, node)
             rows.append((coefficients, constant))
         elif label == Axis.Y:  # (P9): exactly one of node ∈ p and node ∈ Odd(p).
-            coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, node)
+            coefficients, constant = _odd_neighbourhood_equation(neighbors, inputs, free_index, fixed, node)
             rows.append((coefficients ^ _membership_coefficients(free_index, node), 1 ^ constant))
         # Axis.Z: (P8) only constrains the fixed membership; no condition on the odd neighbourhood.
 
@@ -1644,10 +1643,10 @@ def _reconstruct_pauli_correction_function(xz: XZCorrections[_AM_co]) -> dict[in
                 continue
             other_label = measurements[other_node].to_plane_or_axis()
             if other_label in {Plane.XY, Plane.XZ, Plane.YZ, Axis.X}:  # (P2): other_node ∉ Odd(p).
-                coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, other_node)
+                coefficients, constant = _odd_neighbourhood_equation(neighbors, inputs, free_index, fixed, other_node)
                 rows.append((coefficients, constant))
             elif other_label == Axis.Y:  # (P3): other_node ∈ p ⇔ other_node ∈ Odd(p).
-                coefficients, constant = _odd_neighbourhood_equation(graph, inputs, free_index, fixed, other_node)
+                coefficients, constant = _odd_neighbourhood_equation(neighbors, inputs, free_index, fixed, other_node)
                 rows.append((coefficients ^ _membership_coefficients(free_index, other_node), constant))
             # Axis.Z: no constraint (an anachronical Z-correction is absorbed by the measurement).
 

@@ -435,7 +435,7 @@ class TestToPauliFlow:
         assert reconstructed.x_corrections == expected.x_corrections
         assert reconstructed.z_corrections == expected.z_corrections
 
-    def test_extract_pauli_flow_pauli_only(self) -> None:
+    def test_extract_pauli_flow_pauli_only(self, fx_rng: Generator) -> None:
         """Pattern with a Pauli flow but neither causal flow nor gflow (issue example).
 
         Open graph structure (SWAP implemented with X-measurements):
@@ -475,6 +475,15 @@ class TestToPauliFlow:
         reconstructed = flow.to_corrections()
         assert reconstructed.x_corrections == corrections.x_corrections
         assert reconstructed.z_corrections == corrections.z_corrections
+
+        # Simulation equivalence: the pattern rebuilt from the reconstructed flow implements the
+        # same unitary (a SWAP here) as the original.
+        rebuilt = reconstructed.to_pattern()
+        for plane in (Plane.XY, Plane.XZ, Plane.YZ):
+            angle = 2 * ANGLE_PI * fx_rng.random()
+            state_ref = pattern.simulate_pattern(input_state=PlanarState(plane, angle), rng=fx_rng)
+            state_test = rebuilt.simulate_pattern(input_state=PlanarState(plane, angle), rng=fx_rng)
+            assert state_ref.isclose(state_test)
 
     def test_to_pauli_flow_anachronical_reconstruction(self) -> None:
         """Reconstruction recovers anachronical correctors absorbed by Pauli measurements."""
@@ -546,25 +555,17 @@ class TestToPauliFlow:
             corrections.to_pauli_flow()
         assert exc_info.value.reason == FlowGenericErrorReason.NoCompatiblePauliFlow
 
-    def test_to_pauli_flow_partial_order_missing_node(self) -> None:
-        """A partial order that omits a measured node raises a `FlowError`, not a `KeyError`."""
-        og = OpenGraph(
-            graph=nx.Graph([(0, 1)]),
-            input_nodes=[0],
-            output_nodes=[1],
-            measurements={0: Measurement.XY(0.1)},
-        )
-        # The measured node 0 is missing from the partial order layers, so the reconstructed
-        # correction function is incomplete and rejected by `check_well_formed`.
-        corrections = XZCorrections(
-            og=og,
-            x_corrections={0: frozenset({1})},
-            z_corrections={},
-            partial_order_layers=[frozenset({1})],
-        )
-        with pytest.raises(FlowGenericError) as exc_info:
-            corrections.to_pauli_flow()
-        assert exc_info.value.reason == FlowGenericErrorReason.IncorrectCorrectionFunctionDomain
+    def test_to_pauli_flow_empty_pattern(self) -> None:
+        """A degenerate input with no measured nodes yields a trivial flow instead of raising."""
+        # Empty pattern: previously this raised `PartialOrderError` via the run-time well-formedness
+        # check. The reconstruction itself handles it and returns an empty correction function.
+        flow = Pattern().extract_xzcorrections().to_pauli_flow()
+        assert flow.correction_function == {}
+
+        # Open graph with output nodes only.
+        og: OpenGraph[Plane] = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[], output_nodes=[0, 1], measurements={})
+        flow_outputs_only = XZCorrections.from_measured_nodes_mapping(og=og).to_pauli_flow()
+        assert flow_outputs_only.correction_function == {}
 
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:

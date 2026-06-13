@@ -943,6 +943,28 @@ class TestPattern:
         s_test = p_test.simulate_pattern(rng=rng)
         assert s_ref.isclose(s_test)
 
+    # Extract Pauli flow from random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_extract_pauli_flow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        """Tests the round trip Pattern -> XZCorrections -> PauliFlow -> XZCorrections -> Pattern.
+
+        The reconstructed pattern must implement the same unitary as the original (checked by
+        simulation), which is a stronger guarantee than the corrections merely matching.
+        """
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        p_ref = circuit_1.transpile().pattern
+        p_test = p_ref.extract_pauli_flow().to_corrections().to_pattern().infer_pauli_measurements()
+
+        p_ref.remove_pauli_measurements()
+        p_test.remove_pauli_measurements()
+
+        s_ref = p_ref.simulate_pattern(rng=rng)
+        s_test = p_test.simulate_pattern(rng=rng)
+        assert s_ref.isclose(s_test)
+
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
     def test_extract_causal_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         if test_case.has_cflow:
