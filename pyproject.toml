@@ -61,6 +61,7 @@ dev = [
     "qiskit>=1.0",
     "qiskit_qasm3_import",
     "qiskit-aer",
+    "matplotlib==3.10.9",
 ]
 doc = [
     "furo",
