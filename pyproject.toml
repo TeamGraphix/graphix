@@ -58,7 +58,7 @@ dev = [
     "pytest-cov",
     "pytest-mock",
     "pytest-mpl",
-    "qiskit>=1.0",
+    "qiskit>=1.0,<2.4",
     "qiskit_qasm3_import",
     "qiskit-aer",
     "matplotlib==3.10.9",
