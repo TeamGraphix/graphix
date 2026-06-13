@@ -51,32 +51,31 @@ if TYPE_CHECKING:
 
 _DenseStateT = TypeVar("_DenseStateT", bound="DenseState")
 
-_R = TypeVar("_R", bound="Pattern | CausalFlow[BlochMeasurement]")
-_CO = TypeVar("_CO", bound="tuple[int, ...] | dict[int, command.M]")
+
+@dataclass(frozen=True, slots=True)
+class TranspiledPattern:
+    """A transpiled pattern."""
+
+    pattern: Pattern
+
+    classical_outputs: tuple[Node, ...]
+    """Nodes measured with circuit measurements, in the order of the gates."""
 
 
-@dataclass
-class TranspileResult(Generic[_R, _CO]):
-    """
-    The result of a transpilation.
+@dataclass(frozen=True, slots=True)
+class TranspiledFlow:
+    """A transpiled causal flow."""
 
-    result : :class:`graphix.pattern.Pattern` or :class:`graphix.flow.core.CausalFlow` object
-    classical_outputs : tuple[int, ...] | dict[int, command.M], index of nodes measured with *M* gates, with associated M commands as dictionary.
+    flow: CausalFlow[BlochMeasurement]
 
-    """
+    classical_outputs: dict[int, command.M]
+    """M commands for nodes measured with circuit measurements."""
 
-    result: _R
-    classical_outputs: _CO
-
-    @property
-    def pattern(self: TranspileResult[Pattern, _CO]) -> Pattern:
-        """Return pattern from `TranspileResult` if any."""
-        return self.result
-
-    @property
-    def flow(self: TranspileResult[CausalFlow[BlochMeasurement], _CO]) -> CausalFlow[BlochMeasurement]:
-        """Return causal flow from TranspileResult if any."""
-        return self.result
+    def to_pattern(self) -> TranspiledPattern:
+        """Return the transpiled pattern."""
+        pattern = StandardizedPattern.from_pattern(self.flow.to_corrections().to_pattern()).to_space_optimal_pattern()
+        pattern.extend(self.classical_outputs.values())
+        return TranspiledPattern(pattern, tuple(self.classical_outputs.keys()))
 
 
 @dataclass(frozen=True)
@@ -435,7 +434,7 @@ class Circuit:
         self.instruction.append(instruction.M(target=qubit, axis=axis))
         self.active_qubits.remove(qubit)
 
-    def transpile_to_causal_flow(self) -> TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]]:
+    def transpile_to_causal_flow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
 
         Parameters
@@ -505,26 +504,29 @@ class Circuit:
                 z_corrections[node] = z_targets
         partial_order_layers = _corrections_to_partial_order_layers(og, x_corrections, z_corrections)
         f: CausalFlow[BlochMeasurement] = CausalFlow(og, x_corrections, partial_order_layers)
-        return TranspileResult(f, classical_outputs)
+        return TranspiledFlow(f, classical_outputs)
 
-    def transpile(self, transpile_swaps: bool = True) -> TranspileResult[Pattern, tuple[int, ...]]:
+    def transpile(self, *, transpile_swaps: bool = True) -> TranspiledPattern:
         """Transpile a circuit via J-∧z decomposition to a pattern.
 
         Parameters
         ----------
-            self: the circuit to transpile.
+        transpile_swaps: bool, optional
+            If ``True`` (the default), SWAP gates are eliminated by switching the qubits.
+            If ``False``, SWAP gates are transpiled into a sequence of three CNOT gates.
 
         Returns
         -------
-            the result of the transpilation: a pattern and classical outputs.
+        TranspiledPattern
+            The result of the transpilation: a pattern and classical outputs.
         """
         if not transpile_swaps:
-            return _transpile_cflow_to_pattern(self.transpile_to_causal_flow())
+            return self.transpile_to_causal_flow().to_pattern()
         swap = _transpile_swaps(self)
-        result = _transpile_cflow_to_pattern(swap.circuit.transpile_to_causal_flow())
+        result = swap.circuit.transpile_to_causal_flow().to_pattern()
         result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
         classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
-        return TranspileResult(result.pattern, classical_outputs)
+        return TranspiledPattern(result.pattern, classical_outputs)
 
     @overload
     def simulate_statevector(
@@ -1070,14 +1072,6 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
 
 
 _transpile_swaps = transpile_swaps
-
-
-def _transpile_cflow_to_pattern(
-    tr: TranspileResult[CausalFlow[BlochMeasurement], dict[int, command.M]],
-) -> TranspileResult[Pattern, tuple[int, ...]]:
-    pattern = StandardizedPattern.from_pattern(tr.flow.to_corrections().to_pattern()).to_space_optimal_pattern()
-    pattern.extend(tr.classical_outputs.values())
-    return TranspileResult(pattern, tuple(tr.classical_outputs.keys()))
 
 
 class IllformedCircuitError(Exception):
