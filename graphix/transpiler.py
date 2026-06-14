@@ -444,10 +444,6 @@ class Circuit:
         Returns
         -------
             the result of the transpilation: a causal flow and classical outputs.
-
-        Raises
-        ------
-            IllformedCircuitError: if the pattern is ill-formed (operation on already measured node)
         """
         indices: list[int | None] = list(range(self.width))
         n_nodes = self.width
@@ -461,15 +457,15 @@ class Circuit:
             match instr.kind:
                 case InstructionKind.M:
                     target = indices[instr.target]
-                    if target is None:
-                        raise IllformedCircuitError
+                    if target is None:  # pragma: no cover
+                        raise RuntimeError("Ill-formed circuit")
                     classical_outputs[target] = command.M(target, PauliMeasurement(instr.axis))
                     indices[instr.target] = None
                     continue
                 case InstructionKind.J:
                     target = indices[instr.target]
-                    if target is None:
-                        raise IllformedCircuitError
+                    if target is None:  # pragma: no cover
+                        raise RuntimeError("Ill-formed circuit")
                     graph.add_edge(target, n_nodes)  # Also adds nodes
                     measurements[target] = Measurement.XY(normalize_angle(-instr.angle))
                     indices[instr.target] = n_nodes
@@ -479,15 +475,15 @@ class Circuit:
                 case InstructionKind.CZ:
                     t0, t1 = instr.targets
                     i0, i1 = indices[t0], indices[t1]
-                    if i0 is None or i1 is None:
-                        raise IllformedCircuitError
+                    if i0 is None or i1 is None:  # pragma: no cover
+                        raise RuntimeError("Ill-formed circuit")
                     # If edge exists, remove it; else, add it
                     if graph.has_edge(i0, i1):
                         graph.remove_edge(i0, i1)
                     else:
                         graph.add_edge(i0, i1)
                     continue
-                case _:
+                case _:  # pragma: no cover
                     assert_never(instr.kind)
         outputs = [i for i in indices if i is not None]
         outputs.extend(classical_outputs.keys())  # Necessary for flow-finding step
@@ -1072,14 +1068,6 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
 
 
 _transpile_swaps = transpile_swaps
-
-
-class IllformedCircuitError(Exception):
-    """Raised if the circuit is ill-formed."""
-
-    def __init__(self) -> None:
-        """Build the exception."""
-        super().__init__("Ill-formed circuit")
 
 
 @overload

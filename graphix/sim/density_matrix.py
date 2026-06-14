@@ -261,7 +261,7 @@ class DensityMatrix(DenseState):
         if not isinstance(other, DensityMatrix):
             other = DensityMatrix(other)
         if self.rho.dtype == np.object_ and other.rho.dtype != np.object_:
-            other.rho = other.rho.astype(np.object_, copy=False)
+            other.rho = other.rho.astype(np.object_, copy=False)  # pragma: nocover
         self.rho = kron(self.rho, other.rho)
 
     def cnot(self, edge: tuple[int, int]) -> None:

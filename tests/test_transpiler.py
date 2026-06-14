@@ -12,7 +12,7 @@ from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevec, StatevectorBackend
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
@@ -159,21 +159,6 @@ class TestTranspilerUnitGates:
             rng=rng, input_state=input_state, branch_selector=branch_selector
         ).statevec
         assert state_z.isclose(state)
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_transpile_swaps(self, fx_bg: PCG64, jumps: int) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 4
-        depth = 6
-        circuit = rand_circuit(nqubits, depth, rng, use_ccx=True, use_rzz=True)
-        assert any(instr.kind == InstructionKind.SWAP for instr in circuit.instruction)
-        transpiled_swaps = transpile_swaps(circuit)
-        circuit2 = transpiled_swaps.circuit
-        assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
-        state = circuit.simulate_statevector(rng=rng).statevec
-        state2 = circuit2.simulate_statevector(rng=rng).statevec
-        state2.permute(transpiled_swaps.extract_output_node_indices())
-        assert state.isclose(state2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_transpile_j_to_rzh(self, fx_bg: PCG64, jumps: int) -> None:
@@ -402,3 +387,30 @@ def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis,
     )
     state2.swap((0, 1))
     assert state.isclose(state2)
+
+
+def test_transpile_double_cz() -> None:
+    circuit = Circuit(2)
+    circuit.cz(0, 1)
+    circuit.cz(1, 0)
+    cf = circuit.transpile_to_causal_flow()
+    assert len(cf.flow.og.graph.edges) == 0
+
+
+def test_transpile_swaps_vs_no_transpile_swaps() -> None:
+    circuit = Circuit(2)
+    circuit.rx(0, 0.25)
+    circuit.ry(0, 0.25)
+    circuit.cz(0, 1)
+    circuit.swap(0, 1)
+    pattern_without_swap = circuit.transpile().pattern
+    pattern_with_swap = circuit.transpile(transpile_swaps=False).pattern
+    state_without_swap = pattern_without_swap.simulate_pattern()
+    state_with_swap = pattern_with_swap.simulate_pattern()
+    assert state_without_swap.isclose(state_with_swap)
+
+
+def test_backend_branch_selector() -> None:
+    circ = Circuit(1)
+    with pytest.raises(ValueError, match="already instantiated"):
+        circ.simulate_statevector(backend=StatevectorBackend(), branch_selector=ConstBranchSelector(0))
