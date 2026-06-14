@@ -12,6 +12,7 @@ from graphix.flow.core import (
     GFlow,
     PauliFlow,
     XZCorrections,
+    _solve_f2_equations,
 )
 from graphix.flow.exceptions import (
     FlowError,
@@ -441,6 +442,15 @@ class TestFlowPatternConversion:
                 ),
                 {},
             ),
+            (
+                OpenGraph(
+                    graph=nx.Graph([(0, 1), (1, 2)]),
+                    input_nodes=[1],
+                    output_nodes=[2],
+                    measurements={0: Measurement.X, 1: Measurement.X},
+                ),
+                {0: {1}},
+            ),
         ],
     )
     def test_corrections_to_pauli_flow_infeasible(
@@ -453,6 +463,42 @@ class TestFlowPatternConversion:
 
         assert exc_info.value.reason == FlowGenericErrorReason.NoPauliFlow
         assert str(exc_info.value) == "No Pauli flow is compatible with the requested XZ-corrections."
+
+    def test_no_pauli_flow_error_message(self) -> None:
+        error = FlowGenericError(FlowGenericErrorReason.NoPauliFlow)
+
+        assert str(error) == "No Pauli flow is compatible with the requested XZ-corrections."
+
+    @pytest.mark.parametrize(
+        ("measurement", "correction_set"),
+        [
+            (Measurement.XY(0.1), {1}),
+            (Measurement.XZ(0.1), {0, 1}),
+            (Measurement.YZ(0.1), {0}),
+            (Measurement.X, {1}),
+            (Measurement.Y, {0}),
+            (Measurement.Z, {0}),
+        ],
+    )
+    def test_corrections_to_pauli_flow_self_conditions(
+        self, measurement: Measurement, correction_set: set[int]
+    ) -> None:
+        flow = PauliFlow(
+            og=OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[], output_nodes=[1], measurements={0: measurement}),
+            correction_function={0: correction_set},
+            partial_order_layers=[{1}, {0}],
+        )
+
+        corrections = flow.to_corrections()
+        extracted_flow = corrections.to_pauli_flow()
+
+        extracted_flow.check_well_formed()
+        assert extracted_flow.correction_function == flow.correction_function
+
+    def test_solve_f2_equations_degenerate_cases(self) -> None:
+        assert _solve_f2_equations([], 3) == [0, 0, 0]
+        assert _solve_f2_equations([], 0) == []
+        assert _solve_f2_equations([(set(), 1)], 0) is None
 
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
