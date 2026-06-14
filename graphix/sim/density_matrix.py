@@ -19,6 +19,7 @@ from graphix import linalg_validations as lv
 from graphix import parameter
 from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
+from graphix.pretty_print import OutputFormat, densitymatrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.states import BasicStates, State
@@ -353,6 +354,26 @@ class DensityMatrix(DenseState):
     def flatten(self) -> Matrix:
         """Return flattened density matrix."""
         return self.rho.flatten()
+
+    def draw(
+        self,
+        output: OutputFormat = OutputFormat.Unicode,
+        *,
+        max_denominator: int = 1000,
+        cutoff: float = 1e-10,
+    ) -> None:
+        """Pretty-print the density matrix.
+
+        Parameters
+        ----------
+        output : OutputFormat, default=OutputFormat.Unicode
+            Desired formatting style.
+        max_denominator : int, default=1000
+            Maximum denominator when detecting simple fractions.
+        cutoff : float, default=1e-10
+            Tolerance below which matrix elements are treated as zero.
+        """
+        print(densitymatrix_to_str(self.rho, self.nqubit, output, max_denominator=max_denominator, cutoff=cutoff))
 
     def apply_channel(self, channel: KrausChannel, qargs: Sequence[int]) -> None:
         """Apply a channel to a density matrix.

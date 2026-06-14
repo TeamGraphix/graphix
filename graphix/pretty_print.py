@@ -22,6 +22,9 @@ if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
 
+    import numpy as np
+    import numpy.typing as npt
+
     from graphix.command import Node
     from graphix.flow.core import PauliFlow, XZCorrections
     from graphix.fundamentals import Angle
@@ -439,3 +442,440 @@ def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputForm
             partial_order_to_str(xzcorr.partial_order_layers, output),
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# Pretty-printing for quantum states (statevectors and density matrices)
+# ---------------------------------------------------------------------------
+
+
+_EPS = 1e-10
+
+
+def _format_imag_unit(output: OutputFormat) -> str:
+    """Return the imaginary unit formatted for the given output format."""
+    if output == OutputFormat.LaTeX:
+        return r"\mathrm{i}"
+    return "i"
+
+
+def _format_ket(basis: str, output: OutputFormat) -> str:
+    """Format a basis bitstring as a ket.
+
+    Parameters
+    ----------
+    basis : str
+        Bitstring representation of a basis state (e.g. ``"01"``).
+    output : OutputFormat
+        Desired formatting style.
+
+    Returns
+    -------
+    str
+        The formatted ket.
+    """
+    if output == OutputFormat.LaTeX:
+        return rf"\lvert {basis}\rangle"
+    if output == OutputFormat.Unicode:
+        return f"|{basis}⟩"
+    return f"|{basis}>"
+
+
+def _format_bra(basis: str, output: OutputFormat) -> str:
+    """Format a basis bitstring as a bra.
+
+    Parameters
+    ----------
+    basis : str
+        Bitstring representation of a basis state (e.g. ``"01"``).
+    output : OutputFormat
+        Desired formatting style.
+
+    Returns
+    -------
+    str
+        The formatted bra.
+    """
+    if output == OutputFormat.LaTeX:
+        return rf"\langle\lvert {basis}\rvert"
+    if output == OutputFormat.Unicode:
+        return f"⟨{basis}|"
+    return f"<{basis}|"
+
+
+def _format_frac(num: int, den: int, output: OutputFormat) -> str:
+    """Format a fraction *num* / *den*.
+
+    Parameters
+    ----------
+    num : int
+        Numerator.
+    den : int
+        Denominator.
+    output : OutputFormat
+        Desired formatting style.
+
+    Returns
+    -------
+    str
+    """
+    if den == 1:
+        return str(num)
+
+    if output == OutputFormat.LaTeX:
+        return rf"\frac{{{num}}}{{{den}}}"
+    return f"{num}/{den}"
+
+
+def _format_scalar(val: float, output: OutputFormat, max_denominator: int = 1000) -> str:
+    """Format a real scalar, detecting integers and simple fractions.
+
+    Parameters
+    ----------
+    val : float
+        Value to format.
+    output : OutputFormat
+        Desired formatting style.
+    max_denominator : int, optional
+        Maximum denominator for fraction detection (default: 1000).
+
+    Returns
+    -------
+    str
+    """
+    if abs(val) < _EPS:
+        return "0"
+
+    # Integer
+    if math.isclose(val, round(val), abs_tol=_EPS):
+        return str(round(val))
+
+    # Simple fraction
+    frac = Fraction(val).limit_denominator(max_denominator)
+    if math.isclose(val, float(frac), abs_tol=_EPS):
+        return _format_frac(frac.numerator, frac.denominator, output)
+
+    # Square-root of a simple fraction: |val| ≈ sqrt(n/d)
+    val_sq = val * val
+    frac_sq = Fraction(val_sq).limit_denominator(max_denominator)
+    if math.isclose(val_sq, float(frac_sq), abs_tol=_EPS) and frac_sq != frac:
+        result = _format_sqrt_frac(frac_sq, output)
+        return f"-{result}" if val < 0 else result
+
+    # Fallback: decimal
+    return f"{val:.6g}"
+
+
+def _format_sqrt_frac(frac: Fraction, output: OutputFormat) -> str:
+    """Format the square root of a positive fraction.
+
+    Parameters
+    ----------
+    frac : Fraction
+        A positive fraction. The formatted string represents ``sqrt(frac)``.
+    output : OutputFormat
+        Desired formatting style.
+
+    Returns
+    -------
+    str
+    """
+    num = frac.numerator
+    den = frac.denominator
+
+    sqrt_sym: str
+    if output == OutputFormat.LaTeX:
+        sqrt_sym = r"\sqrt"
+    elif output == OutputFormat.Unicode:
+        sqrt_sym = "√"
+    else:
+        sqrt_sym = "sqrt"
+
+    if den == 1:
+        if output == OutputFormat.LaTeX:
+            return rf"{sqrt_sym}{{{num}}}"
+        return f"{sqrt_sym}{num}" if output == OutputFormat.Unicode else f"{sqrt_sym}({num})"
+
+    # Try to simplify by pulling perfect squares out of the denominator
+    den_sqrt = math.isqrt(den)
+    if den_sqrt * den_sqrt == den:
+        # den is a perfect square: √(num/den) = √num / den_sqrt
+        def _sqrt_num(n: int) -> str:
+            if output == OutputFormat.LaTeX:
+                return rf"{sqrt_sym}{{{n}}}"
+            return f"{sqrt_sym}{n}" if output == OutputFormat.Unicode else f"{sqrt_sym}({n})"
+
+        if num == 1:
+            # √(1/den) = 1/den_sqrt
+            if output == OutputFormat.LaTeX:
+                return rf"\frac{{1}}{{{den_sqrt}}}"
+            return f"1/{den_sqrt}"
+        sqrt_top = _sqrt_num(num)
+        if output == OutputFormat.LaTeX:
+            return rf"\frac{{{sqrt_top}}}{{{den_sqrt}}}"
+        return f"{sqrt_top}/{den_sqrt}"
+
+    if num == 1:
+        # 1/√(den)
+        if output == OutputFormat.LaTeX:
+            return rf"\frac{{1}}{{{sqrt_sym}{{{den}}}}}"
+        inner = f"{sqrt_sym}{den}" if output == OutputFormat.Unicode else f"{sqrt_sym}({den})"
+        return f"1/{inner}"
+
+    # General: √(num/den)
+    if output == OutputFormat.LaTeX:
+        return rf"{sqrt_sym}{{\frac{{{num}}}{{{den}}}}}"
+    return f"{sqrt_sym}({num}/{den})"
+
+
+def complex_to_str(
+    z: complex,
+    output: OutputFormat,
+    max_denominator: int = 1000,
+) -> str:
+    r"""Pretty-print a complex number.
+
+    Detects common values and renders them in a human-readable form:
+
+    - *zero* → ``"0"``
+    - *simple fractions* → ``"1/2"``, ``"3/4"``, etc.
+    - *square roots of fractions* → ``"1/√2"``, ``"√3/2"``, etc.
+    - *pure exponentials* (when ``|z| ≈ 1``) → ``"e^{iπ/3}"``, ``"e^{-iπ/2}"``, etc.
+    - *fallback* → decimal notation.
+
+    Parameters
+    ----------
+    z : complex
+        The complex number to format.
+    output : OutputFormat
+        Desired formatting style (ASCII, LaTeX or Unicode).
+    max_denominator : int, optional
+        Maximum denominator when detecting simple fractions (default: 1000).
+
+    Returns
+    -------
+    str
+    """
+    if abs(z) < _EPS:
+        return "0"
+
+    imag_unit = _format_imag_unit(output)
+    re, im = z.real, z.imag
+    pure_real = abs(im) < _EPS
+    pure_imag = abs(re) < _EPS
+
+    # Pure-real numbers: format as a scalar
+    if pure_real:
+        return _format_scalar(re, output, max_denominator)
+
+    # Pure-imaginary numbers: format as scalar · i
+    if pure_imag:
+        imag_str = _format_scalar(abs(im), output, max_denominator)
+        if imag_str == "1":
+            return imag_unit if im > 0 else f"-{imag_unit}"
+        return f"{imag_str}{imag_unit}" if im > 0 else f"-{imag_str}{imag_unit}"
+
+    # Exponential: |z| ≈ 1 and both components non-zero
+    if abs(abs(z) - 1.0) < _EPS:
+        angle = math.atan2(im, re)
+        angle_in_pi = angle / math.pi
+        frac = Fraction(angle_in_pi).limit_denominator(max_denominator)
+        if math.isclose(angle_in_pi, float(frac), abs_tol=_EPS):
+            return _format_exponential(float(frac), output, max_denominator)
+
+    # General complex: a ± b·i
+    real_str = _format_scalar(re, output, max_denominator)
+    imag_str = _format_scalar(abs(im), output, max_denominator)
+    imag_str = imag_unit if imag_str == "1" else f"{imag_str}{imag_unit}"
+
+    if im >= 0:
+        return f"{real_str}+{imag_str}"
+    return f"{real_str}-{imag_str}"
+
+
+def _format_exponential(angle_in_pi: float, output: OutputFormat, max_denominator: int) -> str:
+    """Format a pure phase as ``e^{iθ}`` where *θ* is a fraction of π.
+
+    Parameters
+    ----------
+    angle_in_pi : float
+        The phase angle in units of π.
+    output : OutputFormat
+        Desired formatting style.
+    max_denominator : int
+        Maximum denominator for fraction detection.
+
+    Returns
+    -------
+    str
+    """
+    imag_unit = _format_imag_unit(output)
+
+    if abs(angle_in_pi) < _EPS:
+        return "1"
+
+    frac = Fraction(angle_in_pi).limit_denominator(max_denominator)
+    num = frac.numerator
+    den = frac.denominator
+
+    if num < 0:
+        sign_prefix = "-"
+        num = -num
+    else:
+        sign_prefix = ""
+
+    # Build the body in i·num·π/den format
+    if output == OutputFormat.LaTeX:
+        if num == 1 and den == 1:
+            body = f"{imag_unit}\\pi"
+        elif num == 1:
+            body = f"{imag_unit}\\pi/{den}"
+        elif den == 1:
+            body = f"{imag_unit}{num}\\pi"
+        else:
+            body = f"{imag_unit}{num}\\pi/{den}"
+    elif output == OutputFormat.Unicode:
+        if num == 1 and den == 1:
+            body = f"{imag_unit}π"
+        elif num == 1:
+            body = f"{imag_unit}π/{den}"
+        elif den == 1:
+            body = f"{imag_unit}{num}π"
+        else:
+            body = f"{imag_unit}{num}π/{den}"
+    elif num == 1 and den == 1:
+        body = f"{imag_unit}*pi"
+    elif num == 1:
+        body = f"{imag_unit}*pi/{den}"
+    elif den == 1:
+        body = f"{imag_unit}*{num}*pi"
+    else:
+        body = f"{imag_unit}*{num}*pi/{den}"
+
+    body = f"{sign_prefix}{body}"
+
+    if output == OutputFormat.LaTeX:
+        return rf"\mathrm{{e}}^{{{body}}}"
+    if output == OutputFormat.Unicode:
+        return f"e^({body})"
+    return f"exp({body})"
+
+
+def _basis_label(index: int, nqubit: int) -> str:
+    """Return the bitstring label for a basis index.
+
+    Parameters
+    ----------
+    index : int
+        Basis index (integer).
+    nqubit : int
+        Number of qubits.
+
+    Returns
+    -------
+    str
+        Bitstring of length *nqubit*.
+    """
+    return f"{index:0{nqubit}b}"
+
+
+def statevec_to_str(
+    sv_dict: Mapping[str, np.object_ | np.complex128],
+    output: OutputFormat,
+    max_denominator: int = 1000,
+) -> str:
+    """Pretty-print a statevector from its dictionary representation.
+
+    Parameters
+    ----------
+    sv_dict : Mapping[str, complex]
+        Statevector dictionary as returned by :meth:`graphix.sim.statevec.Statevec.to_dict`.
+    output : OutputFormat
+        Desired formatting style (ASCII, LaTeX or Unicode).
+    max_denominator : int, optional
+        Maximum denominator for fraction detection (default: 1000).
+
+    Returns
+    -------
+    str
+    """
+    if not sv_dict:
+        return "0"
+
+    parts: list[str] = []
+    for basis, amplitude in sv_dict.items():
+        amp_str = complex_to_str(complex(amplitude), output, max_denominator)
+        ket = _format_ket(basis, output)
+
+        if not parts:
+            # First term - keep any leading sign
+            parts.append(f"{amp_str}{ket}")
+        elif amp_str.startswith("-"):
+            parts.append(f" - {amp_str[1:]}{ket}")
+        else:
+            parts.append(f" + {amp_str}{ket}")
+
+    return "".join(parts)
+
+
+def densitymatrix_to_str(
+    rho: npt.NDArray[np.object_ | np.complex128],
+    nqubit: int,
+    output: OutputFormat,
+    *,
+    max_denominator: int = 1000,
+    cutoff: float = 1e-10,
+) -> str:
+    r"""Pretty-print a density matrix using Dirac notation.
+
+    Extracts non-zero elements and formats them as a sum of weighted projectors:
+
+    .. math::
+
+        \\rho = \\sum_{i,j} \\rho_{ij} \\lvert i \\rangle\\langle j \\rvert
+
+    Parameters
+    ----------
+    rho : Matrix
+        The density matrix as a ``2**nqubit × 2**nqubit`` array.
+    nqubit : int
+        Number of qubits.
+    output : OutputFormat
+        Desired formatting style (ASCII, LaTeX or Unicode).
+    max_denominator : int, optional
+        Maximum denominator for fraction detection (default: 1000).
+    cutoff : float, optional
+        Tolerance below which matrix elements are treated as zero (default: ``1e-10``).
+
+    Returns
+    -------
+    str
+    """
+    n = rho.shape[0]
+
+    terms: list[tuple[complex, str, str]] = []
+    for i in range(n):
+        for j in range(n):
+            val: complex = complex(rho[i, j])
+            if abs(val) < cutoff:
+                continue
+            val_str = complex_to_str(val, output, max_denominator)
+            ket = _format_ket(_basis_label(i, nqubit), output)
+            bra = _format_bra(_basis_label(j, nqubit), output)
+            # |i⟩⟨j|
+            dirac = f"{ket}{bra}"
+            terms.append((val, val_str, dirac))
+
+    if not terms:
+        return "0"
+
+    result_parts: list[str] = []
+    for i, (_val, val_str, dirac) in enumerate(terms):
+        if i == 0:
+            result_parts.append(f"{val_str}{dirac}")
+        elif val_str.startswith("-"):
+            result_parts.append(f" - {val_str[1:]}{dirac}")
+        else:
+            result_parts.append(f" + {val_str}{dirac}")
+
+    return "".join(result_parts)

@@ -16,6 +16,7 @@ from typing_extensions import override
 
 from graphix import parameter, states
 from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
+from graphix.pretty_print import OutputFormat, statevec_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
@@ -485,6 +486,33 @@ class Statevec(DenseState):
         {'10': np.complex128(1+0j)}
         """
         return self._to_dict_map(lambda x: x, encoding, rtol=rtol, atol=atol)
+
+    def draw(
+        self,
+        output: OutputFormat = OutputFormat.Unicode,
+        encoding: _ENCODING = "MSB",
+        *,
+        rtol: float = 0.0,
+        atol: float = 1e-8,
+        max_denominator: int = 1000,
+    ) -> None:
+        """Pretty-print the statevector.
+
+        Parameters
+        ----------
+        output : OutputFormat, default=OutputFormat.Unicode
+            Desired formatting style.
+        encoding : Literal["LSB", "MSB"], default="MSB"
+            Encoding for the basis kets. See :meth:`to_dict` for additional information.
+        rtol : float, default=0.0
+            Relative tolerance for filtering zero amplitudes.
+        atol : float, default=1e-8
+            Absolute tolerance for filtering zero amplitudes.
+        max_denominator : int, default=1000
+            Maximum denominator when detecting simple fractions.
+        """
+        sv_dict = self.to_dict(encoding=encoding, rtol=rtol, atol=atol)
+        print(statevec_to_str(sv_dict, output, max_denominator=max_denominator))
 
     def to_prob_dict(
         self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8

@@ -19,7 +19,7 @@ from graphix.optimization import StandardizedPattern
 from graphix.parameter import Placeholder
 from graphix.pattern import DrawPatternAnnotations, Pattern
 from graphix.pauli import Pauli
-from graphix.pretty_print import OutputFormat
+from graphix.pretty_print import OutputFormat, complex_to_str, densitymatrix_to_str, statevec_to_str
 from graphix.sim import DensityMatrix, DensityMatrixBackend, Statevec, StatevectorBackend
 from graphix.space_minimization import SpaceMinimizationHeuristics
 from graphix.states import BasicStates, PlanarState
@@ -68,5 +68,8 @@ __all__ = [
     "XZCorrections",
     "__version__",
     "angle_to_rad",
+    "complex_to_str",
+    "densitymatrix_to_str",
     "rad_to_angle",
+    "statevec_to_str",
 ]
