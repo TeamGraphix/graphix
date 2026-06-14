@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from graphix import Circuit
 from graphix.sim.statevec import Statevec, StatevectorBackend
 from graphix.states import BasicStates
@@ -27,11 +29,10 @@ def test_input_state_none(fx_rng: Generator) -> None:
     backend.add_nodes(pattern.input_nodes, input_state)
     state = pattern.simulate_pattern(backend=backend, input_state=None, rng=fx_rng)
     assert state.isclose(Statevec(BasicStates.PLUS))
-    # The backend already prepares |0>. If the simulator also prepares
-    # the input qubits in |+> (because we do not pass
-    # `input_state=None`), an additional qubit is introduced. The
-    # simulation therefore applies (I ⊗ H) on |0+>, resulting in |00>.
+    # If the backend already prepares |0>. and if we ask the simulator
+    # to prepare the input qubits in |+> (because we do not pass
+    # `input_state=None`), `ValueError` is raised.
     backend = StatevectorBackend()
     backend.add_nodes(pattern.input_nodes, input_state)
-    state = pattern.simulate_pattern(backend=backend, rng=fx_rng)
-    assert state.isclose(Statevec(BasicStates.ZERO, nqubit=2))
+    with pytest.raises(ValueError, match="the backend is expected to have no pre-allocated qubits"):
+        pattern.simulate_pattern(backend=backend, rng=fx_rng)

@@ -944,3 +944,11 @@ def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
     dm.permute(permutation)
     permute_with_swap(dm_ref, permutation)
     assert np.array_equal(dm.rho, dm_ref.rho)
+
+
+def test_permute_bad_permutation() -> None:
+    dm = DensityMatrix(nqubit=2)
+    with pytest.raises(ValueError, match="Permutation has length"):
+        dm.permute([0])
+    with pytest.raises(ValueError, match="not a permutation"):
+        dm.permute([1, 2])

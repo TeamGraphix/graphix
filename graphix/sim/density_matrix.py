@@ -20,7 +20,7 @@ from graphix import parameter
 from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, _check_permutation
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
@@ -287,12 +287,14 @@ class DensityMatrix(DenseState):
 
     @override
     def permute(self, permutation: Sequence[int]) -> None:
-        tensor_shape = [2] * (2 * self.nqubit)
-        perm_cols = [i + self.nqubit for i in permutation]
+        nqubit = self.nqubit
+        _check_permutation(permutation, nqubit)
+        tensor_shape = [2] * (2 * nqubit)
+        perm_cols = [i + nqubit for i in permutation]
         full_permutation = [*permutation, *perm_cols]
         rho_tensor = self.rho.reshape(tensor_shape)
         rho_permuted_tensor = np.transpose(rho_tensor, axes=full_permutation)
-        self.rho = rho_permuted_tensor.reshape((2**self.nqubit, 2**self.nqubit))
+        self.rho = rho_permuted_tensor.reshape((2**nqubit, 2**nqubit))
 
     def entangle(self, edge: tuple[int, int]) -> None:
         """Connect graph nodes.

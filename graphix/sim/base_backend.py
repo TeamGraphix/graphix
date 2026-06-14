@@ -588,6 +588,11 @@ class Backend(Generic[_StateT_co]):
     # (specifically, as a parameter of `__init__`) since `_StateT_co` is covariant.
     state: _StateT_co = dataclasses.field(init=False)
 
+    @property
+    @abstractmethod
+    def nqubit(self) -> int:
+        """Return the number of qubits."""
+
     @abstractmethod
     def add_nodes(self, nodes: Sequence[int], data: Data = BasicStates.PLUS) -> None:
         r"""
@@ -835,6 +840,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         self.state.permute([self.node_index.index(node) for node in output_nodes])
 
     @property
+    @override
     def nqubit(self) -> int:
         """Return the number of qubits of the current state."""
         return self.state.nqubit

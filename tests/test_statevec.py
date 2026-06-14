@@ -270,3 +270,11 @@ def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
     statevec.permute(permutation)
     permute_with_swap(statevec_ref, permutation)
     assert np.array_equal(statevec.psi, statevec_ref.psi)
+
+
+def test_permute_bad_permutation() -> None:
+    statevec = Statevec(nqubit=2)
+    with pytest.raises(ValueError, match="Permutation has length"):
+        statevec.permute([0])
+    with pytest.raises(ValueError, match="not a permutation"):
+        statevec.permute([1, 2])

@@ -335,6 +335,7 @@ class Statevec(DenseState):
 
     @override
     def permute(self, permutation: Sequence[int]) -> None:
+        _check_permutation(permutation, self.nqubit)
         self.psi = np.transpose(self.psi, permutation)
 
     def normalize(self) -> None:
@@ -589,3 +590,10 @@ def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
     if encoding == "LSB":
         return output[::-1]
     return output
+
+
+def _check_permutation(permutation: Sequence[int], nqubits: int) -> None:
+    if len(permutation) != nqubits:
+        raise ValueError(f"Permutation has length {len(permutation)}, but {nqubits} qubits expected.")
+    if set(permutation) != set(range(nqubits)):
+        raise ValueError(f"{permutation} is not a permutation.")
