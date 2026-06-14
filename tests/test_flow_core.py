@@ -415,6 +415,45 @@ class TestFlowPatternConversion:
         assert extracted_corrections.z_corrections == corrections.z_corrections
         assert flow.partial_order_layers == corrections.partial_order_layers
 
+    def test_corrections_to_pauli_flow_empty_pattern(self) -> None:
+        flow = Pattern().extract_xzcorrections().to_pauli_flow()
+
+        assert flow.correction_function == {}
+
+    @pytest.mark.parametrize(
+        ("og", "x_corrections"),
+        [
+            (
+                OpenGraph(
+                    graph=nx.Graph([(0, 1)]),
+                    input_nodes=[0],
+                    output_nodes=[1],
+                    measurements={0: Measurement.Z},
+                ),
+                {0: {1}},
+            ),
+            (
+                OpenGraph(
+                    graph=nx.Graph([(0, 1)]),
+                    input_nodes=[],
+                    output_nodes=[1],
+                    measurements={0: Measurement.X},
+                ),
+                {},
+            ),
+        ],
+    )
+    def test_corrections_to_pauli_flow_infeasible(
+        self, og: OpenGraph[Measurement], x_corrections: dict[int, set[int]]
+    ) -> None:
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
+
+        with pytest.raises(FlowGenericError) as exc_info:
+            corrections.to_pauli_flow()
+
+        assert exc_info.value.reason == FlowGenericErrorReason.NoPauliFlow
+        assert str(exc_info.value) == "No Pauli flow is compatible with the requested XZ-corrections."
+
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
         if test_case.pattern is not None:

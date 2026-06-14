@@ -11,10 +11,12 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
+import numpy as np
 
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
+from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.circ_ext.extraction import (
     CliffordMap,
     ExtractionResult,
@@ -271,7 +273,7 @@ class XZCorrections(Generic[_AM_co]):
 
         This method does not invoke the Pauli-flow extraction routine on the underlying open graph.
         Instead, it reconstructs a correction function compatible with the XZ-corrections and the
-        intrinsic partial order, then verifies the result using :meth:`PauliFlow.check_well_formed`.
+        intrinsic partial order.
 
         Returns
         -------
@@ -290,9 +292,8 @@ class XZCorrections(Generic[_AM_co]):
         by solving the Pauli-flow parity constraints over GF(2).
         """
         self.check_well_formed()
-
-        if len(self.partial_order_layers) == 0:
-            raise PartialOrderError(PartialOrderErrorReason.Empty)
+        if not self.og.measurements:
+            return PauliFlow(self.og, {}, self.partial_order_layers)
 
         future: set[int] = set(self.partial_order_layers[0])
         correction_function: dict[int, AbstractSet[int]] = {}
@@ -305,9 +306,7 @@ class XZCorrections(Generic[_AM_co]):
 
             future |= set(layer)
 
-        pf = PauliFlow(self.og, correction_function, self.partial_order_layers)
-        pf.check_well_formed()
-        return pf
+        return PauliFlow(self.og, correction_function, self.partial_order_layers)
 
     def to_bloch(self: XZCorrections[Measurement]) -> XZCorrections[BlochMeasurement]:
         """Return the XZ-corrections where all measurements in the open graph are converted to Bloch.
@@ -1389,9 +1388,28 @@ def _xz_corrections_to_pauli_correction_set(
 ) -> frozenset[int]:
     fixed_correction_nodes = set(xz_corrections.x_corrections.get(measured_node, set()))
     expected_odd_future = set(xz_corrections.z_corrections.get(measured_node, set()))
-    candidate_nodes = sorted(set(xz_corrections.og.graph.nodes) - set(xz_corrections.og.input_nodes) - set(future))
-    variable_index = {node: index for index, node in enumerate(candidate_nodes)}
+    input_nodes = set(xz_corrections.og.input_nodes)
+    if fixed_correction_nodes & input_nodes:
+        raise FlowGenericError(FlowGenericErrorReason.NoPauliFlow)
+
+    nonfuture_measured_nodes = set(xz_corrections.og.measurements) - set(future)
+    measured_label = xz_corrections.og.measurements[measured_node].to_plane_or_axis()
+    variable_nodes = [
+        node
+        for node in sorted(nonfuture_measured_nodes - input_nodes)
+        if xz_corrections.og.measurements[node].to_plane_or_axis() in {Axis.X, Axis.Y}
+        and (node != measured_node or measured_label in {Axis.X, Axis.Y})
+    ]
+    variable_index = {node: index for index, node in enumerate(variable_nodes)}
     equations: list[tuple[set[int], int]] = []
+
+    if measured_node not in variable_index:
+        if measured_label in {Plane.XZ, Plane.YZ, Axis.Z}:
+            if measured_node in input_nodes:
+                raise FlowGenericError(FlowGenericErrorReason.NoPauliFlow)
+            fixed_correction_nodes.add(measured_node)
+        elif measured_label == Plane.XY:
+            fixed_correction_nodes.discard(measured_node)
 
     for node in future:
         _append_odd_neighborhood_equation(
@@ -1403,12 +1421,10 @@ def _xz_corrections_to_pauli_correction_set(
             int(node in expected_odd_future),
         )
 
-    past_and_present_nodes = set(xz_corrections.og.measurements) - set(future)
-
-    for node in past_and_present_nodes - {measured_node}:
+    for node in nonfuture_measured_nodes - {measured_node}:
         meas = xz_corrections.og.measurements[node].to_plane_or_axis()
         if meas not in {Axis.X, Axis.Y}:
-            _append_membership_equation(equations, node, variable_index, fixed_correction_nodes, 0)
+            fixed_correction_nodes.discard(node)
         if meas not in {Axis.Y, Axis.Z}:
             _append_odd_neighborhood_equation(
                 equations, xz_corrections.og.graph, node, variable_index, fixed_correction_nodes, 0
@@ -1427,9 +1443,9 @@ def _xz_corrections_to_pauli_correction_set(
         fixed_correction_nodes,
     )
 
-    solution = _solve_binary_linear_system(equations, len(candidate_nodes))
+    solution = _solve_f2_equations(equations, len(variable_nodes))
     if solution is None:
-        raise FlowGenericError(FlowGenericErrorReason.NoCorrectionFunction)
+        raise FlowGenericError(FlowGenericErrorReason.NoPauliFlow)
 
     correction_set = set(fixed_correction_nodes)
     correction_set.update(node for node, index in variable_index.items() if solution[index])
@@ -1537,34 +1553,27 @@ def _toggle_coefficient(coefficients: set[int], coefficient: int) -> None:
         coefficients.add(coefficient)
 
 
-def _solve_binary_linear_system(equations: Sequence[tuple[set[int], int]], n_variables: int) -> list[int] | None:
-    matrix = [[sum(1 << coefficient for coefficient in coefficients), value] for coefficients, value in equations]
-    pivot_columns: list[int] = []
-    pivot_row = 0
+def _solve_f2_equations(equations: Sequence[tuple[set[int], int]], n_variables: int) -> list[int] | None:
+    if n_variables == 0:
+        return [] if all(not coefficients and value == 0 for coefficients, value in equations) else None
+    if not equations:
+        return [0] * n_variables
 
-    for column in range(n_variables):
-        pivot = next((row for row in range(pivot_row, len(matrix)) if matrix[row][0] & (1 << column)), None)
-        if pivot is None:
-            continue
+    augmented = np.zeros((len(equations), n_variables + 1), dtype=np.uint8).view(MatGF2)
+    for row, (equation_coefficients, value) in enumerate(equations):
+        for coefficient in equation_coefficients:
+            augmented[row, coefficient] = 1
+        augmented[row, n_variables] = value
 
-        matrix[pivot_row], matrix[pivot] = matrix[pivot], matrix[pivot_row]
+    reduced = augmented.gauss_elimination(ncols=n_variables, copy=False)
+    matrix = MatGF2(reduced[:, :n_variables])
+    constants = MatGF2(reduced[:, n_variables])
 
-        for row, _ in enumerate(matrix):
-            if row != pivot_row and matrix[row][0] & (1 << column):
-                matrix[row][0] ^= matrix[pivot_row][0]
-                matrix[row][1] ^= matrix[pivot_row][1]
-
-        pivot_columns.append(column)
-        pivot_row += 1
-
-    if any(mask == 0 and value for mask, value in matrix):
+    if np.any((~matrix.any(axis=1)) & constants.astype(bool)):
         return None
 
-    solution = [0] * n_variables
-    for row, column in enumerate(pivot_columns):
-        solution[column] = matrix[row][1]
-
-    return solution
+    solution = solve_f2_linear_system(matrix, constants)
+    return [int(bit) for bit in solution]
 
 
 def _check_correction_function_domain(

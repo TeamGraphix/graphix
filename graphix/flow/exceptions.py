@@ -88,8 +88,8 @@ class FlowGenericErrorReason(Enum):
     XYPlane = enum.auto()
     "A causal flow is defined on an open graphs with non-XY measurements."
 
-    NoCorrectionFunction = enum.auto()
-    """No correction function satisfies the requested flow constraints."""
+    NoPauliFlow = enum.auto()
+    """No Pauli flow is compatible with the requested XZ-corrections."""
 
 
 class XZCorrectionsOrderErrorReason(Enum):
@@ -227,8 +227,8 @@ class FlowGenericError(FlowError):
                 return "The image of the correction function must be a subset of non-input nodes (prepared qubits) of the open graph."
             case FlowGenericErrorReason.XYPlane:
                 return "Causal flow is only defined on open graphs with XY measurements."
-            case FlowGenericErrorReason.NoCorrectionFunction:
-                return "No correction function satisfies the requested flow constraints."
+            case FlowGenericErrorReason.NoPauliFlow:
+                return "No Pauli flow is compatible with the requested XZ-corrections."
             case _:
                 assert_never(self.reason)
 
