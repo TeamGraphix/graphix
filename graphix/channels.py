@@ -296,6 +296,8 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
             KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Y)),
         ]
     )
+
+
 def amplitude_damping_channel(prob: float) -> KrausChannel:
     r"""Single-qubit amplitude damping channel.
 

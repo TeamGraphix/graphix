@@ -18,6 +18,7 @@ from graphix.noise_models import (
     TwoQubitDepolarisingNoise,
 )
 from graphix.noise_models.noise_model import NoiselessNoiseModel
+from graphix.measurements import Outcome
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import DefaultMeasureMethod
@@ -157,14 +158,14 @@ def test_amplitude_damping_command_injection() -> None:
 
 
 @pytest.mark.parametrize("outcome", [0, 1])
-def test_amplitude_damping_confuse_result_is_identity(outcome: int) -> None:
+def test_amplitude_damping_confuse_result_is_identity(outcome: Outcome) -> None:
     """Amplitude damping introduces no classical readout error."""
     model = AmplitudeDampingNoiseModel()
     assert model.confuse_result(M(node=0), outcome) == outcome
 
 
 def test_compose_amplitude_damping_depolarising_transpile(fx_rng: Generator) -> None:
-    #Compose an amplitude damping and a depolarising model, and verify that each composed command injects the two models' noise in order.
+    # Compose an amplitude damping and a depolarising model, and verify that each composed command injects the two models' noise in order.
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
