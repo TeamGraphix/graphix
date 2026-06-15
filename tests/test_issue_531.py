@@ -1,6 +1,9 @@
+from __future__ import annotations
 
 import networkx as nx
+
 from graphix.opengraph import OpenGraph
+
 
 def test_empty_graph():
     og = OpenGraph(graph=nx.Graph(), input_nodes=[], output_nodes=[], measurements={})
