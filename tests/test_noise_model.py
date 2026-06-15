@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 
 from graphix import Pattern
-from graphix.command import CommandKind, E, M, N, X
+from graphix.command import C, CommandKind, E, M, N, S, T, X
+from graphix.clifford import Clifford
 from graphix.noise_models import (
     AmplitudeDampingNoise,
     AmplitudeDampingNoiseModel,
@@ -229,3 +230,30 @@ def test_compose_amplitude_damping_depolarising_simulation(fx_rng: Generator) ->
     noise_model = ComposeNoiseModel([AmplitudeDampingNoiseModel(), DepolarisingNoiseModel()])
     state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
+
+def test_amplitude_damping_nqubits() -> None:
+    # covers line 46: AmplitudeDampingNoise.nqubits returning 1
+    assert AmplitudeDampingNoise(0.1).nqubits == 1
+    assert TwoQubitAmplitudeDampingNoise(0.1).nqubits == 2
+
+
+def test_amplitude_damping_command_passthrough() -> None:
+    # covers line 136: the C / T / ApplyNoise case returns [cmd] unchanged
+    model = AmplitudeDampingNoiseModel()
+
+    c_cmd = C(node=0, clifford=Clifford.H)
+    assert model.command(c_cmd) == [c_cmd]
+
+    t_cmd = T()
+    assert model.command(t_cmd) == [t_cmd]
+
+    apply_noise = ApplyNoise(noise=AmplitudeDampingNoise(0.1), nodes=[0])
+    assert model.command(apply_noise) == [apply_noise]
+
+
+def test_amplitude_damping_command_rejects_signal() -> None:
+    # covers lines 138-139: the CommandKind.S case raises ValueError
+    model = AmplitudeDampingNoiseModel()
+    s_cmd = S(node=0)
+    with pytest.raises(ValueError, match="Unexpected signal"):
+        model.command(s_cmd)
