@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `instruction.J` class.
   - Added `Circuit.transpile_j_to_rzh()` method to prepare circuits with J gates for export to OpenQASM.
   - Added `transpile` argument to `qasm3_exporter.circuit_to_qasm3` and `qasm3_exporter.circuit_to_qasm3_lines`, which defaults to true and applies `Circuit.transpile_j_to_rzh` and `Circuit.transpile_measurements_to_z_axis` methods.
+  - The transpiler now returns `TranspiledPattern` or `TranspiledFlow`, instead of `TranspileResult`.
 
 - #490: Introduced new `Instruction` and `Command` namespace classes for instruction and command instantiation.
 

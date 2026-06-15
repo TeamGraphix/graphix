@@ -42,6 +42,8 @@ Pattern Generation
 
     .. automethod:: m
 
-.. autoclass:: TranspileResult
+.. autoclass:: TranspiledPattern
+
+.. autoclass:: TranspiledFlow
 
 .. autoclass:: SimulateResult
