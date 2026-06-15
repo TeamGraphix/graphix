@@ -200,6 +200,76 @@ def depolarising_channel(prob: float) -> KrausChannel:
     )
 
 
+def amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Single-qubit amplitude damping channel.
+
+    .. math::
+        K_1 = \begin{pmatrix}
+                1 & 0 \\
+                0 & \sqrt{1-\gamma}
+              \end{pmatrix},\quad
+        K_2 = \begin{pmatrix}
+                0 & \sqrt{\gamma} \\
+                0 & 0
+              \end{pmatrix}
+
+    Parameters
+    ----------
+    gamma : float
+        The damping probability, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        containing the corresponding Kraus operators
+    """
+    if not 0 <= gamma <= 1:
+        raise ValueError("gamma must be between 0 and 1.")
+    sqrt_gamma = np.sqrt(gamma)
+    sqrt_one_minus_gamma = np.sqrt(1 - gamma)
+    return KrausChannel(
+        [
+            KrausData(1.0, np.array([[1, 0], [0, sqrt_one_minus_gamma]], dtype=np.complex128)),
+            KrausData(1.0, np.array([[0, sqrt_gamma], [0, 0]], dtype=np.complex128)),
+        ]
+    )
+
+
+def two_qubit_amplitude_damping_channel(gamma: float) -> KrausChannel:
+    r"""Two-qubit amplitude damping channel (independent tensor product).
+
+    The two-qubit channel is formed by the tensor product of two single-qubit
+    amplitude damping channels, yielding 4 Kraus operators:
+
+    .. math::
+        \{K_1 \otimes K_1,\; K_1 \otimes K_2,\; K_2 \otimes K_1,\; K_2 \otimes K_2\}
+
+    Parameters
+    ----------
+    gamma : float
+        The damping probability, between 0 and 1.
+
+    Returns
+    -------
+    :class:`graphix.channels.KrausChannel` object
+        containing the corresponding Kraus operators
+    """
+    if not 0 <= gamma <= 1:
+        raise ValueError("gamma must be between 0 and 1.")
+    sqrt_gamma = np.sqrt(gamma)
+    sqrt_one_minus_gamma = np.sqrt(1 - gamma)
+    k1 = np.array([[1, 0], [0, sqrt_one_minus_gamma]], dtype=np.complex128)
+    k2 = np.array([[0, sqrt_gamma], [0, 0]], dtype=np.complex128)
+    return KrausChannel(
+        [
+            KrausData(1.0, np.kron(k1, k1)),
+            KrausData(1.0, np.kron(k1, k2)),
+            KrausData(1.0, np.kron(k2, k1)),
+            KrausData(1.0, np.kron(k2, k2)),
+        ]
+    )
+
+
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     r"""Single-qubit Pauli channel.
 

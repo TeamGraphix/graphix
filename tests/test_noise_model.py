@@ -8,10 +8,13 @@ import pytest
 from graphix import Pattern
 from graphix.command import CommandKind, M, N
 from graphix.noise_models import (
+    AmplitudeDampingNoise,
+    AmplitudeDampingNoiseModel,
     ApplyNoise,
     ComposeNoiseModel,
     DepolarisingNoise,
     DepolarisingNoiseModel,
+    TwoQubitAmplitudeDampingNoise,
     TwoQubitDepolarisingNoise,
 )
 from graphix.noise_models.noise_model import NoiselessNoiseModel
@@ -98,6 +101,83 @@ def test_compose_noise_model_simulation(fx_rng: Generator) -> None:
     noise_model = ComposeNoiseModel([NoiselessNoiseModel(), DepolarisingNoiseModel()])
     state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
+
+
+def test_amplitude_damping_noise_nqubits() -> None:
+    ad_noise = AmplitudeDampingNoise(0.3)
+    assert ad_noise.nqubits == 1
+
+
+def test_two_qubit_amplitude_damping_noise_nqubits() -> None:
+    ad2_noise = TwoQubitAmplitudeDampingNoise(0.3)
+    assert ad2_noise.nqubits == 2
+
+
+def test_amplitude_damping_noise_to_kraus_channel(fx_rng: Generator) -> None:
+    gamma = fx_rng.uniform(0, 0.5)
+    ad_noise = AmplitudeDampingNoise(gamma)
+    channel = ad_noise.to_kraus_channel()
+    assert channel.nqubit == 1
+    assert len(channel) == 2
+
+
+def test_amplitude_damping_noise_model_default() -> None:
+    model = AmplitudeDampingNoiseModel()
+    assert model.prepare_error_prob == 0.0
+    assert model.measure_error_prob == 0.0
+    assert not model.entanglement_error_prob
+    assert not model.measure_channel_prob
+
+
+def test_amplitude_damping_noise_model_properties(fx_rng: Generator) -> None:
+    gamma = fx_rng.uniform(0, 0.5)
+    model = AmplitudeDampingNoiseModel(
+        prepare_error_prob=gamma,
+        x_error_prob=gamma,
+        z_error_prob=gamma,
+        entanglement_error_prob=gamma,
+        measure_channel_prob=gamma,
+        measure_error_prob=gamma,
+    )
+    assert model.prepare_error_prob == gamma
+    assert model.x_error_prob == gamma
+    assert model.z_error_prob == gamma
+    assert model.entanglement_error_prob == gamma
+    assert model.measure_channel_prob == gamma
+    assert model.measure_error_prob == gamma
+
+
+def test_amplitude_damping_noise_model_input_nodes(fx_rng: Generator) -> None:
+    gamma = fx_rng.uniform(0, 0.5)
+    model = AmplitudeDampingNoiseModel(prepare_error_prob=gamma)
+    nodes = model.input_nodes([0, 1])
+    assert len(nodes) == 2
+    for node_cmd in nodes:
+        assert isinstance(node_cmd, ApplyNoise)
+        assert isinstance(node_cmd.noise, AmplitudeDampingNoise)
+        assert node_cmd.noise.gamma == gamma
+
+
+def test_amplitude_damping_noise_model_confuse_result(fx_rng: Generator) -> None:
+    # Pattern that measures 0 on qubit 0 with probability 1.
+    pattern = Pattern(cmds=[N(0), M(0)])
+    measure_method = DefaultMeasureMethod()
+    pattern.simulate_pattern(
+        backend="densitymatrix",
+        noise_model=AmplitudeDampingNoiseModel(),
+        rng=fx_rng,
+        measure_method=measure_method,
+    )
+    assert measure_method.results[0] == 0
+    noise_model = AmplitudeDampingNoiseModel(measure_error_prob=1)
+    measure_method = DefaultMeasureMethod()
+    pattern.simulate_pattern(
+        backend="densitymatrix",
+        noise_model=noise_model,
+        rng=fx_rng,
+        measure_method=measure_method,
+    )
+    assert measure_method.results[0] == 1
 
 
 def test_confuse_result(fx_rng: Generator) -> None:

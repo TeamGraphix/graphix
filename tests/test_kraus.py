@@ -9,8 +9,10 @@ import graphix.random_objects as randobj
 from graphix.channels import (
     KrausChannel,
     KrausData,
+    amplitude_damping_channel,
     dephasing_channel,
     depolarising_channel,
+    two_qubit_amplitude_damping_channel,
     two_qubit_depolarising_channel,
     two_qubit_depolarising_tensor_channel,
 )
@@ -180,3 +182,49 @@ class TestChannel:
         for i in range(len(depol_tensor_channel_2_qubit)):
             assert np.allclose(depol_tensor_channel_2_qubit[i].coef, data[i].coef)
             assert np.allclose(depol_tensor_channel_2_qubit[i].operator, data[i].operator)
+
+    def test_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        gamma = fx_rng.uniform(0, 0.5)
+        sqrt_gamma = np.sqrt(gamma)
+        sqrt_one_minus_gamma = np.sqrt(1 - gamma)
+        data_k1 = np.array([[1, 0], [0, sqrt_one_minus_gamma]], dtype=np.complex128)
+        data_k2 = np.array([[0, sqrt_gamma], [0, 0]], dtype=np.complex128)
+        ad_channel = amplitude_damping_channel(gamma)
+        assert isinstance(ad_channel, KrausChannel)
+        assert ad_channel.nqubit == 1
+        assert len(ad_channel) == 2
+        assert np.allclose(ad_channel[0].operator, data_k1)
+        assert np.allclose(ad_channel[0].coef, 1.0)
+        assert np.allclose(ad_channel[1].operator, data_k2)
+        assert np.allclose(ad_channel[1].coef, 1.0)
+
+    def test_two_qubit_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        gamma = fx_rng.uniform(0, 0.5)
+        sqrt_gamma = np.sqrt(gamma)
+        sqrt_one_minus_gamma = np.sqrt(1 - gamma)
+        k1 = np.array([[1, 0], [0, sqrt_one_minus_gamma]], dtype=np.complex128)
+        k2 = np.array([[0, sqrt_gamma], [0, 0]], dtype=np.complex128)
+        ad2_channel = two_qubit_amplitude_damping_channel(gamma)
+        assert isinstance(ad2_channel, KrausChannel)
+        assert ad2_channel.nqubit == 2
+        assert len(ad2_channel) == 4
+        expected = [np.kron(k1, k1), np.kron(k1, k2), np.kron(k2, k1), np.kron(k2, k2)]
+        for i, exp in enumerate(expected):
+            assert np.allclose(ad2_channel[i].operator, exp)
+            assert np.allclose(ad2_channel[i].coef, 1.0)
+
+    def test_amplitude_damping_channel_edge_cases(self) -> None:
+        # gamma=0 → only K1 (identity)
+        c0 = amplitude_damping_channel(0.0)
+        assert np.allclose(c0[0].operator, np.eye(2))
+        assert np.allclose(c0[0].coef, 1.0)
+        assert len(c0) == 2
+        # gamma=1 → K1 = |0><0|, K2 = |0><1|
+        c1 = amplitude_damping_channel(1.0)
+        assert np.allclose(c1[0].operator, np.array([[1, 0], [0, 0]]))
+        assert np.allclose(c1[1].operator, np.array([[0, 1], [0, 0]]))
+        # invalid gamma
+        with pytest.raises(ValueError):
+            amplitude_damping_channel(-0.1)
+        with pytest.raises(ValueError):
+            amplitude_damping_channel(1.1)

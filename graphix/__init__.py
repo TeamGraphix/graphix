@@ -13,7 +13,7 @@ from graphix.fundamentals import ANGLE_PI, Axis, Plane, Sign, angle_to_rad, rad_
 from graphix.graphsim import GraphState
 from graphix.instruction import Instruction
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
-from graphix.noise_models import DepolarisingNoiseModel, NoiseModel
+from graphix.noise_models import AmplitudeDampingNoiseModel, DepolarisingNoiseModel, NoiseModel
 from graphix.opengraph import OpenGraph
 from graphix.optimization import StandardizedPattern
 from graphix.parameter import Placeholder
@@ -35,6 +35,7 @@ __all__ = [
     "Clifford",
     "CliffordMap",
     "Command",
+    "AmplitudeDampingNoiseModel",
     "ConstBranchSelector",
     "DensityMatrix",
     "DensityMatrixBackend",

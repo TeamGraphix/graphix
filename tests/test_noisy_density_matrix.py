@@ -9,7 +9,7 @@ import pytest
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
-from graphix.noise_models import DepolarisingNoiseModel
+from graphix.noise_models import AmplitudeDampingNoiseModel, DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
@@ -524,3 +524,43 @@ class TestNoisyDensityMatrixBackend:
             or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
             or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
         )
+
+    # --- Amplitude damping noise model tests ---
+
+    def test_noiseless_amplitude_damping_hadamard(self, fx_rng: Generator) -> None:
+        """AmplitudeDampingNoiseModel with all-zero defaults behaves like noiseless."""
+        hadamardpattern = hpat()
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(),
+            rng=fx_rng,
+        )
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+
+    def test_amplitude_damping_noise_changes_hadamard(self, fx_rng: Generator) -> None:
+        """Amplitude damping prepare noise changes the state from the noiseless result."""
+        hadamardpattern = hpat()
+        gamma = fx_rng.uniform(0.1, 0.5)
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(prepare_error_prob=gamma),
+            rng=fx_rng,
+        )
+        assert isinstance(res, DensityMatrix)
+        # State should be different from noiseless |0>
+        assert not np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        # Density matrix should be valid: trace 1, Hermitian
+        assert np.isclose(np.trace(res.rho), 1.0)
+        assert np.allclose(res.rho, res.rho.conj().T)
+
+    def test_amplitude_damping_confuse_measurement(self, fx_rng: Generator) -> None:
+        """measure_error_prob=1 flips measurement outcome."""
+        hadamardpattern = hpat()
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(measure_error_prob=1.0),
+            rng=fx_rng,
+        )
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
