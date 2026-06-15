@@ -9,7 +9,7 @@ import pytest
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
-from graphix.noise_models import DepolarisingNoiseModel
+from graphix.noise_models import AmplitudeDampingNoiseModel, ComposeNoiseModel, DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
@@ -524,3 +524,146 @@ class TestNoisyDensityMatrixBackend:
             or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
             or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
         )
+
+
+class TestNoisyDensityMatrixAmplitudeDamping:
+    """Amplitude damping noise model on the density matrix backend."""
+
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
+    def test_noiseless_amplitude_damping_hadamard(self, fx_rng: Generator) -> None:
+        """A zero-parameter amplitude damping model reproduces the noiseless result."""
+
+        hadamardpattern = hpat()
+        noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
+        noisynoiselessres = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(),
+            rng=fx_rng,
+        )
+        assert isinstance(noiselessres, DensityMatrix)
+        assert isinstance(noisynoiselessres, DensityMatrix)
+        assert np.allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        assert np.allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
+    def test_noiseless_amplitude_damping_rz(self, fx_rng: Generator) -> None:
+
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+        noiselessres = rzpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
+        noisynoiselessres = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(),
+            rng=fx_rng,
+        )
+        assert isinstance(noiselessres, DensityMatrix)
+        assert isinstance(noisynoiselessres, DensityMatrix)
+        assert np.allclose(noiselessres.rho, rz_exact_res(alpha))
+        assert np.allclose(noisynoiselessres.rho, rz_exact_res(alpha))
+
+    def test_compose_amplitude_damping_with_depolarising_runs(self, fx_rng: Generator) -> None:
+        """ComposeNoiseModel of depolarising + amplitude damping runs and stays normalized."""
+
+        hadamardpattern = hpat()
+        depol = DepolarisingNoiseModel(prepare_error_prob=0.2)
+        ad = AmplitudeDampingNoiseModel(prepare_error_prob=0.2)
+        composed = ComposeNoiseModel([depol, ad])
+
+        r_depol = hadamardpattern.simulate_pattern(backend="densitymatrix", noise_model=depol, rng=fx_rng)
+        r_both = hadamardpattern.simulate_pattern(backend="densitymatrix", noise_model=composed, rng=fx_rng)
+        assert isinstance(r_depol, DensityMatrix)
+        assert isinstance(r_both, DensityMatrix)
+        assert np.isclose(r_both.rho.trace(), 1.0)
+        assert not np.allclose(r_depol.rho, r_both.rho)
+
+
+class TestAmplitudeDampingAnalytic:
+    """Analytic per-step verification of amplitude damping on the Hadamard pattern."""
+
+    @staticmethod
+    def _kraus(gamma: float) -> list[npt.NDArray[np.complex128]]:
+        return [
+            np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128),
+            np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128),
+        ]
+
+    def _ad_single(self, rho: npt.NDArray[np.complex128], gamma: float) -> npt.NDArray[np.complex128]:
+        return sum((k @ rho @ k.conj().T for k in self._kraus(gamma)), np.zeros((2, 2), dtype=np.complex128))
+
+    def _ad_on(self, rho: npt.NDArray[np.complex128], qubit: int, gamma: float) -> npt.NDArray[np.complex128]:
+        eye = np.eye(2, dtype=np.complex128)
+        out = np.zeros((4, 4), dtype=np.complex128)
+        for k in self._kraus(gamma):
+            full = np.kron(k, eye) if qubit == 0 else np.kron(eye, k)
+            out += full @ rho @ full.conj().T
+        return out
+
+    def _ad_two(self, rho: npt.NDArray[np.complex128], gamma: float) -> npt.NDArray[np.complex128]:
+        out = np.zeros((4, 4), dtype=np.complex128)
+        for left in self._kraus(gamma):
+            for right in self._kraus(gamma):
+                full = np.kron(left, right)
+                out += full @ rho @ full.conj().T
+        return out
+
+    @staticmethod
+    def _proj_x(outcome: Outcome) -> npt.NDArray[np.complex128]:
+        vec = np.array([1.0, 1.0 if outcome == 0 else -1.0], dtype=np.complex128) / np.sqrt(2)
+        return np.outer(vec, vec.conj())
+
+    def _expected(self, step: str, gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
+        eye = np.eye(2, dtype=np.complex128)
+        pauli_x = np.array([[0.0, 1.0], [1.0, 0.0]], dtype=np.complex128)
+        cz = np.diag([1.0, 1.0, 1.0, -1.0]).astype(np.complex128)
+        plus = np.array([1.0, 1.0], dtype=np.complex128) / np.sqrt(2)
+
+        rho = np.kron(np.outer(plus, plus.conj()), np.outer(plus, plus.conj()))
+        if step == "prep":
+            rho = self._ad_on(rho, 0, gamma)
+            rho = self._ad_on(rho, 1, gamma)
+        rho = cz @ rho @ cz.conj().T
+        if step == "entangle":
+            rho = self._ad_two(rho, gamma)
+        if step == "measure":
+            rho = self._ad_on(rho, 0, gamma)
+        proj = np.kron(self._proj_x(outcome), eye)
+        rho = proj @ rho @ proj.conj().T
+        rho = rho / np.trace(rho)
+        reduced: npt.NDArray[np.complex128] = np.einsum("ijik->jk", rho.reshape(2, 2, 2, 2))
+        if outcome == 1:
+            reduced = pauli_x @ reduced @ pauli_x.conj().T
+        if step == "xcorr" and outcome == 1:
+            reduced = self._ad_single(reduced, gamma)
+        return reduced
+
+    @pytest.mark.parametrize("outcome", [0, 1])
+    @pytest.mark.parametrize("gamma", [0.0, 0.3, 0.7, 1.0])
+    @pytest.mark.parametrize(
+        ("step", "param"),
+        [
+            ("prep", "prepare_error_prob"),
+            ("entangle", "entanglement_error_prob"),
+            ("measure", "measure_channel_prob"),
+            ("xcorr", "x_error_prob"),
+        ],
+    )
+    def test_amplitude_damping_step_matches_analytic(
+        self, step: str, param: str, gamma: float, outcome: Outcome, fx_rng: Generator
+    ) -> None:
+        res = hpat().simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(**{param: gamma}),
+            branch_selector=ConstBranchSelector(outcome),
+            rng=fx_rng,
+        )
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, self._expected(step, gamma, outcome))
+
+        # For the measurement step the result has a clean branch-independent
+        # closed form: damping the qubit before the X-basis measurement leaves
+        # the state diagonal with the coherence factor ``sqrt(1 - gamma)``
+        # showing through. Assert it explicitly as a human-readable cross-check.
+        if step == "measure":
+            sqrt_term = np.sqrt(1 - gamma)
+            closed_form = np.array([[(1 + sqrt_term) / 2, 0.0], [0.0, (1 - sqrt_term) / 2]], dtype=np.complex128)
+            assert np.allclose(res.rho, closed_form)
