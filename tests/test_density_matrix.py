@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 import pytest
-from scipy.special import k1
 
 import graphix.random_objects as randobj
 from graphix import command
@@ -576,7 +575,7 @@ class TestDensityMatrix:
         dm = DensityMatrix(randobj.rand_dm(2, fx_rng))
 
         # copy of initial dm
-        rho_test = dm.rho
+        rho_test = np.asarray(dm.rho, dtype=np.complex128)
 
         # create dephasing channel
         prob = fx_rng.uniform()
@@ -654,7 +653,7 @@ class TestDensityMatrix:
         dm = DensityMatrix(randobj.rand_dm(2, fx_rng))
 
         # copy of initial dm
-        rho_test = dm.rho
+        rho_test = np.asarray(dm.rho, dtype=np.complex128)
 
         # create dephasing channel
         prob = fx_rng.uniform()

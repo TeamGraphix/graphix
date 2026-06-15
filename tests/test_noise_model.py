@@ -18,7 +18,6 @@ from graphix.noise_models import (
     TwoQubitDepolarisingNoise,
 )
 from graphix.noise_models.noise_model import NoiselessNoiseModel
-from graphix.measurements import Outcome
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import DefaultMeasureMethod
@@ -26,6 +25,7 @@ from graphix.simulator import DefaultMeasureMethod
 if TYPE_CHECKING:
     from numpy.random import Generator
 
+    from graphix.measurements import Outcome
     from graphix.noise_models import CommandOrNoise
 
 

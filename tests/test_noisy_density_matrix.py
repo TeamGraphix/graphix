@@ -532,7 +532,6 @@ class TestNoisyDensityMatrixAmplitudeDamping:
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_noiseless_amplitude_damping_hadamard(self, fx_rng: Generator) -> None:
         """A zero-parameter amplitude damping model reproduces the noiseless result."""
-
         hadamardpattern = hpat()
         noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
         noisynoiselessres = hadamardpattern.simulate_pattern(
@@ -563,7 +562,6 @@ class TestNoisyDensityMatrixAmplitudeDamping:
 
     def test_compose_amplitude_damping_with_depolarising_runs(self, fx_rng: Generator) -> None:
         """ComposeNoiseModel of depolarising + amplitude damping runs and stays normalized."""
-
         hadamardpattern = hpat()
         depol = DepolarisingNoiseModel(prepare_error_prob=0.2)
         ad = AmplitudeDampingNoiseModel(prepare_error_prob=0.2)
@@ -617,7 +615,10 @@ class TestAmplitudeDampingAnalytic:
         cz = np.diag([1.0, 1.0, 1.0, -1.0]).astype(np.complex128)
         plus = np.array([1.0, 1.0], dtype=np.complex128) / np.sqrt(2)
 
-        rho = np.kron(np.outer(plus, plus.conj()), np.outer(plus, plus.conj()))
+        rho: npt.NDArray[np.complex128] = np.kron(np.outer(plus, plus.conj()), np.outer(plus, plus.conj())).astype(
+            np.complex128
+        )
+
         if step == "prep":
             rho = self._ad_on(rho, 0, gamma)
             rho = self._ad_on(rho, 1, gamma)
