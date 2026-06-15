@@ -747,35 +747,61 @@ def _needs_parentheses(coefficient: str) -> bool:
     return " + " in coefficient or " - " in coefficient
 
 
-def _factor_uniform_magnitude(coefficients: Sequence[str], kets: Sequence[str]) -> str | None:
-    """Factor a magnitude shared by every amplitude, e.g. ``√2/2(|00⟩ + |11⟩)``.
+def _factor_uniform_magnitude(
+    amplitudes: Sequence[object],
+    kets: Sequence[str],
+    output: OutputFormat,
+    *,
+    max_denominator: int,
+    atol: float,
+    rtol: float,
+    precision: int,
+) -> str | None:
+    """Factor a modulus shared by every amplitude, e.g. ``√2/2(|0⟩ + i|1⟩)``.
 
-    Returns the factored string when all amplitudes have the same non-unit magnitude
-    (up to sign), or ``None`` when no such common factor exists (in which case the
-    caller falls back to the term-by-term rendering).
+    Amplitudes that share a common modulus (up to a relative phase) are written as
+    ``r(φ₀|k₀⟩ + φ₁|k₁⟩ + …)``, with ``r`` the shared modulus and each ``φ`` the
+    per-component phase ``amplitude / r`` (so a relative phase such as ``i`` is kept
+    inside the parentheses). Returns ``None`` when the moduli differ, the shared
+    modulus is trivial (``1``), or the amplitudes are not numeric (e.g. symbolic),
+    in which case the caller renders term-by-term.
     """
-    if len(coefficients) < 2:
+    if len(amplitudes) < 2:
         return None
-    magnitudes: list[str] = []
-    signs: list[str] = []
-    for coefficient in coefficients:
-        # A compound (Cartesian) coefficient has no single magnitude to factor out.
-        if _needs_parentheses(coefficient):
-            return None
-        if coefficient.startswith("-"):
-            signs.append("-")
-            magnitudes.append(coefficient[1:])
+    try:
+        values = [complex(amplitude) for amplitude in amplitudes]  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        # Non-numeric (e.g. symbolic) amplitudes have no modulus to factor.
+        return None
+    radius = abs(values[0])
+    if radius == 0 or any(not math.isclose(abs(v), radius, rel_tol=rtol, abs_tol=atol) for v in values):
+        return None
+    radius_str = complex_to_str(
+        radius, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision
+    )
+    # A unit modulus is not worth factoring (it would read as ``1(...)``).
+    if radius_str == "1":
+        return None
+    result = ""
+    for index, (value, ket) in enumerate(zip(values, kets, strict=True)):
+        phase = complex_to_str(
+            value / radius, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision
+        )
+        # A per-component phase is unit-modulus, so it is rendered as 1, -1, ±i, an
+        # exponential, or a decimal — never a parenthesizable sum.
+        if phase == "1":
+            term = ket
+        elif phase == "-1":
+            term = f"-{ket}"
         else:
-            signs.append("+")
-            magnitudes.append(coefficient)
-    common = magnitudes[0]
-    # Nothing to factor when the magnitude is the unit coefficient, or it is not shared.
-    if common == "1" or any(magnitude != common for magnitude in magnitudes):
-        return None
-    body = kets[0] if signs[0] == "+" else f"-{kets[0]}"
-    for sign, ket in zip(signs[1:], kets[1:], strict=True):
-        body += f" {sign} {ket}"
-    return f"{common}({body})"
+            term = f"{phase}{ket}"
+        if index == 0:
+            result = term
+        elif term.startswith("-"):
+            result += f" - {term[1:]}"
+        else:
+            result += f" + {term}"
+    return f"{radius_str}({result})"
 
 
 def statevec_to_str(
@@ -822,15 +848,19 @@ def statevec_to_str(
     amplitudes = statevec.to_dict(encoding, rtol=rtol, atol=atol)
     if not amplitudes:
         return "0"
-    coefficients = [
-        complex_to_str(amplitude, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision)
-        for amplitude in amplitudes.values()
-    ]
+    amps = list(amplitudes.values())
     kets = [_ket_str(ket, output) for ket in amplitudes]
-    # When every amplitude shares the same magnitude, factor it out, e.g. ``√2/2(|00⟩ + |11⟩)``.
-    factored = _factor_uniform_magnitude(coefficients, kets)
+    # When every amplitude shares a modulus (up to a relative phase), factor it out,
+    # e.g. ``√2/2(|0⟩ + i|1⟩)``.
+    factored = _factor_uniform_magnitude(
+        amps, kets, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision
+    )
     if factored is not None:
         return factored
+    coefficients = [
+        complex_to_str(amplitude, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision)
+        for amplitude in amps
+    ]
     result = ""
     for index, (coefficient, ket_str) in enumerate(zip(coefficients, kets, strict=True)):
         if coefficient == "1":

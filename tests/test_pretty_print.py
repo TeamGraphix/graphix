@@ -16,7 +16,7 @@ from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
-from graphix.pretty_print import OutputFormat, complex_to_str, pattern_to_str
+from graphix.pretty_print import OutputFormat, _factor_uniform_magnitude, complex_to_str, pattern_to_str
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
@@ -338,6 +338,66 @@ def test_density_matrix_draw_rtol() -> None:
     dm = DensityMatrix(data=[BasicStates.PLUS])
     assert dm.draw(OutputFormat.Unicode) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
     assert dm.draw(OutputFormat.Unicode, rtol=1e-4) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
+
+
+def test_statevec_draw_factor_relative_phase() -> None:
+    # A modulus shared up to a relative phase is still factored, with the phase kept
+    # inside the parentheses.
+    assert Statevec(data=BasicStates.PLUS).draw(OutputFormat.Unicode) == "√2/2(|0⟩ + |1⟩)"
+    assert Statevec(data=BasicStates.PLUS_I).draw(OutputFormat.Unicode) == "√2/2(|0⟩ + i|1⟩)"
+    assert Statevec(data=BasicStates.MINUS_I).draw(OutputFormat.Unicode) == "√2/2(|0⟩ - i|1⟩)"
+    assert (
+        Statevec(data=BasicStates.PLUS_I).draw(OutputFormat.LaTeX) == r"\frac{\sqrt{2}}{2}(\ket{0} + \mathrm{i}\ket{1})"
+    )
+
+
+def test_factor_uniform_magnitude_edge_cases() -> None:
+    kets = ["|0⟩", "|1⟩"]
+    # Non-numeric (e.g. symbolic) amplitudes have no modulus -> None (term-by-term fallback).
+    assert (
+        _factor_uniform_magnitude(
+            ["alpha", "beta"], kets, OutputFormat.Unicode, max_denominator=1000, atol=1e-9, rtol=0.0, precision=4
+        )
+        is None
+    )
+    # Zero modulus -> None.
+    assert (
+        _factor_uniform_magnitude(
+            [0, 0], kets, OutputFormat.Unicode, max_denominator=1000, atol=1e-9, rtol=0.0, precision=4
+        )
+        is None
+    )
+    # A unit modulus is not worth factoring -> None.
+    assert (
+        _factor_uniform_magnitude(
+            [1, 1j], kets, OutputFormat.Unicode, max_denominator=1000, atol=1e-9, rtol=0.0, precision=4
+        )
+        is None
+    )
+    # A non-nice relative phase still factors, with the phase as a decimal coefficient.
+    factored = _factor_uniform_magnitude(
+        [0.5, 0.5 * cmath.exp(1j * 0.3)],
+        kets,
+        OutputFormat.Unicode,
+        max_denominator=1000,
+        atol=1e-9,
+        rtol=0.0,
+        precision=4,
+    )
+    assert factored is not None
+    assert factored.startswith("1/2(|0⟩ + ")
+
+
+def test_draw_max_denominator() -> None:
+    # `max_denominator` caps the denominators the recognition will accept.
+    dm = DensityMatrix(data=[BasicStates.PLUS])
+    assert dm.draw(OutputFormat.Unicode) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
+    # With max_denominator=1, 1/2 can no longer be recognized and falls back to a decimal.
+    assert dm.draw(OutputFormat.Unicode, max_denominator=1) == "[ 0.5  0.5 ]\n[ 0.5  0.5 ]"
+    # Same effect on the statevector draw (√2/2 -> 0.7071).
+    sv = Statevec([2**-0.5, 2**-0.5])
+    assert sv.draw(OutputFormat.Unicode) == "√2/2(|0⟩ + |1⟩)"
+    assert sv.draw(OutputFormat.Unicode, max_denominator=1) == "0.7071(|0⟩ + |1⟩)"
 
 
 def test_complex_to_str_edge_cases() -> None:
