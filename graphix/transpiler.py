@@ -457,14 +457,14 @@ class Circuit:
             match instr.kind:
                 case InstructionKind.M:
                     target = indices[instr.target]
-                    if target is None:  # pragma: no cover
+                    if target is None:
                         raise RuntimeError("Ill-formed circuit")
                     classical_outputs[target] = command.M(target, PauliMeasurement(instr.axis))
                     indices[instr.target] = None
                     continue
                 case InstructionKind.J:
                     target = indices[instr.target]
-                    if target is None:  # pragma: no cover
+                    if target is None:
                         raise RuntimeError("Ill-formed circuit")
                     graph.add_edge(target, n_nodes)  # Also adds nodes
                     measurements[target] = Measurement.XY(normalize_angle(-instr.angle))
@@ -475,7 +475,7 @@ class Circuit:
                 case InstructionKind.CZ:
                     t0, t1 = instr.targets
                     i0, i1 = indices[t0], indices[t1]
-                    if i0 is None or i1 is None:  # pragma: no cover
+                    if i0 is None or i1 is None:
                         raise RuntimeError("Ill-formed circuit")
                     # If edge exists, remove it; else, add it
                     if graph.has_edge(i0, i1):
@@ -483,7 +483,7 @@ class Circuit:
                     else:
                         graph.add_edge(i0, i1)
                     continue
-                case _:  # pragma: no cover
+                case _:
                     assert_never(instr.kind)
         outputs = [i for i in indices if i is not None]
         outputs.extend(classical_outputs.keys())  # Necessary for flow-finding step
@@ -1025,8 +1025,7 @@ class _TranspileSwapVisitor(InstructionVisitor):
     def visit_qubit(self, qubit: int) -> int:
         target = self.outputs[qubit]
         if target.kind == OutputKind.Bit:
-            msg = f"Qubit {qubit} has already been measured."
-            raise ValueError(msg)
+            raise RuntimeError(f"Qubit {qubit} has already been measured.")
         return target.index
 
 
