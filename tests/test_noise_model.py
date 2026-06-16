@@ -150,6 +150,39 @@ def test_amplitude_damping_noise_model_command_edge_cases() -> None:
         noise_model.command(S(0))
 
 
+def test_amplitude_damping_noise_model_input_nodes() -> None:
+    noise_model = AmplitudeDampingNoiseModel(prepare_error_prob=0.25)
+    cmds = noise_model.input_nodes([0, 1])
+    assert len(cmds) == 2
+    assert_apply_noise(cmds[0], AmplitudeDampingNoise, 0.25, [0])
+    assert_apply_noise(cmds[1], AmplitudeDampingNoise, 0.25, [1])
+
+
+def test_amplitude_damping_noise_nqubits() -> None:
+    assert AmplitudeDampingNoise(0.3).nqubits == 1
+    assert TwoQubitAmplitudeDampingNoise(0.3).nqubits == 2
+
+
+def test_amplitude_damping_noise_to_kraus_channel(fx_rng: Generator) -> None:
+    gamma = fx_rng.uniform()
+    channel = AmplitudeDampingNoise(gamma).to_kraus_channel()
+    assert channel.nqubit == 1
+    assert len(channel) == 2
+
+
+def test_two_qubit_amplitude_damping_noise_to_kraus_channel(fx_rng: Generator) -> None:
+    gamma = fx_rng.uniform()
+    channel = TwoQubitAmplitudeDampingNoise(gamma).to_kraus_channel()
+    assert channel.nqubit == 2
+    assert len(channel) == 4
+
+
+def test_amplitude_damping_confuse_result_unchanged(fx_rng: Generator) -> None:
+    noise_model = AmplitudeDampingNoiseModel(measure_error_prob=0.0)
+    assert noise_model.confuse_result(M(0), 0, rng=fx_rng) == 0
+    assert noise_model.confuse_result(M(0), 1, rng=fx_rng) == 1
+
+
 @pytest.mark.parametrize(
     "noise_model",
     [DepolarisingNoiseModel(measure_error_prob=1), AmplitudeDampingNoiseModel(measure_error_prob=1)],
