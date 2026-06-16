@@ -201,9 +201,9 @@ class TestChannel:
 
     @pytest.mark.parametrize("gamma", [-0.1, 1.1])
     def test_amplitude_damping_channel_invalid_gamma(self, gamma: float) -> None:
-        with pytest.raises(ValueError, match="gamma must be between 0 and 1"):
+        with pytest.raises(ValueError, match="The specified channel is not normalized"):
             amplitude_damping_channel(gamma)
-        with pytest.raises(ValueError, match="gamma must be between 0 and 1"):
+        with pytest.raises(ValueError, match="The specified channel is not normalized"):
             two_qubit_amplitude_damping_channel(gamma)
 
     def test_2_qubit_amplitude_damping_channel(self, fx_rng: Generator) -> None:

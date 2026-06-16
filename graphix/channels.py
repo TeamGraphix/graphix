@@ -201,14 +201,10 @@ def amplitude_damping_channel(gamma: float) -> KrausChannel:
     :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
-    if not 0 <= gamma <= 1:
-        raise ValueError("gamma must be between 0 and 1.")
-    sqrt_gamma = np.sqrt(gamma)
-    sqrt_one_minus_gamma = np.sqrt(1 - gamma)
     return KrausChannel(
         [
-            KrausData(1.0, np.array([[1, 0], [0, sqrt_one_minus_gamma]], dtype=np.complex128)),
-            KrausData(1.0, np.array([[0, sqrt_gamma], [0, 0]], dtype=np.complex128)),
+            KrausData(1.0, np.array([[1, 0], [0, np.sqrt(1 - gamma)]], dtype=np.complex128)),
+            KrausData(1.0, np.array([[0, np.sqrt(gamma)], [0, 0]], dtype=np.complex128)),
         ]
     )
 
@@ -232,20 +228,11 @@ def two_qubit_amplitude_damping_channel(gamma: float) -> KrausChannel:
     :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
-    if not 0 <= gamma <= 1:
-        raise ValueError("gamma must be between 0 and 1.")
-    sqrt_gamma = np.sqrt(gamma)
-    sqrt_one_minus_gamma = np.sqrt(1 - gamma)
-    k1 = np.array([[1, 0], [0, sqrt_one_minus_gamma]], dtype=np.complex128)
-    k2 = np.array([[0, sqrt_gamma], [0, 0]], dtype=np.complex128)
-    return KrausChannel(
-        [
-            KrausData(1.0, np.kron(k1, k1)),
-            KrausData(1.0, np.kron(k1, k2)),
-            KrausData(1.0, np.kron(k2, k1)),
-            KrausData(1.0, np.kron(k2, k2)),
-        ]
-    )
+    single_ops = [
+        np.array([[1, 0], [0, np.sqrt(1 - gamma)]], dtype=np.complex128),
+        np.array([[0, np.sqrt(gamma)], [0, 0]], dtype=np.complex128),
+    ]
+    return KrausChannel([KrausData(1.0, np.kron(left, right)) for left in single_ops for right in single_ops])
 
 
 def depolarising_channel(prob: float) -> KrausChannel:
