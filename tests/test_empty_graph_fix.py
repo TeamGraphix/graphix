@@ -7,7 +7,7 @@ import networkx as nx
 from graphix.opengraph import OpenGraph
 
 if TYPE_CHECKING:
-    from graphix.measurement import Measurement
+    from graphix.measurements import Measurement
 
 
 def test_empty_graph_well_formed() -> None:
