@@ -273,13 +273,13 @@ class TestStatevecToStr:
     def test_single_basis_state(self) -> None:
         sv = Statevec(data=[BasicStates.ZERO])
         d = sv.to_dict()
-        assert statevec_to_str(d, OutputFormat.Unicode) == "1|0⟩"
+        assert statevec_to_str(d, OutputFormat.Unicode) == "|0⟩"
 
     def test_two_qubit_product(self) -> None:
         sv = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
         d = sv.to_dict()
         result = statevec_to_str(d, OutputFormat.Unicode)
-        assert result == "1|01⟩"
+        assert result == "|01⟩"
 
     def test_plus_state(self) -> None:
         sv = Statevec(data=[BasicStates.PLUS])
@@ -303,7 +303,7 @@ class TestDensityMatrixToStr:
     def test_pure_state_zero(self) -> None:
         dm = DensityMatrix(data=[BasicStates.ZERO])
         result = densitymatrix_to_str(dm.rho, dm.nqubit, OutputFormat.Unicode)
-        assert result == "1|0⟩⟨0|"
+        assert result == "|0⟩⟨0|"
 
     def test_mixed_state(self) -> None:
         """Check a 50/50 mixed state returns a sum of projectors."""

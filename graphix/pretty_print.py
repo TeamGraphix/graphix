@@ -10,6 +10,8 @@ from fractions import Fraction
 from math import pi
 from typing import TYPE_CHECKING, SupportsFloat
 
+import numpy as np
+
 # `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never
 
@@ -22,7 +24,6 @@ if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
 
-    import numpy as np
     import numpy.typing as npt
 
     from graphix.command import Node
@@ -497,7 +498,7 @@ def _format_bra(basis: str, output: OutputFormat) -> str:
         The formatted bra.
     """
     if output == OutputFormat.LaTeX:
-        return rf"\langle\lvert {basis}\rvert"
+        return rf"\langle {basis}\rvert"
     if output == OutputFormat.Unicode:
         return f"⟨{basis}|"
     return f"<{basis}|"
@@ -629,7 +630,7 @@ def _format_sqrt_frac(frac: Fraction, output: OutputFormat) -> str:
 
 
 def complex_to_str(
-    z: complex,
+    z: complex | np.complex128 | np.object_ | float,
     output: OutputFormat,
     max_denominator: int = 1000,
 ) -> str:
@@ -645,7 +646,7 @@ def complex_to_str(
 
     Parameters
     ----------
-    z : complex
+    z : complex or np.complex128 or np.object_ or float
         The complex number to format.
     output : OutputFormat
         Desired formatting style (ASCII, LaTeX or Unicode).
@@ -656,6 +657,9 @@ def complex_to_str(
     -------
     str
     """
+    if not isinstance(z, (complex, float, int, np.complexfloating, np.floating)):
+        return str(z)
+
     if abs(z) < _EPS:
         return "0"
 
@@ -807,13 +811,19 @@ def statevec_to_str(
         amp_str = complex_to_str(complex(amplitude), output, max_denominator)
         ket = _format_ket(basis, output)
 
-        if not parts:
-            # First term - keep any leading sign
-            parts.append(f"{amp_str}{ket}")
-        elif amp_str.startswith("-"):
-            parts.append(f" - {amp_str[1:]}{ket}")
+        if amp_str == "1":
+            term = ket
+        elif amp_str == "-1":
+            term = f"-{ket}"
         else:
-            parts.append(f" + {amp_str}{ket}")
+            term = f"{amp_str}{ket}"
+
+        if not parts:
+            parts.append(term)
+        elif term.startswith("-"):
+            parts.append(f" - {term[1:]}")
+        else:
+            parts.append(f" + {term}")
 
     return "".join(parts)
 
@@ -871,11 +881,18 @@ def densitymatrix_to_str(
 
     result_parts: list[str] = []
     for i, (_val, val_str, dirac) in enumerate(terms):
-        if i == 0:
-            result_parts.append(f"{val_str}{dirac}")
-        elif val_str.startswith("-"):
-            result_parts.append(f" - {val_str[1:]}{dirac}")
+        if val_str == "1":
+            term = dirac
+        elif val_str == "-1":
+            term = f"-{dirac}"
         else:
-            result_parts.append(f" + {val_str}{dirac}")
+            term = f"{val_str}{dirac}"
+
+        if i == 0:
+            result_parts.append(term)
+        elif term.startswith("-"):
+            result_parts.append(f" - {term[1:]}")
+        else:
+            result_parts.append(f" + {term}")
 
     return "".join(result_parts)
