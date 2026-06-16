@@ -575,9 +575,7 @@ class TestNoisyDensityMatrixBackend:
         return k0, k1
 
     @staticmethod
-    def _apply_ad_2q(
-        rho: npt.NDArray[np.complex128], gamma: float, qubit: int
-    ) -> npt.NDArray[np.complex128]:
+    def _apply_ad_2q(rho: npt.NDArray[np.complex128], gamma: float, qubit: int) -> npt.NDArray[np.complex128]:
         """Apply amplitude damping with parameter gamma to one qubit of a 2-qubit density matrix."""
         k0, k1 = TestNoisyDensityMatrixBackend._ad_kraus(gamma)
         if qubit == 0:
@@ -602,9 +600,7 @@ class TestNoisyDensityMatrixBackend:
         return res
 
     @staticmethod
-    def _amplitude_damping_measure_analytical(
-        gamma: float, outcome: Outcome
-    ) -> npt.NDArray[np.complex128]:
+    def _amplitude_damping_measure_analytical(gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
         """Compute expected hpat output for AmplitudeDampingNoiseModel(measure_channel_prob=gamma).
 
         Applies AD on node 0 after CZ, then measures in X basis, then
@@ -633,12 +629,10 @@ class TestNoisyDensityMatrixBackend:
             x_mat = Ops.X
             rho_out = x_mat @ rho_out @ x_mat.conj().T
 
-        return rho_out
+        return rho_out  # type: ignore[no-any-return]
 
     @staticmethod
-    def _amplitude_damping_prepare_analytical(
-        gamma: float, outcome: Outcome
-    ) -> npt.NDArray[np.complex128]:
+    def _amplitude_damping_prepare_analytical(gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
         """Compute expected hpat output for AmplitudeDampingNoiseModel(prepare_error_prob=gamma).
 
         Applies AD to |+⟩ on each node independently, then CZ, measure, correct.
@@ -667,12 +661,10 @@ class TestNoisyDensityMatrixBackend:
             x_mat = Ops.X
             rho_out = x_mat @ rho_out @ x_mat.conj().T
 
-        return rho_out
+        return rho_out  # type: ignore[no-any-return]
 
     @staticmethod
-    def _amplitude_damping_entanglement_analytical(
-        gamma: float, outcome: Outcome
-    ) -> npt.NDArray[np.complex128]:
+    def _amplitude_damping_entanglement_analytical(gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
         """Compute expected hpat output for AmplitudeDampingNoiseModel(entanglement_error_prob=gamma).
 
         Applies independent AD to each qubit after CZ (tensor Kraus product),
@@ -710,12 +702,10 @@ class TestNoisyDensityMatrixBackend:
             x_mat = Ops.X
             rho_out = x_mat @ rho_out @ x_mat.conj().T
 
-        return rho_out
+        return rho_out  # type: ignore[no-any-return]
 
     @staticmethod
-    def _amplitude_damping_x_error_analytical(
-        gamma: float, outcome: Outcome
-    ) -> npt.NDArray[np.complex128]:
+    def _amplitude_damping_x_error_analytical(gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
         """Compute expected hpat output for AmplitudeDampingNoiseModel(x_error_prob=gamma).
 
         AD is applied to the output node AFTER the X correction (per the
@@ -744,20 +734,16 @@ class TestNoisyDensityMatrixBackend:
             rho_out = x_mat @ rho_out @ x_mat.conj().T
 
         k0, k1 = TestNoisyDensityMatrixBackend._ad_kraus(gamma)
-        return k0 @ rho_out @ k0.conj().T + k1 @ rho_out @ k1.conj().T
+        return k0 @ rho_out @ k0.conj().T + k1 @ rho_out @ k1.conj().T  # type: ignore[no-any-return]
 
     # --- Tests using analytical formulas ---
 
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_amplitude_damping_measure_analytical(
-        self, fx_rng: Generator, outcome: Outcome
-    ) -> None:
+    def test_amplitude_damping_measure_analytical(self, fx_rng: Generator, outcome: Outcome) -> None:
         """Compare measure_channel simulation against analytical Kraus computation."""
         gamma = fx_rng.uniform(0.0, 0.9)
         hadamardpattern = hpat()
-        expected = TestNoisyDensityMatrixBackend._amplitude_damping_measure_analytical(
-            gamma, outcome
-        )
+        expected = TestNoisyDensityMatrixBackend._amplitude_damping_measure_analytical(gamma, outcome)
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(measure_channel_prob=gamma),
@@ -768,15 +754,11 @@ class TestNoisyDensityMatrixBackend:
         assert np.allclose(res.rho, expected, atol=1e-10)
 
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_amplitude_damping_prepare_analytical(
-        self, fx_rng: Generator, outcome: Outcome
-    ) -> None:
+    def test_amplitude_damping_prepare_analytical(self, fx_rng: Generator, outcome: Outcome) -> None:
         """Compare prepare_error simulation against analytical Kraus computation."""
         gamma = fx_rng.uniform(0.0, 0.9)
         hadamardpattern = hpat()
-        expected = TestNoisyDensityMatrixBackend._amplitude_damping_prepare_analytical(
-            gamma, outcome
-        )
+        expected = TestNoisyDensityMatrixBackend._amplitude_damping_prepare_analytical(gamma, outcome)
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(prepare_error_prob=gamma),
@@ -787,15 +769,11 @@ class TestNoisyDensityMatrixBackend:
         assert np.allclose(res.rho, expected, atol=1e-10)
 
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_amplitude_damping_entanglement_analytical(
-        self, fx_rng: Generator, outcome: Outcome
-    ) -> None:
+    def test_amplitude_damping_entanglement_analytical(self, fx_rng: Generator, outcome: Outcome) -> None:
         """Compare entanglement_error simulation against analytical Kraus computation."""
         gamma = fx_rng.uniform(0.0, 0.9)
         hadamardpattern = hpat()
-        expected = TestNoisyDensityMatrixBackend._amplitude_damping_entanglement_analytical(
-            gamma, outcome
-        )
+        expected = TestNoisyDensityMatrixBackend._amplitude_damping_entanglement_analytical(gamma, outcome)
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(entanglement_error_prob=gamma),
@@ -806,9 +784,7 @@ class TestNoisyDensityMatrixBackend:
         assert np.allclose(res.rho, expected, atol=1e-10)
 
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_amplitude_damping_x_error_analytical(
-        self, fx_rng: Generator, outcome: Outcome
-    ) -> None:
+    def test_amplitude_damping_x_error_analytical(self, fx_rng: Generator, outcome: Outcome) -> None:
         """Compare x_error simulation against analytical Kraus computation.
 
         Note: for the hpat pattern, the post-correction state of the output
@@ -817,9 +793,7 @@ class TestNoisyDensityMatrixBackend:
         """
         gamma = fx_rng.uniform(0.0, 0.9)
         hadamardpattern = hpat()
-        expected = TestNoisyDensityMatrixBackend._amplitude_damping_x_error_analytical(
-            gamma, outcome
-        )
+        expected = TestNoisyDensityMatrixBackend._amplitude_damping_x_error_analytical(gamma, outcome)
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(x_error_prob=gamma),
