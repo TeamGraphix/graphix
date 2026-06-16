@@ -51,3 +51,10 @@ def test_prepared_qubits_and_input_state(hadamardpattern: Pattern, fx_rng: Gener
     backend.add_nodes(hadamardpattern.input_nodes, BasicStates.ZERO)
     with pytest.raises(ValueError, match="the backend is expected to have no pre-allocated qubits"):
         hadamardpattern.simulate_pattern(backend=backend, rng=fx_rng)
+
+
+def test_node_index_after_finalize() -> None:
+    pattern = Pattern(input_nodes=[0, 1], output_nodes=[1, 0])
+    backend = StatevectorBackend()
+    pattern.simulate_pattern(backend=backend)
+    assert list(backend.node_index) == [1, 0]

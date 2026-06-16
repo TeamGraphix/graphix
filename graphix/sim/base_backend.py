@@ -230,8 +230,7 @@ class NodeIndex:
 
     def __init__(self) -> None:
         """Initialize an empty mapping between nodes and qubit indices."""
-        self.__dict = {}
-        self.__list = []
+        self.clear()
 
     def __getitem__(self, index: int) -> int:
         """Return the qubit node associated with the specified index.
@@ -315,6 +314,11 @@ class NodeIndex:
         self.__list[j] = node_i
         self.__dict[node_i] = j
         self.__dict[node_j] = i
+
+    def clear(self) -> None:
+        """Delete all the elements, restoring the index to its initial state."""
+        self.__dict = {}
+        self.__list = []
 
 
 class NoiseNotSupportedError(Exception):
@@ -838,6 +842,26 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     def finalize(self, output_nodes: Sequence[int]) -> None:
         """To be run at the end of pattern simulation."""
         self.state.permute([self.node_index.index(node) for node in output_nodes])
+        self.node_index.clear()
+        self.node_index.extend(output_nodes)
+
+    def sort_qubits(self, output_nodes: Iterable[int]) -> None:
+        """Sort the qubit order in internal statevector."""
+        for i, ind in enumerate(output_nodes):
+            if self.node_index.index(ind) != i:
+                move_from = self.node_index.index(ind)
+                self.state.swap((i, move_from))
+                self.node_index.swap(i, move_from)
+
+    # @override
+    # def finalize(self, output_nodes: Iterable[int]) -> None:
+    #    """To be run at the end of pattern simulation."""
+    #    from copy import copy
+    #    duplicate = copy(self)
+    #    duplicate.sort_qubits(output_nodes)
+    #    self.state.permute([self.node_index.index(node) for node in output_nodes])
+    #    if not self.state.isclose(duplicate.state):
+    #        assert False, output_nodes
 
     @property
     @override
