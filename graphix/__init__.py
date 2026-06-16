@@ -27,6 +27,7 @@ from graphix.transpiler import Circuit
 
 __all__ = [
     "ANGLE_PI",
+    "AmplitudeDampingNoiseModel",
     "Axis",
     "BasicStates",
     "BlochMeasurement",
@@ -35,7 +36,6 @@ __all__ = [
     "Clifford",
     "CliffordMap",
     "Command",
-    "AmplitudeDampingNoiseModel",
     "ConstBranchSelector",
     "DensityMatrix",
     "DensityMatrixBackend",
