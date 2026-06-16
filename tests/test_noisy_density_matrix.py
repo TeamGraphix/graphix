@@ -7,17 +7,17 @@ import numpy.typing as npt
 import pytest
 
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
+from graphix.channels import amplitude_damping_channel, two_qubit_amplitude_damping_channel
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
+from graphix.measurements import Measurement
 from graphix.noise_models import AmplitudeDampingNoiseModel, DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
-from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.sim.base_backend import _outcome_to_operator_matrix
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
-from graphix.channels import amplitude_damping_channel, two_qubit_amplitude_damping_channel
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -579,9 +579,7 @@ class TestAmplitudeDampingAnalytic:
         return out
 
     @staticmethod
-    def apply_amplitude_damping_two_qubit(
-        rho: npt.NDArray[np.complex128], gamma: float
-    ) -> npt.NDArray[np.complex128]:
+    def apply_amplitude_damping_two_qubit(rho: npt.NDArray[np.complex128], gamma: float) -> npt.NDArray[np.complex128]:
         out = np.zeros(rho.shape, dtype=np.complex128)
         for left in TestAmplitudeDampingAnalytic._kraus_operators(gamma):
             for right in TestAmplitudeDampingAnalytic._kraus_operators(gamma):
@@ -599,9 +597,7 @@ class TestAmplitudeDampingAnalytic:
         dm.evolve_single(op_mat, qubit)
         dm.remove_qubit(qubit)
 
-    def _expected_hadamard_pattern(
-        self, step: str, gamma: float, outcome: Outcome
-    ) -> npt.NDArray[np.complex128]:
+    def _expected_hadamard_pattern(self, step: str, gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
         eye = np.eye(2, dtype=np.complex128)
         rho: npt.NDArray[np.complex128] = np.asarray(
             DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS]).rho,
