@@ -9,8 +9,10 @@ import graphix.random_objects as randobj
 from graphix.channels import (
     KrausChannel,
     KrausData,
+    amplitude_damping_channel,
     dephasing_channel,
     depolarising_channel,
+    two_qubit_amplitude_damping_channel,
     two_qubit_depolarising_channel,
     two_qubit_depolarising_tensor_channel,
 )
@@ -180,3 +182,45 @@ class TestChannel:
         for i in range(len(depol_tensor_channel_2_qubit)):
             assert np.allclose(depol_tensor_channel_2_qubit[i].coef, data[i].coef)
             assert np.allclose(depol_tensor_channel_2_qubit[i].operator, data[i].operator)
+
+    def test_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        gamma = fx_rng.uniform()
+        data = [
+            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)),
+            KrausData(1.0, np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)),
+        ]
+
+        channel = amplitude_damping_channel(gamma)
+
+        assert channel.nqubit == 1
+        assert len(channel) == 2
+
+        for i in range(len(channel)):
+            assert np.allclose(channel[i].coef, data[i].coef)
+            assert np.allclose(channel[i].operator, data[i].operator)
+
+    @pytest.mark.parametrize("gamma", [-0.1, 1.1])
+    def test_amplitude_damping_channel_invalid_gamma(self, gamma: float) -> None:
+        with pytest.raises(ValueError, match="gamma must be between 0 and 1"):
+            amplitude_damping_channel(gamma)
+        with pytest.raises(ValueError, match="gamma must be between 0 and 1"):
+            two_qubit_amplitude_damping_channel(gamma)
+
+    def test_2_qubit_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        gamma = fx_rng.uniform()
+        one_qubit_channel = amplitude_damping_channel(gamma)
+        data = [
+            KrausData(left.coef * right.coef, np.kron(left.operator, right.operator))
+            for left in one_qubit_channel
+            for right in one_qubit_channel
+        ]
+
+        channel = two_qubit_amplitude_damping_channel(gamma)
+
+        assert isinstance(channel, KrausChannel)
+        assert channel.nqubit == 2
+        assert len(channel) == 4
+
+        for i in range(len(channel)):
+            assert np.allclose(channel[i].coef, data[i].coef)
+            assert np.allclose(channel[i].operator, data[i].operator)
