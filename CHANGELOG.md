@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #524: Added `Statevec.draw` and `DensityMatrix.draw` methods (and the underlying `statevec_to_str` and `density_matrix_to_str` functions) for pretty-printing states and density matrices in ASCII, Unicode, and LaTeX.
 
+- #526: Added new method `XZCorrections.to_pauli_flow`, which reconstructs a Pauli flow directly from XZ-corrections by solving the per-node correction sets over GF(2). Added `FlowGenericErrorReason.NoPauliFlow`, raised when the XZ-corrections admit no compatible Pauli flow.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
