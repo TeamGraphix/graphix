@@ -1499,8 +1499,10 @@ def _solve_pauli_correction_set(
 
     # Odd-neighbourhood constraints on the future nodes (the Z-corrections of `node`).
     for g in future:
-        matrix.append(row_at(g))
-        rhs.append((1 if g in z_corr else 0) ^ const_at(g))
+        lab_g = labels.get(g)
+        if lab_g and lab_g not in {Axis.Y, Axis.Z}:
+            matrix.append(row_at(g))
+            rhs.append((1 if g in z_corr else 0) ^ const_at(g))
 
     # P2 / P3 constraints on the non-future nodes.
     for g in nonfuture_others:
