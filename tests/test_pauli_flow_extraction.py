@@ -118,6 +118,26 @@ def test_extract_pauli_flow_pauli_opengraph() -> None:
     _assert_round_trip(og.to_pattern())
 
 
+def test_extract_pauli_flow_output_zcorrection() -> None:
+    # Regression: a Z-correction whose future target is an *output* node imposes a real GF(2)
+    # equation in the reconstruction -- it cannot be dropped (e.g. by skipping future nodes that are
+    # not measured in a non-Pauli plane) without silently breaking the Z-correction round-trip.
+    # Distilled from a randomized open graph that exercises this case.
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (0, 4), (0, 5), (0, 7), (1, 3), (1, 4), (2, 4), (2, 5), (3, 7), (4, 6), (6, 7)]),
+        input_nodes=[],
+        output_nodes=[3, 0, 5],
+        measurements={
+            1: Measurement.X,
+            2: Measurement.X,
+            4: Measurement.YZ(0.3),
+            6: Measurement.Z,
+            7: Measurement.Y,
+        },
+    )
+    _assert_round_trip(og.to_pattern())
+
+
 _MEASUREMENTS: list[Callable[[Generator], Measurement]] = [
     lambda r: Measurement.XY(float(r.random())),
     lambda r: Measurement.XZ(float(r.random())),
