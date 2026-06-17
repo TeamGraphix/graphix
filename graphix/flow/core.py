@@ -1538,9 +1538,12 @@ def _solve_pauli_correction_set(
         rhs.append(target ^ const_at(node))
 
     n_vars = len(variables)
-    if not matrix:
-        # No constraints: free variables default to 0, so the correction set is exactly
-        # the part of ``p(node)`` pinned by the X-corrections and the local proposition.
+    if not matrix:  # pragma: no cover
+        # Defensive guard for an empty constraint system: the free variables default to 0, so the
+        # correction set is exactly the part of ``p(node)`` pinned by the X-corrections and the
+        # local proposition. Unreachable for a measured node in practice -- the output nodes are
+        # maximally future (see the assertion above), so the future loop always contributes at
+        # least one row -- but kept so the GF(2) reduction below never runs on an empty matrix.
         return set(fixed_in_p)
 
     # Reduce the augmented matrix ``[A | b]`` to row echelon form together so that the

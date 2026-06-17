@@ -193,3 +193,5 @@ def test_to_pauli_flow_raises_when_no_flow_exists(
     with pytest.raises(FlowGenericError) as exc_info:
         XZCorrections(og, {}, {}, layers).to_pauli_flow()
     assert exc_info.value.reason == FlowGenericErrorReason.NoPauliFlow
+    # The rendered message names the failure so it is actionable in a traceback.
+    assert "No Pauli flow" in str(exc_info.value)
