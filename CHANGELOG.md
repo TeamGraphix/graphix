@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added new attribute `OpenGraph.output_cliffords`
   - Added `clifford` abstract method to `AbstractMeasurement`. Implemented it for `Plane` and `Axis`.
 
-- #524: Added pretty-printing for `Statevec` and `DensityMatrix` via new functions `statevec_to_str` and `density_matrix_to_str` (and the corresponding `__str__` methods), with ASCII, Unicode, and LaTeX output and recognition of common amplitudes (rational multiples, square roots, and factored uniform magnitudes).
+- #524: Added `Statevec.draw` and `DensityMatrix.draw` methods (and the underlying `statevec_to_str` and `density_matrix_to_str` functions) for pretty-printing states and density matrices in ASCII, Unicode, and LaTeX.
 
 ### Fixed
 
