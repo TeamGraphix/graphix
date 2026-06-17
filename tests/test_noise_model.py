@@ -7,7 +7,7 @@ import pytest
 
 from graphix import Pattern
 from graphix.clifford import Clifford
-from graphix.command import C, CommandKind, E, M, N, S, T, X
+from graphix.command import C, CommandKind, E, M, N, S, T, X, Z
 from graphix.noise_models import (
     AmplitudeDampingNoise,
     AmplitudeDampingNoiseModel,
@@ -104,41 +104,54 @@ def test_compose_noise_model_simulation(fx_rng: Generator) -> None:
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
 
 
+def _assert_noise(
+    cmd: CommandOrNoise,
+    noise_type: type[AmplitudeDampingNoise | TwoQubitAmplitudeDampingNoise],
+    gamma: float,
+    nodes: list[int],
+    domain: set[int] | None = None,
+) -> None:
+    assert isinstance(cmd, ApplyNoise)
+    assert isinstance(cmd.noise, noise_type)
+    assert cmd.noise.prob == gamma
+    assert cmd.nodes == nodes
+    assert cmd.domain == domain
+
+
 def test_amplitude_damping_command_injection() -> None:
     """Amplitude damping noise is injected at the correct command positions."""
     model = AmplitudeDampingNoiseModel(
         prepare_error_prob=0.1,
         x_error_prob=0.2,
+        z_error_prob=0.5,
         entanglement_error_prob=0.3,
         measure_channel_prob=0.4,
     )
 
     # N: noise applied AFTER preparation
     out = model.command(N(node=0))
-    assert len(out) == 2
     assert out[0].kind == CommandKind.N
-    assert isinstance(out[1], ApplyNoise)
-    assert isinstance(out[1].noise, AmplitudeDampingNoise)
-    assert out[1].nodes == [0]
+    _assert_noise(out[1], AmplitudeDampingNoise, 0.1, [0])
 
     # E: two-qubit noise applied AFTER entanglement
     out = model.command(E(nodes=(0, 1)))
     assert out[0].kind == CommandKind.E
-    assert isinstance(out[1], ApplyNoise)
-    assert isinstance(out[1].noise, TwoQubitAmplitudeDampingNoise)
-    assert out[1].noise.nqubits == 2
+    _assert_noise(out[1], TwoQubitAmplitudeDampingNoise, 0.3, [0, 1])
 
     # M: noise applied BEFORE measurement
     out = model.command(M(node=0))
-    assert isinstance(out[0], ApplyNoise)
-    assert isinstance(out[0].noise, AmplitudeDampingNoise)
+    _assert_noise(out[0], AmplitudeDampingNoise, 0.4, [0])
     assert out[1].kind == CommandKind.M
 
     # X: correction kept, noise conditioned on the same domain
     out = model.command(X(node=0, domain={1, 2}))
     assert out[0].kind == CommandKind.X
-    assert isinstance(out[1], ApplyNoise)
-    assert out[1].domain == {1, 2}
+    _assert_noise(out[1], AmplitudeDampingNoise, 0.2, [0], {1, 2})
+
+    # Z: correction kept, noise conditioned on the same domain
+    out = model.command(Z(node=0, domain={3}))
+    assert out[0].kind == CommandKind.Z
+    _assert_noise(out[1], AmplitudeDampingNoise, 0.5, [0], {3})
 
 
 @pytest.mark.parametrize(

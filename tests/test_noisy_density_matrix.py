@@ -603,11 +603,10 @@ class TestAmplitudeDampingAnalytic:
         self, rho: npt.NDArray[np.complex128], qubit: int, nqubit: int, gamma: float
     ) -> npt.NDArray[np.complex128]:
         """Apply amplitude damping to a single ``qubit`` of an ``nqubit`` register."""
-        eye = np.asarray(Ops.I, dtype=np.complex128)
         dim = 2**nqubit
         out = np.zeros((dim, dim), dtype=np.complex128)
         for k in self._kraus_operators(gamma):
-            ops = [eye] * nqubit
+            ops = [Ops.I] * nqubit
             ops[qubit] = k
             full = self._kron_all(ops)
             out += full @ rho @ full.conj().T
@@ -617,12 +616,11 @@ class TestAmplitudeDampingAnalytic:
         self, rho: npt.NDArray[np.complex128], qubit_a: int, qubit_b: int, nqubit: int, gamma: float
     ) -> npt.NDArray[np.complex128]:
         """Apply the two-qubit amplitude damping channel to ``qubit_a`` and ``qubit_b``."""
-        eye = np.asarray(Ops.I, dtype=np.complex128)
         dim = 2**nqubit
         out = np.zeros((dim, dim), dtype=np.complex128)
         for left in self._kraus_operators(gamma):
             for right in self._kraus_operators(gamma):
-                ops = [eye] * nqubit
+                ops = [Ops.I] * nqubit
                 ops[qubit_a] = left
                 ops[qubit_b] = right
                 full = self._kron_all(ops)
@@ -638,7 +636,6 @@ class TestAmplitudeDampingAnalytic:
 
     def _hadamard_expected(self, step: str, gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
         """Output density matrix of the Hadamard pattern with damping at ``step``."""
-        eye = np.asarray(Ops.I, dtype=np.complex128)
         rho = np.asarray(DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS]).rho, dtype=np.complex128)
         if step == "prep":
             rho = self._damp_qubit_in_register(rho, 0, 2, gamma)
@@ -650,8 +647,8 @@ class TestAmplitudeDampingAnalytic:
             rho = self._damp_qubit_in_register(rho, 0, 2, gamma)
 
         # measured qubit 0 in the X basis (XY plane, angle 0)
-        proj = np.kron(self._xy_projector(outcome, 0.0), eye)
-        rho = proj @ rho @ proj.conj().T
+        proj = np.kron(self._xy_projector(outcome, 0.0), Ops.I)
+        rho = proj @ rho @ proj
         rho = rho / np.trace(rho)
 
         reduced: npt.NDArray[np.complex128] = np.einsum("ijik->jk", rho.reshape(2, 2, 2, 2))
@@ -692,7 +689,6 @@ class TestAmplitudeDampingAnalytic:
         The RZ pattern measures node 0 (determining the Z correction) and node 1
         (determining the X correction) before the output lands on node 2.
         """
-        eye = np.asarray(Ops.I, dtype=np.complex128)
         rad = angle_to_rad(alpha)
 
         rho = np.asarray(
@@ -714,11 +710,11 @@ class TestAmplitudeDampingAnalytic:
 
         if step == "measure":
             rho = self._damp_qubit_in_register(rho, 0, 3, gamma)
-        proj0 = self._kron_all([self._xy_projector(outcome_z, -rad), eye, eye])
+        proj0 = self._kron_all([self._xy_projector(outcome_z, -rad), Ops.I, Ops.I])
         rho = proj0 @ rho @ proj0.conj().T
         if step == "measure":
             rho = self._damp_qubit_in_register(rho, 1, 3, gamma)
-        proj1 = self._kron_all([eye, self._xy_projector(outcome_x, 0.0), eye])
+        proj1 = self._kron_all([Ops.I, self._xy_projector(outcome_x, 0.0), Ops.I])
         rho = proj1 @ rho @ proj1.conj().T
         rho = rho / np.trace(rho)
 
