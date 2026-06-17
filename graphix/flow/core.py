@@ -1553,8 +1553,8 @@ def _solve_pauli_correction_set(
     augmented = augmented.gauss_elimination(ncols=n_vars)
     lhs = MatGF2(augmented[:, :n_vars])
     b = augmented[:, n_vars]
-    for i in range(lhs.shape[0]):
-        if not lhs[i].any() and b[i] != 0:
+    for coeffs, const in zip(lhs, b, strict=True):
+        if not np.any(coeffs) and const:
             return None
     # `solve_f2_linear_system` does not check if a solution exists or if `lhs` is in REF.
     solution = solve_f2_linear_system(lhs, MatGF2(b))
