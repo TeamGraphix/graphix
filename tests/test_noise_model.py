@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 from graphix import Pattern
-from graphix.command import C, CommandKind, E, M, N, S, T, X
 from graphix.clifford import Clifford
+from graphix.command import C, CommandKind, E, M, N, S, T, X
 from graphix.noise_models import (
     AmplitudeDampingNoise,
     AmplitudeDampingNoiseModel,
@@ -18,7 +18,7 @@ from graphix.noise_models import (
     TwoQubitAmplitudeDampingNoise,
     TwoQubitDepolarisingNoise,
 )
-from graphix.noise_models.noise_model import NoiselessNoiseModel
+from graphix.noise_models.noise_model import NoiselessNoiseModel, NoiseModel
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import DefaultMeasureMethod
@@ -26,7 +26,6 @@ from graphix.simulator import DefaultMeasureMethod
 if TYPE_CHECKING:
     from numpy.random import Generator
 
-    from graphix.measurements import Outcome
     from graphix.noise_models import CommandOrNoise
 
 
@@ -105,22 +104,6 @@ def test_compose_noise_model_simulation(fx_rng: Generator) -> None:
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
 
 
-def test_confuse_result(fx_rng: Generator) -> None:
-    # Pattern that measures 0 on qubit 0 with probability 1.
-    pattern = Pattern(cmds=[N(0), M(0)])
-    measure_method = DefaultMeasureMethod()
-    pattern.simulate_pattern(
-        backend="densitymatrix", noise_model=NoiselessNoiseModel(), rng=fx_rng, measure_method=measure_method
-    )
-    assert measure_method.results[0] == 0
-    noise_model = DepolarisingNoiseModel(measure_error_prob=1)
-    measure_method = DefaultMeasureMethod()
-    pattern.simulate_pattern(
-        backend="densitymatrix", noise_model=noise_model, rng=fx_rng, measure_method=measure_method
-    )
-    assert measure_method.results[0] == 1
-
-
 def test_amplitude_damping_command_injection() -> None:
     """Amplitude damping noise is injected at the correct command positions."""
     model = AmplitudeDampingNoiseModel(
@@ -158,11 +141,23 @@ def test_amplitude_damping_command_injection() -> None:
     assert out[1].domain == {1, 2}
 
 
-@pytest.mark.parametrize("outcome", [0, 1])
-def test_amplitude_damping_confuse_result_is_identity(outcome: Outcome) -> None:
-    """Amplitude damping introduces no classical readout error."""
-    model = AmplitudeDampingNoiseModel()
-    assert model.confuse_result(M(node=0), outcome) == outcome
+@pytest.mark.parametrize(
+    "noise_model",
+    [DepolarisingNoiseModel(measure_error_prob=1), AmplitudeDampingNoiseModel(measure_error_prob=1)],
+)
+def test_confuse_result(fx_rng: Generator, noise_model: NoiseModel) -> None:
+    # Pattern that measures 0 on qubit 0 with probability 1.
+    pattern = Pattern(cmds=[N(0), M(0)])
+    measure_method = DefaultMeasureMethod()
+    pattern.simulate_pattern(
+        backend="densitymatrix", noise_model=NoiselessNoiseModel(), rng=fx_rng, measure_method=measure_method
+    )
+    assert measure_method.results[0] == 0
+    measure_method = DefaultMeasureMethod()
+    pattern.simulate_pattern(
+        backend="densitymatrix", noise_model=noise_model, rng=fx_rng, measure_method=measure_method
+    )
+    assert measure_method.results[0] == 1
 
 
 def test_compose_amplitude_damping_depolarising_transpile(fx_rng: Generator) -> None:
@@ -230,6 +225,7 @@ def test_compose_amplitude_damping_depolarising_simulation(fx_rng: Generator) ->
     noise_model = ComposeNoiseModel([AmplitudeDampingNoiseModel(), DepolarisingNoiseModel()])
     state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
+
 
 def test_amplitude_damping_nqubits() -> None:
     # covers line 46: AmplitudeDampingNoise.nqubits returning 1

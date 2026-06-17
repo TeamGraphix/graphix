@@ -12,7 +12,9 @@ from graphix.channels import (
     two_qubit_amplitude_damping_channel,
 )
 from graphix.command import BaseM, CommandKind
+from graphix.measurements import toggle_outcome
 from graphix.noise_models.noise_model import ApplyNoise, Noise, NoiseModel
+from graphix.rng import ensure_rng
 from graphix.utils import Probability
 
 if TYPE_CHECKING:
@@ -92,12 +94,14 @@ class AmplitudeDampingNoiseModel(NoiseModel):
         z_error_prob: float = 0.0,
         entanglement_error_prob: float = 0.0,
         measure_channel_prob: float = 0.0,
+        measure_error_prob: float = 0.0,
     ) -> None:
         self.prepare_error_prob = prepare_error_prob
         self.x_error_prob = x_error_prob
         self.z_error_prob = z_error_prob
         self.entanglement_error_prob = entanglement_error_prob
         self.measure_channel_prob = measure_channel_prob
+        self.measure_error_prob = measure_error_prob
 
     @typing_extensions.override
     def input_nodes(
@@ -137,17 +141,15 @@ class AmplitudeDampingNoiseModel(NoiseModel):
                 return [cmd]
             case CommandKind.S:
                 raise ValueError("Unexpected signal!")
-            case _:
+            case _:  # pragma: no cover
                 typing_extensions.assert_never(cmd.kind)
 
     @typing_extensions.override
     def confuse_result(
         self, cmd: BaseM, result: Outcome, rng: Generator | None = None, *, stacklevel: int = 1
     ) -> Outcome:
-        r"""Return the measurement result unchanged.
-
-        Amplitude damping is a purely quantum channel and introduces no
-        classical readout error. Compose this model with another noise
-        model (e.g. via :class:`ComposeNoiseModel`) to add readout error.
-        """
+        """Assign wrong measurement result with probability ``measure_error_prob``."""
+        rng = ensure_rng(rng, stacklevel=stacklevel + 1)
+        if rng.uniform() < self.measure_error_prob:
+            return toggle_outcome(result)
         return result
