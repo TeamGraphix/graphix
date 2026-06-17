@@ -509,6 +509,18 @@ def _recognize_sqrt(x: float, max_denominator: int, atol: float, rtol: float) ->
         squarefree integer, encoding ``x = signed_num * sqrt(inner) / den``.
         Returns ``None`` when ``x`` is not recognized as such a value.
     """
+    # Direct rational case first: ``x = ±p / q`` with ``q ≤ max_denominator``.
+    # Without this, the squared-form path below would effectively require
+    # ``q ** 2 ≤ max_denominator`` to recognise simple rationals like ``1/2``,
+    # which surprises callers who pass ``max_denominator=2`` expecting denominators
+    # up to 2 in the output. By trying the direct fraction first, ``max_denominator``
+    # consistently bounds the denominator of the rendered value across all callers.
+    direct = Fraction(x).limit_denominator(max_denominator)
+    if math.isclose(x, float(direct), rel_tol=rtol, abs_tol=atol):
+        magnitude = abs(direct.numerator)
+        sign = -1 if direct.numerator < 0 else 1
+        return sign * magnitude, 1, direct.denominator
+
     square = Fraction(x * x).limit_denominator(max_denominator)
     if not math.isclose(x * x, float(square), rel_tol=rtol, abs_tol=atol):
         return None

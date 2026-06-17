@@ -392,11 +392,16 @@ def test_draw_max_denominator() -> None:
     # `max_denominator` caps the denominators the recognition will accept.
     dm = DensityMatrix(data=[BasicStates.PLUS])
     assert dm.draw(OutputFormat.Unicode) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
+    # `max_denominator=2` is the smallest cap that still recognizes 1/2,
+    # matching the user-facing semantics ("denominators up to N in the output").
+    assert dm.draw(OutputFormat.Unicode, max_denominator=2) == "[ 1/2  1/2 ]\n[ 1/2  1/2 ]"
     # With max_denominator=1, 1/2 can no longer be recognized and falls back to a decimal.
     assert dm.draw(OutputFormat.Unicode, max_denominator=1) == "[ 0.5  0.5 ]\n[ 0.5  0.5 ]"
-    # Same effect on the statevector draw (√2/2 -> 0.7071).
+    # Same effect on the statevector draw: √2/2 needs max_denominator >= 2 for the
+    # squared form 1/2 to be representable; below that it falls back to 0.7071.
     sv = Statevec([2**-0.5, 2**-0.5])
     assert sv.draw(OutputFormat.Unicode) == "√2/2(|0⟩ + |1⟩)"
+    assert sv.draw(OutputFormat.Unicode, max_denominator=2) == "√2/2(|0⟩ + |1⟩)"
     assert sv.draw(OutputFormat.Unicode, max_denominator=1) == "0.7071(|0⟩ + |1⟩)"
 
 
