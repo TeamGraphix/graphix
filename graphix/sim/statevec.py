@@ -16,6 +16,7 @@ from typing_extensions import override
 
 from graphix import parameter, states
 from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
+from graphix.pretty_print import OutputFormat, statevec_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
@@ -519,6 +520,64 @@ class Statevec(DenseState):
         .. :meth:`to_dict`
         """
         return self._to_dict_map(lambda x: np.abs(x) ** 2, encoding, rtol=rtol, atol=atol)
+
+    def draw(
+        self,
+        output: OutputFormat = OutputFormat.Unicode,
+        *,
+        encoding: _ENCODING = "MSB",
+        max_denominator: int = 1000,
+        atol: float = 1e-9,
+        rtol: float = 0.0,
+        precision: int = 4,
+    ) -> str:
+        r"""Return a pretty-printed ket-notation representation of the statevector.
+
+        Amplitudes are rendered with :func:`graphix.pretty_print.complex_to_str`,
+        so common values appear as exact expressions (e.g. ``√2/2``) rather than
+        floating-point numbers.
+
+        Parameters
+        ----------
+        output : OutputFormat, optional
+            Desired formatting style. Defaults to :attr:`OutputFormat.Unicode`.
+        encoding : {"LSB", "MSB"}, optional
+            Bit-ordering convention for the basis kets (default: ``"MSB"``).
+            See :meth:`to_dict`.
+        max_denominator : int, optional
+            Maximum denominator used by the amplitude recognition (default: ``1000``).
+        atol : float, optional
+            Absolute tolerance for dropping near-zero amplitudes and for the
+            recognition heuristics (default: ``1e-9``).
+        rtol : float, optional
+            Relative tolerance for dropping near-zero amplitudes (default: ``0.0``).
+        precision : int, optional
+            Number of significant digits to use for amplitudes that fall back to
+            a decimal representation (default: ``4``).
+
+        Returns
+        -------
+        str
+            The formatted statevector.
+
+        Examples
+        --------
+        >>> from graphix.transpiler import Circuit
+        >>> circuit = Circuit(2)
+        >>> circuit.h(0)
+        >>> circuit.cz(0, 1)
+        >>> print(circuit.simulate_statevector().statevec.draw())
+        √2/2(|00⟩ + |01⟩)
+        """
+        return statevec_to_str(
+            self,
+            output,
+            encoding=encoding,
+            max_denominator=max_denominator,
+            atol=atol,
+            rtol=rtol,
+            precision=precision,
+        )
 
     def _to_dict_map(
         self,
