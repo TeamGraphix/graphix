@@ -26,8 +26,8 @@ from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
 
 __all__ = [
-    "AmplitudeDampingNoiseModel",
     "ANGLE_PI",
+    "AmplitudeDampingNoiseModel",
     "Axis",
     "BasicStates",
     "BlochMeasurement",
