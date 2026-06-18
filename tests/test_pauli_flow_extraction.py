@@ -21,7 +21,7 @@ import pytest
 
 from graphix import Measurement, OpenGraph, Pattern
 from graphix.command import E, M, N, X, Z
-from graphix.flow.core import XZCorrections
+from graphix.flow.core import PauliFlow, XZCorrections
 from graphix.flow.exceptions import FlowGenericError, FlowGenericErrorReason
 from graphix.opengraph import OpenGraphError
 
@@ -174,6 +174,72 @@ def test_extract_pauli_flow_randomized_round_trip(seed: int) -> None:
         # The only documented raise condition of `OpenGraph.to_pattern`: no flow -> not a test case.
         pytest.skip("open graph does not admit a flow")
     _assert_round_trip(pattern)
+
+
+def test_extract_pauli_flow_pins_the_pattern_specific_flow() -> None:
+    r"""Reconstruction must return the Pauli flow implemented by *this* pattern, not just any Pauli flow of the underlying open graph.
+
+    A Pauli flow on an open graph is not unique when Pauli-measured nodes admit several distinct
+    anachronical-correction patterns. ``OpenGraph.find_pauli_flow`` returns *some* maximally
+    delayed Pauli flow (chosen by the underlying algorithm); a trivial implementation of
+    ``XZCorrections.to_pauli_flow`` that delegates to it -- and ignores the XZ-corrections of
+    the pattern entirely -- would therefore pass every existing round-trip test that happens
+    to feed it patterns whose flow already coincides with that algorithmic choice.
+
+    This test pins down a small open graph that admits two well-formed Pauli flows whose
+    ``to_corrections()`` outputs differ, builds the XZ-corrections of the *non-default* one,
+    and asserts that the reconstruction returns the chosen flow (and not the one
+    ``find_pauli_flow`` would have returned on the bare open graph).
+    """
+    og: OpenGraph[Measurement] = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+        input_nodes=[],
+        output_nodes=[3],
+        measurements={0: Measurement.X, 1: Measurement.X, 2: Measurement.X},
+    )
+    # Layer order: outputs first, then by measurement order (last layer measured first).
+    layers: list[set[int]] = [{3}, {2}, {1}, {0}]
+
+    # Two distinct, well-formed Pauli flows on the same open graph.
+    pf_with_anachronical = PauliFlow(og, {0: {1}, 1: {2}, 2: {3}}, layers)
+    pf_with_future = PauliFlow(og, {0: {1, 3}, 1: {2}, 2: {3}}, layers)
+    assert pf_with_anachronical.is_well_formed()
+    assert pf_with_future.is_well_formed()
+
+    xz_with_anachronical = pf_with_anachronical.to_corrections()
+    xz_with_future = pf_with_future.to_corrections()
+    # The corrections genuinely differ: the future-style flow X-corrects node 3 from
+    # node 0, the anachronical-style flow does not.
+    assert _norm(xz_with_anachronical.x_corrections) != _norm(xz_with_future.x_corrections)
+
+    # `find_pauli_flow` is allowed to return either valid flow (or another); what matters
+    # is that the trivial implementation `pf = self.og.find_pauli_flow()` is independent of
+    # the XZ-corrections we feed in -- so it cannot get both round-trips right.
+    trivial_choice = og.find_pauli_flow()
+    assert trivial_choice is not None
+    trivial_cf = {k: set(v) for k, v in trivial_choice.correction_function.items()}
+
+    # The real reconstruction must use the XZ-corrections to disambiguate.
+    rebuilt_anachronical = xz_with_anachronical.to_pauli_flow()
+    rebuilt_future = xz_with_future.to_pauli_flow()
+    assert dict(rebuilt_anachronical.correction_function) == {0: {1}, 1: {2}, 2: {3}}
+    assert dict(rebuilt_future.correction_function) == {0: {1, 3}, 1: {2}, 2: {3}}
+
+    # And the round-trip on each must still recover the original XZ-corrections exactly.
+    rt_anachronical = rebuilt_anachronical.to_corrections()
+    rt_future = rebuilt_future.to_corrections()
+    assert _norm(rt_anachronical.x_corrections) == _norm(xz_with_anachronical.x_corrections)
+    assert _norm(rt_anachronical.z_corrections) == _norm(xz_with_anachronical.z_corrections)
+    assert _norm(rt_future.x_corrections) == _norm(xz_with_future.x_corrections)
+    assert _norm(rt_future.z_corrections) == _norm(xz_with_future.z_corrections)
+
+    # Discriminator assertion: at least one of the two reconstructions must disagree with
+    # the trivial ``find_pauli_flow`` choice (the two flows differ from each other, so the
+    # trivial impl -- which returns the same flow regardless -- cannot match both).
+    assert (
+        dict(rebuilt_anachronical.correction_function) != trivial_cf
+        or dict(rebuilt_future.correction_function) != trivial_cf
+    )
 
 
 def test_to_pauli_flow_empty_pattern() -> None:
