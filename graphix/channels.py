@@ -298,6 +298,13 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
     )
 
 
+def _amplitude_damping_kraus(prob: float) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.complex128]]:
+    r"""Return the single-qubit amplitude damping Kraus operators."""
+    k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]], dtype=np.complex128)
+    k2 = np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]], dtype=np.complex128)
+    return k1, k2
+
+
 def amplitude_damping_channel(prob: float) -> KrausChannel:
     r"""Single-qubit amplitude damping channel.
 
@@ -315,10 +322,11 @@ def amplitude_damping_channel(prob: float) -> KrausChannel:
     :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
+    k1, k2 = _amplitude_damping_kraus(prob)
     return KrausChannel(
         [
-            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]], dtype=np.complex128)),
-            KrausData(1.0, np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]], dtype=np.complex128)),
+            KrausData(1.0, k1),
+            KrausData(1.0, k2),
         ]
     )
 
@@ -340,6 +348,5 @@ def two_qubit_amplitude_damping_channel(prob: float) -> KrausChannel:
     :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
-    k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - prob)]], dtype=np.complex128)
-    k2 = np.array([[0.0, np.sqrt(prob)], [0.0, 0.0]], dtype=np.complex128)
-    return KrausChannel([KrausData(1.0, np.kron(left, right)) for left in (k1, k2) for right in (k1, k2)])
+    operators = _amplitude_damping_kraus(prob)
+    return KrausChannel([KrausData(1.0, np.kron(left, right)) for left in operators for right in operators])

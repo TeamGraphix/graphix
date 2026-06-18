@@ -634,42 +634,43 @@ class TestAmplitudeDampingAnalytic:
         vec = np.array([1.0, sign * np.exp(1j * angle_rad)], dtype=np.complex128) / np.sqrt(2)
         return np.outer(vec, vec.conj())
 
-    def _hadamard_expected(self, step: str, gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
+    def _hadamard_expected(self, param: str, gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
         """Output density matrix of the Hadamard pattern with damping at ``step``."""
-        rho = np.asarray(DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS]).rho, dtype=np.complex128)
-        if step == "prep":
+        eye = np.asarray(Ops.I, dtype=np.complex128)
+        rho = DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS]).rho.astype(np.complex128, copy=False)
+        if param == "prepare_error_prob":
             rho = self._damp_qubit_in_register(rho, 0, 2, gamma)
             rho = self._damp_qubit_in_register(rho, 1, 2, gamma)
         rho = Ops.CZ @ rho @ Ops.CZ
-        if step == "entangle":
+        if param == "entanglement_error_prob":
             rho = self._damp_two_qubits_in_register(rho, 0, 1, 2, gamma)
-        if step == "measure":
+        if param == "measure_channel_prob":
             rho = self._damp_qubit_in_register(rho, 0, 2, gamma)
 
         # measured qubit 0 in the X basis (XY plane, angle 0)
-        proj = np.kron(self._xy_projector(outcome, 0.0), Ops.I)
-        rho = proj @ rho @ proj
+        proj = np.kron(self._xy_projector(outcome, 0.0), eye)
+        rho = proj @ rho @ proj.conj().T
         rho = rho / np.trace(rho)
 
         reduced: npt.NDArray[np.complex128] = np.einsum("ijik->jk", rho.reshape(2, 2, 2, 2))
         if outcome == 1:
             reduced = Ops.X @ reduced @ Ops.X
-            if step == "xcorr":
+            if param == "x_error_prob":
                 reduced = self._damp_one_qubit(reduced, gamma)
         return reduced
 
     @pytest.mark.parametrize("outcome", [0, 1])
     @pytest.mark.parametrize(
-        ("step", "param"),
+        ("param"),
         [
-            ("prep", "prepare_error_prob"),
-            ("entangle", "entanglement_error_prob"),
-            ("measure", "measure_channel_prob"),
-            ("xcorr", "x_error_prob"),
+            ("prepare_error_prob"),
+            ("entanglement_error_prob"),
+            ("measure_channel_prob"),
+            ("x_error_prob"),
         ],
     )
     def test_amplitude_damping_step_matches_analytic_hadamard(
-        self, step: str, param: str, outcome: Outcome, fx_rng: Generator
+        self, param: str, outcome: Outcome, fx_rng: Generator
     ) -> None:
         gamma = fx_rng.random()
         res = hpat().simulate_pattern(
@@ -679,10 +680,10 @@ class TestAmplitudeDampingAnalytic:
             rng=fx_rng,
         )
         assert isinstance(res, DensityMatrix)
-        assert np.allclose(res.rho, self._hadamard_expected(step, gamma, outcome))
+        assert np.allclose(res.rho, self._hadamard_expected(param, gamma, outcome))
 
     def _rz_expected(
-        self, step: str, gamma: float, alpha: Angle, outcome_z: Outcome, outcome_x: Outcome
+        self, param: str, gamma: float, alpha: Angle, outcome_z: Outcome, outcome_x: Outcome
     ) -> npt.NDArray[np.complex128]:
         """Output density matrix of the RZ pattern with damping at ``step``.
 
@@ -691,28 +692,27 @@ class TestAmplitudeDampingAnalytic:
         """
         rad = angle_to_rad(alpha)
 
-        rho = np.asarray(
-            DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS, BasicStates.PLUS]).rho,
-            dtype=np.complex128,
+        rho = DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS, BasicStates.PLUS]).rho.astype(
+            np.complex128, copy=False
         )
-        if step == "prep":
+        if param == "prepare_error_prob":
             for qubit in (0, 1, 2):
                 rho = self._damp_qubit_in_register(rho, qubit, 3, gamma)
 
         cz01 = np.kron(Ops.CZ, Ops.I)
         rho = cz01 @ rho @ cz01
-        if step == "entangle":
+        if param == "entanglement_error_prob":
             rho = self._damp_two_qubits_in_register(rho, 0, 1, 3, gamma)
         cz12 = np.kron(Ops.I, Ops.CZ)
         rho = cz12 @ rho @ cz12
-        if step == "entangle":
+        if param == "entanglement_error_prob":
             rho = self._damp_two_qubits_in_register(rho, 1, 2, 3, gamma)
 
-        if step == "measure":
+        if param == "measure_channel_prob":
             rho = self._damp_qubit_in_register(rho, 0, 3, gamma)
         proj0 = self._kron_all([self._xy_projector(outcome_z, -rad), Ops.I, Ops.I])
         rho = proj0 @ rho @ proj0.conj().T
-        if step == "measure":
+        if param == "measure_channel_prob":
             rho = self._damp_qubit_in_register(rho, 1, 3, gamma)
         proj1 = self._kron_all([Ops.I, self._xy_projector(outcome_x, 0.0), Ops.I])
         rho = proj1 @ rho @ proj1.conj().T
@@ -721,24 +721,24 @@ class TestAmplitudeDampingAnalytic:
         reduced: npt.NDArray[np.complex128] = np.einsum("ijkijl->kl", rho.reshape(2, 2, 2, 2, 2, 2))
         if outcome_x == 1:
             reduced = Ops.X @ reduced @ Ops.X
-            if step == "xcorr":
+            if param == "x_error_prob":
                 reduced = self._damp_one_qubit(reduced, gamma)
         if outcome_z == 1:
             reduced = Ops.Z @ reduced @ Ops.Z
-            if step == "zcorr":
+            if param == "z_error_prob":
                 reduced = self._damp_one_qubit(reduced, gamma)
         return reduced
 
     @pytest.mark.parametrize("outcome_x", [0, 1])
     @pytest.mark.parametrize("outcome_z", [0, 1])
     @pytest.mark.parametrize(
-        ("step", "param"),
+        ("param"),
         [
-            ("prep", "prepare_error_prob"),
-            ("entangle", "entanglement_error_prob"),
-            ("measure", "measure_channel_prob"),
-            ("xcorr", "x_error_prob"),
-            ("zcorr", "z_error_prob"),
+            ("prepare_error_prob"),
+            ("entanglement_error_prob"),
+            ("measure_channel_prob"),
+            ("x_error_prob"),
+            ("z_error_prob"),
         ],
     )
     def test_amplitude_damping_step_matches_analytic_rz(
