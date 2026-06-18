@@ -742,7 +742,7 @@ class TestAmplitudeDampingAnalytic:
         ],
     )
     def test_amplitude_damping_step_matches_analytic_rz(
-        self, step: str, param: str, outcome_z: Outcome, outcome_x: Outcome, fx_rng: Generator
+        self, param: str, outcome_z: Outcome, outcome_x: Outcome, fx_rng: Generator
     ) -> None:
         gamma = fx_rng.random()
         alpha = fx_rng.random()
@@ -755,4 +755,4 @@ class TestAmplitudeDampingAnalytic:
             rng=fx_rng,
         )
         assert isinstance(res, DensityMatrix)
-        assert np.allclose(res.rho, self._rz_expected(step, gamma, alpha, outcome_z, outcome_x))
+        assert np.allclose(res.rho, self._rz_expected(param, gamma, alpha, outcome_z, outcome_x))
