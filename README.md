@@ -28,12 +28,6 @@ Install `graphix` with `pip`:
 pip install graphix
 ```
 
-Install with [extra dependencies](https://github.com/TeamGraphix/graphix/blob/master/pyproject.toml) (e.g. pyzx):
-
-```bash
-pip install graphix[extra]
-```
-
 ### Editable installation using pip and uv
 
 As well as support for editable installation using pip, Graphix also supports using `uv`:
@@ -41,10 +35,10 @@ As well as support for editable installation using pip, Graphix also supports us
 ```bash
 git clone https://github.com/TeamGraphix/graphix.git
 cd graphix
-uv sync --extra dev --extra extra
+uv sync --extra dev
 ```
 
-This creates a virtual environment and installs all development and extra dependencies from the `pyproject.toml` and `uv` lockfile.
+This creates a virtual environment and installs all development dependencies from the `pyproject.toml` and `uv` lockfile.
 
 ## Using graphix
 
@@ -92,12 +86,13 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 ## Graphix plugins
 
-- [graphix-stim-backend](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
-- [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
-- [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
-- [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
-- [graphix-qasm-parser](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit.
+- [`graphix-ibmq`](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
+- [`graphix-perceval`](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
+- [`graphix-pyzx`](https://github.com/thierry-martinez/graphix-pyzx): conversion between open graphs and PyZX diagrams
+- [`graphix-qasm-parser`](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit.
+- [`graphix-stim-backend`](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
 - [`graphix-stim-compiler`](https://github.com/qat-inria/graphix-stim-compiler): `stim` backend for efficient compilation of Clifford maps.
+- [`graphix-symbolic`](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
 
 ## Related packages
 

@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #490: Introduced new `Instruction` and `Command` namespace classes for instruction and command instantiation.
 
-- #505
+- #505:
   - Added new methods `XZCorrections.to_causal_flow` and `XZCorrections.to_gflow` which subsume  `StandardizedPattern.extract_causal_flow` and `StandardizedPattern.extract_gflow`.
   - Added new methods `XZCorrections.to_bloch` and `XZCorrections.downcast_bloch`.
 
@@ -70,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `OpenGraph.compose` merges Clifford decorations with measurements or other Clifford decorations on outputs if required.
   - `.draw` methods allow to show Clifford commands in the outputs.
   - `PauliFlow.extract_circuit` raises `NotImplementedError` if the open graph has Clifford decorations.
+
+- #468, #511: The `pyzx` module has been moved to a separate plugin: https://github.com/thierry-martinez/graphix-pyzx/
+  Consequently, the `pyproject.toml` no longer defines an `extra` dependency group for the `pyzx` package.
 
 - #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
 

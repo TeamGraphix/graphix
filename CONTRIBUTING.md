@@ -15,7 +15,7 @@ Once created, you'll need to clone the repository, and you can follow below to s
 git clone git@github.com:<username>/graphix.git
 cd graphix
 pip install uv
-uv sync --extra dev --extra extra
+uv sync --extra dev
 ```
 
 ## Local checks
