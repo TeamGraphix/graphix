@@ -95,20 +95,17 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-stim-backend", branch="fix/graphix_498_remove_pauli"
-        ),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-pyzx"),
         ReverseDependency(
-            "https://github.com/thierry-martinez/veriphix",
+            "https://github.com/qat-inria/veriphix",
             doctest_modules=False,
             install_target=".[dev]",
-            branch="fix/graphix_498_remove_pauli",
         ),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
-        ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler", branch="ps_dim"),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="pyzx_from_graphix"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
