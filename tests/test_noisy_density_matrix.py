@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -9,10 +10,11 @@ import pytest
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
-from graphix.noise_models import DepolarisingNoiseModel
-from graphix.noise_models.noise_model import NoiselessNoiseModel
+from graphix.noise_models import AmplitudeDampingNoiseModel, DepolarisingNoiseModel
+from graphix.noise_models.noise_model import ComposeNoiseModel, NoiselessNoiseModel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
+from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -524,3 +526,233 @@ class TestNoisyDensityMatrixBackend:
             or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
             or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
         )
+
+
+class TestNoisyDensityMatrixAmplitudeDamping:
+    """Amplitude damping noise model on the density matrix backend."""
+
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
+    def test_noiseless_amplitude_damping_hadamard(self, fx_rng: Generator) -> None:
+        """A zero-parameter amplitude damping model reproduces the noiseless result."""
+        hadamardpattern = hpat()
+        noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
+        noisynoiselessres = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(),
+            rng=fx_rng,
+        )
+        assert isinstance(noiselessres, DensityMatrix)
+        assert isinstance(noisynoiselessres, DensityMatrix)
+        assert np.allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        assert np.allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
+    def test_noiseless_amplitude_damping_rz(self, fx_rng: Generator) -> None:
+        """A zero-parameter amplitude damping model reproduces the noiseless RZ result."""
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+        noiselessres = rzpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
+        noisynoiselessres = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(),
+            rng=fx_rng,
+        )
+        assert isinstance(noiselessres, DensityMatrix)
+        assert isinstance(noisynoiselessres, DensityMatrix)
+        assert np.allclose(noiselessres.rho, rz_exact_res(alpha))
+        assert np.allclose(noisynoiselessres.rho, rz_exact_res(alpha))
+
+    def test_compose_amplitude_damping_with_depolarising_runs(self, fx_rng: Generator) -> None:
+        """ComposeNoiseModel of depolarising + amplitude damping runs and stays normalized."""
+        hadamardpattern = hpat()
+        depol = DepolarisingNoiseModel(prepare_error_prob=0.2)
+        ad = AmplitudeDampingNoiseModel(prepare_error_prob=0.2)
+        composed = ComposeNoiseModel([depol, ad])
+
+        r_depol = hadamardpattern.simulate_pattern(backend="densitymatrix", noise_model=depol, rng=fx_rng)
+        r_both = hadamardpattern.simulate_pattern(backend="densitymatrix", noise_model=composed, rng=fx_rng)
+        assert isinstance(r_depol, DensityMatrix)
+        assert isinstance(r_both, DensityMatrix)
+        assert np.isclose(r_both.rho.trace(), 1.0)
+        assert not np.allclose(r_depol.rho, r_both.rho)
+
+
+class TestAmplitudeDampingAnalytic:
+    """Analytic per-step verification of amplitude damping on the Hadamard and RZ patterns."""
+
+    @staticmethod
+    def _kraus_operators(gamma: float) -> list[npt.NDArray[np.complex128]]:
+        return [
+            np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128),
+            np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128),
+        ]
+
+    @staticmethod
+    def _kron_all(ops: list[npt.NDArray[np.complex128]]) -> npt.NDArray[np.complex128]:
+        """Kronecker product of a list of operators, left to right."""
+        return functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128), ops)
+
+    def _damp_one_qubit(self, rho: npt.NDArray[np.complex128], gamma: float) -> npt.NDArray[np.complex128]:
+        """Apply single-qubit amplitude damping to a 2x2 density matrix."""
+        return sum(
+            (k @ rho @ k.conj().T for k in self._kraus_operators(gamma)),
+            np.zeros((2, 2), dtype=np.complex128),
+        )
+
+    def _damp_qubit_in_register(
+        self, rho: npt.NDArray[np.complex128], qubit: int, nqubit: int, gamma: float
+    ) -> npt.NDArray[np.complex128]:
+        """Apply amplitude damping to a single ``qubit`` of an ``nqubit`` register."""
+        dim = 2**nqubit
+        out = np.zeros((dim, dim), dtype=np.complex128)
+        for k in self._kraus_operators(gamma):
+            ops = [Ops.I] * nqubit
+            ops[qubit] = k
+            full = self._kron_all(ops)
+            out += full @ rho @ full.conj().T
+        return out
+
+    def _damp_two_qubits_in_register(
+        self, rho: npt.NDArray[np.complex128], qubit_a: int, qubit_b: int, nqubit: int, gamma: float
+    ) -> npt.NDArray[np.complex128]:
+        """Apply the two-qubit amplitude damping channel to ``qubit_a`` and ``qubit_b``."""
+        dim = 2**nqubit
+        out = np.zeros((dim, dim), dtype=np.complex128)
+        for left in self._kraus_operators(gamma):
+            for right in self._kraus_operators(gamma):
+                ops = [Ops.I] * nqubit
+                ops[qubit_a] = left
+                ops[qubit_b] = right
+                full = self._kron_all(ops)
+                out += full @ rho @ full.conj().T
+        return out
+
+    @staticmethod
+    def _xy_projector(outcome: Outcome, angle_rad: float) -> npt.NDArray[np.complex128]:
+        """Projector onto the XY-plane measurement basis state for the given outcome."""
+        sign = 1.0 if outcome == 0 else -1.0
+        vec = np.array([1.0, sign * np.exp(1j * angle_rad)], dtype=np.complex128) / np.sqrt(2)
+        return np.outer(vec, vec.conj())
+
+    def _hadamard_expected(self, param: str, gamma: float, outcome: Outcome) -> npt.NDArray[np.complex128]:
+        """Output density matrix of the Hadamard pattern with damping at ``step``."""
+        eye = np.asarray(Ops.I, dtype=np.complex128)
+        rho = DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS]).rho.astype(np.complex128, copy=False)
+        if param == "prepare_error_prob":
+            rho = self._damp_qubit_in_register(rho, 0, 2, gamma)
+            rho = self._damp_qubit_in_register(rho, 1, 2, gamma)
+        rho = Ops.CZ @ rho @ Ops.CZ
+        if param == "entanglement_error_prob":
+            rho = self._damp_two_qubits_in_register(rho, 0, 1, 2, gamma)
+        if param == "measure_channel_prob":
+            rho = self._damp_qubit_in_register(rho, 0, 2, gamma)
+
+        # measured qubit 0 in the X basis (XY plane, angle 0)
+        proj = np.kron(self._xy_projector(outcome, 0.0), eye)
+        rho = proj @ rho @ proj.conj().T
+        rho = rho / np.trace(rho)
+
+        reduced: npt.NDArray[np.complex128] = np.einsum("ijik->jk", rho.reshape(2, 2, 2, 2))
+        if outcome == 1:
+            reduced = Ops.X @ reduced @ Ops.X
+            if param == "x_error_prob":
+                reduced = self._damp_one_qubit(reduced, gamma)
+        return reduced
+
+    @pytest.mark.parametrize("outcome", [0, 1])
+    @pytest.mark.parametrize(
+        ("param"),
+        [
+            ("prepare_error_prob"),
+            ("entanglement_error_prob"),
+            ("measure_channel_prob"),
+            ("x_error_prob"),
+        ],
+    )
+    def test_amplitude_damping_step_matches_analytic_hadamard(
+        self, param: str, outcome: Outcome, fx_rng: Generator
+    ) -> None:
+        gamma = fx_rng.random()
+        res = hpat().simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(**{param: gamma}),
+            branch_selector=ConstBranchSelector(outcome),
+            rng=fx_rng,
+        )
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, self._hadamard_expected(param, gamma, outcome))
+
+    def _rz_expected(
+        self, param: str, gamma: float, alpha: Angle, outcome_z: Outcome, outcome_x: Outcome
+    ) -> npt.NDArray[np.complex128]:
+        """Output density matrix of the RZ pattern with damping at ``step``.
+
+        The RZ pattern measures node 0 (determining the Z correction) and node 1
+        (determining the X correction) before the output lands on node 2.
+        """
+        rad = angle_to_rad(alpha)
+
+        rho = DensityMatrix(data=[BasicStates.PLUS, BasicStates.PLUS, BasicStates.PLUS]).rho.astype(
+            np.complex128, copy=False
+        )
+        if param == "prepare_error_prob":
+            for qubit in (0, 1, 2):
+                rho = self._damp_qubit_in_register(rho, qubit, 3, gamma)
+
+        cz01 = np.kron(Ops.CZ, Ops.I)
+        rho = cz01 @ rho @ cz01
+        if param == "entanglement_error_prob":
+            rho = self._damp_two_qubits_in_register(rho, 0, 1, 3, gamma)
+        cz12 = np.kron(Ops.I, Ops.CZ)
+        rho = cz12 @ rho @ cz12
+        if param == "entanglement_error_prob":
+            rho = self._damp_two_qubits_in_register(rho, 1, 2, 3, gamma)
+
+        if param == "measure_channel_prob":
+            rho = self._damp_qubit_in_register(rho, 0, 3, gamma)
+        proj0 = self._kron_all([self._xy_projector(outcome_z, -rad), Ops.I, Ops.I])
+        rho = proj0 @ rho @ proj0.conj().T
+        if param == "measure_channel_prob":
+            rho = self._damp_qubit_in_register(rho, 1, 3, gamma)
+        proj1 = self._kron_all([Ops.I, self._xy_projector(outcome_x, 0.0), Ops.I])
+        rho = proj1 @ rho @ proj1.conj().T
+        rho = rho / np.trace(rho)
+
+        reduced: npt.NDArray[np.complex128] = np.einsum("ijkijl->kl", rho.reshape(2, 2, 2, 2, 2, 2))
+        if outcome_x == 1:
+            reduced = Ops.X @ reduced @ Ops.X
+            if param == "x_error_prob":
+                reduced = self._damp_one_qubit(reduced, gamma)
+        if outcome_z == 1:
+            reduced = Ops.Z @ reduced @ Ops.Z
+            if param == "z_error_prob":
+                reduced = self._damp_one_qubit(reduced, gamma)
+        return reduced
+
+    @pytest.mark.parametrize("outcome_x", [0, 1])
+    @pytest.mark.parametrize("outcome_z", [0, 1])
+    @pytest.mark.parametrize(
+        ("param"),
+        [
+            ("prepare_error_prob"),
+            ("entanglement_error_prob"),
+            ("measure_channel_prob"),
+            ("x_error_prob"),
+            ("z_error_prob"),
+        ],
+    )
+    def test_amplitude_damping_step_matches_analytic_rz(
+        self, param: str, outcome_z: Outcome, outcome_x: Outcome, fx_rng: Generator
+    ) -> None:
+        gamma = fx_rng.random()
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+        results: dict[int, Outcome] = {0: outcome_z, 1: outcome_x}
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=AmplitudeDampingNoiseModel(**{param: gamma}),
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
+        )
+        assert isinstance(res, DensityMatrix)
+        assert np.allclose(res.rho, self._rz_expected(param, gamma, alpha, outcome_z, outcome_x))
