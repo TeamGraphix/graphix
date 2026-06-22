@@ -131,7 +131,8 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
             else:
                 session.run("git", "clone", "-b", package.branch, package.repository, external=True)
             with session.cd(dirname):
-                session.install(package.install_target)
+                # graphix installation fails without constraint on numba
+                session.install(package.install_target, "numba>=0.65.1")
         # Note that `session.cd` is used as a context manager above,
         # so that the working directory is restored at this point.  We
         # install now the graphix package from the working directory.
