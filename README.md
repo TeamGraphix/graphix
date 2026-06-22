@@ -88,10 +88,10 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - [`graphix-ibmq`](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
 - [`graphix-perceval`](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
-- [`graphix-pyzx`](https://github.com/thierry-martinez/graphix-pyzx): conversion between open graphs and PyZX diagrams
+- [`graphix-pyzx`](https://github.com/TeamGraphix/graphix-pyzx): conversion between open graphs and PyZX diagrams
 - [`graphix-qasm-parser`](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit.
-- [`graphix-stim-backend`](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
-- [`graphix-stim-compiler`](https://github.com/qat-inria/graphix-stim-compiler): `stim` backend for efficient compilation of Clifford maps.
+- [`graphix-stim-backend`](https://github.com/TeamGraphix/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
+- [`graphix-stim-compiler`](https://github.com/TeamGraphix/graphix-stim-compiler): `stim` backend for efficient compilation of Clifford maps.
 - [`graphix-symbolic`](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
 
 ## Related packages
