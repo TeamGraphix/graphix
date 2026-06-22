@@ -653,7 +653,7 @@ class TestDensityMatrix:
         dm = DensityMatrix(randobj.rand_dm(2, fx_rng))
 
         # copy of initial dm
-        rho_test = np.asarray(dm.rho, dtype=np.complex128)
+        rho_test = dm.rho
 
         # create dephasing channel
         prob = fx_rng.uniform()
