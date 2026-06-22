@@ -356,7 +356,7 @@ class TestTN:
         for qargs in itertools.permutations(input_list):
             value1 = state.expectation_value(random_op3, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
-            assert value1 == pytest.approx(value2)
+            assert value1 == pytest.approx(value2)  # pyright: ignore[reportUnknownMemberType]
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_coef_state(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:
@@ -373,7 +373,7 @@ class TestTN:
             coef_tn = tn.basis_coefficient(number)
             coef_sv = statevec_ref.flatten()[number]
 
-            assert abs(coef_tn) == pytest.approx(abs(coef_sv))
+            assert abs(coef_tn) == pytest.approx(abs(coef_sv))  # pyright: ignore[reportUnknownMemberType]
 
     @pytest.mark.parametrize(("nqubits", "jumps"), itertools.product(range(2, 6), range(1, 6)))
     def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int, fx_rng: Generator) -> None:
@@ -408,4 +408,4 @@ class TestTN:
         expval_tn = tn_mbqc.expectation_value(random_op3_exp, [0, 1, 2])
         expval_ref = state.expectation_value(random_op3_exp, [0, 1, 2])
 
-        assert expval_tn == pytest.approx(expval_ref)
+        assert expval_tn == pytest.approx(expval_ref)  # pyright: ignore[reportUnknownMemberType]
