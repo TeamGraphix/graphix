@@ -18,8 +18,9 @@ from graphix.parameter import Expression, cos_sin
 from graphix.repr_mixins import EnumReprMixin
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
+    from typing import Self, TypeAlias
 
+    from graphix.clifford import Clifford
     from graphix.parameter import ExpressionOrFloat
 
 Angle: TypeAlias = float
@@ -293,6 +294,48 @@ class AbstractMeasurement(ABC):
         """
         return self == other
 
+    @abstractmethod
+    def clifford(self, clifford_gate: Clifford) -> Self:
+        r"""Return a new measurement command with a :class:`Clifford` applied.
+
+        Parameters
+        ----------
+        clifford_gate : Clifford
+            Clifford gate to apply before the measurement.
+
+        Returns
+        -------
+        Self
+            Equivalent measurement representing the pattern ``MC``.
+
+        Notes
+        -----
+        - The return type is ``Self``, meaning that a Clifford applied
+          to a Bloch measurement returns a Bloch measurement, and a
+          Clifford applied to a Pauli measurement returns a Pauli
+          measurement.
+        - The method :func:`Measurement.clifford` does not always
+          commute with the method :func:`Measurement.to_bloch`: the
+          underlying Pauli measurement will be the same but the Bloch
+          representation can be on different planes.
+
+        Examples
+        --------
+        >>> from graphix.clifford import Clifford
+        >>> from graphix.measurements import Measurement, PauliMeasurement
+        >>> Measurement.XY(0.25).clifford(Clifford.H)
+        Measurement.YZ(1.75)
+        >>> Measurement.X.clifford(Clifford.S)
+        -Measurement.Y
+        >>> for pauli in PauliMeasurement:
+        ...     for clifford in Clifford:
+        ...         assert pauli.to_bloch().clifford(clifford).try_to_pauli() == pauli.clifford(clifford)
+        >>> Measurement.Y.clifford(Clifford.H).to_bloch()
+        Measurement.XY(1.5)
+        >>> Measurement.Y.to_bloch().clifford(Clifford.H)
+        Measurement.YZ(1.5)
+        """
+
 
 class AbstractPlanarMeasurement(AbstractMeasurement):
     """Abstract base class for planar measurement objects.
@@ -327,6 +370,10 @@ class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     @override
     def to_plane_or_axis(self) -> Axis:
         return self
+
+    @override
+    def clifford(self, clifford_gate: Clifford) -> Axis:
+        return clifford_gate.measure_axis(self).axis
 
 
 class SingletonI(Enum):
@@ -457,3 +504,7 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
         Plane
         """
         return self
+
+    @override
+    def clifford(self, clifford_gate: Clifford) -> Plane:
+        return Plane.from_axes(*(axis.clifford(clifford_gate) for axis in self.axes))

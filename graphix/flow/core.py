@@ -21,7 +21,7 @@ from graphix.circ_ext.extraction import (
     PauliExponentialDAG,
     extraction_ps_from_corrected_node,
 )
-from graphix.command import E, M, N, X, Z
+from graphix.command import C, E, M, N, X, Z
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
     compute_partial_order_layers,
@@ -199,6 +199,9 @@ class XZCorrections(Generic[_AM_co]):
 
             for corrected_node in self.x_corrections.get(measured_node, []):
                 pattern.add(X(node=corrected_node, domain={measured_node}))
+
+        for output_node, clifford in self.og.output_cliffords.items():
+            pattern.add(C(node=output_node, clifford=clifford))
 
         pattern.reorder_output_nodes(self.og.output_nodes)
         return pattern
@@ -792,22 +795,8 @@ class PauliFlow(Generic[_AM_co]):
 
         Parameters
         ----------
-        pauli_measurements : bool, default=True
-            If ``True``, Pauli-measured nodes are highlighted with distinct coloring.
-        measurement_labels : bool, default=False
-            If ``True``, measurement labels (planes and axis) are displayed in the visualization.
-        node_labels : bool | Mapping[int, str], default=True
-            If ``True``, display numeric node labels. If a mapping, use custom labels
-            for nodes specified in the mapping.
-        node_distance : tuple[float, float], default=(1, 1)
-            Scaling factors (x_scale, y_scale) applied to node positions.
-        legend : bool, default=True
-            If ``True``, legend is shown.
-        figsize : tuple[int, int] | None, default=None
-            Figure dimensions (width, height) in inches. If ``None``, dimensions are
-            determined automatically based on graph structure.
-        filename : Path | None, default=None
-            File path to save the visualization. If ``None``, figure is displayed but not saved.
+        options: Unpack[DrawKwargs]
+            Options controlling graph visualization. See :class:`VisualizationOptions`.
         """
         from graphix.visualization import GraphVisualizer  # noqa: PLC0415  Avoid circular imports
 
@@ -937,6 +926,8 @@ class PauliFlow(Generic[_AM_co]):
         [1] Simmons, 2021 (arXiv:2109.05654).
         [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
+        if self.og.output_cliffords:
+            raise NotImplementedError("Circuit extraction is not supported for open graphs with Clifford decorations.")
         pexp_dag = PauliExponentialDAG.from_focused_flow(self)
         clifford_map = CliffordMap.from_focused_flow(self)
 

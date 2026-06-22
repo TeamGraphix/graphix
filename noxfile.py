@@ -40,7 +40,10 @@ def tests_minimal(session: Session) -> None:
     """Run the test suite with minimal dependencies."""
     session.install(".")
     install_pytest(session)
-    run_pytest(session, mpl=True)
+    # We cannot run `pytest --mpl` here because the visualization output
+    # depends on the Matplotlib version, and the pinning is only present
+    # in the `dev` extra.
+    run_pytest(session)
 
 
 @nox.session(python=PYTHON_VERSIONS)
