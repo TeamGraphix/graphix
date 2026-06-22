@@ -46,8 +46,8 @@ dev = [
     "mypy==2.1.0",
     "pre-commit",
     "pyright",
-    "ruff==0.15.14",
-    "types-networkx==3.6.1.20260518",
+    "ruff==0.15.17",
+    "types-networkx==3.6.1.20260612",
     "types-psutil",
     "types-setuptools",
     "scipy-stubs",
@@ -58,9 +58,10 @@ dev = [
     "pytest-cov",
     "pytest-mock",
     "pytest-mpl",
-    "qiskit>=1.0",
+    "qiskit>=1.0,<2.4",
     "qiskit_qasm3_import",
     "qiskit-aer",
+    "matplotlib==3.10.9",
 ]
 doc = [
     "furo",

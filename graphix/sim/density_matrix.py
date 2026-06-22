@@ -19,6 +19,7 @@ from graphix import linalg_validations as lv
 from graphix import parameter
 from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
+from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
 from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, State
@@ -129,6 +130,44 @@ class DensityMatrix(DenseState):
     def __str__(self) -> str:
         """Return a string description."""
         return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
+
+    def draw(
+        self,
+        output: OutputFormat = OutputFormat.Unicode,
+        *,
+        max_denominator: int = 1000,
+        atol: float = 1e-9,
+        rtol: float = 0.0,
+        precision: int = 4,
+    ) -> str:
+        r"""Return a pretty-printed matrix representation of the density matrix.
+
+        Each entry is rendered with :func:`graphix.pretty_print.complex_to_str`,
+        so common values appear as exact expressions (e.g. ``1/2``) rather than
+        floating-point numbers.
+
+        Parameters
+        ----------
+        output : OutputFormat, optional
+            Desired formatting style. Defaults to :attr:`OutputFormat.Unicode`.
+        max_denominator : int, optional
+            Maximum denominator used by the entry recognition (default: ``1000``).
+        atol : float, optional
+            Absolute tolerance for the recognition heuristics (default: ``1e-9``).
+        rtol : float, optional
+            Relative tolerance for the recognition heuristics (default: ``0.0``).
+        precision : int, optional
+            Number of significant digits to use for entries that fall back to a
+            decimal representation (default: ``4``).
+
+        Returns
+        -------
+        str
+            The formatted density matrix.
+        """
+        return density_matrix_to_str(
+            self, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision
+        )
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
