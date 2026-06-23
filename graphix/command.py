@@ -116,7 +116,7 @@ class BaseM(BaseCommand):
 
     @override
     def reindex(self, f: Callable[[Node], Node]) -> BaseM:
-        return BaseM(f(self.node))
+        return dataclasses.replace(self, node=f(self.node))
 
 
 @dataclasses.dataclass(repr=False)
