@@ -19,9 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `transpile` argument to `qasm3_exporter.circuit_to_qasm3` and `qasm3_exporter.circuit_to_qasm3_lines`, which defaults to true and applies `Circuit.transpile_j_to_rzh` and `Circuit.transpile_measurements_to_z_axis` methods.
   - The transpiler now returns `TranspiledPattern` or `TranspiledFlow`, instead of `TranspileResult`.
 
+- #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
+
 - #490: Introduced new `Instruction` and `Command` namespace classes for instruction and command instantiation.
 
-- #505
+- #505:
   - Added new methods `XZCorrections.to_causal_flow` and `XZCorrections.to_gflow` which subsume  `StandardizedPattern.extract_causal_flow` and `StandardizedPattern.extract_gflow`.
   - Added new methods `XZCorrections.to_bloch` and `XZCorrections.downcast_bloch`.
 
@@ -30,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #510
   - Added new attribute `OpenGraph.output_cliffords`
   - Added `clifford` abstract method to `AbstractMeasurement`. Implemented it for `Plane` and `Axis`.
+
+- #524: Added `Statevec.draw` and `DensityMatrix.draw` methods (and the underlying `statevec_to_str` and `density_matrix_to_str` functions) for pretty-printing states and density matrices in ASCII, Unicode, and LaTeX.
 
 ### Fixed
 
@@ -74,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `OpenGraph.compose` merges Clifford decorations with measurements or other Clifford decorations on outputs if required.
   - `.draw` methods allow to show Clifford commands in the outputs.
   - `PauliFlow.extract_circuit` raises `NotImplementedError` if the open graph has Clifford decorations.
+
+- #468, #511: The `pyzx` module has been moved to a separate plugin: https://github.com/thierry-martinez/graphix-pyzx/
+  Consequently, the `pyproject.toml` no longer defines an `extra` dependency group for the `pyzx` package.
 
 - #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
 
