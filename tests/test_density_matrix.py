@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import functools
+import itertools
 import random
 from typing import TYPE_CHECKING
 
@@ -21,13 +22,17 @@ from graphix.channels import (
 )
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
+from graphix.random_objects import rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
+from tests.test_statevec import permute_with_swap
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.random import Generator
 
     from graphix.measurements import Outcome
@@ -1024,3 +1029,21 @@ class TestDensityMatrixBackend:
             else np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         )
         assert np.allclose(backend.state.rho, expected_matrix)
+
+
+@pytest.mark.parametrize("permutation", itertools.permutations(range(3)))
+def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
+    nqubits = len(permutation)
+    dm = DensityMatrix(rand_state_vector(nqubits, fx_rng))
+    dm_ref = copy.copy(dm)
+    dm.permute(permutation)
+    permute_with_swap(dm_ref, permutation)
+    assert np.array_equal(dm.rho, dm_ref.rho)
+
+
+def test_permute_bad_permutation() -> None:
+    dm = DensityMatrix(nqubit=2)
+    with pytest.raises(ValueError, match="Permutation has length"):
+        dm.permute([0])
+    with pytest.raises(ValueError, match="not a permutation"):
+        dm.permute([1, 2])

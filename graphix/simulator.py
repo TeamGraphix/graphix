@@ -407,6 +407,25 @@ class PatternSimulator(Generic[_StateT_co]):
             Stack level to use for warnings. Defaults to 1, meaning that warnings
             are reported at this function's call site.
         """
+        # Check whether the backend is properly initialized.  We
+        # disable the check for TensorNetworkBackend because its
+        # current behavior differs from other backends.
+        if not isinstance(self.backend, TensorNetworkBackend):
+            initial_nqubit = self.backend.nqubit
+            if input_state is None:
+                # No explicit state supplied: the backend must already contain the
+                # required input qubits.
+                input_nodes_len = len(self.pattern.input_nodes)
+                if initial_nqubit != input_nodes_len:
+                    raise ValueError(
+                        f"`input_state` is `None`: the backend is expected to have {input_nodes_len} input nodes already prepared, but {initial_nqubit} were found."
+                    )
+            # An explicit state was supplied: the backend must start with a clean
+            # state (no pre-allocated qubits).
+            elif initial_nqubit != 0:
+                raise ValueError(
+                    f"`input_state` is not `None`: the backend is expected to have no pre-allocated qubits, but has {initial_nqubit} qubits."
+                )
         if input_state is not None:
             self.backend.add_nodes(self.pattern.input_nodes, input_state)
         if self.noise_model is None:

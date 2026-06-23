@@ -719,13 +719,14 @@ class TestAmplitudeDampingAnalytic:
         rho = rho / np.trace(rho)
 
         reduced: npt.NDArray[np.complex128] = np.einsum("ijkijl->kl", rho.reshape(2, 2, 2, 2, 2, 2))
-        if outcome_x == 1:
-            reduced = Ops.X @ reduced @ Ops.X
-            if param == "x_error_prob":
-                reduced = self._damp_one_qubit(reduced, gamma)
+        # In standardized patterns, Z corrections are applied before X corrections.
         if outcome_z == 1:
             reduced = Ops.Z @ reduced @ Ops.Z
             if param == "z_error_prob":
+                reduced = self._damp_one_qubit(reduced, gamma)
+        if outcome_x == 1:
+            reduced = Ops.X @ reduced @ Ops.X
+            if param == "x_error_prob":
                 reduced = self._damp_one_qubit(reduced, gamma)
         return reduced
 
@@ -747,6 +748,9 @@ class TestAmplitudeDampingAnalytic:
         gamma = fx_rng.random()
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
+        # Standardization is not necessary here, since current Graphix
+        # transpiler puts Z corrections before X corrections by
+        # default.
         results: dict[int, Outcome] = {0: outcome_z, 1: outcome_x}
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",

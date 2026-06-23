@@ -92,7 +92,9 @@ class MBQCVQE:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
-        pattern.remove_pauli_measurements()  # Perform Pauli measurements
+        pattern = pattern.infer_pauli_measurements()
+        pattern.remove_pauli_measurements()
+        pattern.minimize_space()
         return pattern
 
     # %%
@@ -155,7 +157,7 @@ initial_params = rng.random(n_qubits * 3)
 # %%
 # Perform the optimization using COBYLA
 def compute() -> OptimizeResult:
-    return minimize(cost_function, initial_params, method="COBYLA", options={"maxiter": 100})
+    return minimize(cost_function, initial_params, method="COBYLA", options={"maxiter": 20})
 
 
 result = compute()
@@ -172,9 +174,9 @@ print(f"Analytical solution: {analytical_solution}")
 # Compare performances between using parameterized circuits (with placeholders) or not
 
 mbqc_vqe = MBQCVQEWithPlaceholders(n_qubits, hamiltonian)
-time_with_placeholders = timeit(compute, number=2)
+time_with_placeholders = timeit(compute, number=1)
 print(f"Time with placeholders: {time_with_placeholders}")
 
 mbqc_vqe = MBQCVQE(n_qubits, hamiltonian)
-time_without_placeholders = timeit(compute, number=2)
+time_without_placeholders = timeit(compute, number=1)
 print(f"Time without placeholders: {time_without_placeholders}")

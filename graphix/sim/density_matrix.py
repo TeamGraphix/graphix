@@ -21,7 +21,7 @@ from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
 from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, _check_permutation
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
@@ -176,6 +176,7 @@ class DensityMatrix(DenseState):
             - A multi-qubit state vector of dimension :math:`2^n` initializes the new nodes jointly.
             - A density matrix must have shape :math:`2^n \times 2^n`,
               and is used to jointly initialize the new nodes.
+            - The type of nodes to be added is inferred from the type of the existing ``DensityMatrix``.
 
         Notes
         -----
@@ -298,6 +299,8 @@ class DensityMatrix(DenseState):
         """
         if not isinstance(other, DensityMatrix):
             other = DensityMatrix(other)
+        if self.rho.dtype == np.object_ and other.rho.dtype != np.object_:
+            other.rho = other.rho.astype(np.object_, copy=False)  # pragma: nocover
         self.rho = kron(self.rho, other.rho)
 
     def cnot(self, edge: tuple[int, int]) -> None:
@@ -320,6 +323,17 @@ class DensityMatrix(DenseState):
                 (control, target) qubits indices.
         """
         self.evolve(SWAP_TENSOR.reshape(4, 4), qubits)
+
+    @override
+    def permute(self, permutation: Sequence[int]) -> None:
+        nqubit = self.nqubit
+        _check_permutation(permutation, nqubit)
+        tensor_shape = [2] * (2 * nqubit)
+        perm_cols = [i + nqubit for i in permutation]
+        full_permutation = [*permutation, *perm_cols]
+        rho_tensor = self.rho.reshape(tensor_shape)
+        rho_permuted_tensor = np.transpose(rho_tensor, axes=full_permutation)
+        self.rho = rho_permuted_tensor.reshape((2**nqubit, 2**nqubit))
 
     def entangle(self, edge: tuple[int, int]) -> None:
         """Connect graph nodes.
