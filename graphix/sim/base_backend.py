@@ -845,24 +845,6 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         self.node_index.clear()
         self.node_index.extend(output_nodes)
 
-    def sort_qubits(self, output_nodes: Iterable[int]) -> None:
-        """Sort the qubit order in internal statevector."""
-        for i, ind in enumerate(output_nodes):
-            if self.node_index.index(ind) != i:
-                move_from = self.node_index.index(ind)
-                self.state.swap((i, move_from))
-                self.node_index.swap(i, move_from)
-
-    # @override
-    # def finalize(self, output_nodes: Iterable[int]) -> None:
-    #    """To be run at the end of pattern simulation."""
-    #    from copy import copy
-    #    duplicate = copy(self)
-    #    duplicate.sort_qubits(output_nodes)
-    #    self.state.permute([self.node_index.index(node) for node in output_nodes])
-    #    if not self.state.isclose(duplicate.state):
-    #        assert False, output_nodes
-
     @property
     @override
     def nqubit(self) -> int:
