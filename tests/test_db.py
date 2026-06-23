@@ -77,7 +77,7 @@ def generate_clifford_pauli_decomposition(rng: Generator) -> tuple[tuple[PauliMe
     """Compute the value of CLIFFORD_PAULI_DECOMPOSITION.
 
     This function ensures that the length of the decomposition is
-    optimal by search exhaustively by increasing length.
+    optimal by searching exhaustively for increasing length.
     """
     pauli_measurements = tuple(PauliMeasurement)
     input_states = tuple(rand_state_vector(nqubits=1, rng=rng) for _ in range(10))
