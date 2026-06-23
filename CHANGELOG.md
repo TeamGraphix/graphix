@@ -19,8 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `transpile` argument to `qasm3_exporter.circuit_to_qasm3` and `qasm3_exporter.circuit_to_qasm3_lines`, which defaults to true and applies `Circuit.transpile_j_to_rzh` and `Circuit.transpile_measurements_to_z_axis` methods.
   - The transpiler now returns `TranspiledPattern` or `TranspiledFlow`, instead of `TranspileResult`.
 
-- #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
-
 - #490: Introduced new `Instruction` and `Command` namespace classes for instruction and command instantiation.
 
 - #505:
@@ -34,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `clifford` abstract method to `AbstractMeasurement`. Implemented it for `Plane` and `Axis`.
 
 - #524: Added `Statevec.draw` and `DensityMatrix.draw` methods (and the underlying `statevec_to_str` and `density_matrix_to_str` functions) for pretty-printing states and density matrices in ASCII, Unicode, and LaTeX.
+
+- #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
 ### Fixed
 
@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Method `Pattern.draw_graph` subsumed by two different methods: `Pattern.draw_flow` and `Pattern.draw_xzcorrections`.
 
 - #454, #481: New space minimization API that allows users to select or define custom heuristics.
+
+- #484: The dense back‑ends now perform the finalisation step by reordering the output qubits with a new `permute` method, replacing the old `sort_qubits`.
 
 - #490: Exposed more common classes and methods to top level `__init__.py`.
   - Renamed `Instruction`, `InstructionWithoutRZZ` and `Command` to `InstructionType`, `InstructionTypeWithoutRZZ` and `CommandType` respectively.
