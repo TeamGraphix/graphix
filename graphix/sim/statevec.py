@@ -16,6 +16,7 @@ from typing_extensions import override
 
 from graphix import parameter, states
 from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
+from graphix.pretty_print import OutputFormat, statevec_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
@@ -165,6 +166,7 @@ class Statevec(DenseState):
             - A single-qubit state vector will be broadcast to all nodes.
             - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
               initializes the new nodes jointly.
+            - The type of nodes to be added is inferred from the type of the existing ``Statevec``.
 
         Notes
         -----
@@ -301,6 +303,8 @@ class Statevec(DenseState):
         psi_other = other.psi.flatten()
 
         total_num = len(self.dims()) + len(other.dims())
+        if psi_self.dtype == np.object_ and psi_other.dtype != np.object_:
+            psi_other = psi_other.astype(np.object_, copy=False)  # pragma: nocover
         self.psi = kron(psi_self, psi_other).reshape((2,) * total_num)
 
     def cnot(self, qubits: tuple[int, int]) -> None:
@@ -329,6 +333,11 @@ class Statevec(DenseState):
         psi = tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
         self.psi = np.moveaxis(psi, (0, 1), qubits)
+
+    @override
+    def permute(self, permutation: Sequence[int]) -> None:
+        _check_permutation(permutation, self.nqubit)
+        self.psi = np.transpose(self.psi, permutation)
 
     def normalize(self) -> None:
         """Normalize the state in-place."""
@@ -520,6 +529,64 @@ class Statevec(DenseState):
         """
         return self._to_dict_map(lambda x: np.abs(x) ** 2, encoding, rtol=rtol, atol=atol)
 
+    def draw(
+        self,
+        output: OutputFormat = OutputFormat.Unicode,
+        *,
+        encoding: _ENCODING = "MSB",
+        max_denominator: int = 1000,
+        atol: float = 1e-9,
+        rtol: float = 0.0,
+        precision: int = 4,
+    ) -> str:
+        r"""Return a pretty-printed ket-notation representation of the statevector.
+
+        Amplitudes are rendered with :func:`graphix.pretty_print.complex_to_str`,
+        so common values appear as exact expressions (e.g. ``√2/2``) rather than
+        floating-point numbers.
+
+        Parameters
+        ----------
+        output : OutputFormat, optional
+            Desired formatting style. Defaults to :attr:`OutputFormat.Unicode`.
+        encoding : {"LSB", "MSB"}, optional
+            Bit-ordering convention for the basis kets (default: ``"MSB"``).
+            See :meth:`to_dict`.
+        max_denominator : int, optional
+            Maximum denominator used by the amplitude recognition (default: ``1000``).
+        atol : float, optional
+            Absolute tolerance for dropping near-zero amplitudes and for the
+            recognition heuristics (default: ``1e-9``).
+        rtol : float, optional
+            Relative tolerance for dropping near-zero amplitudes (default: ``0.0``).
+        precision : int, optional
+            Number of significant digits to use for amplitudes that fall back to
+            a decimal representation (default: ``4``).
+
+        Returns
+        -------
+        str
+            The formatted statevector.
+
+        Examples
+        --------
+        >>> from graphix.transpiler import Circuit
+        >>> circuit = Circuit(2)
+        >>> circuit.h(0)
+        >>> circuit.cz(0, 1)
+        >>> print(circuit.simulate_statevector().statevec.draw())
+        √2/2(|00⟩ + |01⟩)
+        """
+        return statevec_to_str(
+            self,
+            output,
+            encoding=encoding,
+            max_denominator=max_denominator,
+            atol=atol,
+            rtol=rtol,
+            precision=precision,
+        )
+
     def _to_dict_map(
         self,
         f: Callable[[npt.NDArray[np.object_ | np.complex128]], npt.NDArray[_ScalarT]],
@@ -582,3 +649,10 @@ def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
     if encoding == "LSB":
         return output[::-1]
     return output
+
+
+def _check_permutation(permutation: Sequence[int], nqubits: int) -> None:
+    if len(permutation) != nqubits:
+        raise ValueError(f"Permutation has length {len(permutation)}, but {nqubits} qubits expected.")
+    if set(permutation) != set(range(nqubits)):
+        raise ValueError(f"{permutation} is not a permutation.")

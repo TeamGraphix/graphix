@@ -40,31 +40,16 @@ def tests_minimal(session: Session) -> None:
     """Run the test suite with minimal dependencies."""
     session.install(".")
     install_pytest(session)
-    run_pytest(session, mpl=True)
-
-
-@nox.session(python=PYTHON_VERSIONS)
-def tests_dev(session: Session) -> None:
-    """Run the test suite with dev dependencies."""
-    session.install(".[dev]")
-    # We cannot run `pytest --doctest-modules` here, since some tests
-    # involve optional dependencies, like pyzx.
-    run_pytest(session, mpl=True)
-
-
-@nox.session(python=PYTHON_VERSIONS)
-def tests_extra(session: Session) -> None:
-    """Run the test suite with extra dependencies."""
-    session.install(".[extra]")
-    install_pytest(session)
-    session.install("nox")  # needed for `--doctest-modules`
-    run_pytest(session, doctest_modules=True)
+    # We cannot run `pytest --mpl` here because the visualization output
+    # depends on the Matplotlib version, and the pinning is only present
+    # in the `dev` extra.
+    run_pytest(session)
 
 
 @nox.session(python=PYTHON_VERSIONS)
 def tests_all(session: Session) -> None:
     """Run the test suite with all dependencies."""
-    session.install(".[dev,extra]")
+    session.install(".[dev]")
     # This dependency is added here to avoid circular dependencies
     session.install("graphix-qasm-parser>=0.1.1")
     run_pytest(session, doctest_modules=True, mpl=True)
@@ -110,19 +95,18 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-stim-backend", branch="fix/graphix_498_remove_pauli"
-        ),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="fix/add_jcz"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
             doctest_modules=False,
             install_target=".[dev]",
-            branch="fix/graphix_498_remove_pauli",
+            branch="fix_reorder_and_refresh",
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
         ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler", branch="ps_dim"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="pyzx_from_graphix"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
@@ -145,7 +129,8 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
             else:
                 session.run("git", "clone", "-b", package.branch, package.repository, external=True)
             with session.cd(dirname):
-                session.install(package.install_target)
+                # graphix installation fails without constraint on numba
+                session.install(package.install_target, "numba>=0.65.1")
         # Note that `session.cd` is used as a context manager above,
         # so that the working directory is restored at this point.  We
         # install now the graphix package from the working directory.

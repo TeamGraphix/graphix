@@ -28,6 +28,7 @@ requires-python = ">=3.10,<3.15"
 dependencies = [
     "matplotlib",
     "networkx",
+    "numba>=0.65.1",
     "numpy>=2",
     "quimb",
     "scipy",
@@ -46,8 +47,8 @@ dev = [
     "mypy==2.1.0",
     "pre-commit",
     "pyright",
-    "ruff==0.15.15",
-    "types-networkx==3.6.1.20260518",
+    "ruff==0.15.17",
+    "types-networkx==3.6.1.20260612",
     "types-psutil",
     "types-setuptools",
     "scipy-stubs",
@@ -58,9 +59,10 @@ dev = [
     "pytest-cov",
     "pytest-mock",
     "pytest-mpl",
-    "qiskit>=1.0",
+    "qiskit>=1.0,<2.4",
     "qiskit_qasm3_import",
     "qiskit-aer",
+    "matplotlib==3.10.9",
 ]
 doc = [
     "furo",
@@ -68,9 +70,6 @@ doc = [
     "matplotlib",
     "sphinx",
     "sphinx-gallery",
-]
-extra = [
-    "pyzx>=0.10.0",
 ]
 typing = [
     "numpy==2.4.2; python_version >= '3.11'",
@@ -194,8 +193,10 @@ extraPaths = ["./stubs"]
 [tool.coverage.report]
 exclude_also = [
   "if TYPE_CHECKING:",
-  "raise NotImplementedError\\(.*\\)",
+  "case _:",
+  "raise NotImplementedError(\\(.*\\))?",
   "return NotImplemented",
+  "raise RuntimeError(\\(.*\\))",
   "typing_extensions.assert_never\\(.*\\)",
   "assert_never\\(.*\\)",
   "@abc.abstractmethod",

@@ -67,6 +67,7 @@ print(f"Number of edges: {len(graph.edges)}")
 # Using graph rewriting rules, we can classically preprocess Pauli measurements.
 # We are currently improving the speed of this process by using rust-based graph manipulation backend.
 pattern.remove_input_nodes()
+pattern = pattern.infer_pauli_measurements()
 pattern.remove_pauli_measurements(standardize=True)
 
 

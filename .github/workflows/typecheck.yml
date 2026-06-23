@@ -12,9 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # We stick to Python 3.13 since qiskit-aer is not available yet for Python 3.14.
-  # See https://github.com/Qiskit/qiskit-aer/issues/2378.
-  python-version: "3.13"
+  python-version: "3.14"
 
 jobs:
   mypy-pyright:
@@ -32,9 +30,9 @@ jobs:
           enable-cache: true
           python-version: ${{ env.python-version }}
 
-      - run: uv run --extra dev --extra extra --extra typing mypy
+      - run: uv run --extra dev --extra typing mypy
 
-      - run: uv run --extra dev --extra extra --extra typing pyright
+      - run: uv run --extra dev --extra typing pyright
 
   # Check that `mypy` find installed `graphix` package (#328)
   #
