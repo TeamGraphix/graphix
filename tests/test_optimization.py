@@ -66,6 +66,7 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
+    pattern = pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements()
     # We should convert to Bloch measurement the remaining Pauli
     # measurements on input nodes.
@@ -142,6 +143,7 @@ def test_remove_local_clifford_commands(fx_bg: PCG64, jumps: int) -> None:
     depth = 4
     circuit = rand_circuit(nqubits, depth, rng)
     pattern = circuit.transpile().pattern
+    pattern = pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements()
     assert any(cmd.kind == CommandKind.C for cmd in pattern)
     new_pattern = pattern.remove_local_clifford_commands(copy=True)
