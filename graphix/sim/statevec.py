@@ -214,8 +214,7 @@ class Statevec(DenseState):
 
     def __str__(self) -> str:
         """Return a string description."""
-        sv = self.psi
-        return f"Statevec object with statevector {sv} and length {len(sv)}."
+        return self.draw()
 
     @property
     def psi(self) -> npt.NDArray[np.complex128]:
