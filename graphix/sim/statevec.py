@@ -9,7 +9,6 @@ import dataclasses
 import functools
 import math
 from collections.abc import Iterable
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
@@ -426,7 +425,7 @@ class Statevec(DenseState):
         This method assumes that quantum state represented by ``self.psi`` is normalized.
         See the class docstring for details.
         """
-        sv = deepcopy(self)
+        sv = Statevec(data=self.flatten())
         sv.evolve(op, qubits)
         return complex(np.dot(self.flatten().conjugate(), sv.flatten()))
 
