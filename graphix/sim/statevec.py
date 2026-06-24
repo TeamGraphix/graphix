@@ -307,9 +307,9 @@ class Statevec(DenseState):
         -----
         This method can extend the size of ``self._psi`` for convenience, but this requires allocating a full new array.
         """
-        self.ensure_capacity(required_qubits=self.nqubit + nqubit)
         if nqubit == 1 and data is BasicStates.PLUS:
             # Simulating standard N commands falls in this branch.
+            self.ensure_capacity(required_qubits=self.nqubit + 1)
             _add_default_node_jit(self._psi, self.nqubit)
             self._nqubit += 1
         else:
@@ -538,6 +538,7 @@ class Statevec(DenseState):
         -----
         This method is used internally by :meth:`add_nodes`.
         """
+        self.ensure_capacity(required_qubits=self.nqubit + other.nqubit)
         _tensor_jit(self._psi, other.psi, self.nqubit, other.nqubit)
         self._nqubit += other.nqubit
 
