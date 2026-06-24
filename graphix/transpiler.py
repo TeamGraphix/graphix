@@ -1092,6 +1092,7 @@ def _initialize_backend(
     width: int,
 ) -> DenseStateBackend[_DenseStateT]: ...
 
+
 def _initialize_backend(
     backend: DenseStateBackend[_DenseStateT] | _DenseStateBackendLiteral,
     branch_selector: BranchSelector | None,

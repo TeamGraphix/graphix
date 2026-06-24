@@ -627,6 +627,21 @@ class TestStatevectorBackend:
         assert result == expected_result
         assert list(backend.node_index) == list(range(1, n_neighbors + 1))
 
+    @pytest.mark.parametrize("permutation", itertools.permutations(range(3)))
+    def test_permute(self, fx_rng: Generator, permutation: Sequence[int]) -> None:
+        nqubits = len(permutation)
+        statevec = Statevec(rand_state_vector(nqubits, fx_rng))
+        statevec_ref = copy.copy(statevec)
+        statevec.permute(permutation)
+        permute_with_swap(statevec_ref, permutation)
+        assert np.array_equal(statevec.psi, statevec_ref.psi)
+
+    def test_permute_bad_permutation(self) -> None:
+        statevec = Statevec(nqubit=2)
+        with pytest.raises(ValueError, match="Permutation has length"):
+            statevec.permute([0])
+        with pytest.raises(ValueError, match="not a permutation"):
+            statevec.permute([1, 2])
 
 
 def permute_with_swap(dense_state: DenseState, permutation: Sequence[int]) -> None:
@@ -638,21 +653,3 @@ def permute_with_swap(dense_state: DenseState, permutation: Sequence[int]) -> No
             move_from = node_index.index(ind)
             dense_state.swap((i, move_from))
             node_index.swap(i, move_from)
-
-
-@pytest.mark.parametrize("permutation", itertools.permutations(range(3)))
-def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
-    nqubits = len(permutation)
-    statevec = Statevec(rand_state_vector(nqubits, fx_rng))
-    statevec_ref = copy.copy(statevec)
-    statevec.permute(permutation)
-    permute_with_swap(statevec_ref, permutation)
-    assert np.array_equal(statevec.psi, statevec_ref.psi)
-
-
-def test_permute_bad_permutation() -> None:
-    statevec = Statevec(nqubit=2)
-    with pytest.raises(ValueError, match="Permutation has length"):
-        statevec.permute([0])
-    with pytest.raises(ValueError, match="not a permutation"):
-        statevec.permute([1, 2])

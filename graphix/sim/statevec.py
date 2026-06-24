@@ -408,7 +408,8 @@ class Statevec(DenseState):
         for i, s in enumerate(qubits):
             res_idx[s] = out_idx[i]
 
-        self._psi[: len(self.psi)] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(1 << self.nqubit)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
+        len_psi = len(self.psi)
+        self._psi[:len_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(len_psi)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
 
     def expectation_value(self, op: Matrix, qubits: Sequence[int]) -> complex:
         """Return the expectation value of a multi-qubit operator.
@@ -561,7 +562,10 @@ class Statevec(DenseState):
     @override
     def permute(self, permutation: Sequence[int]) -> None:
         _check_permutation(permutation, self.nqubit)
-        self.psi = np.transpose(self.psi, permutation)
+        psi_tensor = self.flatten().reshape((2,) * self.nqubit).astype(np.complex128, copy=False)
+        psi_tensor_perm = np.transpose(psi_tensor, permutation)
+        len_psi = len(self.psi)
+        self._psi[:len_psi] = psi_tensor_perm.reshape(len_psi)
 
     def fidelity(self, other: Statevec) -> float:
         r"""Calculate the fidelity against another statevector.
@@ -1212,6 +1216,8 @@ def _cast_op(op: Matrix) -> npt.NDArray[np.complex128]:
     # https://github.com/numba/numba/issues/4511#issuecomment-527350694
     # https://numba.pydata.org/numba-doc/0.17.0/reference/types.html#numba.types.Array
     return op.astype(np.complex128, copy=True)
+
+
 def _check_permutation(permutation: Sequence[int], nqubits: int) -> None:
     if len(permutation) != nqubits:
         raise ValueError(f"Permutation has length {len(permutation)}, but {nqubits} qubits expected.")
