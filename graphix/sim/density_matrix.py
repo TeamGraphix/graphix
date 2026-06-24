@@ -21,7 +21,7 @@ from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
 from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, _check_permutation
+from graphix.sim.statevec import Statevec, _check_permutation
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
@@ -31,6 +31,19 @@ if TYPE_CHECKING:
     from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
+
+CZ_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
+    dtype=np.complex128,
+)
+CNOT_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],
+    dtype=np.complex128,
+)
+SWAP_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
+    dtype=np.complex128,
+)
 
 
 class DensityMatrix(DenseState):
@@ -186,33 +199,33 @@ class DensityMatrix(DenseState):
         self.tensor(dm_to_add)
 
     @override
-    def evolve_single(self, op: Matrix, i: int) -> None:
+    def evolve_single(self, op: Matrix, qubit: int) -> None:
         """Single-qubit operation.
 
         Parameters
         ----------
             op : np.ndarray
                 2*2 matrix.
-            i : int
+            qubit : int
                 Index of qubit to apply operator.
         """
-        assert i >= 0
-        assert i < self.nqubit
+        assert qubit >= 0
+        assert qubit < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
 
         rho_tensor = self.rho.reshape((2,) * self.nqubit * 2)
-        rho_tensor = tensordot(tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.nqubit, 0))
-        rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.nqubit))
+        rho_tensor = tensordot(tensordot(op, rho_tensor, axes=(1, qubit)), op.conj().T, axes=(qubit + self.nqubit, 0))
+        rho_tensor = np.moveaxis(rho_tensor, (0, -1), (qubit, qubit + self.nqubit))
         self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
     @override
-    def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
+    def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
         """Multi-qubit operation.
 
         Args:
             op (np.array): 2^n*2^n matrix
-            qargs (list of ints): target qubits' indexes
+            qubits (list of ints): target qubits' indexes
         """
         d = op.shape
         # check it is a matrix.
@@ -230,12 +243,12 @@ class DensityMatrix(DenseState):
             raise ValueError("Incorrect operator dimension: not consistent with qubits.")
         nqb_op = int(nqb_op)
 
-        if nqb_op != len(qargs):
+        if nqb_op != len(qubits):
             raise ValueError("The dimension of the operator doesn't match the number of targets.")
 
-        if not all(0 <= i < self.nqubit for i in qargs):
+        if not all(0 <= i < self.nqubit for i in qubits):
             raise ValueError("Incorrect target indices.")
-        if len(set(qargs)) != nqb_op:
+        if len(set(qubits)) != nqb_op:
             raise ValueError("A repeated target qubit index is not possible.")
 
         op_tensor = op.reshape((2,) * 2 * nqb_op)
@@ -243,31 +256,31 @@ class DensityMatrix(DenseState):
         rho_tensor = self.rho.reshape((2,) * self.nqubit * 2)
 
         rho_tensor = tensordot(
-            tensordot(op_tensor, rho_tensor, axes=(tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs))),
+            tensordot(op_tensor, rho_tensor, axes=(tuple(nqb_op + i for i in range(len(qubits))), tuple(qubits))),
             op.conj().T.reshape((2,) * 2 * nqb_op),
-            axes=(tuple(i + self.nqubit for i in qargs), tuple(i for i in range(len(qargs)))),
+            axes=(tuple(i + self.nqubit for i in qubits), tuple(i for i in range(len(qubits)))),
         )
         rho_tensor = np.moveaxis(
             rho_tensor,
-            list(range(len(qargs))) + [-i for i in range(1, len(qargs) + 1)],
-            list(qargs) + [i + self.nqubit for i in reversed(list(qargs))],
+            list(range(len(qubits))) + [-i for i in range(1, len(qubits) + 1)],
+            list(qubits) + [i + self.nqubit for i in reversed(list(qubits))],
         )
         self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
     @override
-    def expectation_single(self, op: Matrix, loc: int) -> complex:
+    def expectation_single(self, op: Matrix, qubit: int) -> complex:
         """Return the expectation value of single-qubit operator.
 
         Args:
             op (np.array): 2*2 Hermite operator
-            loc (int): Index of qubit on which to apply operator.
+            qubit (int): Index of qubit on which to apply operator.
 
         Returns
         -------
             complex: expectation value (real for hermitian ops!).
         """
-        if not (0 <= loc < self.nqubit):
-            raise ValueError(f"Wrong target qubit {loc}. Must between 0 and {self.nqubit - 1}.")
+        if not (0 <= qubit < self.nqubit):
+            raise ValueError(f"Wrong target qubit {qubit}. Must between 0 and {self.nqubit - 1}.")
 
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
@@ -277,8 +290,8 @@ class DensityMatrix(DenseState):
 
         nqubit = self.nqubit
         rho_tensor: Matrix = st1.rho.reshape((2,) * nqubit * 2)
-        rho_tensor = tensordot(op, rho_tensor, axes=((1,), (loc,)))
-        rho_tensor = np.moveaxis(rho_tensor, 0, loc)
+        rho_tensor = tensordot(op, rho_tensor, axes=((1,), (qubit,)))
+        rho_tensor = np.moveaxis(rho_tensor, 0, qubit)
 
         # complex() needed with mypy strict mode (no-any-return)
         return complex(np.trace(rho_tensor.reshape((2**nqubit, 2**nqubit))))
@@ -335,15 +348,15 @@ class DensityMatrix(DenseState):
         rho_permuted_tensor = np.transpose(rho_tensor, axes=full_permutation)
         self.rho = rho_permuted_tensor.reshape((2**nqubit, 2**nqubit))
 
-    def entangle(self, edge: tuple[int, int]) -> None:
+    def entangle(self, qubits: tuple[int, int]) -> None:
         """Connect graph nodes.
 
         Parameters
         ----------
-            edge : (int, int) or [int, int]
+            qubits : (int, int) or [int, int]
                 (control, target) qubit indices.
         """
-        self.evolve(CZ_TENSOR.reshape(4, 4), edge)
+        self.evolve(CZ_TENSOR.reshape(4, 4), qubits)
 
     def normalize(self) -> None:
         """Normalize density matrix."""
@@ -359,9 +372,9 @@ class DensityMatrix(DenseState):
             rho_c /= np.trace(rho_c)
 
     @override
-    def remove_qubit(self, qarg: int) -> None:
+    def remove_qubit(self, qubit: int) -> None:
         """Remove a qubit."""
-        self.ptrace(qarg)
+        self.ptrace(qubit)
         self.normalize()
 
     def ptrace(self, qargs: Collection[int] | int) -> None:

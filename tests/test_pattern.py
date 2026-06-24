@@ -173,7 +173,7 @@ class TestPattern:
             sim.run(rng=fx_rng)
             state = sim.backend.state
             if isinstance(state, Statevec):
-                assert state.dims() == ()
+                assert state.nqubit == 0
             elif isinstance(state, DensityMatrix):
                 assert state.dims() == (1, 1)
             elif isinstance(state, MBQCTensorNet):

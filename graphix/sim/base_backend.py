@@ -6,7 +6,7 @@ import dataclasses
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypedDict, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -368,15 +368,14 @@ class DenseState(ABC):
 
     @abstractmethod
     def add_nodes(self, nqubit: int, data: Data) -> None:
-        """
-        Add nodes (qubits) to the state and initialize them in a specified state.
+        """Add nodes (qubits) to the state and initialize them in a specified state.
 
         Parameters
         ----------
         nqubit : int
             The number of qubits to add to the state.
 
-        data : Data, optional
+        data : Data
             The state in which to initialize the newly added nodes. The supported forms
             of state specification depend on the backend implementation.
 
@@ -384,67 +383,94 @@ class DenseState(ABC):
         """
 
     @abstractmethod
-    def entangle(self, edge: tuple[int, int]) -> None:
-        """Connect graph nodes.
+    def entangle(self, qubits: tuple[int, int]) -> None:
+        """Apply a CZ gate on two qubits.
 
         Parameters
         ----------
-        edge : tuple of int
-            (control, target) qubit indices
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
 
     @abstractmethod
-    def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
-        """Apply a multi-qubit operation.
+    def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
+        """Apply a multi-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2^n*2^n matrix
-        qargs : list of int
-            target qubits' indices
+        op : Matrix
+            Matrix of shape :math:`(2^n, 2^n)` representing
+            the operator to apply.
+        qubits : Sequence[int]
+            Target qubit indices.
         """
 
     @abstractmethod
-    def evolve_single(self, op: Matrix, i: int) -> None:
+    def evolve_single(self, op: Matrix, qubit: int) -> None:
         """Apply a single-qubit operation.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 matrix
-        i : int
-            qubit index
+        op : Matrix
+            Matrix of shape :math:`(2, 2)` representing
+            the operator to apply.
+        qubit : int
+            Target qubit index.
         """
 
     @abstractmethod
-    def expectation_single(self, op: Matrix, loc: int) -> complex:
-        """Return the expectation value of single-qubit operator.
+    def expectation_single(self, op: Matrix, qubit: int) -> complex:
+        """Return the expectation value of a single-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 operator
-        loc : int
-            target qubit index
+        op : Matrix
+            Matrix of shape :math:`(2, 2)` representing
+            the operator to measure.
+        qubit : int
+            Target qubit index.
 
         Returns
         -------
-        complex : expectation value.
+        complex
+            Expectation value.
+
         """
 
     @abstractmethod
-    def remove_qubit(self, qarg: int) -> None:
-        """Remove a separable qubit from the system."""
-
-    @abstractmethod
-    def swap(self, qubits: tuple[int, int]) -> None:
-        """Swap qubits.
+    def remove_qubit(self, qubit: int) -> None:
+        """Remove a separable qubit from the system.
 
         Parameters
         ----------
-        qubits : tuple of int
-            (control, target) qubit indices
+        qubit : int
+            Target qubit index.
+        """
+
+    def project_qubit(self, op: Matrix, qubit: int) -> None:
+        r"""Project out a qubit from the system and assemble the statevector of the remaining qubits.
+
+        This method combines :meth:`evolve_single` and :meth:`remove_qubit`. It evolves the statevector with ``op`` and removes ``qubit``. It assumes that after the application of ``op``, ``qubit`` is a separable qubit.
+
+        Parameters
+        ----------
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2, 2)` representing
+            the projector to apply.
+        qubit : int
+            Target qubit index.
+        """
+        self.evolve_single(op, qubit)
+        self.remove_qubit(qubit)
+
+    @abstractmethod
+    def swap(self, qubits: tuple[int, int]) -> None:
+        """Apply SWAP gate between two qubits.
+
+        Parameters
+        ----------
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
 
     @abstractmethod
@@ -702,6 +728,14 @@ class Backend(Generic[_StateT_co]):
 _DenseStateT_co = TypeVar("_DenseStateT_co", bound="DenseState", covariant=True)
 
 
+class DenseStateBackendKwargs(TypedDict, total=False):
+    """Keyword arguments for initializing a `DenseStateBackend`."""
+
+    node_index: NodeIndex
+    branch_selector: BranchSelector
+    symbolic: bool
+
+
 @dataclass(frozen=True)
 class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     """
@@ -729,11 +763,14 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     symbolic : bool, optional
         If True, support arbitrary objects (typically, symbolic expressions) in matrices.
 
+    All parameters are key-word only.
+
     See Also
     --------
     :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
     """
 
+    _: dataclasses.KW_ONLY
     node_index: NodeIndex = dataclasses.field(default_factory=NodeIndex)
     branch_selector: BranchSelector = dataclasses.field(default_factory=RandomBranchSelector)
     symbolic: bool = False
@@ -776,13 +813,23 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     def measure(
         self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
     ) -> Outcome:
-        """Perform measurement of a node and trace out the qubit.
+        """Measure a node and trace out the corresponding qubit.
 
         Parameters
         ----------
-        node: int
-        measurement: Measurement
-        rng: Generator, optional
+        node : int
+            Index of the node to measure.
+        measurement : Measurement
+            Measurement specification defining the measurement plane and angle.
+        rng : Generator, optional
+            Random number generator used for probabilistic outcome sampling.
+        stacklevel : int, default=1
+            Stack level passed to the branch selector for warning reporting.
+
+        Returns
+        -------
+        Outcome
+            Measurement outcome.
         """
         loc = self.node_index.index(node)
         bloch = measurement.to_bloch()
@@ -804,9 +851,8 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
 
         outcome = self.branch_selector.measure(node, f_expectation0, rng, stacklevel=stacklevel + 1)
         op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=self.symbolic) if outcome else compute_op_mat0()
-        self.state.evolve_single(op_mat, loc)
+        self.state.project_qubit(op_mat, loc)
         self.node_index.remove(node)
-        self.state.remove_qubit(loc)
         return outcome
 
     @override
@@ -830,7 +876,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     def apply_single(self, node: int, op: Matrix) -> None:
         """Apply a single gate to the state."""
         index = self.node_index.index(node)
-        self.state.evolve_single(op=op, i=index)
+        self.state.evolve_single(op=op, qubit=index)
 
     @override
     def apply_clifford(self, node: int, clifford: Clifford) -> None:

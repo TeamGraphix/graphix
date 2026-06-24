@@ -12,7 +12,7 @@ from graphix.branch_selector import RandomBranchSelector
 from graphix.command import E
 from graphix.fundamentals import ANGLE_PI
 from graphix.ops import Ops
-from graphix.random_objects import rand_circuit
+from graphix.random_objects import rand_circuit, rand_unit
 from graphix.sim.statevec import Statevec
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.states import BasicStates
@@ -402,8 +402,8 @@ class TestTN:
         pattern.remove_pauli_measurements()
         state = circuit.simulate_statevector().statevec
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
-        random_op3 = random_op(3, rng)
-        random_op3_exp = random_op(3, rng)
+        random_op3 = rand_unit(2**3, rng)
+        random_op3_exp = rand_unit(2**3, rng)
 
         state.evolve(random_op3, [0, 1, 2])
         tn_mbqc.evolve(random_op3, [0, 1, 2], decompose=False)
