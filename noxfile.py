@@ -95,9 +95,6 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-stim-backend", branch="fix/graphix_498_remove_pauli"
-        ),
         ReverseDependency("https://github.com/matulni/graphix-symbolic", branch="backend"),
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="fix/add_jcz"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
