@@ -36,6 +36,8 @@ Pattern Manipulation
 
     .. automethod:: remove_pauli_measurements
 
+    .. automethod:: remove_local_clifford_commands
+
     .. automethod:: to_ascii
 
     .. automethod:: to_unicode

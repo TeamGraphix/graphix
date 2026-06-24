@@ -31,6 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added new attribute `OpenGraph.output_cliffords`
   - Added `clifford` abstract method to `AbstractMeasurement`. Implemented it for `Plane` and `Axis`.
 
+- #515:
+  - `Pattern.remove_local_clifford_commands` transpiles MBQC+LC patterns into pure MBQC patterns.
+  - `Clifford.to_opengraph` returns an open graph without local Cliffords that implements the given single-qubit Clifford gate.
+
+- #515, #519:
+  - `Pattern.reindex` returns a pattern whose nodes have been re-indexed either by a supplied mapping or, by default, consecutively starting at 0.
+  - `Pattern.node_mapping` returns a mapping that can be passed to `Pattern.reindex`, with flexibility for specifying how nodes are mapped.
+
 - #524: Added `Statevec.draw` and `DensityMatrix.draw` methods (and the underlying `statevec_to_str` and `density_matrix_to_str` functions) for pretty-printing states and density matrices in ASCII, Unicode, and LaTeX.
 
 - #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
