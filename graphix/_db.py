@@ -8,6 +8,7 @@ import numpy as np
 
 from graphix import utils
 from graphix.fundamentals import Axis, Sign
+from graphix.measurements import Measurement
 from graphix.ops import Ops
 
 # 24 unique 1-qubit Clifford gates
@@ -226,3 +227,31 @@ CLIFFORD_TO_QASM3 = (
     ("h", "x", "sdg"),
     ("h", "x", "s"),
 )
+
+CLIFFORD_PAULI_DECOMPOSITION = (
+    (),
+    (Measurement.X, -Measurement.X),
+    (-Measurement.X, -Measurement.X),
+    (-Measurement.X, Measurement.X),
+    (-Measurement.Y, Measurement.X),
+    (Measurement.Y, Measurement.X),
+    (Measurement.X,),
+    (Measurement.X, -Measurement.Y),
+    (-Measurement.X,),
+    (-Measurement.Y, -Measurement.X),
+    (Measurement.Y, -Measurement.X),
+    (Measurement.X, -Measurement.X, -Measurement.X),
+    (Measurement.X, -Measurement.X, Measurement.X),
+    (-Measurement.X, -Measurement.Y),
+    (-Measurement.X, Measurement.Y),
+    (Measurement.X, Measurement.Y),
+    (Measurement.Y,),
+    (Measurement.X, -Measurement.X, Measurement.Y),
+    (Measurement.X, -Measurement.X, -Measurement.Y),
+    (-Measurement.Y,),
+    (Measurement.Y, Measurement.Y),
+    (-Measurement.Y, -Measurement.Y),
+    (Measurement.Y, -Measurement.Y),
+    (-Measurement.Y, Measurement.Y),
+)
+"""Decomposition of every Clifford gate C into sequences of Pauli measurements."""
