@@ -850,6 +850,12 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
         return cls(state_init, **kwargs)
 
 
+### Jit kernels
+# The kernels `_evolve_single_jit`, `_expectation_single_jit` and `_evolve_single_and_compute_norm`
+# share the same block/loop structure. Factoring out the looping logic into one generic driver that takes
+# a `numba.types.FunctionType` argument will decrease performance.
+
+
 @nb.njit("(c16[::1], c16[::1], int32, int32)")
 def _tensor_jit(
     psi: npt.NDArray[np.complex128],
@@ -924,6 +930,34 @@ def _swap_jit(psi: npt.NDArray[np.complex128], nqubit: int, q1: int, q2: int) ->
                 psi[j], psi[i] = psi[i], psi[j]
 
 
+@nb.njit("(c16[::1], int32, int32, int32)", parallel=True)
+def _entangle_jit(psi: npt.NDArray[np.complex128], nqubit: int, control: int, target: int) -> None:
+    """Apply CZ gate on two qubits.
+
+    This function is inspired from Ref. [1].
+
+    The kernel switches to a parallel implementation when the
+    number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
+    """
+    size_sv = 1 << nqubit
+    mask_control = 1 << nqubit - 1 - control
+    mask_target = 1 << nqubit - 1 - target
+    mask = mask_control | mask_target
+    # `mask` is an integer number whose binary representation has 1s at positions `control` and `target` and 0s elsewhere.
+
+    if nqubit > NUM_QUBIT_PARALLEL:
+        for i in nb.prange(size_sv):
+            if mask & i == mask:
+                psi[i] = -psi[i]
+    else:
+        for i in range(size_sv):
+            if mask & i == mask:
+                psi[i] = -psi[i]
+
+
+### Kernels for `evolve_single`
+
+
 @nb.njit("(c16[::1], c16[:,:], int32, int32, int32)")
 def _compute_op_psi(
     psi: npt.NDArray[np.complex128], op: npt.NDArray[np.complex128], b0: int, j: int, size_half_block: int
@@ -968,6 +1002,9 @@ def _evolve_single_jit(psi: npt.NDArray[np.complex128], op: npt.NDArray[np.compl
             for j in range(size_half_block):
                 _compute_op_psi(psi, op, b0, j, size_half_block)
             b0 += size_block
+
+
+### Kernels for `expectation_single`
 
 
 @nb.njit("c16(c16[::1], c16[:,:], int32, int32, int32)")
@@ -1020,29 +1057,7 @@ def _expectation_single_jit(
     return result
 
 
-@nb.njit("(c16[::1], int32, int32, int32)", parallel=True)
-def _entangle_jit(psi: npt.NDArray[np.complex128], nqubit: int, control: int, target: int) -> None:
-    """Apply CZ gate on two qubits.
-
-    This function is inspired from Ref. [1].
-
-    The kernel switches to a parallel implementation when the
-    number of qubits exceeds ``NUM_QUBIT_PARALLEL`` (module constant).
-    """
-    size_sv = 1 << nqubit
-    mask_control = 1 << nqubit - 1 - control
-    mask_target = 1 << nqubit - 1 - target
-    mask = mask_control | mask_target
-    # `mask` is an integer number whose binary representation has 1s at positions `control` and `target` and 0s elsewhere.
-
-    if nqubit > NUM_QUBIT_PARALLEL:
-        for i in nb.prange(size_sv):
-            if mask & i == mask:
-                psi[i] = -psi[i]
-    else:
-        for i in range(size_sv):
-            if mask & i == mask:
-                psi[i] = -psi[i]
+### Kernels for `project_qubit`
 
 
 @nb.njit("types.UniTuple(f8, 2)(c16[::1], c16[:,:], int32, int32, int32)")
@@ -1199,6 +1214,9 @@ def _project_qubit_jit(
     _scale_psi(psi, n_blocks, size_block, size_half_block, shift, inv_norm)
 
     return new_nqubit
+
+
+### Helpers
 
 
 def _cast_op(op: Matrix) -> npt.NDArray[np.complex128]:
