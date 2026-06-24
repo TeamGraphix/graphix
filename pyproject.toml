@@ -193,8 +193,10 @@ extraPaths = ["./stubs"]
 [tool.coverage.report]
 exclude_also = [
   "if TYPE_CHECKING:",
-  "raise NotImplementedError\\(.*\\)",
+  "case _:",
+  "raise NotImplementedError(\\(.*\\))?",
   "return NotImplemented",
+  "raise RuntimeError(\\(.*\\))",
   "typing_extensions.assert_never\\(.*\\)",
   "assert_never\\(.*\\)",
   "@abc.abstractmethod",

@@ -16,7 +16,7 @@ import networkx as nx
 
 from graphix import Circuit
 
-n = 100
+n = 50
 print(f"{n}-qubit GHZ state generation")
 circuit = Circuit(n)
 

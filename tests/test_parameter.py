@@ -156,6 +156,7 @@ def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_xreplace: 
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
+    pattern = pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements()
     pattern.minimize_space()
     assignment: dict[Parameter, float] = {alpha: rng.uniform(high=2), beta: rng.uniform(high=2)}

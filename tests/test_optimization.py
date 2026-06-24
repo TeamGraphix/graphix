@@ -82,8 +82,10 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
+    pattern = pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements()
     pattern2 = remove_useless_domains(pattern)
+    pattern2 = StandardizedPattern.from_pattern(pattern2).to_space_optimal_pattern()
     state = pattern.simulate_pattern(rng=rng)
     state2 = pattern2.simulate_pattern(rng=rng)
     assert state.isclose(state2)

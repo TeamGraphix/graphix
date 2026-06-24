@@ -219,9 +219,29 @@ class Statevec(DenseState):
 
     @property
     def psi(self) -> npt.NDArray[np.complex128]:
-        """Return a view of the meaningful elements in ``self._psi``.
+        r"""Return a view of the meaningful elements in ``self._psi``.
 
         These are the first ``2**self.nqubit`` elements.
+
+        Parameters
+        ----------
+        nqubit : int
+            The number of qubits to add to the state vector.
+
+        data : Data, optional
+            The state in which to initialize the newly added nodes.
+
+            - If a single basic state is provided, all new nodes are initialized in that state.
+            - If a list of basic states is provided, it must match the length of ``nodes``, and
+              each node is initialized with its corresponding state.
+            - A single-qubit state vector will be broadcast to all nodes.
+            - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
+              initializes the new nodes jointly.
+            - The type of nodes to be added is inferred from the type of the existing ``Statevec``.
+
+        Notes
+        -----
+        Previously existing nodes remain unchanged.
         """
         size_valid_psi = 1 << self.nqubit  # 2**self.nqubit
         return self._psi[:size_valid_psi]
@@ -537,6 +557,11 @@ class Statevec(DenseState):
         """
         if not 0 <= qubit < self.nqubit:
             raise IndexError(f"Qubit index {qubit} out of range [0, {self.nqubit - 1}]")
+
+    @override
+    def permute(self, permutation: Sequence[int]) -> None:
+        _check_permutation(permutation, self.nqubit)
+        self.psi = np.transpose(self.psi, permutation)
 
     def fidelity(self, other: Statevec) -> float:
         r"""Calculate the fidelity against another statevector.
@@ -1187,3 +1212,8 @@ def _cast_op(op: Matrix) -> npt.NDArray[np.complex128]:
     # https://github.com/numba/numba/issues/4511#issuecomment-527350694
     # https://numba.pydata.org/numba-doc/0.17.0/reference/types.html#numba.types.Array
     return op.astype(np.complex128, copy=True)
+def _check_permutation(permutation: Sequence[int], nqubits: int) -> None:
+    if len(permutation) != nqubits:
+        raise ValueError(f"Permutation has length {len(permutation)}, but {nqubits} qubits expected.")
+    if set(permutation) != set(range(nqubits)):
+        raise ValueError(f"{permutation} is not a permutation.")

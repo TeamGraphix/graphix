@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import functools
+import itertools
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -14,16 +16,19 @@ from graphix.instruction import Instruction
 from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.pauli import Pauli
-from graphix.random_objects import rand_unit
+from graphix.random_objects import rand_state_vector, rand_unit
+from graphix.sim.base_backend import NodeIndex
 from graphix.sim.statevec import NUM_QUBIT_PARALLEL, Statevec, StatevectorBackend
-from graphix.states import BasicStates
+from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from typing import Literal
 
     from numpy.random import PCG64
+
+    from graphix.sim.base_backend import DenseState
 
     _ENCODING = Literal["LSB", "MSB"]
 
@@ -621,3 +626,33 @@ class TestStatevectorBackend:
         result = backend.measure(node=node_to_measure, measurement=measurement, rng=rng)
         assert result == expected_result
         assert list(backend.node_index) == list(range(1, n_neighbors + 1))
+
+
+
+def permute_with_swap(dense_state: DenseState, permutation: Sequence[int]) -> None:
+    nqubits = len(permutation)
+    node_index = NodeIndex()
+    node_index.extend(range(nqubits))
+    for i, ind in enumerate(permutation):
+        if node_index.index(ind) != i:
+            move_from = node_index.index(ind)
+            dense_state.swap((i, move_from))
+            node_index.swap(i, move_from)
+
+
+@pytest.mark.parametrize("permutation", itertools.permutations(range(3)))
+def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
+    nqubits = len(permutation)
+    statevec = Statevec(rand_state_vector(nqubits, fx_rng))
+    statevec_ref = copy.copy(statevec)
+    statevec.permute(permutation)
+    permute_with_swap(statevec_ref, permutation)
+    assert np.array_equal(statevec.psi, statevec_ref.psi)
+
+
+def test_permute_bad_permutation() -> None:
+    statevec = Statevec(nqubit=2)
+    with pytest.raises(ValueError, match="Permutation has length"):
+        statevec.permute([0])
+    with pytest.raises(ValueError, match="not a permutation"):
+        statevec.permute([1, 2])

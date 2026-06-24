@@ -169,6 +169,35 @@ class Ops:
 
     @overload
     @staticmethod
+    def j(theta: Angle) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def j(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def j(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """J operation.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 2*2 np.asarray
+        """
+        return Ops._cast_array(
+            [
+                [1 / np.sqrt(2), (1 / np.sqrt(2)) * exp(1j * angle_to_rad(theta))],
+                [1 / np.sqrt(2), (-1 / np.sqrt(2)) * exp(1j * angle_to_rad(theta))],
+            ],
+            theta,
+        )
+
+    @overload
+    @staticmethod
     def rzz(theta: Angle) -> npt.NDArray[np.complex128]: ...
 
     @overload
