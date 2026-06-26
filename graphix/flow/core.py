@@ -519,7 +519,7 @@ class PauliFlow(Generic[_AM_co]):
     correction_function : Mapping[int, AbstractSet[int]
         Pauli flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
     partial_order_layers : Sequence[AbstractSet[int]]
-        Partial order between the open graph's nodes in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0 when they exist.
+        Partial order between the open graph's nodes in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0 if there are any.
 
     Notes
     -----
@@ -630,7 +630,7 @@ class PauliFlow(Generic[_AM_co]):
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
             - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers contains the outputs of the open graph when they exist.
+            - The first layer of the partial order layers contains the outputs of the open graph if there are any.
 
         Specific properties of Pauli flows:
             - If :math:`j \in p(i), i \neq j, \lambda(j) \notin \{X, Y\}`, then :math:`i \prec j` (P1).
@@ -1020,7 +1020,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
             - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers contains the outputs of the open graph when they exist.
+            - The first layer of the partial order layers contains the outputs of the open graph if there are any.
 
         Specific properties of gflows:
             - If :math:`j \in g(i), i \neq j`, then :math:`i \prec j` (G1).
@@ -1378,7 +1378,7 @@ def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
         - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
         - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
         - The nodes in the partial order are the nodes in the open graph.
-        - Output nodes are always in layer 0 when they exist.
+        - Output nodes are always in layer 0 if there are any.
     """
     if not _check_correction_function_domain(flow.og, flow.correction_function):
         raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain)

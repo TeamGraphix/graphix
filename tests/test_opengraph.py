@@ -606,6 +606,7 @@ def _og_22() -> OpenGraphFlowTestCase:
     Structure:
 
     [(0)]-[(1)]-[(2)]
+      |___________|
 
     Notes
     -----
