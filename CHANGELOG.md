@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Pattern.extract_opengraph` returns the same open graph before and after standardization.
   - The round trip `Pattern` -> `OpenGraph` -> `Flow` -> `XZCorrections` -> `Pattern` is guaranteed for deterministic patterns in the LC fragment.
 
+- #549: Fixed #531.
+  - Empty outputs layer removed from flow's partial order.
+  - Flow well-formedness check does not trigger false negative for flows on open graphs without outputs.
+
 ### Changed
 
 - #452: Use `uv` for dependency management

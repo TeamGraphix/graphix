@@ -215,6 +215,8 @@ class GraphVisualizer:
         -------
         GraphVisualizer
         """
+        if not og.graph.nodes:
+            raise ValueError("Open graph is empty.")
         options = VisualizationOptions(**kwargs)
         pos = _compute_positions(og)
         pos = _scale_positions(pos, options.node_distance)
@@ -245,6 +247,8 @@ class GraphVisualizer:
         -------
         GraphVisualizer
         """
+        if not flow.og.graph.nodes:
+            raise ValueError("Open graph is empty.")
         options = VisualizationOptions(**kwargs)
         pos = _compute_positions(flow)
         pos = _scale_positions(pos, options.node_distance)
@@ -280,6 +284,8 @@ class GraphVisualizer:
         -------
         GraphVisualizer
         """
+        if not xz_corr.og.graph.nodes:
+            raise ValueError("Open graph is empty.")
         options = VisualizationOptions(**kwargs)
         pos = _compute_positions(xz_corr)
         pos = _scale_positions(pos, options.node_distance)

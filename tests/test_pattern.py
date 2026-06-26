@@ -794,6 +794,7 @@ class TestPattern:
                 ),
                 (frozenset({2}), frozenset({0, 1})),
             ),  # double edge in DAG
+            (Pattern(), ()),  # Empty pattern
         ],
     )
     def test_extract_partial_order_layers(self, test_case: tuple[Pattern, tuple[frozenset[int], ...]]) -> None:
@@ -917,6 +918,12 @@ class TestPattern:
             Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Measurement.XY(0.3))]),
             has_cflow=False,
             has_gflow=False,
+        ),
+        PatternFlowTestCase(
+            # Empty pattern
+            Pattern(),
+            has_cflow=True,
+            has_gflow=True,
         ),
     ]
 
