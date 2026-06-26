@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command
+from graphix import Circuit, Pattern, Plane, command
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
@@ -207,6 +207,32 @@ def test_og_draw() -> Figure:
     og = example_og()
     og.draw(legend=False)
     return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_linear_causal_flow_layer_label_in_frame() -> None:
+    """Regression for TeamGraphix/graphix#535."""
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements=dict.fromkeys(range(3), Plane.XY),
+    )
+    flow = og.extract_causal_flow()
+    flow.draw(legend=False)
+
+    ax = plt.gca()
+    renderer = plt.gcf().canvas.get_renderer()
+    axes_bbox = ax.get_window_extent(renderer)
+    layer_labels = [
+        artist
+        for artist in ax.get_children()
+        if hasattr(artist, "get_text") and artist.get_text() == "Layer"
+    ]
+    assert len(layer_labels) == 1
+    label_bbox = layer_labels[0].get_window_extent(renderer)
+    assert label_bbox.y0 >= axes_bbox.y0
+    plt.close()
 
 
 @pytest.mark.usefixtures("mock_plot")
