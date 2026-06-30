@@ -107,6 +107,7 @@ class ReverseDependency:
         ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
         ReverseDependency("https://github.com/qat-inria/graphix-stim-compiler", branch="ps_dim"),
         ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="pyzx_from_graphix"),
+        ReverseDependency("https://github.com/matulni/graphix-mqtbench", branch="minimal"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
