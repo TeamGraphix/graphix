@@ -92,7 +92,8 @@ state_out = pattern.simulate_pattern(backend="statevector")
 - [`graphix-qasm-parser`](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit.
 - [`graphix-stim-backend`](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
 - [`graphix-stim-compiler`](https://github.com/qat-inria/graphix-stim-compiler): `stim` backend for efficient compilation of Clifford maps.
-- [`graphix-symbolic`](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
+- [`graphix-symbolic`](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation.
+- [`graphix-mqtbench`](https://github.com/TeamGraphix/graphix-mqtbench): an interface between Graphix and the [MQT Bench](https://mqt.readthedocs.io/projects/bench/en/latest/index.html) suite for benchmarking purposes.
 
 ## Related packages
 
