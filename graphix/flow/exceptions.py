@@ -119,7 +119,7 @@ class PartialOrderErrorReason(Enum):
     """Describe the reason of a `PartialOrderError` exception."""
 
     Empty = enum.auto()
-    """The partial order is empty."""
+    """The partial order is empty and the open graph is not."""
 
     IncorrectNodes = enum.auto()
     """The partial order does not contain all the nodes of the open graph or contains nodes that are not in the open graph."""
@@ -130,8 +130,6 @@ class PartialOrderLayerErrorReason(Enum):
 
     FirstLayer = enum.auto()
     """The first layer of the partial order is not the set of output nodes (non-measured qubits) of the open graph or is empty.
-
-    XZ-corrections can be defined on open graphs without outputs. That is not the case for correct flows.
     """
 
     NthLayer = enum.auto()
@@ -238,7 +236,7 @@ class PartialOrderError(FlowError, XZCorrectionsError):
         """Explain the error."""
         match self.reason:
             case PartialOrderErrorReason.Empty:
-                return "The partial order cannot be empty."
+                return "The partial order cannot be empty if the open graph is not empty."
             case PartialOrderErrorReason.IncorrectNodes:
                 return "The partial order does not contain all the nodes of the open graph or contains nodes that are not in the open graph."
             case _:
@@ -257,7 +255,7 @@ class PartialOrderLayerError(FlowError, XZCorrectionsError):
         """Explain the error."""
         match self.reason:
             case PartialOrderLayerErrorReason.FirstLayer:
-                return f"The first layer of the partial order must contain all the output nodes of the open graph and cannot be empty. First layer: {self.layer}"
+                return f"The first layer of the partial order must contain all the output nodes of the open graph if there are any, and cannot be empty. First layer: {self.layer}"
             case PartialOrderLayerErrorReason.NthLayer:
                 return f"Partial order layer {self.layer_index} = {self.layer} contains non-measured nodes of the open graph, is empty or contains nodes in previous layers."
             case _:

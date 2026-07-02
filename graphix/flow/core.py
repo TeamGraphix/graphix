@@ -519,15 +519,13 @@ class PauliFlow(Generic[_AM_co]):
     correction_function : Mapping[int, AbstractSet[int]
         Pauli flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
     partial_order_layers : Sequence[AbstractSet[int]]
-        Partial order between the open graph's nodes in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0.
+        Partial order between the open graph's nodes in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0 if there are any.
 
     Notes
     -----
     - See Definition 5 in Ref. [1] for a definition of Pauli flow.
 
     - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only `og` and `correction_function` are necessary to initialize an `PauliFlow` instance (see :func:`PauliFlow.try_from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
-
-    - A correct flow can only exist on an open graph with output nodes, so `layers[0]` always contains a finite set of nodes.
 
     References
     ----------
@@ -585,20 +583,21 @@ class PauliFlow(Generic[_AM_co]):
         ----------
         [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
-        future = copy(self.partial_order_layers[0])  # Sets are mutable
         x_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
         z_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
 
-        for layer in self.partial_order_layers[1:]:
-            for measured_node in layer:
-                correcting_set = self.correction_function[measured_node]
-                # Conditionals avoid storing empty correction sets
-                if x_corrected_nodes := correcting_set & future:
-                    x_corrections[measured_node] = frozenset(x_corrected_nodes)
-                if z_corrected_nodes := self.og.odd_neighbors(correcting_set) & future:
-                    z_corrections[measured_node] = frozenset(z_corrected_nodes)
+        if self.partial_order_layers:
+            future = copy(self.partial_order_layers[0])  # Sets are mutable
+            for layer in self.partial_order_layers[1:]:
+                for measured_node in layer:
+                    correcting_set = self.correction_function[measured_node]
+                    # Conditionals avoid storing empty correction sets
+                    if x_corrected_nodes := correcting_set & future:
+                        x_corrections[measured_node] = frozenset(x_corrected_nodes)
+                    if z_corrected_nodes := self.og.odd_neighbors(correcting_set) & future:
+                        z_corrections[measured_node] = frozenset(z_corrected_nodes)
 
-            future |= layer
+                future |= layer
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
@@ -631,7 +630,7 @@ class PauliFlow(Generic[_AM_co]):
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
             - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+            - The first layer of the partial order layers contains the outputs of the open graph if there are any.
 
         Specific properties of Pauli flows:
             - If :math:`j \in p(i), i \neq j, \lambda(j) \notin \{X, Y\}`, then :math:`i \prec j` (P1).
@@ -660,8 +659,9 @@ class PauliFlow(Generic[_AM_co]):
         past_and_present_nodes: set[int] = set()
         past_and_present_nodes_y_meas: set[int] = set()
 
+        shift = 1 if o_set else 0
         layer_idx = len(self.partial_order_layers) - 1
-        for layer in reversed(self.partial_order_layers[1:]):
+        for layer in reversed(self.partial_order_layers[shift:]):
             if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
                 raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
 
@@ -1020,7 +1020,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
             - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+            - The first layer of the partial order layers contains the outputs of the open graph if there are any.
 
         Specific properties of gflows:
             - If :math:`j \in g(i), i \neq j`, then :math:`i \prec j` (G1).
@@ -1043,7 +1043,8 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
         layer_idx = len(self.partial_order_layers) - 1
         past_and_present_nodes: set[int] = set()
-        for layer in reversed(self.partial_order_layers[1:]):
+        shift = 1 if o_set else 0
+        for layer in reversed(self.partial_order_layers[shift:]):
             if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
                 raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
 
@@ -1176,7 +1177,7 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
             - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow, unless it is an empty open graph.
 
         Specific properties of causal flows:
             - Correction sets have one element only (C0),
@@ -1200,7 +1201,8 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
         layer_idx = len(self.partial_order_layers) - 1
         past_and_present_nodes: set[int] = set()
-        for layer in reversed(self.partial_order_layers[1:]):
+        shift = 1 if o_set else 0
+        for layer in reversed(self.partial_order_layers[shift:]):
             if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
                 raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
 
@@ -1368,7 +1370,7 @@ def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
     Raises
     ------
     FlowError
-        If the causal flow is not well formed.
+        If the flow is not well formed.
 
     Notes
     -----
@@ -1376,7 +1378,7 @@ def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
         - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
         - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
         - The nodes in the partial order are the nodes in the open graph.
-        - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+        - Output nodes are always in layer 0 if there are any.
     """
     if not _check_correction_function_domain(flow.og, flow.correction_function):
         raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain)
@@ -1385,9 +1387,11 @@ def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
         raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionImage)
 
     if len(flow.partial_order_layers) == 0:
-        raise PartialOrderError(PartialOrderErrorReason.Empty)
+        if flow.og.graph.nodes:
+            raise PartialOrderError(PartialOrderErrorReason.Empty)
+        return
 
     first_layer = flow.partial_order_layers[0]
     o_set = set(flow.og.output_nodes)
-    if first_layer != o_set or not first_layer:
+    if o_set and first_layer != o_set:
         raise PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer=first_layer)

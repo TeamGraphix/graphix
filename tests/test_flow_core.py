@@ -672,6 +672,18 @@ class TestXZCorrections:
         corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({2}), frozenset({0}))
 
+    # Empty open graph
+    def test_from_measured_nodes_mapping_6(self) -> None:
+        og: OpenGraph[AbstractMeasurement] = OpenGraph(
+            graph=nx.Graph(),
+            input_nodes=[],
+            output_nodes=[],
+            measurements={},
+        )
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+        corrections.check_well_formed()
+        assert corrections.partial_order_layers == ()
+
     # Test exceptions
     def test_from_measured_nodes_mapping_exceptions(self) -> None:
         og = OpenGraph(

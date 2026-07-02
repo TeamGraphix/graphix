@@ -378,7 +378,7 @@ class StandardizedPattern(_StandardizedPattern):
             - All output nodes (if any) are in the first layer.
             - There cannot be any empty layers.
         """
-        oset = frozenset(self.output_nodes)  # First layer by convention.
+        oset = frozenset(self.output_nodes)  # First layer by convention if not empty.
         excluded_nodes = oset
 
         zero_indegree = set(self.input_nodes).union(n.node for n in self.n_list) - excluded_nodes
