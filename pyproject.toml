@@ -47,7 +47,7 @@ dev = [
     "mypy==2.1.0",
     "pre-commit",
     "pyright",
-    "ruff==0.15.19",
+    "ruff==0.15.20",
     "types-networkx==3.6.1.20260624",
     "types-psutil",
     "types-setuptools",
@@ -73,7 +73,7 @@ doc = [
 ]
 typing = [
     "numpy==2.4.2; python_version >= '3.11'",
-    "numba==0.65.1; python_version >= '3.11'",
+    "numba==0.66.0; python_version >= '3.11'",
     "numpy<2.4.2; python_version == '3.10'",
 ]
 
