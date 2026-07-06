@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #524: Added `Statevec.draw` and `DensityMatrix.draw` methods (and the underlying `statevec_to_str` and `density_matrix_to_str` functions) for pretty-printing states and density matrices in ASCII, Unicode, and LaTeX.
 
+- #526: Added new method `XZCorrections.to_pauli_flow`, which reconstructs a Pauli flow directly from XZ-corrections by solving the per-node correction sets over GF(2). Added `FlowGenericErrorReason.NoPauliFlow`, raised when the XZ-corrections admit no compatible Pauli flow.
+
 - #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
 ### Fixed

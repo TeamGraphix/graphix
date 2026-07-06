@@ -960,6 +960,24 @@ class TestPattern:
         s_test = p_test.simulate_pattern(rng=rng)
         assert s_ref.isclose(s_test)
 
+    # Extract Pauli flow from random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_extract_pauli_flow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        """Tests the round trip Pattern -> XZCorrections -> PauliFlow -> XZCorrections -> Pattern."""
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        p_ref = circuit_1.transpile().pattern
+        p_test = p_ref.to_bloch().extract_pauli_flow().to_corrections().to_pattern().infer_pauli_measurements()
+
+        p_ref.remove_pauli_measurements()
+        p_test.remove_pauli_measurements()
+
+        s_ref = p_ref.simulate_pattern(rng=rng)
+        s_test = p_test.simulate_pattern(rng=rng)
+        assert s_ref.isclose(s_test)
+
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
     def test_extract_causal_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         if test_case.has_cflow:
@@ -988,6 +1006,22 @@ class TestPattern:
         else:
             with pytest.raises(FlowError):
                 test_case.pattern.extract_gflow()
+
+    @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
+    def test_extract_pauli_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+        """Tests the round trip Pattern -> XZCorrections -> PauliFlow -> XZCorrections -> Pattern."""
+        # A gflow always induces a Pauli flow, so every gflow case must round-trip via the Pauli
+        # flow. Cases without a gflow are skipped: a Pauli flow is strictly more general and may
+        # still exist, so the absence of one cannot be asserted from `has_gflow` alone.
+        if not test_case.has_gflow:
+            pytest.skip("no gflow; Pauli-flow existence is not determined by has_gflow")
+        alpha = 2 * np.pi * fx_rng.random()
+        s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+        p_test = test_case.pattern.to_bloch().extract_pauli_flow().to_corrections().to_pattern()
+        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+        assert s_ref.isclose(s_test)
 
     # From open graph
     def test_extract_cflow_og(self, fx_rng: Generator) -> None:
