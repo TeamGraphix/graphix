@@ -55,7 +55,19 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=rng)
     pattern = circuit.transpile().pattern
+    pattern = pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements()
     pattern.minimize_space()
-    print(pattern)
     _qasm3 = pattern_to_qasm3(pattern)
+
+
+def test_to_qasm3_failures() -> None:
+    circuit = Circuit(2)
+    circuit.m(0, Axis.X)
+    with pytest.raises(ValueError, match="OpenQASM3 only supports measurements on Z axis"):
+        circuit_to_qasm3(circuit, transpile=False)
+    circuit = circuit.transpile_measurements_to_z_axis()
+    circuit.j(1, 0.25)
+    with pytest.raises(ValueError, match="J gates must be decomposed before QASM3 export"):
+        circuit_to_qasm3(circuit, transpile=False)
+    _qasm3 = circuit_to_qasm3(circuit)

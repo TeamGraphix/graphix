@@ -49,6 +49,7 @@ class InstructionKind(Enum):
     X = enum.auto()
     Y = enum.auto()
     Z = enum.auto()
+    J = enum.auto()
     I = enum.auto()
     M = enum.auto()
     RX = enum.auto()
@@ -290,6 +291,19 @@ class RZ(_KindChecker, BaseInstruction):
         return RZ(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
 
 
+@dataclass(repr=False)
+class J(_KindChecker, BaseInstruction):
+    """J circuit instruction."""
+
+    target: int
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
+
+    @override
+    def visit(self, visitor: InstructionVisitor) -> J:
+        return J(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
+
+
 class InstructionWithoutRZZ:
     """Grouping of all instructions except RZZ for namespace exposure.
 
@@ -313,6 +327,7 @@ class InstructionWithoutRZZ:
     RX: TypeAlias = RX
     RY: TypeAlias = RY
     RZ: TypeAlias = RZ
+    J: TypeAlias = J
 
     def __init__(self) -> None:
         raise TypeError("InstructionWithoutRZZ is a namespace, not a class.")
@@ -334,5 +349,5 @@ class Instruction(InstructionWithoutRZZ):
 
 
 if TYPE_CHECKING:
-    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
+    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
     InstructionType = InstructionTypeWithoutRZZ | RZZ

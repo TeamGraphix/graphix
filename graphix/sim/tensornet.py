@@ -801,6 +801,12 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
     def finalize(self, output_nodes: Iterable[int]) -> None:
         """Do nothing."""
 
+    @property
+    @override
+    def nqubit(self) -> int:
+        """Raise NotImplementedError: the current number of qubits is not well-defined in the current implementation of the TensorNetworkBackend."""
+        raise NotImplementedError
+
 
 def gen_str() -> str:
     """Generate dummy string for einsum."""

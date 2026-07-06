@@ -40,6 +40,7 @@ pattern.draw(flow_from_pattern=False)
 # %%
 # perform Pauli measurements and plot the new (minimal) graph to perform the same quantum computation
 
+pattern = pattern.infer_pauli_measurements()
 pattern.remove_pauli_measurements()
 pattern.draw(flow_from_pattern=False)
 

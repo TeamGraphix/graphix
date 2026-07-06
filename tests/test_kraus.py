@@ -9,8 +9,10 @@ import graphix.random_objects as randobj
 from graphix.channels import (
     KrausChannel,
     KrausData,
+    amplitude_damping_channel,
     dephasing_channel,
     depolarising_channel,
+    two_qubit_amplitude_damping_channel,
     two_qubit_depolarising_channel,
     two_qubit_depolarising_tensor_channel,
 )
@@ -180,3 +182,41 @@ class TestChannel:
         for i in range(len(depol_tensor_channel_2_qubit)):
             assert np.allclose(depol_tensor_channel_2_qubit[i].coef, data[i].coef)
             assert np.allclose(depol_tensor_channel_2_qubit[i].operator, data[i].operator)
+
+    def test_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        gamma = fx_rng.uniform()
+        data = [
+            KrausData(1.0, np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)),
+            KrausData(1.0, np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)),
+        ]
+
+        ad_channel = amplitude_damping_channel(gamma)
+
+        assert isinstance(ad_channel, KrausChannel)
+        assert ad_channel.nqubit == 1
+        assert len(ad_channel) == 2
+
+        for i in range(len(ad_channel)):
+            assert np.allclose(ad_channel[i].coef, data[i].coef)
+            assert np.allclose(ad_channel[i].operator, data[i].operator)
+
+    def test_2_qubit_amplitude_damping_channel(self, fx_rng: Generator) -> None:
+        gamma = fx_rng.uniform()
+        k1 = np.array([[1.0, 0.0], [0.0, np.sqrt(1 - gamma)]], dtype=np.complex128)
+        k2 = np.array([[0.0, np.sqrt(gamma)], [0.0, 0.0]], dtype=np.complex128)
+        data = [
+            KrausData(1.0, np.kron(k1, k1)),
+            KrausData(1.0, np.kron(k1, k2)),
+            KrausData(1.0, np.kron(k2, k1)),
+            KrausData(1.0, np.kron(k2, k2)),
+        ]
+
+        ad_channel_2_qubit = two_qubit_amplitude_damping_channel(gamma)
+
+        assert isinstance(ad_channel_2_qubit, KrausChannel)
+        assert ad_channel_2_qubit.nqubit == 2
+        assert len(ad_channel_2_qubit) == 4
+
+        for i in range(len(ad_channel_2_qubit)):
+            assert np.allclose(ad_channel_2_qubit[i].coef, data[i].coef)
+            assert np.allclose(ad_channel_2_qubit[i].operator, data[i].operator)

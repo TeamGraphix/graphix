@@ -11,9 +11,11 @@ from typing import TYPE_CHECKING, Final
 import numpy as np
 import pytest
 
+from graphix import Command, Pattern
 from graphix.clifford import Clifford
 from graphix.fundamentals import IXYZ_VALUES, ComplexUnit, Sign
 from graphix.pauli import Pauli
+from graphix.random_objects import rand_state_vector
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -94,3 +96,14 @@ class TestClifford:
     def test_try_from_matrix_ng(self, fx_rng: Generator) -> None:
         assert Clifford.try_from_matrix(np.zeros((2, 3))) is None
         assert Clifford.try_from_matrix(fx_rng.normal(size=(2, 2))) is None
+
+    @pytest.mark.parametrize("c", Clifford)
+    def test_to_pattern(self, fx_rng: Generator, c: Clifford) -> None:
+        og = c.to_opengraph()
+        og.to_bloch().extract_causal_flow()
+        pattern = og.to_pattern()
+        pattern_ref = Pattern(input_nodes=[0], cmds=[Command.C(0, c)])
+        input_state = rand_state_vector(nqubits=1, rng=fx_rng)
+        state = pattern.simulate_pattern(input_state=input_state, rng=fx_rng)
+        state_ref = pattern_ref.simulate_pattern(input_state=input_state, rng=fx_rng)
+        assert state.isclose(state_ref)

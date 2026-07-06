@@ -610,3 +610,43 @@ def single_qubit_domains(pattern: Pattern) -> Pattern:
 
     new_pattern.reorder_output_nodes(pattern.output_nodes)
     return new_pattern
+
+
+def remove_local_clifford_commands(pattern: Pattern) -> Pattern:
+    """Return an equivalent pattern where local Clifford commands have been replaced by MBQC commands.
+
+    This function transpiles MBQC+LC patterns into MBQC patterns.
+    """
+    from graphix.pattern import Pattern  # noqa: PLC0415
+
+    nodes = pattern.extract_nodes()
+    if not nodes:
+        return pattern
+    max_node = max(nodes)
+    new_pattern = Pattern(input_nodes=pattern.input_nodes)
+    mapping: dict[Node, Node] = {}
+
+    def reindex(node: Node) -> Node:
+        return mapping.get(node, node)
+
+    for cmd in pattern:
+        match cmd.kind:
+            case CommandKind.C:
+                cmd_node = reindex(cmd.node)
+                clifford_pattern = cmd.clifford.to_opengraph().to_pattern()
+                (output_node,) = clifford_pattern.output_nodes
+                # We avoid using `new_pattern.compose` here because
+                # pattern composition is linear in the size of each
+                # pattern, which would make transpilation run in
+                # quadratic time.
+                # clifford_pattern satisfies the following properties:
+                # - The set of input nodes is {0}.
+                # - The output node is the highest-indexed node.
+                new_pattern.extend(clifford_pattern.reindex(lambda node: cmd_node if node == 0 else node + max_node))  # noqa: B023
+                max_node += output_node
+                mapping[cmd.node] = max_node
+            case _:
+                new_cmd = cmd.reindex(reindex)
+                new_pattern.add(new_cmd)
+    new_pattern.reorder_output_nodes(map(reindex, pattern.output_nodes))
+    return new_pattern

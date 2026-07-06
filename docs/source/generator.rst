@@ -16,6 +16,8 @@ Pattern Generation
 
     .. automethod:: simulate_statevector
 
+    .. automethod:: cz
+
     .. automethod:: cnot
 
     .. automethod:: h
@@ -34,10 +36,14 @@ Pattern Generation
 
     .. automethod:: rz
 
+    .. automethod:: j
+
     .. automethod:: ccx
 
     .. automethod:: m
 
-.. autoclass:: TranspileResult
+.. autoclass:: TranspiledPattern
+
+.. autoclass:: TranspiledFlow
 
 .. autoclass:: SimulateResult
