@@ -257,6 +257,7 @@ def test_pattern_remove_pauli_measurements() -> None:
     circuit = Circuit(2)
     circuit.cnot(0, 1)
     pattern = circuit.transpile().pattern
+    pattern = pattern.infer_pauli_measurements()
     pattern2 = pattern.remove_pauli_measurements(copy=True)
     assert all_bloch_measurement_or_input_node(
         pattern2.input_nodes, (cmd for cmd in pattern2 if isinstance(cmd, Command.M))

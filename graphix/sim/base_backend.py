@@ -230,8 +230,7 @@ class NodeIndex:
 
     def __init__(self) -> None:
         """Initialize an empty mapping between nodes and qubit indices."""
-        self.__dict = {}
-        self.__list = []
+        self.clear()
 
     def __getitem__(self, index: int) -> int:
         """Return the qubit node associated with the specified index.
@@ -315,6 +314,11 @@ class NodeIndex:
         self.__list[j] = node_i
         self.__dict[node_i] = j
         self.__dict[node_j] = i
+
+    def clear(self) -> None:
+        """Delete all the elements, restoring the index to its initial state."""
+        self.__dict = {}
+        self.__list = []
 
 
 class NoiseNotSupportedError(Exception):
@@ -441,6 +445,17 @@ class DenseState(ABC):
         ----------
         qubits : tuple of int
             (control, target) qubit indices
+        """
+
+    @abstractmethod
+    def permute(self, permutation: Sequence[int]) -> None:
+        """Reorder the qubits.
+
+        Parameters
+        ----------
+        permutation: Sequence[int]
+            The permutation to apply.  For each position in the resulting order,
+            the value gives the index of the qubit in the original ordering.
         """
 
     def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:  # noqa: ARG002
@@ -577,6 +592,11 @@ class Backend(Generic[_StateT_co]):
     # (specifically, as a parameter of `__init__`) since `_StateT_co` is covariant.
     state: _StateT_co = dataclasses.field(init=False)
 
+    @property
+    @abstractmethod
+    def nqubit(self) -> int:
+        """Return the number of qubits."""
+
     @abstractmethod
     def add_nodes(self, nodes: Sequence[int], data: Data = BasicStates.PLUS) -> None:
         r"""
@@ -659,7 +679,7 @@ class Backend(Generic[_StateT_co]):
         """
 
     @abstractmethod
-    def finalize(self, output_nodes: Iterable[int]) -> None:
+    def finalize(self, output_nodes: Sequence[int]) -> None:
         """To be run at the end of pattern simulation to convey the order of output nodes."""
 
     @abstractmethod
@@ -818,20 +838,15 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         loc = self.node_index.index(node)
         self.state.evolve_single(clifford.matrix, loc)
 
-    def sort_qubits(self, output_nodes: Iterable[int]) -> None:
-        """Sort the qubit order in internal statevector."""
-        for i, ind in enumerate(output_nodes):
-            if self.node_index.index(ind) != i:
-                move_from = self.node_index.index(ind)
-                self.state.swap((i, move_from))
-                self.node_index.swap(i, move_from)
-
     @override
-    def finalize(self, output_nodes: Iterable[int]) -> None:
+    def finalize(self, output_nodes: Sequence[int]) -> None:
         """To be run at the end of pattern simulation."""
-        self.sort_qubits(output_nodes)
+        self.state.permute([self.node_index.index(node) for node in output_nodes])
+        self.node_index.clear()
+        self.node_index.extend(output_nodes)
 
     @property
+    @override
     def nqubit(self) -> int:
         """Return the number of qubits of the current state."""
         return self.state.nqubit

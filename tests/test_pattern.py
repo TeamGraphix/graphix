@@ -19,6 +19,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
+from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
@@ -70,10 +71,11 @@ class TestPattern:
         depth = 1
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
-
+        pattern = pattern.infer_pauli_measurements()
         pattern.standardize()
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
+        pattern.remove_pauli_measurements()
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
@@ -153,6 +155,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern = pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -213,6 +216,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         assert pattern.is_standard()
+        pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert state_mbqc.isclose(state)
@@ -231,6 +235,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern = pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -246,6 +251,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern = pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         input_node_set = set(pattern.input_nodes)
         assert not any(
@@ -284,6 +290,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern = pattern.infer_pauli_measurements()
         pattern_opt = pattern.remove_pauli_measurements(copy=True)
         isolated_nodes = pattern_opt.extract_isolated_nodes()
         assert isolated_nodes == set()
@@ -300,8 +307,9 @@ class TestPattern:
         depth = 2
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize()
+        pattern.minimize_space()
         pattern1 = copy.deepcopy(pattern)
+        pattern1 = pattern1.infer_pauli_measurements()
         pattern1.remove_pauli_measurements()
         state = pattern.simulate_pattern(rng=rng)
         state1 = pattern1.simulate_pattern(rng=rng)
@@ -407,6 +415,7 @@ class TestPattern:
         depth = 3
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
+        pattern = pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.standardize()
         pattern.minimize_space()
@@ -635,6 +644,7 @@ class TestPattern:
         p2 = circuit_2.transpile().pattern  # inputs: [0]
 
         p, _ = p1.compose(p2, mapping={0: 1, 1: 2, 2: 3})
+        p = StandardizedPattern.from_pattern(p).to_space_optimal_pattern()
 
         circuit_12 = Circuit(1)
         circuit_12.h(0)
@@ -673,6 +683,7 @@ class TestPattern:
         circuit_1.rz(0, alpha)
         p1 = circuit_1.transpile().pattern
         p1.remove_input_nodes()
+        p1 = p1.infer_pauli_measurements()
         p1.remove_pauli_measurements()
 
         circuit_2 = Circuit(1)
@@ -792,10 +803,12 @@ class TestPattern:
         c = Circuit(1)
         c.rz(0, 0.2)
         p = c.transpile().pattern
+        p = p.infer_pauli_measurements()
         p.remove_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({0}))
 
         p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, Measurement.XY(0.3))])
+        p = p.infer_pauli_measurements()
         p.remove_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({2}))
 
@@ -918,6 +931,8 @@ class TestPattern:
         p_ref = circuit_1.transpile().pattern
         p_test = p_ref.to_bloch().extract_causal_flow().to_corrections().to_pattern().infer_pauli_measurements()
 
+        p_ref = p_ref.infer_pauli_measurements()
+        p_test = p_test.infer_pauli_measurements()
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
 
@@ -936,6 +951,8 @@ class TestPattern:
         p_ref = circuit_1.transpile().pattern
         p_test = p_ref.to_bloch().extract_gflow().to_corrections().to_pattern().infer_pauli_measurements()
 
+        p_ref = p_ref.infer_pauli_measurements()
+        p_test = p_test.infer_pauli_measurements()
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
 
@@ -1031,8 +1048,10 @@ class TestPattern:
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
-        for p in [p_ref, p_test]:
-            p.remove_pauli_measurements()
+        p_ref = p_ref.infer_pauli_measurements()
+        p_ref.remove_pauli_measurements()
+        p_test = p_test.infer_pauli_measurements()
+        p_test.remove_pauli_measurements()
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)
@@ -1076,6 +1095,31 @@ class TestPattern:
         with pytest.warns(UserWarning, match="Pattern with non-inferred Pauli measurements."):
             original_pattern.to_bloch().perform_pauli_pushing()
         assert original_pattern.perform_pauli_pushing(copy=True, standardize=True).is_standard()
+
+    def test_node_mapping(self) -> None:
+        pattern = Pattern(input_nodes=[3], cmds=[N(1), E((1, 3)), M(3), C(1, Clifford.H), X(1, {3}), Z(1, {3})])
+        assert pattern.node_mapping() == {1: 0, 3: 1}
+        assert pattern.node_mapping({3: 1}, start=1) == {1: 2, 3: 1}
+        assert pattern.node_mapping(start=1, preserves={1}) == {3: 2}
+        with pytest.raises(ValueError, match="Initial mapping is not injective"):
+            pattern.node_mapping({1: 0, 3: 0})
+        with pytest.raises(ValueError, match="Some keys in the initial mapping are not nodes"):
+            pattern.node_mapping({2: 0})
+
+    def test_reindex(self) -> None:
+        pattern = Pattern(input_nodes=[3], cmds=[N(1), E((1, 3)), M(3), C(1, Clifford.H), X(1, {3}), Z(1, {3})])
+        pattern_copy = pattern.copy()
+        pattern_reindexed = pattern.reindex(copy=True)
+        assert pattern_reindexed.input_nodes == [1]
+        assert list(pattern_reindexed) == [N(0), E((0, 1)), M(1), C(0, Clifford.H), X(0, {1}), Z(0, {1})]
+        assert pattern_reindexed.output_nodes == [0]
+        assert pattern.input_nodes == pattern_copy.input_nodes
+        assert list(pattern) == list(pattern_copy)
+        assert pattern.output_nodes == pattern_copy.output_nodes
+        pattern.reindex()
+        assert pattern.input_nodes == pattern_reindexed.input_nodes
+        assert list(pattern) == list(pattern_reindexed)
+        assert pattern.output_nodes == pattern_reindexed.output_nodes
 
     def test_extract_opengraph_standardization(self) -> None:
         p = Pattern(cmds=[N(0), C(0, Clifford.H), M(0, Measurement.XY(0.3))])

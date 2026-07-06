@@ -166,6 +166,7 @@ class Statevec(DenseState):
             - A single-qubit state vector will be broadcast to all nodes.
             - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
               initializes the new nodes jointly.
+            - The type of nodes to be added is inferred from the type of the existing ``Statevec``.
 
         Notes
         -----
@@ -302,6 +303,8 @@ class Statevec(DenseState):
         psi_other = other.psi.flatten()
 
         total_num = len(self.dims()) + len(other.dims())
+        if psi_self.dtype == np.object_ and psi_other.dtype != np.object_:
+            psi_other = psi_other.astype(np.object_, copy=False)  # pragma: nocover
         self.psi = kron(psi_self, psi_other).reshape((2,) * total_num)
 
     def cnot(self, qubits: tuple[int, int]) -> None:
@@ -330,6 +333,11 @@ class Statevec(DenseState):
         psi = tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
         self.psi = np.moveaxis(psi, (0, 1), qubits)
+
+    @override
+    def permute(self, permutation: Sequence[int]) -> None:
+        _check_permutation(permutation, self.nqubit)
+        self.psi = np.transpose(self.psi, permutation)
 
     def normalize(self) -> None:
         """Normalize the state in-place."""
@@ -641,3 +649,10 @@ def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
     if encoding == "LSB":
         return output[::-1]
     return output
+
+
+def _check_permutation(permutation: Sequence[int], nqubits: int) -> None:
+    if len(permutation) != nqubits:
+        raise ValueError(f"Permutation has length {len(permutation)}, but {nqubits} qubits expected.")
+    if set(permutation) != set(range(nqubits)):
+        raise ValueError(f"{permutation} is not a permutation.")

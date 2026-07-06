@@ -22,25 +22,47 @@ if TYPE_CHECKING:
     from graphix.instruction import InstructionType
 
 
-def circuit_to_qasm3(circuit: Circuit) -> str:
-    """Export circuit instructions to OpenQASM 3.0 representation.
+def circuit_to_qasm3(circuit: Circuit, *, transpile: bool = True) -> str:
+    """Export circuit instructions to an OpenQASM 3.0 string.
+
+    Parameters
+    ----------
+    circuit: Circuit
+        The quantum circuit to be exported.
+
+    transpile: bool, optional
+        If ``True`` (the default), the circuit is first transpiled so that any J gates
+        are replaced by equivalent RZ and H gates.
+        If ``False``, a ``ValueError`` is raised when the circuit contains a J gate.
 
     Returns
     -------
     str
-        The OpenQASM 3.0 string representation of the circuit.
+        The OpenQASM 3.0 representation of the supplied circuit.
     """
-    return "\n".join(circuit_to_qasm3_lines(circuit))
+    return "\n".join(circuit_to_qasm3_lines(circuit, transpile=transpile))
 
 
-def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
+def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True) -> Iterator[str]:
     """Export circuit instructions to line-by-line OpenQASM 3.0 representation.
+
+    Parameters
+    ----------
+    circuit: Circuit
+        The quantum circuit to be exported.
+
+    transpile: bool, optional
+        If ``True`` (the default), the circuit is first transpiled so that any J gates
+        are replaced by equivalent RZ and H gates.
+        If ``False``, a ``ValueError`` is raised when the circuit contains a J gate.
 
     Returns
     -------
     Iterator[str]
-        The OpenQASM 3.0 lines that represent the circuit.
+        An iterator over the OpenQASM 3.0 lines that represent the circuit.
     """
+    if transpile:
+        circuit = circuit.transpile_j_to_rzh().transpile_measurements_to_z_axis()
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
     yield f"qubit[{circuit.width}] q;"
@@ -72,18 +94,38 @@ def angle_to_qasm3(angle: ParameterizedAngle) -> str:
 
 
 def instruction_to_qasm3(instruction: InstructionType) -> str:
-    """Get the OpenQASM3 representation of a single circuit instruction."""
+    """Get the OpenQASM3 representation of a single circuit instruction.
+
+    Parameters
+    ----------
+    instruction : Instruction
+        The instruction to convert.
+
+    Returns
+    -------
+    str
+        The OpenQASM3 representation of the instruction.
+
+    Raises
+    ------
+    ValueError
+        If the instruction is not supported by OpenQASM3.
+    """
     match instruction.kind:
         case InstructionKind.M:
             if instruction.axis != Axis.Z:
                 raise ValueError(
-                    "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes."
+                    "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes, or setting `transpile=True`."
                 )
             return f"b[{instruction.target}] = measure q[{instruction.target}]"
         case InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
             angle = angle_to_qasm3(instruction.angle)
             return qasm3_gate_call(
                 instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
+            )
+        case InstructionKind.J:
+            raise ValueError(
+                "J gates must be decomposed before QASM3 export using `Circuit.transpile_j_to_rzh`, or setting `transpile=True`."
             )
         case InstructionKind.H | InstructionKind.S | InstructionKind.X | InstructionKind.Y | InstructionKind.Z:
             return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
