@@ -543,8 +543,13 @@ class GraphVisualizer:
         )
 
         # Update plot_lims to take into account label
-        trans = base + offset
+        padding = mtransforms.ScaledTranslation(0, -8 / 72, fig.dpi_scale_trans)
+
+        trans = base + offset + padding
         _, ydisp = trans.transform((0, plot_lims.ymin))
+
+        # inverted transformation depends on the current plot limits
+        self._set_plot_lims(plot_lims)
         return replace(plot_lims, ymin=base.inverted().transform((0, ydisp))[1])
 
     def _draw_measurements_labels(self) -> None:
