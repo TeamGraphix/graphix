@@ -266,11 +266,17 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
     )
     return plt.gcf()
 
+
 @pytest.mark.usefixtures("mock_plot")
 @pytest.mark.mpl_image_compare
 def test_draw_graph_linear_graph() -> Figure:
     # See https://github.com/TeamGraphix/graphix/issues/535
-    og = OpenGraph(graph=nx.Graph([(0, 1), (1, 2), (2, 3)]), input_nodes=[0], output_nodes=[3], measurements=dict.fromkeys(range(3), Plane.XY))
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements=dict.fromkeys(range(3), Plane.XY),
+    )
     flow = og.extract_causal_flow()
     flow.draw(legend=False)
     return plt.gcf()
