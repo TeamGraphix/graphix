@@ -490,7 +490,26 @@ class TestFlow:
         flow_focused = GFlow(og, cf_focused, partial_order)
 
         assert not flow.is_focused()
+
+        with pytest.raises(FlowGenericError) as exc_info:
+            flow.to_focused()
+        assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
+        assert str(exc_info.value) == "The Pauli flow is not focused."
+
         assert flow_focused.is_focused()
+
+        flow_focused = flow_focused.to_focused()
+        assert flow_focused == flow_focused.to_focused()
+
+        pauliflow = PauliFlow(og, cf, partial_order)
+        pauliflow_focused = PauliFlow(og, cf_focused, partial_order)
+
+        with pytest.raises(FlowGenericError) as exc_info:
+            pauliflow.to_focused()
+        assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
+
+        pauliflow_focused = pauliflow_focused.to_focused()
+        assert pauliflow_focused == pauliflow_focused.to_focused()
 
 
 class TestXZCorrections:
