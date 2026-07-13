@@ -5,6 +5,7 @@ from __future__ import annotations
 import enum
 import math
 import string
+from contextvars import ContextVar
 from enum import Enum
 from fractions import Fraction
 from math import pi
@@ -38,8 +39,43 @@ class OutputFormat(Enum):
     Unicode = enum.auto()
 
 
+default_output_format = ContextVar("default_output_format", default=OutputFormat.ASCII)
+
+
+def ensure_output_format(output: OutputFormat | None) -> OutputFormat:
+    r"""Return the default output format if ``None`` is given.
+
+    The default output format is stored in the
+    :class:`~contextvars.ContextVar` ``default_output_format``.
+
+    Parameters
+    ----------
+    output: OutputFormat | None
+        If not ``None``, this value is returned.
+        Otherwise, the default output format is returned.
+
+    Examples
+    --------
+    >>> import contextvars
+    >>> from graphix import Circuit, OutputFormat
+    >>> from graphix.pretty_print import default_output_format
+    >>> ctx = contextvars.copy_context()
+    >>> def main():
+    ...     circuit = Circuit(1)
+    ...     circuit.h(0)
+    ...     default_output_format.set(OutputFormat.LaTeX)
+    ...     print(circuit.transpile().pattern)
+    >>> ctx.run(main)
+    \(X_{1}^{0}\,M_{0}^{0}\,E_{0,1}\,N_{1}\)
+
+    """
+    if output is None:
+        return default_output_format.get()
+    return output
+
+
 def angle_to_str(
-    angle: Angle, output: OutputFormat, max_denominator: int = 1000, multiplication_sign: bool = False
+    angle: Angle, output: OutputFormat | None = None, max_denominator: int = 1000, multiplication_sign: bool = False
 ) -> str:
     r"""
     Return a string representation of an angle given in units of π.
@@ -52,7 +88,7 @@ def angle_to_str(
     ----------
     angle : float
         The angle in multiples of π (e.g., 0.5 means π/2).
-    output : OutputFormat
+    output : OutputFormat, optional
         Desired formatting style: Unicode (π symbol), LaTeX (\pi), or ASCII ("pi").
     max_denominator : int, optional
         Maximum denominator for detecting a simple fraction (default: 1000).
@@ -69,6 +105,7 @@ def angle_to_str(
     str
         The formatted angle.
     """
+    output = ensure_output_format(output)
     frac = Fraction(angle).limit_denominator(max_denominator)
 
     if not math.isclose(angle, float(frac)):
@@ -121,8 +158,9 @@ SUBSCRIPTS = str.maketrans(string.digits, "₀₁₂₃₄₅₆₇₈₉")
 SUPERSCRIPTS = str.maketrans(string.digits, "⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 
-def affine_expression_to_str(expr: AffineExpression, output: OutputFormat) -> str:
+def affine_expression_to_str(expr: AffineExpression, output: OutputFormat | None = None) -> str:
     """Return the string representation of an affine expression."""
+    output = ensure_output_format(output)
     result = str(expr.x)
     if expr.a != 1:
         a = angle_to_str(rad_to_angle(expr.a), output)
@@ -139,16 +177,17 @@ def affine_expression_to_str(expr: AffineExpression, output: OutputFormat) -> st
     return result
 
 
-def command_to_str(cmd: command.CommandType, output: OutputFormat) -> str:
+def command_to_str(cmd: command.CommandType, output: OutputFormat | None = None) -> str:
     """Return the string representation of a command according to the given format.
 
     Parameters
     ----------
     cmd: CommandType
         The command to pretty print.
-    output: OutputFormat
+    output: OutputFormat, optional
         The expected format.
     """
+    output = ensure_output_format(output)
     out = [cmd.kind.name]
 
     match cmd.kind:
@@ -242,7 +281,7 @@ def command_to_str(cmd: command.CommandType, output: OutputFormat) -> str:
 
 def pattern_to_str(
     pattern: Pattern,
-    output: OutputFormat,
+    output: OutputFormat | None = None,
     left_to_right: bool = False,
     limit: int | None = 40,
     target: Container[command.CommandKind] | None = None,
@@ -253,7 +292,7 @@ def pattern_to_str(
     ----------
     pattern: Pattern
         The pattern to pretty print.
-    output: OutputFormat
+    output: OutputFormat, optional
         The expected format.
     left_to_right: bool, optional
         If ``True``, the first command will appear at the beginning of
@@ -266,6 +305,7 @@ def pattern_to_str(
     target: Container[command.CommandKind], optional
         If set, only commands of kinds specified in ``target`` are printed.
     """
+    output = ensure_output_format(output)
     separator = r"\," if output == OutputFormat.LaTeX else " "
     command_list = list(pattern)
     if target is not None:
@@ -284,16 +324,17 @@ def pattern_to_str(
     return result
 
 
-def set_to_str(objects: Iterable[object], output: OutputFormat) -> str:
+def set_to_str(objects: Iterable[object], output: OutputFormat | None = None) -> str:
     """Convert a set to a formatted string representation.
 
     Parameters
     ----------
     objects : Iterable[object]
         The set to format.
-    output : OutputFormat
+    output : OutputFormat, optional
         The desired output format (ASCII, LaTeX or Unicode).
     """
+    output = ensure_output_format(output)
     contents = ", ".join(str(item) for item in objects)
     if output == OutputFormat.LaTeX:
         return f"\\{{{contents}\\}}"
@@ -301,7 +342,10 @@ def set_to_str(objects: Iterable[object], output: OutputFormat) -> str:
 
 
 def correction_function_to_str(
-    correction_function: Mapping[int, AbstractSet[int]], cf_name: str, output: OutputFormat, multiline: bool = False
+    correction_function: Mapping[int, AbstractSet[int]],
+    cf_name: str,
+    output: OutputFormat | None = None,
+    multiline: bool = False,
 ) -> str:
     """Convert a correction function mapping to a formatted string representation.
 
@@ -312,7 +356,7 @@ def correction_function_to_str(
         correction function. See :class:`graphix.flow.core.PauliFlow` for additional information.
     cf_name : str
         The name of the correction function (e.g., ``c`` for causal flow, ``g`` for gflow, etc.)
-    output : OutputFormat
+    output : OutputFormat, optional
         The desired output format (ASCII, LaTeX or Unicode).
     multiline : bool, optional
         If ``True``, format each correction set on a separate line (or LaTeX line break).
@@ -323,6 +367,7 @@ def correction_function_to_str(
     -------
     str
     """
+    output = ensure_output_format(output)
     separator = (
         (r",\\" if output == OutputFormat.LaTeX else "\n")
         if multiline
@@ -334,20 +379,21 @@ def correction_function_to_str(
     )
 
 
-def partial_order_to_str(partial_order_layers: Sequence[AbstractSet[int]], output: OutputFormat) -> str:
+def partial_order_to_str(partial_order_layers: Sequence[AbstractSet[int]], output: OutputFormat | None = None) -> str:
     """Convert a partial order layering to a formatted string representation.
 
     Parameters
     ----------
     partial_order_layers : Sequence[AbstractSet[int]]
         Partial order between nodes in a layer form. See :class:`graphix.flow.core.PauliFlow` for additional information.
-    output : OutputFormat
+    output : OutputFormat, optional
         The desired output format (ASCII, LaTeX or Unicode).
 
     Returns
     -------
     str
     """
+    output = ensure_output_format(output)
     match output:
         case OutputFormat.ASCII:
             separator = " < "
@@ -361,7 +407,7 @@ def partial_order_to_str(partial_order_layers: Sequence[AbstractSet[int]], outpu
     return separator.join(f"{set_to_str(layer, output)}" for layer in partial_order_layers[::-1])
 
 
-def component_separator_for(output: OutputFormat, multiline: bool = False) -> str:
+def _component_separator_for(output: OutputFormat, multiline: bool = False) -> str:
     """Return a component separator to string-format a `PauliFlow` or a `XZCorrections` object.
 
     Parameters
@@ -384,14 +430,16 @@ def component_separator_for(output: OutputFormat, multiline: bool = False) -> st
     )
 
 
-def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, multiline: bool = False) -> str:
+def flow_to_str(
+    flow: PauliFlow[AbstractMeasurement], output: OutputFormat | None = None, multiline: bool = False
+) -> str:
     """Convert a flow object to a formatted string representation.
 
     Parameters
     ----------
     flow : PauliFlow[AbstractMeasurement]
         The flow object to be formatted.
-    output : OutputFormat
+    output : OutputFormat, optional
         The desired output format (ASCII, LaTeX or Unicode).
     multiline : bool, optional
         If ``True``, format each correction set on a separate line (or LaTeX line break).
@@ -403,7 +451,8 @@ def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, mult
     str
         A string representation of the flow object formatted according to the specified output format and layout.
     """
-    separator = component_separator_for(output, multiline)
+    output = ensure_output_format(output)
+    separator = _component_separator_for(output, multiline)
 
     return separator.join(
         (
@@ -413,14 +462,16 @@ def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, mult
     )
 
 
-def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputFormat, multiline: bool = False) -> str:
+def xzcorr_to_str(
+    xzcorr: XZCorrections[AbstractMeasurement], output: OutputFormat | None = None, multiline: bool = False
+) -> str:
     """Convert an XZCorrections object to a formatted string representation.
 
     Parameters
     ----------
     flow : XZCorrections[AbstractMeasurement]
         The XZCorrections object to be formatted.
-    output : OutputFormat
+    output : OutputFormat, optional
         The desired output format (ASCII, LaTeX or Unicode).
     multiline : bool, optional
         If ``True``, format each correction set on a separate line (or LaTeX line break).
@@ -432,7 +483,8 @@ def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputForm
     str
         A string representation of the XZCorrections object formatted according to the specified output format and layout.
     """
-    separator = component_separator_for(output, multiline)
+    output = ensure_output_format(output)
+    separator = _component_separator_for(output, multiline)
 
     return separator.join(
         (
@@ -669,7 +721,7 @@ def _decimal_to_str(z: complex, output: OutputFormat, precision: int, atol: floa
 
 def complex_to_str(
     value: object,
-    output: OutputFormat,
+    output: OutputFormat | None = None,
     *,
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
     atol: float = _DEFAULT_ATOL,
@@ -690,7 +742,7 @@ def complex_to_str(
     value : object
         The number to format. Anything supporting conversion to ``complex`` is
         accepted; other objects are stringified.
-    output : OutputFormat
+    output : OutputFormat, optional
         Desired formatting style: ``Unicode`` (``√``, ``π``), ``LaTeX``
         (``\sqrt``, ``\pi``) or ``ASCII`` (``sqrt``, ``pi``).
     max_denominator : int, optional
@@ -720,6 +772,7 @@ def complex_to_str(
     >>> complex_to_str(0.123456 + 0.234567j, OutputFormat.ASCII, precision=2)
     '0.12+0.23i'
     """
+    output = ensure_output_format(output)
     if not isinstance(value, (bool, int, float, complex, SupportsComplex)):
         return str(value)
     z = complex(value)
@@ -818,7 +871,7 @@ def _factor_uniform_magnitude(
 
 def statevec_to_str(
     statevec: Statevec,
-    output: OutputFormat,
+    output: OutputFormat | None = None,
     *,
     encoding: _ENCODING = "MSB",
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
@@ -857,6 +910,7 @@ def statevec_to_str(
     str
         The formatted statevector, e.g. ``√2/2(|00⟩ + |01⟩)``.
     """
+    output = ensure_output_format(output)
     amplitudes = statevec.to_dict(encoding, rtol=rtol, atol=atol)
     if not amplitudes:
         return "0"
@@ -894,7 +948,7 @@ def statevec_to_str(
 
 def density_matrix_to_str(
     density_matrix: DensityMatrix,
-    output: OutputFormat,
+    output: OutputFormat | None = None,
     *,
     max_denominator: int = _DEFAULT_MAX_DENOMINATOR,
     atol: float = _DEFAULT_ATOL,
@@ -928,6 +982,7 @@ def density_matrix_to_str(
     str
         The formatted density matrix.
     """
+    output = ensure_output_format(output)
     rows = [
         [
             complex_to_str(entry, output, max_denominator=max_denominator, atol=atol, rtol=rtol, precision=precision)

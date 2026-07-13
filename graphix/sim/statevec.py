@@ -145,7 +145,7 @@ class Statevec(DenseState):
 
     def __str__(self) -> str:
         """Return a string description."""
-        return f"Statevec object with statevector {self.psi} and length {self.dims()}."
+        return self.draw()
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
@@ -531,7 +531,7 @@ class Statevec(DenseState):
 
     def draw(
         self,
-        output: OutputFormat = OutputFormat.Unicode,
+        output: OutputFormat | None = None,
         *,
         encoding: _ENCODING = "MSB",
         max_denominator: int = 1000,

@@ -475,7 +475,7 @@ class XZCorrections(Generic[_AM_co]):
 
     def __str__(self) -> str:
         """Return a human-readable string representing the XZCorrections' mappings and partial order layers."""
-        return self.to_ascii()
+        return xzcorr_to_str(self)
 
     def to_ascii(self, multiline: bool = False) -> str:
         """Return an ASCII string representing the XZCorrections' mappings and partial order layers.
@@ -815,7 +815,7 @@ class PauliFlow(Generic[_AM_co]):
 
     def __str__(self) -> str:
         """Return a human-readable string representing the flow's correction function and partial order layers."""
-        return self.to_ascii()
+        return flow_to_str(self)
 
     def to_ascii(self, multiline: bool = False) -> str:
         """Return an ASCII string representing the flow's correction function and partial order layers.
