@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Empty outputs layer removed from flow's partial order.
   - Flow well-formedness check does not trigger false negative for flows on open graphs without outputs.
 
+- #535, #559: Added a padding beneath the measurement-order arrow when visualizing open graphs with layers, keeping both the arrow and its label inside the visualization box.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
