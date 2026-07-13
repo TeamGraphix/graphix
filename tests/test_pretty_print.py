@@ -285,6 +285,7 @@ def test_statevec_draw() -> None:
     # A magnitude shared by every amplitude is factored out.
     assert bell.draw(OutputFormat.Unicode) == "√2/2(|00⟩ + |11⟩)"
     assert bell.draw(OutputFormat.ASCII) == "sqrt(2)/2(|00> + |11>)"
+    assert str(bell) == bell.draw(OutputFormat.ASCII)
     # LaTeX uses the \ket{...} macro for the basis kets.
     assert bell.draw(OutputFormat.LaTeX) == r"\frac{\sqrt{2}}{2}(\ket{00} + \ket{11})"
 
