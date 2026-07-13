@@ -9,6 +9,7 @@ import pytest
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
     CausalFlow,
+    FocusedPauliFlow,
     GFlow,
     PauliFlow,
     XZCorrections,
@@ -510,6 +511,11 @@ class TestFlow:
 
         pauliflow_focused = pauliflow_focused.to_focused()
         assert pauliflow_focused == pauliflow_focused.to_focused()
+
+        pauliflow = FocusedPauliFlow(og, cf, partial_order)
+        with pytest.raises(FlowGenericError) as exc_info:
+            pauliflow.check_well_formed()
+        assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
 
 
 class TestXZCorrections:
