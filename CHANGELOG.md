@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
+- #568: Added the following methods to `Pattern`. By default, they modify the pattern in place, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
+  - `apply`, an in-place variant of `map`,
+  - `blochify`, an in-place variant of `to_bloch`,
+  - `substitute`, an in-place variant of `subs`,
+  - `replace_parameters`, an-in place variant of `xreplace`.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
@@ -99,6 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Consequently, the `pyproject.toml` no longer defines an `extra` dependency group for the `pyzx` package.
 
 - #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
+
+- #568: Method `Pattern.infer_pauli_measurements` now operates in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
 
 ## [0.3.5] - 2026-03-26
 

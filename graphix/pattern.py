@@ -1622,12 +1622,88 @@ class Pattern:
         )
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
-        """Return a copy of the pattern where all occurrences of the given variable in measurement angles are substituted by the given value."""
-        return self.map(lambda m: m.subs(variable, substitute))
+        """Return a copy of the pattern where all occurrences of the given variable in measurement angles are substituted by the given value.
+
+        Equivalent to ``self.substitute(variable, substitute, copy=True)``
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of `variable`.
+
+        Returns
+        -------
+        Pattern
+            The pattern with the updated measurement parameters.
+        """
+        return self.substitute(variable, substitute, copy=True)
+
+    def substitute(self, variable: Parameter, substitute: ExpressionOrSupportsFloat, *, copy: bool = False) -> Pattern:
+        """Substitute all occurrences of the given variable in measurement angles by the given value.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of `variable`.
+
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Pattern
+            The pattern with the updated measurement parameters.
+            Equal to ``self`` if ``copy`` is ``False``.
+        """
+        return self.apply(lambda m: m.subs(variable, substitute), copy=copy)
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
-        """Return a copy of the pattern where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
-        return self.map(lambda m: m.xreplace(assignment))
+        """Return a copy of the pattern where all occurrences of the given keys in measurement angles are substituted by the given values in parallel.
+
+        Equivalent to ``self.replace_parameters(assignment, copy=True)``.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Pattern
+            The pattern with the updated measurement parameters.
+        """
+        return self.replace_parameters(assignment, copy=True)
+
+    def replace_parameters(
+        self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat], *, copy: bool = False
+    ) -> Pattern:
+        """Substitute all occurrences of the given keys in measurement angles by the given values in parallel.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        Returns
+        -------
+        Pattern
+            The pattern with the updated measurement parameters.
+            Equal to ``self`` if ``copy`` is ``False``.
+        """
+        return self.apply(lambda m: m.xreplace(assignment), copy=copy)
 
     def copy(self) -> Pattern:
         """Return a copy of the pattern."""
@@ -1700,8 +1776,47 @@ class Pattern:
                 case CommandKind.C:
                     check_active(cmd, cmd.node)
 
+    def apply(self, f: Callable[[Measurement], Measurement], *, copy: bool = False) -> Pattern:
+        """Apply the function ``f` to each measurement.
+
+        Parameters
+        ----------
+        f: Callable[[Measurement], Measurement]
+            Function applied to each measurement.
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Pattern
+            The resulting pattern.
+            If ``copy`` is ``False``, the result is ``self``.
+
+        Example
+        -------
+        >>> from graphix import Pattern, command
+        >>> from graphix.measurements import BlochMeasurement, Measurement
+        >>> pattern = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.XZ(0.25))])
+        >>> pattern.apply(lambda m: BlochMeasurement(m.angle + 1, m.plane))
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.XZ(1.25))])
+        >>> pattern
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.XZ(1.25))])
+        """
+        new_seq = [cmd.map(f) if cmd.kind == CommandKind.M else cmd for cmd in self]
+
+        if copy:
+            new_pattern = Pattern(input_nodes=self.input_nodes, cmds=new_seq)
+            new_pattern.reorder_output_nodes(self.output_nodes)
+            return new_pattern
+        self.__seq = new_seq
+        return self
+
     def map(self, f: Callable[[Measurement], Measurement]) -> Pattern:
         """Return a pattern where the function ``f`` has been applied to each measurement.
+
+        Equivalent to ``self.apply(f, copy=True)``.
 
         Parameters
         ----------
@@ -1720,20 +1835,13 @@ class Pattern:
         >>> pattern = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.XZ(0.25))])
         >>> pattern.map(lambda m: BlochMeasurement(m.angle + 1, m.plane))
         Pattern(input_nodes=[0], cmds=[M(0, Measurement.XZ(1.25))])
+        >>> pattern
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.XZ(0.25))])
         """
-        new_pattern = Pattern(input_nodes=self.input_nodes)
+        return self.apply(f, copy=True)
 
-        for cmd in self:
-            if cmd.kind == CommandKind.M:
-                new_pattern.add(cmd.map(f))
-            else:
-                new_pattern.add(cmd)
-
-        new_pattern.reorder_output_nodes(self.output_nodes)
-        return new_pattern
-
-    def infer_pauli_measurements(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> Pattern:
-        """Return an equivalent pattern in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+    def infer_pauli_measurements(self, *, rel_tol: float = 1e-09, abs_tol: float = 0.0, copy: bool = False) -> Pattern:
+        """Replace Bloch measurements close to a Pauli measurement by Pauli measurements.
 
         Parameters
         ----------
@@ -1743,11 +1851,17 @@ class Pattern:
         abs_tol : float, optional
             Absolute tolerance for comparing angles, passed to :func:`math.isclose`.
             Default is ``0.0``.
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
 
         Returns
         -------
         Pattern
-            An equivalent pattern in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+            A pattern in which Bloch measurements close to a Pauli
+            measurement are replaced by Pauli measurements. If
+            ``copy`` is ``False``, the result is ``self``.
 
         Example
         -------
@@ -1757,10 +1871,40 @@ class Pattern:
         >>> pattern.infer_pauli_measurements()
         Pattern(input_nodes=[0], cmds=[M(0, Measurement.Y)])
         """
-        return self.map(lambda m: m.to_pauli_or_bloch(rel_tol, abs_tol))
+        return self.apply(lambda m: m.to_pauli_or_bloch(rel_tol, abs_tol), copy=copy)
+
+    def blochify(self, *, copy: bool = False) -> Pattern:
+        """Represent all measurements as Bloch measurements.
+
+        Parameters
+        ----------
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Pattern
+            A pattern in which all measurements are Bloch measurements.
+            If ``copy`` is ``False``, the result is ``self``.
+
+        Example
+        -------
+        >>> from graphix import Pattern, command
+        >>> from graphix.measurements import BlochMeasurement, Measurement
+        >>> pattern = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.Y)])
+        >>> pattern.blochify()
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.XY(0.5))])
+        >>> pattern
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.XY(0.5))])
+        """
+        return self.apply(lambda m: m.to_bloch(), copy=copy)
 
     def to_bloch(self) -> Pattern:
         """Return an equivalent pattern in which all measurements are represented as Bloch measurements.
+
+        Equivalent to ``self.blochify(copy=True)``.
 
         Example
         -------
@@ -1769,15 +1913,17 @@ class Pattern:
         >>> pattern = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.Y)])
         >>> pattern.to_bloch()
         Pattern(input_nodes=[0], cmds=[M(0, Measurement.XY(0.5))])
+        >>> pattern
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.Y)])
         """
-        return self.map(lambda m: m.to_bloch())
+        return self.blochify(copy=True)
 
     def perform_pauli_pushing(
         self,
+        *,
         leave_nodes: AbstractSet[Node] | None = None,
         copy: bool = False,
         standardize: bool = False,
-        *,
         stacklevel: int = 1,
     ) -> Pattern:
         """Move Pauli measurements before the other measurements.
