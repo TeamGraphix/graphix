@@ -95,18 +95,21 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="rename-simulate"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="rename-simulate"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-pyzx"),
+        ReverseDependency(
+            "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="rename-simulate"
+        ),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-compiler", branch="rename-simulate"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="rename-simulate"),
         ReverseDependency(
             "https://github.com/qat-inria/veriphix",
             doctest_modules=False,
             install_target=".[dev]",
+            branch="rename-simulate",
         ),
-        ReverseDependency("https://github.com/matulni/graphix-mqtbench", branch="minimal"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="rename-simulate"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:

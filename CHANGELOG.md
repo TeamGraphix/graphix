@@ -98,7 +98,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #468, #511: The `pyzx` module has been moved to a separate plugin: https://github.com/thierry-martinez/graphix-pyzx/
   Consequently, the `pyproject.toml` no longer defines an `extra` dependency group for the `pyzx` package.
 
-- #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
+- #512: Method `Circuit.simulate` (formerly `Circuit.simulate_statevector`, see #567)  accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
+
+- #567:
+  - Method `Circuit.simulate_statevector` has been renamed `Circuit.simulate`.
+  - Method `Pattern.simulate_pattern` has been renamed `Pattern.simulate`.
 
 ## [0.3.5] - 2026-03-26
 
