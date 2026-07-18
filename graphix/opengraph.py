@@ -758,7 +758,7 @@ class OpenGraph(Generic[_AM_co]):
         variable : Parameter
             The symbolic expression to be replaced within the measurement angles.
         substitute : ExpressionOrSupportsFloat
-            The value or symbolic expression to substitute in place of `variable`.
+            The value or symbolic expression to substitute in place of ``variable``.
 
         Returns
         -------

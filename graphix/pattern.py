@@ -1632,7 +1632,7 @@ class Pattern:
             The symbolic expression to be replaced within the measurement angles.
 
         substitute : ExpressionOrSupportsFloat
-            The value or symbolic expression to substitute in place of `variable`.
+            The value or symbolic expression to substitute in place of ``variable``.
 
         Returns
         -------
@@ -1650,7 +1650,7 @@ class Pattern:
             The symbolic expression to be replaced within the measurement angles.
 
         substitute : ExpressionOrSupportsFloat
-            The value or symbolic expression to substitute in place of `variable`.
+            The value or symbolic expression to substitute in place of ``variable``.
 
         copy : bool, optional
             If ``True``, the current pattern remains unchanged and a
