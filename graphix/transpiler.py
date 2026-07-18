@@ -649,24 +649,24 @@ class Circuit:
         return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor) -> Circuit:
-        """Apply `visitor` to all instructions in the circuit."""
+        """Apply ``visitor`` to all instructions in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
             result.instruction.append(instr.visit(visitor))
         return result
 
     def map_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle]) -> Circuit:
-        """Apply `f` to all angles that occur in the circuit."""
+        """Apply ``f`` to all angles that occur in the circuit."""
         return self.visit(_MapAngleVisitor(f))
 
     def is_parameterized(self) -> bool:
         """
-        Return `True` if there is at least one measurement angle that is not just an instance of `SupportsFloat`.
+        Return ``True`` if there is at least one measurement angle that is not just an instance of :class:`SupportsFloat`.
 
         A parameterized circuit is a circuit where at least one
         measurement angle is an expression that is not a number,
-        typically an instance of `sympy.Expr` (but we don't force to
-        choose `sympy` here).
+        typically an instance of :class:`sympy.Expr` (but we don't force to
+        choose ``sympy`` here).
 
         """
         for instr in self.instruction:

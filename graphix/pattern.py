@@ -389,7 +389,7 @@ class Pattern:
 
     @property
     def output_nodes(self) -> list[int]:
-        """List all nodes that are either `input_nodes` or prepared with `N` commands and that have not been measured with an `M` command."""
+        """List all nodes that are either ``input_nodes`` or prepared with ``N`` commands and that have not been measured with an ``M`` command."""
         return list(self.__output_nodes)  # copy for preventing modification
 
     def __len__(self) -> int:
@@ -1118,7 +1118,7 @@ class Pattern:
         return self.extract_xzcorrections().to_pauli_flow()
 
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
-        """Extract the XZ-corrections from the current measurement pattern.
+        r"""Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
@@ -1130,7 +1130,7 @@ class Pattern:
         XZCorrectionsError
             If the extracted correction dictionaries are not well formed.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
 
         Notes
         -----
