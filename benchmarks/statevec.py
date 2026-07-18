@@ -92,7 +92,7 @@ for width in test_cases:
     print(f"width: {width}, nqubit: {nqubit}, depth: {DEPTH}, time: {end - start}")
     pattern_time.append(end - start)
     start = perf_counter()
-    circuit.simulate_statevector()
+    circuit.simulate()
     end = perf_counter()
     circuit_time.append(end - start)
 

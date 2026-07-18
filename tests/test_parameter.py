@@ -175,10 +175,10 @@ def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_xreplace: 
     pattern.minimize_space()
     assignment: dict[Parameter, float] = {alpha: rng.uniform(high=2), beta: rng.uniform(high=2)}
     if use_xreplace:
-        state = circuit.xreplace(assignment).simulate_statevector().statevec
+        state = circuit.xreplace(assignment).simulate().statevec
         state_mbqc = pattern.xreplace(assignment).simulate_pattern(rng=rng)
     else:
-        state = circuit.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_statevector().statevec
+        state = circuit.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate().statevec
         state_mbqc = pattern.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_pattern(rng=rng)
     assert state_mbqc.isclose(state)
 

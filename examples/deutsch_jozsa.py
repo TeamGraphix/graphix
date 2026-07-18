@@ -91,7 +91,7 @@ pattern.draw(flow_from_pattern=True)
 # Let us make sure the result is correct:
 
 out_state = pattern.simulate_pattern()
-state = circuit.simulate_statevector().statevec
+state = circuit.simulate().statevec
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 
 # %%

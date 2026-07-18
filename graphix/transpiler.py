@@ -525,7 +525,7 @@ class Circuit:
         return TranspiledPattern(result.pattern, classical_outputs)
 
     @overload
-    def simulate_statevector(
+    def simulate(
         self,
         backend: StatevectorBackend | Literal["statevector"] = ...,
         input_state: Data | None = None,
@@ -536,7 +536,7 @@ class Circuit:
     ) -> SimulateResult[Statevec]: ...
 
     @overload
-    def simulate_statevector(
+    def simulate(
         self,
         backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: Data | None = None,
@@ -547,7 +547,7 @@ class Circuit:
     ) -> SimulateResult[DensityMatrix]: ...
 
     @overload
-    def simulate_statevector(
+    def simulate(
         self,
         backend: DenseStateBackend[_DenseStateT],
         input_state: Data | None = None,
@@ -557,7 +557,7 @@ class Circuit:
         stacklevel: int = 1,
     ) -> SimulateResult[_DenseStateT]: ...
 
-    def simulate_statevector(
+    def simulate(
         self,
         backend: DenseStateBackend[_DenseStateT] | _DenseStateBackendLiteral = "statevector",
         input_state: Data | None = None,

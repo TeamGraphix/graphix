@@ -74,7 +74,7 @@ class TestPattern:
         pattern = pattern.infer_pauli_measurements()
         pattern.standardize()
         assert pattern.is_standard()
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate().statevec
         pattern.remove_pauli_measurements()
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert state_mbqc.isclose(state)
@@ -86,7 +86,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
@@ -158,7 +158,7 @@ class TestPattern:
         pattern = pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert state_mbqc.isclose(state)
 
@@ -202,7 +202,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.parallelize_pattern()
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
@@ -217,7 +217,7 @@ class TestPattern:
         pattern.shift_signals(method="mc")
         assert pattern.is_standard()
         pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert state_mbqc.isclose(state)
 
@@ -238,7 +238,7 @@ class TestPattern:
         pattern = pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate().statevec
         state_mbqc: Statevec | DensityMatrix = pattern.simulate_pattern(backend, rng=rng)
         assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
@@ -391,7 +391,7 @@ class TestPattern:
         assert pattern.is_standard()
         pattern.minimize_space()
         state_p = pattern.simulate_pattern(rng=rng)
-        state_ref = circuit.simulate_statevector().statevec
+        state_ref = circuit.simulate().statevec
         assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -405,7 +405,7 @@ class TestPattern:
         pattern.shift_signals(method="direct")
         pattern.minimize_space()
         state_p = pattern.simulate_pattern(rng=rng)
-        state_ref = circuit.simulate_statevector().statevec
+        state_ref = circuit.simulate().statevec
         assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -419,7 +419,7 @@ class TestPattern:
         pattern.remove_pauli_measurements()
         pattern.standardize()
         pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
+        state = circuit.simulate().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
@@ -1345,7 +1345,7 @@ class TestMCOps:
         assert pattern.is_standard()
         pattern.minimize_space()
         state_p = pattern.simulate_pattern(rng=rng)
-        state_ref = circuit.simulate_statevector().statevec
+        state_ref = circuit.simulate().statevec
         assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 4))
@@ -1364,7 +1364,7 @@ class TestMCOps:
         nqubits = 3
         depth = 2
         circuit = rand_circuit(nqubits, depth, rng)
-        state_ref = circuit.simulate_statevector().statevec
+        state_ref = circuit.simulate().statevec
         for process in processes:
             pattern = circuit.transpile().pattern
             for operation in process:
@@ -1394,7 +1394,7 @@ class TestMCOps:
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
         out: Statevec | DensityMatrix = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
-        out_circ = rand_circ.simulate_statevector(input_state=states).statevec
+        out_circ = rand_circ.simulate(input_state=states).statevec
         assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
