@@ -104,7 +104,7 @@ class ReverseDependency:
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-compiler", branch="rename-simulate"),
         ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="rename-simulate"),
         ReverseDependency(
-            "https://github.com/qat-inria/veriphix",
+            "https://github.com/thierry-martinez/veriphix",
             doctest_modules=False,
             install_target=".[dev]",
             branch="rename-simulate",
