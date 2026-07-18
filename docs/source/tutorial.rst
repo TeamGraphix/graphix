@@ -51,9 +51,9 @@ This is the simplest of the `graph state
 <https://en.wikipedia.org/wiki/Graph_state>`_ with nodes = [0, 1] and edge = (0, 1). Any MBQC pattern has a corresponding resource graph state on which the computation occurs only with single-qubit measurements.
 
 We can use the :class:`~graphix.simulator.PatternSimulator` to classically simulate the pattern above and obtain the output state, for default input state of :math:`|+\rangle`.
-Alternatively, we can simply call :meth:`~graphix.pattern.Pattern.simulate_pattern` of :class:`~graphix.pattern.Pattern` object to do it in one line:
+Alternatively, we can simply call :meth:`~graphix.pattern.Pattern.simulate` of :class:`~graphix.pattern.Pattern` object to do it in one line:
 
->>> print(pattern.simulate_pattern(backend='statevector'))
+>>> print(pattern.simulate(backend='statevector'))
 Statevec object with statevector [1.+0.j 0.+0.j] and length (2,).
 
 Note again that we started with :math:`|+\rangle` state so the answer is correct.
@@ -240,7 +240,7 @@ We can simulate the MBQC pattern with various noise models to understand their e
 
 .. code-block:: python
 
-    out_state = pattern.simulate_pattern(backend="statevector")
+    out_state = pattern.simulate(backend="statevector")
 
 The statevector backend simulates the pattern ideally, without any noise.
 

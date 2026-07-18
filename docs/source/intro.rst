@@ -132,7 +132,7 @@ Note that the input state has *teleported* to qubits 6 and 7 after the computati
         import networkx as nx
         og = OpenGraph(nx.Graph([0, 1]), output_nodes=[0, 1])
 
-    >>> print(og.to_pattern().simulate_pattern())
+    >>> print(og.to_pattern().simulate())
     Statevec object with statevector [[ 0.5+0.j  0.5+0.j]
     [ 0.5+0.j -0.5+0.j]] and length (2, 2).
 

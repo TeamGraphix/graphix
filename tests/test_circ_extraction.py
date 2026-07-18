@@ -527,7 +527,7 @@ class TestExtraction:
         circuit = test_case.extract_circuit()
 
         state = circuit.simulate(rng=fx_rng).statevec
-        state_ref = pattern.simulate_pattern(rng=fx_rng)
+        state_ref = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("infer_pauli", [True, False])
@@ -552,7 +552,7 @@ class TestExtraction:
         circuit = og.extract_circuit()
 
         state = circuit.simulate(rng=fx_rng).statevec
-        state_ref = pattern.simulate_pattern(rng=fx_rng)
+        state_ref = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     def test_extract_og_gflow(self, fx_rng: Generator) -> None:
@@ -571,7 +571,7 @@ class TestExtraction:
         circuit = og.extract_gflow().extract_circuit().to_circuit()
 
         state = circuit.simulate(rng=fx_rng).statevec
-        state_ref = pattern.simulate_pattern(rng=fx_rng)
+        state_ref = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("test_case", [0.2, 0.5, 1.0])

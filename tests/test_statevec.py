@@ -163,7 +163,7 @@ class TestStatevec:
 
     def test_nqubits_pattern(self) -> None:
         p = Pattern(input_nodes=[0, 1, 2])
-        sv = p.simulate_pattern(backend="statevector")
+        sv = p.simulate(backend="statevector")
         assert sv.nqubit == 3
 
 

@@ -1055,10 +1055,10 @@ def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> 
     """Verify if the input pattern is deterministic."""
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
         alpha = 2 * ANGLE_PI * fx_rng.random()
-        state_ref = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
+        state_ref = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
 
         for _ in range(n_shots):
-            state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
+            state = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
             if not state.isclose(state_ref):
                 return False
 
@@ -1171,8 +1171,8 @@ class TestOpenGraph:
     def test_double_entanglement(self) -> None:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
         pattern2 = pattern.extract_opengraph().to_pattern()
-        state = pattern.simulate_pattern()
-        state2 = pattern2.simulate_pattern()
+        state = pattern.simulate()
+        state2 = pattern2.simulate()
         assert state.isclose(state2)
 
     def test_from_to_pattern(self, fx_rng: Generator) -> None:
@@ -1186,8 +1186,8 @@ class TestOpenGraph:
 
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
             alpha = 2 * ANGLE_PI * fx_rng.random()
-            state_ref = pattern_ref.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
-            state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
+            state_ref = pattern_ref.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
+            state = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
             assert state.isclose(state_ref)
 
     def test_isclose_measurement(self) -> None:
@@ -1337,8 +1337,8 @@ class TestOpenGraph:
         og_c, _ = og1.compose(og2, mapping)
         pc_test = og_c.to_pattern()
 
-        sv = pc.simulate_pattern(rng=fx_rng)
-        sv_test = pc_test.simulate_pattern(rng=fx_rng)
+        sv = pc.simulate(rng=fx_rng)
+        sv_test = pc_test.simulate(rng=fx_rng)
 
         assert sv.isclose(sv_test)
 

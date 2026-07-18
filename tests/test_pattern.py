@@ -76,7 +76,7 @@ class TestPattern:
         assert pattern.is_standard()
         state = circuit.simulate().statevec
         pattern.remove_pauli_measurements()
-        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
+        state_mbqc = pattern.simulate(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
     def test_minimize_space(self, fx_rng: Generator) -> None:
@@ -87,7 +87,7 @@ class TestPattern:
         pattern.standardize()
         pattern.minimize_space()
         state = circuit.simulate().statevec
-        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
+        state_mbqc = pattern.simulate(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
     # https://github.com/TeamGraphix/graphix/issues/157
@@ -159,7 +159,7 @@ class TestPattern:
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
+        state_mbqc = pattern.simulate(rng=rng)
         assert state_mbqc.isclose(state)
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
@@ -203,7 +203,7 @@ class TestPattern:
         pattern.standardize()
         pattern.parallelize_pattern()
         state = circuit.simulate().statevec
-        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
+        state_mbqc = pattern.simulate(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -218,7 +218,7 @@ class TestPattern:
         assert pattern.is_standard()
         pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
         state = circuit.simulate().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
+        state_mbqc = pattern.simulate(rng=rng)
         assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -239,7 +239,7 @@ class TestPattern:
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate().statevec
-        state_mbqc: Statevec | DensityMatrix = pattern.simulate_pattern(backend, rng=rng)
+        state_mbqc: Statevec | DensityMatrix = pattern.simulate(backend, rng=rng)
         assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -268,8 +268,8 @@ class TestPattern:
         pattern_ref = pattern.copy()
         pattern.remove_pauli_measurements()
         branch_selector = ConstBranchSelector(0)
-        state = pattern.simulate_pattern(branch_selector=branch_selector)
-        state_ref = pattern_ref.simulate_pattern(branch_selector=branch_selector)
+        state = pattern.simulate(branch_selector=branch_selector)
+        state_ref = pattern_ref.simulate(branch_selector=branch_selector)
         assert state.isclose(state_ref)
 
     def test_pauli_measurement(self) -> None:
@@ -296,8 +296,8 @@ class TestPattern:
         assert isolated_nodes == set()
         pattern.minimize_space()
         pattern_opt.minimize_space()
-        state = pattern.simulate_pattern()
-        state_opt = pattern.simulate_pattern()
+        state = pattern.simulate()
+        state_opt = pattern.simulate()
         assert state.isclose(state_opt)
 
     @pytest.mark.parametrize("jumps", range(1, 6))
@@ -311,8 +311,8 @@ class TestPattern:
         pattern1 = copy.deepcopy(pattern)
         pattern1 = pattern1.infer_pauli_measurements()
         pattern1.remove_pauli_measurements()
-        state = pattern.simulate_pattern(rng=rng)
-        state1 = pattern1.simulate_pattern(rng=rng)
+        state = pattern.simulate(rng=rng)
+        state1 = pattern1.simulate(rng=rng)
         assert state.isclose(state1)
 
     def test_extract_measurement_commands(self) -> None:
@@ -374,10 +374,10 @@ class TestPattern:
         for outcomes_ref_list in itertools.product(*([zero_one] * 3)):
             outcomes_ref = dict(enumerate(outcomes_ref_list))
             branch_selector = FixedBranchSelector(results=outcomes_ref)
-            state_ref = pattern_ref.simulate_pattern(branch_selector=branch_selector)
+            state_ref = pattern_ref.simulate(branch_selector=branch_selector)
             outcomes_p = shift_outcomes(outcomes_ref, signal_dict)
             branch_selector = FixedBranchSelector(results=outcomes_p)
-            state_p = pattern.simulate_pattern(branch_selector=branch_selector)
+            state_p = pattern.simulate(branch_selector=branch_selector)
             assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -390,7 +390,7 @@ class TestPattern:
         pattern.standardize()
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern(rng=rng)
+        state_p = pattern.simulate(rng=rng)
         state_ref = circuit.simulate().statevec
         assert state_p.isclose(state_ref)
 
@@ -404,7 +404,7 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="direct")
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern(rng=rng)
+        state_p = pattern.simulate(rng=rng)
         state_ref = circuit.simulate().statevec
         assert state_p.isclose(state_ref)
 
@@ -420,7 +420,7 @@ class TestPattern:
         pattern.standardize()
         pattern.minimize_space()
         state = circuit.simulate().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
+        state_mbqc = pattern.simulate(rng=rng)
         assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -432,8 +432,8 @@ class TestPattern:
         pattern.add(C(node=0, clifford=Clifford(c1)))
         pattern_ref = pattern.copy()
         pattern.standardize()
-        state_ref = pattern_ref.simulate_pattern()
-        state_p = pattern.simulate_pattern()
+        state_ref = pattern_ref.simulate()
+        state_p = pattern.simulate()
         assert state_p.isclose(state_ref)
 
     # Simple pattern composition
@@ -670,8 +670,8 @@ class TestPattern:
         )
         p.minimize_space()
         p_compose.minimize_space()
-        s = p.simulate_pattern(rng=rng)
-        s_compose = p_compose.simulate_pattern(rng=rng)
+        s = p.simulate(rng=rng)
+        s_compose = p_compose.simulate(rng=rng)
         assert s.isclose(s_compose)
 
     # Test warning composition after standardization
@@ -760,7 +760,7 @@ class TestPattern:
 
         pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
         with pytest.raises(RunnabilityError) as exc_info:
-            pattern.simulate_pattern()
+            pattern.simulate()
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 
@@ -943,8 +943,8 @@ class TestPattern:
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
 
-        s_ref = p_ref.simulate_pattern(rng=rng)
-        s_test = p_test.simulate_pattern(rng=rng)
+        s_ref = p_ref.simulate(rng=rng)
+        s_test = p_test.simulate(rng=rng)
         assert s_ref.isclose(s_test)
 
     # Extract gflow from random circuits
@@ -963,8 +963,8 @@ class TestPattern:
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
 
-        s_ref = p_ref.simulate_pattern(rng=rng)
-        s_test = p_test.simulate_pattern(rng=rng)
+        s_ref = p_ref.simulate(rng=rng)
+        s_test = p_test.simulate(rng=rng)
         assert s_ref.isclose(s_test)
 
     # Extract Pauli flow from random circuits
@@ -981,18 +981,18 @@ class TestPattern:
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
 
-        s_ref = p_ref.simulate_pattern(rng=rng)
-        s_test = p_test.simulate_pattern(rng=rng)
+        s_ref = p_ref.simulate(rng=rng)
+        s_test = p_test.simulate(rng=rng)
         assert s_ref.isclose(s_test)
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
     def test_extract_causal_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         if test_case.has_cflow:
             alpha = 2 * np.pi * fx_rng.random()
-            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+            s_ref = test_case.pattern.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             p_test = test_case.pattern.to_bloch().extract_causal_flow().to_corrections().to_pattern()
-            s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+            s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert s_ref.isclose(s_test)
         else:
@@ -1004,10 +1004,10 @@ class TestPattern:
         """Tests the round trip Pattern -> XZCorrections -> GFlow -> XZCorrections -> Pattern."""
         if test_case.has_gflow:
             alpha = 2 * np.pi * fx_rng.random()
-            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+            s_ref = test_case.pattern.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             p_test = test_case.pattern.to_bloch().extract_gflow().to_corrections().to_pattern()
-            s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+            s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert s_ref.isclose(s_test)
         else:
@@ -1023,10 +1023,10 @@ class TestPattern:
         if not test_case.has_gflow:
             pytest.skip("no gflow; Pauli-flow existence is not determined by has_gflow")
         alpha = 2 * np.pi * fx_rng.random()
-        s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        s_ref = test_case.pattern.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         p_test = test_case.pattern.to_bloch().extract_pauli_flow().to_corrections().to_pattern()
-        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
@@ -1046,10 +1046,10 @@ class TestPattern:
             },
         )
         p_ref = og.extract_causal_flow().to_corrections().to_pattern()
-        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        s_ref = p_ref.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
-        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
@@ -1070,10 +1070,10 @@ class TestPattern:
         )
 
         p_ref = og.extract_gflow().to_corrections().to_pattern()
-        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        s_ref = p_ref.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         p_test = p_ref.extract_gflow().to_corrections().to_pattern()
-        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
@@ -1094,8 +1094,8 @@ class TestPattern:
         p_test = p_test.infer_pauli_measurements()
         p_test.remove_pauli_measurements()
 
-        s_ref = p_ref.simulate_pattern(rng=rng)
-        s_test = p_test.simulate_pattern(rng=rng)
+        s_ref = p_ref.simulate(rng=rng)
+        s_test = p_test.simulate(rng=rng)
         assert s_ref.isclose(s_test)
 
     def test_extract_xzc_empty_domains(self) -> None:
@@ -1202,8 +1202,8 @@ class TestPattern:
     def test_extract_opengraph_roundtrip(self, pattern: Pattern, fx_rng: Generator) -> None:
         pattern_test = pattern.extract_opengraph().to_pattern()
 
-        sv = pattern.simulate_pattern(rng=fx_rng)
-        sv_test = pattern_test.simulate_pattern(rng=fx_rng)
+        sv = pattern.simulate(rng=fx_rng)
+        sv_test = pattern_test.simulate(rng=fx_rng)
 
         assert sv.isclose(sv_test)
 
@@ -1310,8 +1310,8 @@ class TestMCOps:
         assert pattern.is_standard()
         pattern.minimize_space()
         pattern_mc.minimize_space()
-        state_d = pattern.simulate_pattern(rng=rng)
-        state_ref = pattern_mc.simulate_pattern(rng=rng)
+        state_d = pattern.simulate(rng=rng)
+        state_ref = pattern_mc.simulate(rng=rng)
         assert state_d.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -1329,8 +1329,8 @@ class TestMCOps:
         assert pattern.is_standard()
         pattern.minimize_space()
         pattern_mc.minimize_space()
-        state_d = pattern.simulate_pattern(rng=rng)
-        state_ref = pattern_mc.simulate_pattern(rng=rng)
+        state_d = pattern.simulate(rng=rng)
+        state_ref = pattern_mc.simulate(rng=rng)
         assert state_d.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -1344,7 +1344,7 @@ class TestMCOps:
         pattern.shift_signals()
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern(rng=rng)
+        state_p = pattern.simulate(rng=rng)
         state_ref = circuit.simulate().statevec
         assert state_p.isclose(state_ref)
 
@@ -1374,7 +1374,7 @@ class TestMCOps:
                     pattern.shift_signals(method=operation[1])
             assert pattern.is_standard()
             pattern.minimize_space()
-            state_p = pattern.simulate_pattern(rng=rng)
+            state_p = pattern.simulate(rng=rng)
             assert state_p.isclose(state_ref)
 
     def test_pauli_measurement_end_with_measure(self) -> None:
@@ -1393,7 +1393,7 @@ class TestMCOps:
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
-        out: Statevec | DensityMatrix = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
+        out: Statevec | DensityMatrix = randpattern.simulate(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate(input_state=states).statevec
         assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 
@@ -1403,9 +1403,7 @@ class TestMCOps:
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
         with pytest.raises(NotImplementedError):
-            randpattern.simulate_pattern(
-                backend="tensornetwork", graph_prep="sequential", input_state=states, rng=fx_rng
-            )
+            randpattern.simulate(backend="tensornetwork", graph_prep="sequential", input_state=states, rng=fx_rng)
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:

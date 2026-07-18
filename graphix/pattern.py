@@ -1398,7 +1398,7 @@ class Pattern:
         return n_list
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: StatevectorBackend | Literal["statevector"] = "statevector",
         input_state: State
@@ -1412,7 +1412,7 @@ class Pattern:
     ) -> Statevec: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: State
@@ -1426,7 +1426,7 @@ class Pattern:
     ) -> DensityMatrix: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
         input_state: State
@@ -1439,7 +1439,7 @@ class Pattern:
     ) -> MBQCTensorNet: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: Backend[_StateT_co],
         input_state: Data | None = ...,
@@ -1447,7 +1447,7 @@ class Pattern:
         **kwargs: Any,
     ) -> _StateT_co: ...
 
-    def simulate_pattern(
+    def simulate(
         self,
         backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
         input_state: Data | None = BasicStates.PLUS,
