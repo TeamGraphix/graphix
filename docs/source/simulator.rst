@@ -6,11 +6,27 @@ Pattern Simulation
 
 .. currentmodule:: graphix.simulator
 
+.. autoclass:: PrepareMethod
+    :members:
+
+.. autoclass:: DefaultPrepareMethod
+    :members:
+
+.. autoclass:: MeasureMethod
+    :members:
+
+.. autoclass:: DefaultMeasureMethod
+    :members:
+
+.. autoclass:: SimulatorKwargs
+    :members:
+
+.. autoclass:: SimulatorOptions
+    :members:
+
 .. autoclass:: PatternSimulator
+    :members:
 
-    .. automethod:: __init__
-
-    .. automethod:: run
 
 Simulator backends
 ++++++++++++++++++

@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Empty outputs layer removed from flow's partial order.
   - Flow well-formedness check does not trigger false negative for flows on open graphs without outputs.
 
+- #569: Keyword arguments for `simulate_pattern` are now type-checked.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
