@@ -1675,11 +1675,6 @@ class Pattern:
         assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
             A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
 
-        copy : bool, optional
-            If ``True``, the current pattern remains unchanged and a
-            new pattern is returned. The default is ``False``, meaning
-            that changes are performed in place.
-
         Returns
         -------
         Pattern
@@ -1696,6 +1691,11 @@ class Pattern:
         ----------
         assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
             A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        copy : bool, optional
+            If ``True``, the current pattern remains unchanged and a
+            new pattern is returned. The default is ``False``, meaning
+            that changes are performed in place.
 
         Returns
         -------
