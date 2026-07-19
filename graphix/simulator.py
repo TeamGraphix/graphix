@@ -79,7 +79,7 @@ class DefaultPrepareMethod(PrepareMethod):
     def prepare(self, backend: Backend[_StateT_co], cmd: BaseN, rng: Generator | None = None) -> None:
         """Prepare a node."""
         if not isinstance(cmd, N):
-            raise TypeError("The default prepare method requires all preparation commands to be of type ``N``.")
+            raise TypeError("The default prepare method requires all preparation commands to be of type `N`.")
         backend.add_nodes(nodes=[cmd.node], data=cmd.state)
 
 
