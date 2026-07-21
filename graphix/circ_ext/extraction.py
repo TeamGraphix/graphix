@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
     from graphix.command import Node
-    from graphix.flow.core import PauliFlow
+    from graphix.flow.core import FocusedPauliFlow, PauliFlow
     from graphix.opengraph import OpenGraph
     from graphix.transpiler import Circuit
 
@@ -303,12 +303,12 @@ class PauliExponential:
     pauli_string: PauliString
 
     @staticmethod
-    def from_measured_node(flow: PauliFlow[Measurement], node: Node) -> PauliExponential:
+    def from_measured_node(flow: FocusedPauliFlow[Measurement], node: Node) -> PauliExponential:
         """Extract the Pauli exponential of a measured node and its focused correction set.
 
         Parameters
         ----------
-        flow : PauliFlow[Measurement]
+        flow : FocusedPauliFlow[Measurement]
             A focused Pauli flow. The resulting Pauli string is extracted from its correction function.
         node : int
             A measured node whose associated Pauli string is computed.
@@ -364,7 +364,7 @@ class PauliExponentialDAG:
     output_nodes: Sequence[int]
 
     @staticmethod
-    def from_focused_flow(flow: PauliFlow[Measurement]) -> PauliExponentialDAG:
+    def from_focusedflow(flow: FocusedPauliFlow[Measurement]) -> PauliExponentialDAG:
         """Extract a Pauli exponential rotation from a focused Pauli flow.
 
         This routine associates a Pauli exponential to each measured node in ``flow``. The flow's partial order defines a partial order between the Pauli exponentials such that Pauli exponentials in the same layer commute.
@@ -444,14 +444,14 @@ class CliffordMap:
     output_nodes: Sequence[int]
 
     @staticmethod
-    def from_focused_flow(flow: PauliFlow[Measurement]) -> CliffordMap:
+    def from_focusedflow(flow: FocusedPauliFlow[Measurement]) -> CliffordMap:
         """Extract a Clifford map from a focused Pauli flow.
 
         This routine associates two Pauli strings (one per generator of the Pauli group, X and Z) to each input node in ``flow.og``.
 
         Parameters
         ----------
-        flow : PauliFlow[Measurement]
+        flow : FocusedPauliFlow[Measurement]
             A focused Pauli flow.
 
         Returns
@@ -612,14 +612,14 @@ def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], di
     return replace(og, graph=graph, input_nodes=new_input_nodes[::-1], measurements=measurements), ancillary_inputs_map
 
 
-def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[PauliString, ...]:
+def clifford_z_map_from_focused_flow(flow: FocusedPauliFlow[Measurement]) -> tuple[PauliString, ...]:
     r"""Extract the images of the Z generators of a Clifford map from a focused Pauli flow.
 
     If the input node is a measured node, the resulting Pauli string is given by the correction set. If the input node is also an output node, the resulting Pauli string is Z (representing the identity map).
 
     Parameters
     ----------
-    flow : PauliFlow[Measurement]
+    flow : FocusedPauliFlow[Measurement]
         A focused Pauli flow.
 
     Returns

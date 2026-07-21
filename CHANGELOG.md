@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
+- #474, #564: Added `FocusedPauliFlow` and `FocusedGFlow` classes to encapsulate operations specific to focused flows. Flow-finding algorithms return focused flows by construction. Having dedicated classes removes the need to dynamically recheck that a flow is focused during circuit extraction.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.

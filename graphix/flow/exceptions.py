@@ -91,6 +91,9 @@ class FlowGenericErrorReason(Enum):
     NoPauliFlow = enum.auto()
     """No Pauli flow is compatible with the given XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."""
 
+    NotFocused = enum.auto()
+    """The Pauli flow is not focused."""
+
 
 class XZCorrectionsOrderErrorReason(Enum):
     """Describe the reason of an `XZCorrectionsOrderError` exception."""
@@ -227,6 +230,8 @@ class FlowGenericError(FlowError):
                 return "Causal flow is only defined on open graphs with XY measurements."
             case FlowGenericErrorReason.NoPauliFlow:
                 return "No Pauli flow is compatible with the XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."
+            case FlowGenericErrorReason.NotFocused:
+                return "The Pauli flow is not focused."
             case _:
                 assert_never(self.reason)
 
