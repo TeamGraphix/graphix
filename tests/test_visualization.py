@@ -200,6 +200,18 @@ def test_og() -> None:
 
 
 @pytest.mark.usefixtures("mock_plot")
+def test_non_determinist() -> None:
+    pattern = Pattern(
+        input_nodes=[0],
+        cmds=[command.N(1), command.E((0, 1)), command.M(0)],
+    )
+    with pytest.warns(
+        UserWarning,
+        match="The pattern is not consistent with a flow. An attempt to be extract the flow from the underlying open graph will be made.",
+    ):
+        pattern.draw()
+
+
 @pytest.mark.parametrize("annotations", [None, DrawPatternAnnotations.Flow, DrawPatternAnnotations.XZCorrections])
 def test_empty(annotations: DrawPatternAnnotations | None) -> None:
     pattern = Pattern()
@@ -249,9 +261,9 @@ def test_xzcorr_draw() -> Figure:
 
 
 @pytest.mark.usefixtures("mock_plot")
-@pytest.mark.parametrize("flow_and_not_pauli_presimulate", [False, True])
+@pytest.mark.parametrize("flow_from_pattern_and_to_bloch", [False, True])
 @pytest.mark.mpl_image_compare
-def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
+def test_draw_graph_reference(flow_from_pattern_and_to_bloch: bool) -> Figure:
     circuit = Circuit(3)
     circuit.cnot(0, 1)
     circuit.cnot(2, 1)
@@ -259,16 +271,24 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
     circuit.x(2)
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern
-    if flow_and_not_pauli_presimulate:
-        # Pauli flow extraction from pattern is not implemented yet;
-        # therefore, the pattern should not contain Pauli measurements
-        # to have causal flow.
+    if flow_from_pattern_and_to_bloch:
         pattern = pattern.to_bloch()
     else:
         pattern = pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
     pattern.standardize()
     pattern.draw(
-        flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(1, 1), measurement_labels=True, legend=False
+        flow_from_pattern=flow_from_pattern_and_to_bloch, node_distance=(1, 1), measurement_labels=True, legend=False
     )
+    return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.parametrize("flow_from_pattern", [False, True])
+@pytest.mark.mpl_image_compare
+def test_draw_graph_reference_pauli_flow(flow_from_pattern: bool) -> Figure:
+    circuit = Circuit(2)
+    circuit.rzz(0, 1, 0.3)
+    pattern = circuit.transpile().pattern.infer_pauli_measurements()
+    pattern.draw(flow_from_pattern=flow_from_pattern, node_distance=(1, 1), measurement_labels=True, legend=False)
     return plt.gcf()
