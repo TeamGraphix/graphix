@@ -24,7 +24,7 @@ from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.random_objects import rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevector
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
@@ -107,15 +107,15 @@ class TestDensityMatrix:
             _data = randobj.rand_herm(2**n, fx_rng)
 
     def test_init_with_state_sucess(self, fx_rng: Generator) -> None:
-        # both "numerical" statevec and Statevec object
-        # relies on Statevec constructor validation
+        # both "numerical" statevec and Statevector object
+        # relies on Statevector constructor validation
 
         nqb = int(fx_rng.integers(2, 5))
         print(f"nqb is {nqb}")
         rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
-        vec = Statevec(data=states)
+        vec = Statevector(data=states)
         # flattens input!
         expected_dm = np.outer(
             vec.psi.astype(np.complex128, copy=False), vec.psi.conj().astype(np.complex128, copy=False)
@@ -139,28 +139,28 @@ class TestDensityMatrix:
             _dm = DensityMatrix(nqubit=3, data=states)
 
     def test_init_with_statevec_sucess(self, fx_rng: Generator) -> None:
-        # both "numerical" statevec and Statevec object
-        # relies on Statevec constructor validation
+        # both "numerical" statevec and Statevector object
+        # relies on Statevector constructor validation
 
         nqb = int(fx_rng.integers(2, 5))
         rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
-        vec = Statevec(data=states)
+        vec = Statevector(data=states)
         # flattens input!
         expected_dm = np.outer(
             vec.psi.astype(np.complex128, copy=False), vec.psi.conj().astype(np.complex128, copy=False)
         )
 
-        # input with a Statevec object
+        # input with a Statevector object
         dm = DensityMatrix(data=vec)
         assert dm.dims() == (2**nqb, 2**nqb)
         assert np.allclose(dm.rho, expected_dm)
 
-        sv_list = [state.to_statevector() for state in states]
+        sv_list = [state.to_statevector_numpy() for state in states]
         sv = functools.reduce(np.kron, sv_list)  # type: ignore[arg-type]
 
-        # input with a statevector DATA (not Statevec object)
+        # input with a statevector DATA (not Statevector object)
         dm2 = DensityMatrix(data=sv)
 
         print("dims", dm.dims())
@@ -176,13 +176,13 @@ class TestDensityMatrix:
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         print("planes", rand_planes)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
-        vec = Statevec(data=states)
+        vec = Statevector(data=states)
         expected_dm = np.outer(
             vec.psi.astype(np.complex128, copy=False), vec.psi.conj().astype(np.complex128, copy=False)
         )
 
         # input with a huge density matrix
-        dm_list = [state.to_densitymatrix() for state in states]
+        dm_list = [state.to_densitymatrix_numpy() for state in states]
         num_dm = functools.reduce(np.kron, dm_list)  # type: ignore[arg-type]
 
         dm = DensityMatrix(data=num_dm)
@@ -212,7 +212,7 @@ class TestDensityMatrix:
 
         n = 10
         for i in range(n):
-            sv = Statevec(nqubit=n)
+            sv = Statevector(nqubit=n)
             sv.evolve_single(op, i)
             expected_density_matrix = np.outer(
                 sv.psi.astype(np.complex128, copy=False), sv.psi.conj().astype(np.complex128, copy=False)

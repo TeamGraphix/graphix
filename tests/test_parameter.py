@@ -12,7 +12,7 @@ from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import DrawPatternAnnotations, Pattern
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevector
 
 if TYPE_CHECKING:
     from numpy.random import PCG64, Generator
@@ -134,14 +134,14 @@ def test_parallel_substitution_with_zero() -> None:
 
 def test_statevec_subs() -> None:
     alpha = Placeholder("alpha")
-    statevec = Statevec([alpha])
+    statevec = Statevector([alpha])
     assert np.allclose(statevec.subs(alpha, 1).psi, np.array([1]))
 
 
 def test_statevec_xreplace() -> None:
     alpha = Placeholder("alpha")
     beta = Placeholder("beta")
-    statevec = Statevec([alpha, beta])
+    statevec = Statevector([alpha, beta])
     assert np.allclose(statevec.xreplace({alpha: 1, beta: 2}).psi, np.array([1, 2]))
 
 

@@ -21,7 +21,7 @@ from graphix.channels import KrausChannel
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
 from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, _check_permutation
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevector, _check_permutation
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
@@ -45,7 +45,7 @@ class DensityMatrix(DenseState):
     ) -> None:
         """Initialize density matrix objects.
 
-        The behaviour builds on the one of *graphix.statevec.Statevec*.
+        The behaviour builds on the one of *graphix.statevec.Statevector*.
         `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
@@ -57,7 +57,7 @@ class DensityMatrix(DenseState):
         If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
         in the tensor product state.
         If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
-        If a *graphix.statevec.Statevec* or *graphix.statevec.DensityMatrix* is passed, returns a copy.
+        If a *graphix.statevec.Statevector* or *graphix.statevec.DensityMatrix* is passed, returns a copy.
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
@@ -101,7 +101,7 @@ class DensityMatrix(DenseState):
                     if not lv.is_psd(self.rho):
                         raise ValueError("Density matrix must be positive semi-definite.")
                 return
-        statevec = Statevec(data, nqubit)
+        statevec = Statevector(data, nqubit)
         # NOTE this works since np.outer flattens the inputs!
         self.rho = outer(statevec.psi, statevec.psi.conj())
 
@@ -389,7 +389,7 @@ class DensityMatrix(DenseState):
 
         self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
 
-    def fidelity(self, statevec: Statevec) -> ExpressionOrFloat:
+    def fidelity(self, statevec: Statevector) -> ExpressionOrFloat:
         """Calculate the fidelity against reference statevector.
 
         Parameters
@@ -455,7 +455,7 @@ class DensityMatrix(DenseState):
         noise : Noise
             Noise to apply
         """
-        channel = noise.to_kraus_channel()
+        channel = noise.to_krauschannel()
         self.apply_channel(channel, qubits)
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> DensityMatrix:

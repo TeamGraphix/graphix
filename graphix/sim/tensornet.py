@@ -113,17 +113,17 @@ class MBQCTensorNet(TensorNetwork):
         tag = str(index)
         match state:
             case "plus":
-                vec = BasicStates.PLUS.to_statevector()
+                vec = BasicStates.PLUS.to_statevector_numpy()
             case "minus":
-                vec = BasicStates.MINUS.to_statevector()
+                vec = BasicStates.MINUS.to_statevector_numpy()
             case "zero":
-                vec = BasicStates.ZERO.to_statevector()
+                vec = BasicStates.ZERO.to_statevector_numpy()
             case "one":
-                vec = BasicStates.ONE.to_statevector()
+                vec = BasicStates.ONE.to_statevector_numpy()
             case "iplus":
-                vec = BasicStates.PLUS_I.to_statevector()
+                vec = BasicStates.PLUS_I.to_statevector_numpy()
             case "iminus":
-                vec = BasicStates.MINUS_I.to_statevector()
+                vec = BasicStates.MINUS_I.to_statevector_numpy()
             case _:
                 if isinstance(state, str):
                     raise TypeError(f"Unknown state: {state}")
@@ -239,17 +239,17 @@ class MBQCTensorNet(TensorNetwork):
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
             elif basis == "Z" and result == 0:
-                proj_vec = BasicStates.ZERO.to_statevector()
+                proj_vec = BasicStates.ZERO.to_statevector_numpy()
             elif basis == "Z" and result == 1:
-                proj_vec = BasicStates.ONE.to_statevector()
+                proj_vec = BasicStates.ONE.to_statevector_numpy()
             elif basis == "X" and result == 0:
-                proj_vec = BasicStates.PLUS.to_statevector()
+                proj_vec = BasicStates.PLUS.to_statevector_numpy()
             elif basis == "X" and result == 1:
-                proj_vec = BasicStates.MINUS.to_statevector()
+                proj_vec = BasicStates.MINUS.to_statevector_numpy()
             elif basis == "Y" and result == 0:
-                proj_vec = BasicStates.PLUS_I.to_statevector()
+                proj_vec = BasicStates.PLUS_I.to_statevector_numpy()
             elif basis == "Y" and result == 1:
-                proj_vec = BasicStates.MINUS_I.to_statevector()
+                proj_vec = BasicStates.MINUS_I.to_statevector_numpy()
             else:
                 raise ValueError("Invalid measurement basis.")
         else:
@@ -296,16 +296,16 @@ class MBQCTensorNet(TensorNetwork):
             if node not in ind_dict:
                 ind = gen_str()
                 self._dangling[str(node)] = ind
-                self.add_tensor(Tensor(BasicStates.PLUS.to_statevector(), [ind], [str(node), "Open"]))
+                self.add_tensor(Tensor(BasicStates.PLUS.to_statevector_numpy(), [ind], [str(node), "Open"]))
                 continue
             dim_tensor = len(vec_dict[node])
             tensor = np.array(
                 [
                     outer_product(
-                        [BasicStates.VEC[0 + 2 * vec_dict[node][i]].to_statevector() for i in range(dim_tensor)]
+                        [BasicStates.VEC[0 + 2 * vec_dict[node][i]].to_statevector_numpy() for i in range(dim_tensor)]
                     ),
                     outer_product(
-                        [BasicStates.VEC[1 + 2 * vec_dict[node][i]].to_statevector() for i in range(dim_tensor)]
+                        [BasicStates.VEC[1 + 2 * vec_dict[node][i]].to_statevector_numpy() for i in range(dim_tensor)]
                     ),
                 ]
             ) * 2 ** (dim_tensor / 4 - 1.0 / 2)
@@ -345,10 +345,10 @@ class MBQCTensorNet(TensorNetwork):
             node = str(indices[i])
             exp = len(indices) - i - 1
             if (basis // 2**exp) == 1:
-                state_out = BasicStates.ONE.to_statevector()  # project onto |1>
+                state_out = BasicStates.ONE.to_statevector_numpy()  # project onto |1>
                 basis -= 2**exp
             else:
-                state_out = BasicStates.ZERO.to_statevector()  # project onto |0>
+                state_out = BasicStates.ZERO.to_statevector_numpy()  # project onto |0>
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
             # retag
             old_ind = tn._dangling[node]
@@ -639,7 +639,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
                     stacklevel=1,
                 )
             case "auto":
-                max_degree = pattern.compute_max_degree()
+                max_degree = pattern.max_degree()
                 # "parallel" does not support non standard pattern
                 graph_prep = "sequential" if max_degree > 5 or not pattern.is_standard() else "parallel"
             case _:
@@ -648,7 +648,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         if graph_prep == "parallel":
             if not pattern.is_standard():
                 raise ValueError("parallel preparation strategy does not support not-standardized pattern")
-            graph = pattern.extract_graph()
+            graph = pattern.graph()
             state = MBQCTensorNet(
                 graph_nodes=graph.nodes,
                 graph_edges=graph.edges,
@@ -659,7 +659,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         else:  # graph_prep == "sequential":
             state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, branch_selector=branch_selector)
             decomposed_cz = _decompose_cz()
-        isolated_nodes = pattern.extract_isolated_nodes()
+        isolated_nodes = pattern.isolated_nodes()
         super().__init__(
             state,
             pattern,
@@ -773,7 +773,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         bloch = measurement.to_bloch()
         if isinstance(bloch.angle, Expression):
             raise TypeError("Parameterized pattern unsupported.")
-        vec = PlanarState(bloch.plane, bloch.angle).to_statevector()
+        vec = PlanarState(bloch.plane, bloch.angle).to_statevector_numpy()
         if result:
             vec = Ops.from_axis(bloch.plane.orth) @ vec
         proj_vec = vec * buffer

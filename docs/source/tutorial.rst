@@ -54,7 +54,7 @@ We can use the :class:`~graphix.simulator.PatternSimulator` to classically simul
 Alternatively, we can simply call :meth:`~graphix.pattern.Pattern.simulate_pattern` of :class:`~graphix.pattern.Pattern` object to do it in one line:
 
 >>> print(pattern.simulate_pattern(backend='statevector'))
-Statevec object with statevector [1.+0.j 0.+0.j] and length (2,).
+Statevector object with statevector [1.+0.j 0.+0.j] and length (2,).
 
 Note again that we started with :math:`|+\rangle` state so the answer is correct.
 
@@ -157,7 +157,7 @@ This reveals the graph structure of the resource state which we can inspect:
 .. code-block:: python
 
     import networkx as nx
-    graph = pattern.extract_graph()
+    graph = pattern.graph()
     pos = {0: (0, 0), 1: (0, -0.5), 2: (1, 0), 3: (4, 0), 4: (1, -0.5), 5: (2, -0.5), 6: (3, -0.5), 7: (4, -0.5)}
     graph_params = {'node_size': 240, 'node_color': 'w', 'edgecolors': 'k', 'with_labels': True}
     nx.draw(graph, pos=pos, **graph_params)
@@ -269,7 +269,7 @@ In the following example, we apply dephasing noise to qubit preparation commands
             return 1
 
         @typing_extensions.override
-        def to_kraus_channel(self) -> KrausChannel:
+        def to_krauschannel(self) -> KrausChannel:
             return dephasing_channel(self.prob)
 
     @dataclass

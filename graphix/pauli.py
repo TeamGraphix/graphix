@@ -140,7 +140,7 @@ class Pauli(metaclass=_PauliMeta):
 
     def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> Pauli:
         """Return the product of two Paulis."""
-        if u := ComplexUnit.try_from(other):
+        if u := ComplexUnit.from_or_none(other):
             return dataclasses.replace(self, unit=self.unit * u)
         return NotImplemented
 

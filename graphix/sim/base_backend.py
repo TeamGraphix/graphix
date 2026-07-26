@@ -338,14 +338,14 @@ class DenseState(ABC):
     This includes both state vectors (for pure states) and density matrices (for
     mixed states).
 
-    This class serves as a common parent for :class:`Statevec` and :class:`DensityMatrix`, which
+    This class serves as a common parent for :class:`Statevector` and :class:`DensityMatrix`, which
     implement the concrete representations of dense quantum states. It is used in
     simulation backends that operate using standard linear algebra on the full
-    state, such as :class:`StatevecBackend` and :class:`DensityMatrixBackend`.
+    state, such as :class:`StatevectorBackend` and :class:`DensityMatrixBackend`.
 
     See Also
     --------
-    :class:`Statevec`, :class:`DensityMatrix`
+    :class:`Statevector`, :class:`DensityMatrix`
 
     Notes
     -----
@@ -536,18 +536,18 @@ class Backend(Generic[_StateT_co]):
     - Tracking and exposing the underlying quantum state
 
     Examples of concrete subclasses include:
-    - `StatevecBackend` (pure states via state vectors)
+    - `StatevectorBackend` (pure states via state vectors)
     - `DensityMatrixBackend` (mixed states via density matrices)
     - `TensorNetworkBackend` (compressed states via tensor networks)
 
     Parameters
     ----------
     state : BackendState
-        internal state of the backend: instance of :class:`Statevec`, :class:`DensityMatrix`, or :class:`MBQCTensorNet`.
+        internal state of the backend: instance of :class:`Statevector`, :class:`DensityMatrix`, or :class:`MBQCTensorNet`.
 
     See Also
     --------
-    :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
+    :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevectorBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
 
     Notes
     -----
@@ -556,18 +556,18 @@ class Backend(Generic[_StateT_co]):
     The class hierarchy of states mirrors the class hierarchy of backends:
     - `DenseStateBackend` and `TensorNetworkBackend` are subclasses of `Backend`,
       and `DenseState` and `MBQCTensorNet` are subclasses of `BackendState`.
-    - `StatevecBackend` and `DensityMatrixBackend` are subclasses of `DenseStateBackend`,
-      and `Statevec` and `DensityMatrix` are subclasses of `DenseState`.
+    - `StatevectorBackend` and `DensityMatrixBackend` are subclasses of `DenseStateBackend`,
+      and `Statevector` and `DensityMatrix` are subclasses of `DenseState`.
 
     The type variable `_StateT_co` specifies the type of the ``state`` field, so that subclasses
     provide a precise type for this field:
-    - `StatevecBackend` is a subtype of ``Backend[Statevec]``.
+    - `StatevectorBackend` is a subtype of ``Backend[Statevector]``.
     - `DensityMatrixBackend` is a subtype of ``Backend[DensityMatrix]``.
     - `TensorNetworkBackend` is a subtype of ``Backend[MBQCTensorNet]``.
 
     The type variables `_StateT_co` and `_DenseStateT_co` are declared as covariant.
     That is, ``Backend[T1]`` is a subtype of ``Backend[T2]`` if ``T1`` is a subtype of ``T2``.
-    This means that `StatevecBackend`, `DensityMatrixBackend`, and `TensorNetworkBackend` are
+    This means that `StatevectorBackend`, `DensityMatrixBackend`, and `TensorNetworkBackend` are
     all subtypes of ``Backend[BackendState]``.
     This covariance is sound because backends are frozen dataclasses; thus, the type of
     ``state`` cannot be changed after instantiation.
@@ -621,13 +621,13 @@ class Backend(Generic[_StateT_co]):
 
             Some backends support other forms of state specification.
 
-            - ``StatevecBackend`` supports arbitrary state vectors:
+            - ``StatevectorBackend`` supports arbitrary state vectors:
                 - A single-qubit state vector will be broadcast to all nodes.
                 - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
                   initializes the new nodes jointly.
 
             - ``DensityMatrixBackend`` supports both state vectors and density matrices:
-                - State vectors are handled as in ``StatevecBackend``, and converted to
+                - State vectors are handled as in ``StatevectorBackend``, and converted to
                   density matrices.
                 - A density matrix must have shape :math:`2^n \times 2^n`, where :math:`n = \mathrm{len}(nodes)`,
                   and is used to jointly initialize the new nodes.
@@ -710,7 +710,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     This class defines common functionality for backends that store the entire quantum
     state as a dense array—either as a state vector (pure state) or a density matrix
     (mixed state)—and perform quantum operations using standard linear algebra. It is
-    designed to be the shared base class of `StatevecBackend` and `DensityMatrixBackend`.
+    designed to be the shared base class of `StatevectorBackend` and `DensityMatrixBackend`.
 
     In contrast to :class:`TensorNetworkBackend`, which uses structured and compressed
     representations (e.g., matrix product states) to scale to larger systems,
@@ -731,7 +731,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
 
     See Also
     --------
-    :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
+    :class:`StatevectorBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
     """
 
     node_index: NodeIndex = dataclasses.field(default_factory=NodeIndex)

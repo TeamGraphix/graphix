@@ -32,7 +32,7 @@ For example, let us try the transformation rules in Elliot *et al.* [#el]_ with 
    :alt: Pauli measurement of graph
 
 
-We can perform this with :class:`~graphix.graphsim.GraphState` class and then compare to the :class:`~graphix.sim.statevec.Statevec` full statevector simulation:
+We can perform this with :class:`~graphix.graphsim.GraphState` class and then compare to the :class:`~graphix.sim.statevec.Statevector` full statevector simulation:
 
 .. code-block:: python
 

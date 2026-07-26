@@ -23,7 +23,7 @@ from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevector
 from graphix.sim.tensornet import MBQCTensorNet
 from graphix.simulator import PatternSimulator
 from graphix.states import PlanarState
@@ -36,8 +36,8 @@ if TYPE_CHECKING:
     from graphix.simulator import _BackendLiteral
 
 
-def compare_backend_result_with_statevec(backend_state: Statevec | DensityMatrix, statevec: Statevec) -> float:
-    if isinstance(backend_state, Statevec):
+def compare_backend_result_with_statevec(backend_state: Statevector | DensityMatrix, statevec: Statevector) -> float:
+    if isinstance(backend_state, Statevector):
         return float(backend_state.fidelity(statevec))
     if isinstance(backend_state, DensityMatrix):
         return float(np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten())))
@@ -172,7 +172,7 @@ class TestPattern:
             sim = PatternSimulator(pattern, backend_type)
             sim.run(rng=fx_rng)
             state = sim.backend.state
-            if isinstance(state, Statevec):
+            if isinstance(state, Statevector):
                 assert state.dims() == ()
             elif isinstance(state, DensityMatrix):
                 assert state.dims() == (1, 1)
@@ -239,7 +239,7 @@ class TestPattern:
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc: Statevec | DensityMatrix = pattern.simulate_pattern(backend, rng=rng)
+        state_mbqc: Statevector | DensityMatrix = pattern.simulate_pattern(backend, rng=rng)
         assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -255,7 +255,7 @@ class TestPattern:
         pattern.remove_pauli_measurements()
         input_node_set = set(pattern.input_nodes)
         assert not any(
-            cmd.measurement.try_to_pauli() is not None
+            cmd.measurement.to_pauli_or_none() is not None
             for cmd in pattern
             if cmd.kind == CommandKind.M and cmd.node not in input_node_set
         )
@@ -292,7 +292,7 @@ class TestPattern:
         pattern.shift_signals(method="mc")
         pattern = pattern.infer_pauli_measurements()
         pattern_opt = pattern.remove_pauli_measurements(copy=True)
-        isolated_nodes = pattern_opt.extract_isolated_nodes()
+        isolated_nodes = pattern_opt.isolated_nodes()
         assert isolated_nodes == set()
         pattern.minimize_space()
         pattern_opt.minimize_space()
@@ -315,7 +315,7 @@ class TestPattern:
         state1 = pattern1.simulate_pattern(rng=rng)
         assert state.isclose(state1)
 
-    def test_extract_measurement_commands(self) -> None:
+    def test_measurement_commands(self) -> None:
         preset_meas_plane = [
             Plane.XY,
             Plane.XY,
@@ -342,7 +342,7 @@ class TestPattern:
             7: M(7, Measurement.YZ(0)),
             8: M(8, Measurement.XZ(0.5)),
         }
-        meas = pattern.extract_measurement_commands()
+        meas = pattern.measurement_commands()
         assert meas == ref_meas
 
     @pytest.mark.parametrize("plane", Plane)
@@ -754,7 +754,7 @@ class TestPattern:
 
         pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
         with pytest.raises(RunnabilityError) as exc_info:
-            pattern.extract_partial_order_layers()
+            pattern.partial_order_layers()
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 
@@ -770,8 +770,8 @@ class TestPattern:
         assert exc_info.value.node == 1
         assert exc_info.value.reason == RunnabilityErrorReason.NotYetMeasured
 
-    def test_compute_max_degree_empty_pattern(self) -> None:
-        assert Pattern().compute_max_degree() == 0
+    def test_max_degree_empty_pattern(self) -> None:
+        assert Pattern().max_degree() == 0
 
     @pytest.mark.parametrize(
         "test_case",
@@ -797,21 +797,21 @@ class TestPattern:
             (Pattern(), ()),  # Empty pattern
         ],
     )
-    def test_extract_partial_order_layers(self, test_case: tuple[Pattern, tuple[frozenset[int], ...]]) -> None:
-        assert test_case[0].extract_partial_order_layers() == test_case[1]
+    def test_partial_order_layers(self, test_case: tuple[Pattern, tuple[frozenset[int], ...]]) -> None:
+        assert test_case[0].partial_order_layers() == test_case[1]
 
-    def test_extract_partial_order_layers_results(self) -> None:
+    def test_partial_order_layers_results(self) -> None:
         c = Circuit(1)
         c.rz(0, 0.2)
         p = c.transpile().pattern
         p = p.infer_pauli_measurements()
         p.remove_pauli_measurements()
-        assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({0}))
+        assert p.partial_order_layers() == (frozenset({1}), frozenset({0}))
 
         p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, Measurement.XY(0.3))])
         p = p.infer_pauli_measurements()
         p.remove_pauli_measurements()
-        assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({2}))
+        assert p.partial_order_layers() == (frozenset({1}), frozenset({2}))
 
     class PatternFlowTestCase(NamedTuple):
         pattern: Pattern
@@ -929,14 +929,14 @@ class TestPattern:
 
     # Extract causal flow from random circuits
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_extract_causal_flow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_to_causalflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
         """Tests the round trip Pattern -> XZCorrections -> CausalFlow -> XZCorrections -> Pattern."""
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 2
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().extract_causal_flow().to_corrections().to_pattern().infer_pauli_measurements()
+        p_test = p_ref.to_bloch().to_causalflow().to_xzcorrections().to_pattern().infer_pauli_measurements()
 
         p_ref = p_ref.infer_pauli_measurements()
         p_test = p_test.infer_pauli_measurements()
@@ -949,14 +949,14 @@ class TestPattern:
 
     # Extract gflow from random circuits
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_extract_gflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_to_gflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
         """Tests the round trip Pattern -> XZCorrections -> GFlow -> XZCorrections -> Pattern."""
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 2
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().extract_gflow().to_corrections().to_pattern().infer_pauli_measurements()
+        p_test = p_ref.to_bloch().to_gflow().to_xzcorrections().to_pattern().infer_pauli_measurements()
 
         p_ref = p_ref.infer_pauli_measurements()
         p_test = p_test.infer_pauli_measurements()
@@ -969,14 +969,14 @@ class TestPattern:
 
     # Extract Pauli flow from random circuits
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_extract_pauli_flow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_to_pauliflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
         """Tests the round trip Pattern -> XZCorrections -> PauliFlow -> XZCorrections -> Pattern."""
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 2
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().extract_pauli_flow().to_corrections().to_pattern().infer_pauli_measurements()
+        p_test = p_ref.to_bloch().to_pauliflow().to_xzcorrections().to_pattern().infer_pauli_measurements()
 
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
@@ -986,36 +986,36 @@ class TestPattern:
         assert s_ref.isclose(s_test)
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
-    def test_extract_causal_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+    def test_to_causalflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         if test_case.has_cflow:
             alpha = 2 * np.pi * fx_rng.random()
             s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-            p_test = test_case.pattern.to_bloch().extract_causal_flow().to_corrections().to_pattern()
+            p_test = test_case.pattern.to_bloch().to_causalflow().to_xzcorrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert s_ref.isclose(s_test)
         else:
             with pytest.raises(FlowError):
-                test_case.pattern.extract_causal_flow()
+                test_case.pattern.to_causalflow()
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
-    def test_extract_gflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+    def test_to_gflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         """Tests the round trip Pattern -> XZCorrections -> GFlow -> XZCorrections -> Pattern."""
         if test_case.has_gflow:
             alpha = 2 * np.pi * fx_rng.random()
             s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-            p_test = test_case.pattern.to_bloch().extract_gflow().to_corrections().to_pattern()
+            p_test = test_case.pattern.to_bloch().to_gflow().to_xzcorrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert s_ref.isclose(s_test)
         else:
             with pytest.raises(FlowError):
-                test_case.pattern.extract_gflow()
+                test_case.pattern.to_gflow()
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
-    def test_extract_pauli_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+    def test_to_pauliflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         """Tests the round trip Pattern -> XZCorrections -> PauliFlow -> XZCorrections -> Pattern."""
         # A gflow always induces a Pauli flow, so every gflow case must round-trip via the Pauli
         # flow. Cases without a gflow are skipped: a Pauli flow is strictly more general and may
@@ -1025,7 +1025,7 @@ class TestPattern:
         alpha = 2 * np.pi * fx_rng.random()
         s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-        p_test = test_case.pattern.to_bloch().extract_pauli_flow().to_corrections().to_pattern()
+        p_test = test_case.pattern.to_bloch().to_pauliflow().to_xzcorrections().to_pattern()
         s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
@@ -1045,16 +1045,16 @@ class TestPattern:
                 4: Measurement.XY(0.4),
             },
         )
-        p_ref = og.extract_causal_flow().to_corrections().to_pattern()
+        p_ref = og.to_causalflow().to_xzcorrections().to_pattern()
         s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-        p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
+        p_test = p_ref.to_causalflow().to_xzcorrections().to_pattern()
         s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
     # From open graph
-    def test_extract_gflow_og(self, fx_rng: Generator) -> None:
+    def test_to_gflow_og(self, fx_rng: Generator) -> None:
         alpha = 2 * np.pi * fx_rng.random()
 
         og = OpenGraph(
@@ -1069,10 +1069,10 @@ class TestPattern:
             },
         )
 
-        p_ref = og.extract_gflow().to_corrections().to_pattern()
+        p_ref = og.to_gflow().to_xzcorrections().to_pattern()
         s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-        p_test = p_ref.extract_gflow().to_corrections().to_pattern()
+        p_test = p_ref.to_gflow().to_xzcorrections().to_pattern()
         s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
@@ -1085,7 +1085,7 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        xzc = p_ref.extract_xzcorrections()
+        xzc = p_ref.to_xzcorrections()
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
@@ -1100,7 +1100,7 @@ class TestPattern:
 
     def test_extract_xzc_empty_domains(self) -> None:
         p = Pattern(input_nodes=[0], cmds=[N(1), E((0, 1))])
-        xzc = p.extract_xzcorrections()
+        xzc = p.to_xzcorrections()
         assert xzc.x_corrections == {}
         assert xzc.z_corrections == {}
         assert xzc.partial_order_layers == (frozenset({0, 1}),)
@@ -1111,9 +1111,9 @@ class TestPattern:
             cmds=[M(0), M(1), M(2, s_domain={0}, t_domain={1}), X(3, domain={2}), M(3), Z(4, domain={3})],
         )
 
-        xzc = pattern.extract_xzcorrections()
+        xzc = pattern.to_xzcorrections()
         xzc_ref = XZCorrections.from_measured_nodes_mapping(
-            pattern.extract_opengraph(), x_corrections={0: {2}, 2: {3}}, z_corrections={1: {2}, 3: {4}}
+            pattern.to_opengraph(), x_corrections={0: {2}, 2: {3}}, z_corrections={1: {2}, 3: {4}}
         )
         assert xzc.og.isclose(xzc_ref.og)
         assert xzc.x_corrections == xzc_ref.x_corrections
@@ -1162,11 +1162,11 @@ class TestPattern:
         assert list(pattern) == list(pattern_reindexed)
         assert pattern.output_nodes == pattern_reindexed.output_nodes
 
-    def test_extract_opengraph_standardization(self) -> None:
+    def test_to_opengraph_standardization(self) -> None:
         p = Pattern(cmds=[N(0), C(0, Clifford.H), M(0, Measurement.XY(0.3))])
-        og = p.extract_opengraph()
+        og = p.to_opengraph()
         p.standardize()
-        og_std = p.extract_opengraph()
+        og_std = p.to_opengraph()
 
         assert og.isclose(og_std)
 
@@ -1199,8 +1199,8 @@ class TestPattern:
             ),
         ],
     )
-    def test_extract_opengraph_roundtrip(self, pattern: Pattern, fx_rng: Generator) -> None:
-        pattern_test = pattern.extract_opengraph().to_pattern()
+    def test_to_opengraph_roundtrip(self, pattern: Pattern, fx_rng: Generator) -> None:
+        pattern_test = pattern.to_opengraph().to_pattern()
 
         sv = pattern.simulate_pattern(rng=fx_rng)
         sv_test = pattern_test.simulate_pattern(rng=fx_rng)
@@ -1244,7 +1244,7 @@ class TestMCOps:
         pattern = circuit.transpile().pattern
         assert len(list(iter(pattern))) == 0
 
-    def test_extract_graph(self) -> None:
+    def test_graph(self) -> None:
         n = 3
         g = nx.complete_graph(n)
         circuit = Circuit(n)
@@ -1256,7 +1256,7 @@ class TestMCOps:
             circuit.rx(v, ANGLE_PI / 9)
 
         pattern = circuit.transpile().pattern
-        graph = pattern.extract_graph()
+        graph = pattern.graph()
 
         graph_ref: nx.Graph[int] = nx.Graph()
         graph_ref.add_nodes_from(range(27))
@@ -1393,7 +1393,7 @@ class TestMCOps:
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
-        out: Statevec | DensityMatrix = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
+        out: Statevector | DensityMatrix = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
         assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 

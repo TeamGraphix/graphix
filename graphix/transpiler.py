@@ -29,7 +29,7 @@ from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.statevec import Statevector, StatevectorBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -73,7 +73,7 @@ class TranspiledFlow:
 
     def to_pattern(self) -> TranspiledPattern:
         """Return the transpiled pattern."""
-        pattern = StandardizedPattern.from_pattern(self.flow.to_corrections().to_pattern()).to_space_optimal_pattern()
+        pattern = StandardizedPattern.from_pattern(self.flow.to_xzcorrections().to_pattern()).to_space_optimal_pattern()
         pattern.extend(self.classical_outputs.values())
         return TranspiledPattern(pattern, tuple(self.classical_outputs.keys()))
 
@@ -434,7 +434,7 @@ class Circuit:
         self.instruction.append(instruction.M(target=qubit, axis=axis))
         self.active_qubits.remove(qubit)
 
-    def transpile_to_causal_flow(self) -> TranspiledFlow:
+    def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
 
         Parameters
@@ -517,9 +517,9 @@ class Circuit:
             The result of the transpilation: a pattern and classical outputs.
         """
         if not transpile_swaps:
-            return self.transpile_to_causal_flow().to_pattern()
+            return self.transpile_to_causalflow().to_pattern()
         swap = _transpile_swaps(self)
-        result = swap.circuit.transpile_to_causal_flow().to_pattern()
+        result = swap.circuit.transpile_to_causalflow().to_pattern()
         result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
         classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
         return TranspiledPattern(result.pattern, classical_outputs)
@@ -533,7 +533,7 @@ class Circuit:
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-    ) -> SimulateResult[Statevec]: ...
+    ) -> SimulateResult[Statevector]: ...
 
     @overload
     def simulate_statevector(
@@ -565,8 +565,8 @@ class Circuit:
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-    ) -> SimulateResult[_DenseStateT] | SimulateResult[_DenseStateT | Statevec | DensityMatrix]:
-        # `SimulateResult` is not covariant in `_DenseStateT` so `SimulateResult[_DenseStateT]` is not a subtype of `SimulateResult[_DenseStateT | Statevec | DensityMatrix]`
+    ) -> SimulateResult[_DenseStateT] | SimulateResult[_DenseStateT | Statevector | DensityMatrix]:
+        # `SimulateResult` is not covariant in `_DenseStateT` so `SimulateResult[_DenseStateT]` is not a subtype of `SimulateResult[_DenseStateT | Statevector | DensityMatrix]`
         r"""Simulate the gate sequence with a backend and input state of choice.
 
         By default, this method uses the statevector backend and initializes the register to :math:`|+\rangle^{\otimes n}`.

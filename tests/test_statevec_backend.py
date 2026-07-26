@@ -9,7 +9,7 @@ from graphix.clifford import Clifford
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
 from graphix.pauli import Pauli
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.statevec import Statevector, StatevectorBackend
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from graphix import Pattern
 
 
-class TestStatevec:
+class TestStatevector:
     @pytest.mark.parametrize(
         "state", [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]
     )
@@ -26,39 +26,41 @@ class TestStatevec:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
-        statevector = state.to_statevector()
+        statevector = state.to_statevector_numpy()
         m_op = np.outer(statevector, statevector.T.conjugate())
-        sv = Statevec(nqubit=n)
+        sv = Statevector(nqubit=n)
         sv.evolve(m_op.astype(np.complex128, copy=False), [k])
         sv.remove_qubit(k)
 
-        sv2 = Statevec(nqubit=n - 1)
+        sv2 = Statevector(nqubit=n - 1)
         assert sv.isclose(sv2)
 
     def test_measurement_into_minus_state(self) -> None:
         n = 3
         k = 0
-        m_op = np.outer(BasicStates.MINUS.to_statevector(), BasicStates.MINUS.to_statevector().T.conjugate())
-        sv = Statevec(nqubit=n)
+        m_op = np.outer(
+            BasicStates.MINUS.to_statevector_numpy(), BasicStates.MINUS.to_statevector_numpy().T.conjugate()
+        )
+        sv = Statevector(nqubit=n)
         sv.evolve(m_op.astype(np.complex128, copy=False), [k])
         with pytest.raises(AssertionError):
             sv.remove_qubit(k)
 
 
-class TestStatevecNew:
+class TestStatevectorNew:
     # test initialization only
     def test_init_success(self, hadamardpattern: Pattern, fx_rng: Generator) -> None:
         # plus state (default)
         backend = StatevectorBackend()
         backend.add_nodes(hadamardpattern.input_nodes)
-        vec = Statevec(nqubit=1)
+        vec = Statevector(nqubit=1)
         assert np.allclose(vec.psi, backend.state.psi)
         assert len(backend.state.dims()) == 1
 
         # minus state
         backend = StatevectorBackend()
         backend.add_nodes(hadamardpattern.input_nodes, data=BasicStates.MINUS)
-        vec = Statevec(nqubit=1, data=BasicStates.MINUS)
+        vec = Statevector(nqubit=1, data=BasicStates.MINUS)
         assert np.allclose(vec.psi, backend.state.psi)
         assert len(backend.state.dims()) == 1
 
@@ -68,12 +70,12 @@ class TestStatevecNew:
         state = PlanarState(rand_plane, rand_angle)
         backend = StatevectorBackend()
         backend.add_nodes(hadamardpattern.input_nodes, data=state)
-        vec = Statevec(nqubit=1, data=state)
+        vec = Statevector(nqubit=1, data=state)
         assert np.allclose(vec.psi, backend.state.psi)
         # assert backend.state.nqubit == 1
         assert len(backend.state.dims()) == 1
 
-        # data input and Statevec input
+        # data input and Statevector input
 
     def test_init_fail(self, hadamardpattern: Pattern, fx_rng: Generator) -> None:
         rand_angle = fx_rng.random(2) * 2 * ANGLE_PI
@@ -87,7 +89,7 @@ class TestStatevecNew:
     def test_clifford(self) -> None:
         for clifford in Clifford:
             state = BasicStates.PLUS
-            vec = Statevec(nqubit=1, data=state)
+            vec = Statevector(nqubit=1, data=state)
             backend = StatevectorBackend()
             backend.add_nodes(nodes=[0], data=state)
             # Applies clifford gate "Z"

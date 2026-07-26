@@ -12,7 +12,7 @@ from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_state_vector
 from graphix.sim.base_backend import NodeIndex
-from graphix.sim.statevec import Statevec, _norm_numeric
+from graphix.sim.statevec import Statevector, _norm_numeric
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
@@ -26,38 +26,38 @@ if TYPE_CHECKING:
     _ENCODING = Literal["LSB", "MSB"]
 
 
-class TestStatevec:
-    """Test for Statevec class. Particularly new constructor."""
+class TestStatevector:
+    """Test for Statevector class. Particularly new constructor."""
 
     # test initializing one qubit in plus state
     def test_default_success(self) -> None:
-        vec = Statevec(nqubit=1)
+        vec = Statevector(nqubit=1)
         assert np.allclose(vec.psi, np.array([1, 1] / np.sqrt(2)))
         assert len(vec.dims()) == 1
 
     def test_basicstates_success(self) -> None:
         # minus
-        vec = Statevec(nqubit=1, data=BasicStates.MINUS)
+        vec = Statevector(nqubit=1, data=BasicStates.MINUS)
         assert np.allclose(vec.psi, np.array([1, -1] / np.sqrt(2)))
         assert len(vec.dims()) == 1
 
         # zero
-        vec = Statevec(nqubit=1, data=BasicStates.ZERO)
+        vec = Statevector(nqubit=1, data=BasicStates.ZERO)
         assert np.allclose(vec.psi, np.array([1, 0]), rtol=0, atol=1e-15)
         assert len(vec.dims()) == 1
 
         # one
-        vec = Statevec(nqubit=1, data=BasicStates.ONE)
+        vec = Statevector(nqubit=1, data=BasicStates.ONE)
         assert np.allclose(vec.psi, np.array([0, 1]), rtol=0, atol=1e-15)
         assert len(vec.dims()) == 1
 
         # plus_i
-        vec = Statevec(nqubit=1, data=BasicStates.PLUS_I)
+        vec = Statevector(nqubit=1, data=BasicStates.PLUS_I)
         assert np.allclose(vec.psi, np.array([1, 1j] / np.sqrt(2)))
         assert len(vec.dims()) == 1
 
         # minus_i
-        vec = Statevec(nqubit=1, data=BasicStates.MINUS_I)
+        vec = Statevector(nqubit=1, data=BasicStates.MINUS_I)
         assert np.allclose(vec.psi, np.array([1, -1j] / np.sqrt(2)))
         assert len(vec.dims()) == 1
 
@@ -65,12 +65,12 @@ class TestStatevec:
     def test_default_tensor_success(self, fx_rng: Generator) -> None:
         nqb = int(fx_rng.integers(2, 5))
         print(f"nqb is {nqb}")
-        vec = Statevec(nqubit=nqb)
+        vec = Statevector(nqubit=nqb)
         assert np.allclose(vec.psi, np.ones((2,) * nqb) / (np.sqrt(2)) ** nqb)
         assert len(vec.dims()) == nqb
 
-        vec = Statevec(nqubit=nqb, data=BasicStates.MINUS_I)
-        sv_list = [BasicStates.MINUS_I.to_statevector() for _ in range(nqb)]
+        vec = Statevector(nqubit=nqb, data=BasicStates.MINUS_I)
+        sv_list = [BasicStates.MINUS_I.to_statevector_numpy() for _ in range(nqb)]
         sv = functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128, copy=False), sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -79,8 +79,8 @@ class TestStatevec:
         rand_angle = fx_rng.random() * 2 * ANGLE_PI
         rand_plane = fx_rng.choice(np.array(Plane))
         state = PlanarState(rand_plane, rand_angle)
-        vec = Statevec(nqubit=nqb, data=state)
-        sv_list = [state.to_statevector() for _ in range(nqb)]
+        vec = Statevector(nqubit=nqb, data=state)
+        sv_list = [state.to_statevector_numpy() for _ in range(nqb)]
         sv = functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128, copy=False), sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -89,8 +89,8 @@ class TestStatevec:
         rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
-        vec = Statevec(nqubit=nqb, data=states)
-        sv_list = [state.to_statevector() for state in states]
+        vec = Statevector(nqubit=nqb, data=states)
+        sv_list = [state.to_statevector_numpy() for state in states]
         sv = functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128, copy=False), sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -100,7 +100,7 @@ class TestStatevec:
         length = 2**nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
-        vec = Statevec(data=rand_vec)
+        vec = Statevector(data=rand_vec)
         assert np.allclose(vec.psi, rand_vec.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
 
@@ -110,7 +110,7 @@ class TestStatevec:
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         with pytest.raises(ValueError):
-            _vec = Statevec(data=rand_vec)
+            _vec = Statevector(data=rand_vec)
 
     # fail: with less qubit than number of qubits inferred from a correct state vect
     def test_data_dim_fail_mismatch(self, fx_rng: Generator) -> None:
@@ -118,7 +118,7 @@ class TestStatevec:
         rand_vec = fx_rng.random(2**nqb) + 1j * fx_rng.random(2**nqb)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         with pytest.raises(ValueError):
-            _vec = Statevec(nqubit=2, data=rand_vec)
+            _vec = Statevector(nqubit=2, data=rand_vec)
 
     # fail: not normalized
     def test_data_norm_fail(self, fx_rng: Generator) -> None:
@@ -126,21 +126,21 @@ class TestStatevec:
         length = 2**nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         with pytest.raises(ValueError):
-            _vec = Statevec(data=rand_vec)
+            _vec = Statevector(data=rand_vec)
 
     def test_defaults_to_one(self) -> None:
-        vec = Statevec()
+        vec = Statevector()
         assert len(vec.dims()) == 1
 
-    # try copying Statevec input
+    # try copying Statevector input
     def test_copy_success(self, fx_rng: Generator) -> None:
         nqb = fx_rng.integers(2, 5)
         length = 2**nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
-        test_vec = Statevec(data=rand_vec)
+        test_vec = Statevector(data=rand_vec)
         # try to copy it
-        vec = Statevec(data=test_vec)
+        vec = Statevector(data=test_vec)
 
         assert np.allclose(vec.psi, test_vec.psi)
         assert len(vec.dims()) == len(test_vec.dims())
@@ -151,14 +151,14 @@ class TestStatevec:
         length = 1 << nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
-        test_vec = Statevec(data=rand_vec)
+        test_vec = Statevector(data=rand_vec)
 
         with pytest.raises(ValueError):
-            _vec = Statevec(nqubit=length - 1, data=test_vec)
+            _vec = Statevector(nqubit=length - 1, data=test_vec)
 
     def test_nqubits(self) -> None:
         for i in [1, 2, 5]:
-            sv = Statevec(nqubit=i)
+            sv = Statevector(nqubit=i)
             assert sv.nqubit == i
 
     def test_nqubits_pattern(self) -> None:
@@ -169,23 +169,23 @@ class TestStatevec:
 
 class TestFidelityIsclose:
     def test_fidelity_same_state(self) -> None:
-        state = Statevec(data=BasicStates.PLUS)
+        state = Statevector(data=BasicStates.PLUS)
         assert state.fidelity(state) == pytest.approx(1)
 
     def test_fidelity_orthogonal(self) -> None:
-        zero = Statevec(data=BasicStates.ZERO)
-        one = Statevec(data=BasicStates.ONE)
+        zero = Statevector(data=BasicStates.ZERO)
+        one = Statevector(data=BasicStates.ONE)
         assert zero.fidelity(one) == pytest.approx(0)
 
     def test_fidelity_known_value(self) -> None:
         # F(|0>, |+>) = 0.5
-        zero = Statevec(data=BasicStates.ZERO)
-        plus = Statevec(data=BasicStates.PLUS)
+        zero = Statevector(data=BasicStates.ZERO)
+        plus = Statevector(data=BasicStates.PLUS)
         assert zero.fidelity(plus) == pytest.approx(0.5)
 
     def test_fidelity_global_phase(self) -> None:
-        plus = Statevec(data=BasicStates.PLUS)
-        plus_rotated = Statevec(data=np.array([1, 1]) / np.sqrt(2) * 1j)
+        plus = Statevector(data=BasicStates.PLUS)
+        plus_rotated = Statevector(data=np.array([1, 1]) / np.sqrt(2) * 1j)
         assert plus.fidelity(plus_rotated) == pytest.approx(1)
 
     def test_fidelity_symmetry(self, fx_rng: Generator) -> None:
@@ -194,27 +194,27 @@ class TestFidelityIsclose:
         vec_a /= np.sqrt(np.sum(np.abs(vec_a) ** 2))
         vec_b = fx_rng.random(length) + 1j * fx_rng.random(length)
         vec_b /= np.sqrt(np.sum(np.abs(vec_b) ** 2))
-        a = Statevec(data=vec_a)
-        b = Statevec(data=vec_b)
+        a = Statevector(data=vec_a)
+        b = Statevector(data=vec_b)
         assert a.fidelity(b) == pytest.approx(b.fidelity(a))
 
     def test_isclose_same_state(self) -> None:
-        state = Statevec(data=BasicStates.PLUS)
+        state = Statevector(data=BasicStates.PLUS)
         assert state.isclose(state)
 
     def test_isclose_orthogonal(self) -> None:
-        zero = Statevec(data=BasicStates.ZERO)
-        one = Statevec(data=BasicStates.ONE)
+        zero = Statevector(data=BasicStates.ZERO)
+        one = Statevector(data=BasicStates.ONE)
         assert not zero.isclose(one)
 
     def test_isclose_global_phase(self) -> None:
-        plus = Statevec(data=BasicStates.PLUS)
-        rotated = Statevec(data=np.array([1, 1]) / np.sqrt(2) * np.exp(1j * 0.7))
+        plus = Statevector(data=BasicStates.PLUS)
+        rotated = Statevector(data=np.array([1, 1]) / np.sqrt(2) * np.exp(1j * 0.7))
         assert plus.isclose(rotated)
 
     def test_isclose_tolerance(self) -> None:
-        zero = Statevec(data=BasicStates.ZERO)
-        almost = Statevec(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)]))
+        zero = Statevector(data=BasicStates.ZERO)
+        almost = Statevector(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)]))
         assert not zero.isclose(almost)
         assert zero.isclose(almost, atol=1e-6)
 
@@ -226,7 +226,7 @@ class TestFidelityIsclose:
         ],
     )
     def test_to_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
-        sv = Statevec(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
+        sv = Statevector(data=[BasicStates.ZERO, BasicStates.PLUS, BasicStates.MINUS])
         for ket, amp in sv.to_dict(encoding=encoding).items():
             assert np.isclose(dict_ref[ket], amp.real)
             assert np.isclose(0, amp.imag)
@@ -239,14 +239,14 @@ class TestFidelityIsclose:
         ],
     )
     def test_to_prob_dict(self, encoding: _ENCODING, dict_ref: Mapping[str, float]) -> None:
-        sv = Statevec(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
+        sv = Statevector(data=[BasicStates.ONE, BasicStates.PLUS, BasicStates.MINUS])
         for ket, amp2 in sv.to_prob_dict(encoding=encoding).items():
             assert np.isclose(dict_ref[ket], amp2.real)
             assert np.isclose(0, amp2.imag)
 
 
 def test_normalize() -> None:
-    statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
+    statevec = Statevector(nqubit=1, data=BasicStates.PLUS)
     statevec.remove_qubit(0)
     assert _norm_numeric(statevec.psi.astype(np.complex128, copy=False)) == 1
 
@@ -265,7 +265,7 @@ def permute_with_swap(dense_state: DenseState, permutation: Sequence[int]) -> No
 @pytest.mark.parametrize("permutation", itertools.permutations(range(3)))
 def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
     nqubits = len(permutation)
-    statevec = Statevec(rand_state_vector(nqubits, fx_rng))
+    statevec = Statevector(rand_state_vector(nqubits, fx_rng))
     statevec_ref = copy.copy(statevec)
     statevec.permute(permutation)
     permute_with_swap(statevec_ref, permutation)
@@ -273,7 +273,7 @@ def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
 
 
 def test_permute_bad_permutation() -> None:
-    statevec = Statevec(nqubit=2)
+    statevec = Statevector(nqubit=2)
     with pytest.raises(ValueError, match="Permutation has length"):
         statevec.permute([0])
     with pytest.raises(ValueError, match="not a permutation"):
