@@ -109,6 +109,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.to_<object>_or_none` for transformations that can return `object` or `None`. Equivalently, we use `.from_<object>_or_none` for constructors.
   - accessor methods use nouns instead of verb + noun. Example: `Pattern.max_degree` instead of `Pattern.compute_max_degree`.
 
+- #518: Numba-jit statevector backend.
+  - Changed statevector representation from a tensor to a flat array.
+  - Added `.with_capacity` method to `StatevectorBackend` to preallocate a given space in memory.
+  - Added module constant `NUM_QUBIT_PARALLEL` to determine at which qubit count jit-compiled functions are parallelized.
+  - Dropped support for symbolic simulation and removed `Statevector.xreplace` and `Statevector.subs` methods.
+  - Added method `DenseState.project_qubit` which defaults to calling `evolve_single` and `remove_qubit`. Added specialized code for this method in `Statevector` class.
+  - Unified `test_statevec.py` and `test_statevec_backend.py` into a single file.
+
 ## [0.3.5] - 2026-03-26
 
 ### Added
