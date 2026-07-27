@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command
+from graphix import Circuit, Pattern, Plane, XZCorrections, command
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
@@ -285,4 +285,22 @@ def test_legend_pauli_measurements(infer_pauli_measurements: bool) -> Figure:
     if infer_pauli_measurements:
         pattern = pattern.infer_pauli_measurements()
     pattern.draw()
+    return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_legend_x_corrections_only() -> Figure:
+    # Related to https://github.com/TeamGraphix/graphix/issues/554
+    # Draw X-corrections on open graph without inputs, outputs, edges.
+    # Only "X corrections" label should be visible in legend.
+
+    graph: nx.Graph[int] = nx.Graph()
+    graph.add_node(0)
+    graph.add_node(1)
+
+    og = OpenGraph(graph, input_nodes=[], output_nodes=[], measurements=dict.fromkeys([0, 1], Plane.XY))
+
+    xz = XZCorrections.from_measured_nodes_mapping(og, {0: {1}}, {})
+    xz.draw()
     return plt.gcf()
