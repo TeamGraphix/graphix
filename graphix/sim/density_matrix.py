@@ -18,6 +18,7 @@ from typing_extensions import override
 from graphix import linalg_validations as lv
 from graphix import parameter
 from graphix.channels import KrausChannel
+from graphix.ops import Ops
 from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
 from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
@@ -31,19 +32,6 @@ if TYPE_CHECKING:
     from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
-
-CZ_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
-    dtype=np.complex128,
-)
-CNOT_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],
-    dtype=np.complex128,
-)
-SWAP_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
-    dtype=np.complex128,
-)
 
 
 class DensityMatrix(DenseState):
@@ -209,8 +197,7 @@ class DensityMatrix(DenseState):
             qubit : int
                 Index of qubit to apply operator.
         """
-        assert qubit >= 0
-        assert qubit < self.nqubit
+        assert 0 <= qubit < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
 
@@ -324,7 +311,7 @@ class DensityMatrix(DenseState):
             edge : (int, int) or [int, int]
                 Edge to apply CNOT gate.
         """
-        self.evolve(CNOT_TENSOR.reshape(4, 4), edge)
+        self.evolve(Ops.CNOT, edge)
 
     @override
     def swap(self, qubits: tuple[int, int]) -> None:
@@ -335,7 +322,7 @@ class DensityMatrix(DenseState):
             qubits : (int, int)
                 (control, target) qubits indices.
         """
-        self.evolve(SWAP_TENSOR.reshape(4, 4), qubits)
+        self.evolve(Ops.SWAP, qubits)
 
     @override
     def permute(self, permutation: Sequence[int]) -> None:
@@ -356,7 +343,7 @@ class DensityMatrix(DenseState):
             qubits : (int, int) or [int, int]
                 (control, target) qubit indices.
         """
-        self.evolve(CZ_TENSOR.reshape(4, 4), qubits)
+        self.evolve(Ops.CZ, qubits)
 
     def normalize(self) -> None:
         """Normalize density matrix."""

@@ -283,7 +283,6 @@ class TestStatevector:
         statevector = state.to_statevector_numpy()
         m_op = np.outer(statevector, statevector.T.conjugate())
         sv = Statevector(nqubit=n)
-        sv.evolve_single(m_op, k)
 
         if state is BasicStates.MINUS:
             # Measurement into |-> results in a 0-norm vector

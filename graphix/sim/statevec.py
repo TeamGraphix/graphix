@@ -43,7 +43,8 @@ if TYPE_CHECKING:
 
 NUM_QUBIT_PARALLEL = 15
 """This compilation constant determines the number of qubits above which matrix operations
-are multi-threaded. For lower counts, the overhead does not compensate parallelization.
+are multi-threaded. For lower counts, the advantage from parallelization is lost due to the
+overhead of initalizing multiple threads.
 This number was determined empirically and may be platform dependent."""
 
 
@@ -158,14 +159,13 @@ class Statevector(DenseState):
         else:
             raise TypeError(f"Incorrect type for data: {type(data)}.")
 
-        if len(input_list) == 0:
+        if (length := len(input_list)) == 0:
             if nqubit is not None and nqubit != 0:
                 raise ValueError("`nqubit` is not null but input state is empty.")
             nqubit = 0
             psi = np.array([1], dtype=np.complex128)
 
         elif isinstance(input_list[0], states.State):
-            length = len(input_list)
             if nqubit is None:
                 nqubit = length
             elif nqubit != length:
@@ -185,7 +185,6 @@ class Statevector(DenseState):
 
         # `SupportsFloat` is needed because `numpy.float64` is not an instance of `SupportsComplex`!
         elif isinstance(input_list[0], (SupportsComplex, SupportsFloat)):
-            length = len(input_list)
             inferred_nqubit = length.bit_length() - 1
             if nqubit is None:
                 if length & (length - 1):
@@ -437,18 +436,16 @@ class Statevector(DenseState):
         1 \dots 11 ]`, this method returns
 
         .. math::
-            \begin{align}
-                \ket{\psi}' =&
-                    c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00}
-                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
-                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01}
-                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
-                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10}
-                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
-                    & + \dots \\
-                    & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11}
-                    \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
-           \end{align}
+            \ket{\psi}' =&
+                c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00}
+                \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
+                & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01}
+                \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
+                & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10}
+                \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
+                & + \dots \\
+                & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11}
+                \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
 
         (after normalization) for :math:`k =` ``qubit``. If the :math:`k` th qubit is in the :math:`\ket{1}` state, all the amplitudes above will be zero.
         In that case the returned state will be the one above with
