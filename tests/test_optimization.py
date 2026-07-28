@@ -70,7 +70,7 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     pattern.remove_pauli_measurements()
     # We should convert to Bloch measurement the remaining Pauli
     # measurements on input nodes.
-    gflow = pattern.to_bloch().extract_gflow()
+    gflow = pattern.to_bloch().to_gflow()
     gflow.check_well_formed()
 
 

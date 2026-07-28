@@ -10,16 +10,16 @@ from graphix.clifford import Clifford
 from graphix.fundamentals import ANGLE_PI, Plane, angle_to_rad
 from graphix.graphsim import GraphState
 from graphix.ops import Ops
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevector
 
 if TYPE_CHECKING:
     from graphix.fundamentals import Angle
 
 
-def graph_state_to_statevec(g: GraphState) -> Statevec:
+def graph_state_to_statevec(g: GraphState) -> Statevector:
     node_list = list(g.nodes)
     nqubit = len(g.nodes)
-    gstate = Statevec(nqubit=nqubit)
+    gstate = Statevector(nqubit=nqubit)
     imapping = {node_list[i]: i for i in range(nqubit)}
     mapping = [node_list[i] for i in range(nqubit)]
     for i, j in g.edges:
@@ -83,23 +83,17 @@ class TestGraphSim:
         g = GraphState(nodes=np.arange(nqubit), edges=edges)
         gstate = graph_state_to_statevec(g)
         g.measure_x(0)
-        gstate.evolve_single(meas_op(0), 0)  # x meas
-        gstate.normalize()
-        gstate.remove_qubit(0)
+        gstate.project_qubit(meas_op(0), 0)  # x meas
         gstate2 = graph_state_to_statevec(g)
         assert gstate.isclose(gstate2)
 
         g.measure_y(1, choice=0)
-        gstate.evolve_single(meas_op(0.5 * ANGLE_PI), 0)  # y meas
-        gstate.normalize()
-        gstate.remove_qubit(0)
+        gstate.project_qubit(meas_op(0.5 * ANGLE_PI), 0)  # y meas
         gstate2 = graph_state_to_statevec(g)
         assert gstate.isclose(gstate2)
 
         g.measure_z(3)
-        gstate.evolve_single(meas_op(0.5 * ANGLE_PI, plane=Plane.YZ), 1)  # z meas
-        gstate.normalize()
-        gstate.remove_qubit(1)
+        gstate.project_qubit(meas_op(0.5 * ANGLE_PI, plane=Plane.YZ), 1)  # z meas
         gstate2 = graph_state_to_statevec(g)
         assert gstate.isclose(gstate2)
 

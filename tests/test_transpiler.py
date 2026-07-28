@@ -12,7 +12,7 @@ from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.statevec import Statevector, StatevectorBackend
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
@@ -53,8 +53,8 @@ class TestTranspilerUnitGates:
     def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
         circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
-        circuit.transpile_to_causal_flow().flow.check_well_formed()
-        flow = pattern.to_bloch().extract_causal_flow()
+        circuit.transpile_to_causalflow().flow.check_well_formed()
+        flow = pattern.to_bloch().to_causalflow()
         flow.check_well_formed()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -98,7 +98,7 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate_pattern(
             rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend
         )
-        if isinstance(state_mbqc, Statevec) and isinstance(state, Statevec):
+        if isinstance(state_mbqc, Statevector) and isinstance(state, Statevector):
             assert state_mbqc.isclose(state)
         elif isinstance(state_mbqc, DensityMatrix) and isinstance(state, DensityMatrix):
             assert np.allclose(state_mbqc.rho, state.rho)
@@ -253,7 +253,7 @@ class TestTranspilerUnitGates:
         expected_outcomes: list[Outcome] = [1 if q % 2 else 0 for q in range(n)]
         results_circuit: dict[int, Outcome] = dict(zip(range(n), expected_outcomes, strict=False))
         m_outcomes = dict(zip(transpile_result.classical_outputs, expected_outcomes, strict=False))
-        non_output_nodes = pattern.extract_nodes() - set(pattern.output_nodes)
+        non_output_nodes = pattern.nodes() - set(pattern.output_nodes)
         results_pattern: dict[int, Outcome] = {node: m_outcomes.get(node, 0) for node in non_output_nodes}
         input_state = rand_state_vector(width, rng=rng)
         measure_method = DefaultMeasureMethod()
@@ -308,7 +308,7 @@ class TestCircuits:
     def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
         circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
-        flow = pattern.to_bloch().extract_causal_flow()
+        flow = pattern.to_bloch().to_causalflow()
         flow.check_well_formed()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -393,7 +393,7 @@ def test_transpile_double_cz() -> None:
     circuit = Circuit(2)
     circuit.cz(0, 1)
     circuit.cz(1, 0)
-    cf = circuit.transpile_to_causal_flow()
+    cf = circuit.transpile_to_causalflow()
     assert len(cf.flow.og.graph.edges) == 0
 
 

@@ -84,12 +84,12 @@ class TestSign:
 
 
 class TestComplexUnit:
-    def test_try_from(self) -> None:
-        assert ComplexUnit.try_from(ComplexUnit.ONE) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(1) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(1.0) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(1.0 + 0.0j) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(3) is None
+    def test_from_or_none(self) -> None:
+        assert ComplexUnit.from_or_none(ComplexUnit.ONE) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(1) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(1.0) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(1.0 + 0.0j) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(3) is None
 
     def test_from_properties(self) -> None:
         assert ComplexUnit.from_properties() == ComplexUnit.ONE

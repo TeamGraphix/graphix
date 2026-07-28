@@ -392,10 +392,10 @@ class TestFlowPatternConversion:
     """
 
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
-    def test_flow_to_corrections(self, test_case: XZCorrectionsTestCase) -> None:
+    def test_flow_to_xzcorrections(self, test_case: XZCorrectionsTestCase) -> None:
         flow = test_case.flow
         flow.check_well_formed()
-        corrections = flow.to_corrections()
+        corrections = flow.to_xzcorrections()
         corrections.check_well_formed()
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
@@ -403,7 +403,7 @@ class TestFlowPatternConversion:
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
         if isinstance(test_case, PatternTestCase):
-            pattern = test_case.flow.to_corrections().to_pattern()
+            pattern = test_case.flow.to_xzcorrections().to_pattern()
             n_shots = 2
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
@@ -428,7 +428,7 @@ class TestFlow:
             output_nodes=[1],
             measurements={0: Measurement.XY(alpha)},
         )
-        flow = og.extract_pauli_flow()
+        flow = og.to_pauliflow()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1)]),
@@ -436,7 +436,7 @@ class TestFlow:
             output_nodes=[1],
             measurements={0: Measurement.XY(value)},
         )
-        flow_ref = og_ref.extract_pauli_flow()
+        flow_ref = og_ref.to_pauliflow()
 
         flow_test = flow.subs(alpha, value)
 
@@ -456,7 +456,7 @@ class TestFlow:
             output_nodes=[2],
             measurements={node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)},
         )
-        flow = og.extract_pauli_flow()
+        flow = og.to_pauliflow()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2)]),
@@ -464,7 +464,7 @@ class TestFlow:
             output_nodes=[2],
             measurements={node: Measurement.XY(value) for node in range(2)},
         )
-        flow_ref = og_ref.extract_pauli_flow()
+        flow_ref = og_ref.to_pauliflow()
 
         flow_test = flow.xreplace(dict.fromkeys(parametric_angles, value))
 
@@ -499,7 +499,7 @@ class TestXZCorrections:
 
     # See `:func: generate_causal_flow_0`
     def test_order_0(self) -> None:
-        corrections = generate_causal_flow_0().to_corrections()
+        corrections = generate_causal_flow_0().to_xzcorrections()
 
         assert corrections.generate_total_measurement_order() == [0, 1, 2]
         assert corrections.is_compatible([0, 1, 2])  # Correct order
@@ -507,7 +507,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([1, 2])  # Incomplete order
         assert not corrections.is_compatible([0, 1, 2, 3])  # Contains outputs
 
-        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2), (1, 2), (2, 3), (1, 3)]))
+        assert nx.utils.graphs_equal(corrections.to_dag(), nx.DiGraph([(0, 1), (0, 2), (1, 2), (2, 3), (1, 3)]))
 
     # See `:func: generate_causal_flow_1`
     def test_order_1(self) -> None:
@@ -533,7 +533,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([0, 1, 2, 3, 4, 5])  # Contains outputs
 
         assert nx.utils.graphs_equal(
-            corrections.extract_dag(), nx.DiGraph([(0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 5), (2, 4), (3, 5)])
+            corrections.to_dag(), nx.DiGraph([(0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 5), (2, 4), (3, 5)])
         )
 
     # Incomplete corrections
@@ -556,7 +556,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([0, 0, 1])  # Duplicates
         assert not corrections.is_compatible([1, 0, 2, 3])  # Contains outputs
 
-        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(1, 0)]))
+        assert nx.utils.graphs_equal(corrections.to_dag(), nx.DiGraph([(1, 0)]))
 
     # OG without outputs
     def test_order_3(self) -> None:
@@ -577,7 +577,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([2, 0, 1])  # Wrong order
         assert not corrections.is_compatible([0, 1])  # Incomplete order
         assert corrections.generate_total_measurement_order() in ([0, 1, 2], [0, 2, 1])
-        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2)]))
+        assert nx.utils.graphs_equal(corrections.to_dag(), nx.DiGraph([(0, 1), (0, 2)]))
 
     # Only output nodes
     def test_from_measured_nodes_mapping_0(self) -> None:
@@ -719,7 +719,7 @@ class TestXZCorrections:
             output_nodes=[1],
             measurements={0: Measurement.XY(alpha)},
         )
-        xzcorr = og.extract_causal_flow().to_corrections()
+        xzcorr = og.to_causalflow().to_xzcorrections()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1)]),
@@ -727,7 +727,7 @@ class TestXZCorrections:
             output_nodes=[1],
             measurements={0: Measurement.XY(value)},
         )
-        xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
+        xzcorr_ref = og_ref.to_causalflow().to_xzcorrections()
 
         xzcorr_test = xzcorr.subs(alpha, value)
 
@@ -748,7 +748,7 @@ class TestXZCorrections:
             output_nodes=[2],
             measurements={node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)},
         )
-        xzcorr = og.extract_causal_flow().to_corrections()
+        xzcorr = og.to_causalflow().to_xzcorrections()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2)]),
@@ -756,7 +756,7 @@ class TestXZCorrections:
             output_nodes=[2],
             measurements={node: Measurement.XY(value) for node in range(2)},
         )
-        xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
+        xzcorr_ref = og_ref.to_causalflow().to_xzcorrections()
 
         xzcorr_test = xzcorr.xreplace(dict.fromkeys(parametric_angles, value))
 

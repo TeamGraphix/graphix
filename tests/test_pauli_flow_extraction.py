@@ -3,7 +3,7 @@ r"""Tests for Pauli-flow extraction from a pattern / XZ-corrections.
 Correctness criterion
 ---------------------
 A reconstructed Pauli flow ``pf`` generates the original pattern if and only if
-``pf.check_well_formed()`` succeeds *and* ``pf.to_corrections()`` reproduces the pattern's
+``pf.check_well_formed()`` succeeds *and* ``pf.to_xzcorrections()`` reproduces the pattern's
 X- and Z-corrections exactly. The latter "round-trip" property is the decisive check: it
 guarantees that the flow generates *this* pattern (and not merely some Pauli flow of the
 underlying open graph, which need not be unique). The tests below verify this on the three
@@ -38,18 +38,18 @@ def _norm(corrections: Mapping[int, AbstractSet[int]]) -> dict[int, frozenset[in
 
 
 def _assert_round_trip(pattern: Pattern) -> None:
-    xz = pattern.extract_xzcorrections()
-    pf = xz.to_pauli_flow()
-    # `to_pauli_flow` no longer runs `check_well_formed` in production; the
+    xz = pattern.to_xzcorrections()
+    pf = xz.to_pauliflow()
+    # `to_pauliflow` no longer runs `check_well_formed` in production; the
     # well-formedness is asserted here, in the test-suite, instead.
     assert pf.is_well_formed()
-    rt = pf.to_corrections()
+    rt = pf.to_xzcorrections()
     assert _norm(rt.x_corrections) == _norm(xz.x_corrections)
     assert _norm(rt.z_corrections) == _norm(xz.z_corrections)
 
 
 def _correction_function(pattern: Pattern) -> dict[int, set[int]]:
-    pf = pattern.extract_pauli_flow()
+    pf = pattern.to_pauliflow()
     return {k: set(v) for k, v in pf.correction_function.items()}
 
 
@@ -82,19 +82,19 @@ def _pauli_pattern() -> Pattern:
     )  # fmt: skip
 
 
-def test_extract_pauli_flow_causal_example() -> None:
+def test_to_pauliflow_causal_example() -> None:
     pattern = _causal_pattern()
     assert _correction_function(pattern) == {0: {1}}
     _assert_round_trip(pattern)
 
 
-def test_extract_pauli_flow_gflow_example() -> None:
+def test_to_pauliflow_gflow_example() -> None:
     pattern = _gflow_pattern()
     assert _correction_function(pattern) == {0: {2, 3}, 1: {1, 2}}
     _assert_round_trip(pattern)
 
 
-def test_extract_pauli_flow_pauli_example() -> None:
+def test_to_pauliflow_pauli_example() -> None:
     # The flow must include the anachronical correction (node 1 in p(0)) that does not
     # appear in the pattern, in order to satisfy the X-axis proposition (P7).
     pattern = _pauli_pattern()
@@ -102,7 +102,7 @@ def test_extract_pauli_flow_pauli_example() -> None:
     _assert_round_trip(pattern)
 
 
-def test_extract_pauli_flow_pauli_opengraph() -> None:
+def test_to_pauliflow_pauli_opengraph() -> None:
     og = OpenGraph(
         graph=nx.Graph([(0, 2), (2, 4), (3, 4), (4, 6), (1, 4), (1, 6), (2, 3), (3, 5), (2, 6), (3, 6)]),
         input_nodes=[0],
@@ -118,7 +118,7 @@ def test_extract_pauli_flow_pauli_opengraph() -> None:
     _assert_round_trip(og.to_pattern())
 
 
-def test_extract_pauli_flow_output_zcorrection() -> None:
+def test_to_pauliflow_output_zcorrection() -> None:
     # Regression: a Z-correction whose future target is an *output* node imposes a real GF(2)
     # equation in the reconstruction -- it cannot be dropped (e.g. by skipping future nodes that are
     # not measured in a non-Pauli plane) without silently breaking the Z-correction round-trip.
@@ -149,7 +149,7 @@ _MEASUREMENTS: list[Callable[[Generator], Measurement]] = [
 
 
 @pytest.mark.parametrize("seed", range(400))
-def test_extract_pauli_flow_randomized_round_trip(seed: int) -> None:
+def test_to_pauliflow_randomized_round_trip(seed: int) -> None:
     # For each seed, draw a random open graph. Seeds with no edges, or whose open graph does not
     # admit a Pauli flow (so `to_pattern` raises `OpenGraphError`), are skipped; the rest are
     # converted to a pattern and round-tripped. Passing the seed as a parameter keeps each case
@@ -176,20 +176,20 @@ def test_extract_pauli_flow_randomized_round_trip(seed: int) -> None:
     _assert_round_trip(pattern)
 
 
-def test_extract_pauli_flow_pins_the_pattern_specific_flow() -> None:
+def test_to_pauliflow_pins_the_pattern_specific_flow() -> None:
     r"""Reconstruction must return the Pauli flow implemented by *this* pattern, not just any Pauli flow of the underlying open graph.
 
     A Pauli flow on an open graph is not unique when Pauli-measured nodes admit several distinct
-    anachronical-correction patterns. ``OpenGraph.find_pauli_flow`` returns *some* maximally
+    anachronical-correction patterns. ``OpenGraph.to_pauliflow_or_none`` returns *some* maximally
     delayed Pauli flow (chosen by the underlying algorithm); a trivial implementation of
-    ``XZCorrections.to_pauli_flow`` that delegates to it -- and ignores the XZ-corrections of
+    ``XZCorrections.to_pauliflow`` that delegates to it -- and ignores the XZ-corrections of
     the pattern entirely -- would therefore pass every existing round-trip test that happens
     to feed it patterns whose flow already coincides with that algorithmic choice.
 
     This test pins down a small open graph that admits two well-formed Pauli flows whose
-    ``to_corrections()`` outputs differ, builds the XZ-corrections of the *non-default* one,
+    ``to_xzcorrections()`` outputs differ, builds the XZ-corrections of the *non-default* one,
     and asserts that the reconstruction returns the chosen flow (and not the one
-    ``find_pauli_flow`` would have returned on the bare open graph).
+    ``to_pauliflow_or_none`` would have returned on the bare open graph).
     """
     og: OpenGraph[Measurement] = OpenGraph(
         graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
@@ -206,35 +206,35 @@ def test_extract_pauli_flow_pins_the_pattern_specific_flow() -> None:
     assert pf_with_anachronical.is_well_formed()
     assert pf_with_future.is_well_formed()
 
-    xz_with_anachronical = pf_with_anachronical.to_corrections()
-    xz_with_future = pf_with_future.to_corrections()
+    xz_with_anachronical = pf_with_anachronical.to_xzcorrections()
+    xz_with_future = pf_with_future.to_xzcorrections()
     # The corrections genuinely differ: the future-style flow X-corrects node 3 from
     # node 0, the anachronical-style flow does not.
     assert _norm(xz_with_anachronical.x_corrections) != _norm(xz_with_future.x_corrections)
 
-    # `find_pauli_flow` is allowed to return either valid flow (or another); what matters
-    # is that the trivial implementation `pf = self.og.find_pauli_flow()` is independent of
+    # `to_pauliflow_or_none` is allowed to return either valid flow (or another); what matters
+    # is that the trivial implementation `pf = self.og.to_pauliflow_or_none()` is independent of
     # the XZ-corrections we feed in -- so it cannot get both round-trips right.
-    trivial_choice = og.find_pauli_flow()
+    trivial_choice = og.to_pauliflow_or_none()
     assert trivial_choice is not None
     trivial_cf = {k: set(v) for k, v in trivial_choice.correction_function.items()}
 
     # The real reconstruction must use the XZ-corrections to disambiguate.
-    rebuilt_anachronical = xz_with_anachronical.to_pauli_flow()
-    rebuilt_future = xz_with_future.to_pauli_flow()
+    rebuilt_anachronical = xz_with_anachronical.to_pauliflow()
+    rebuilt_future = xz_with_future.to_pauliflow()
     assert dict(rebuilt_anachronical.correction_function) == {0: {1}, 1: {2}, 2: {3}}
     assert dict(rebuilt_future.correction_function) == {0: {1, 3}, 1: {2}, 2: {3}}
 
     # And the round-trip on each must still recover the original XZ-corrections exactly.
-    rt_anachronical = rebuilt_anachronical.to_corrections()
-    rt_future = rebuilt_future.to_corrections()
+    rt_anachronical = rebuilt_anachronical.to_xzcorrections()
+    rt_future = rebuilt_future.to_xzcorrections()
     assert _norm(rt_anachronical.x_corrections) == _norm(xz_with_anachronical.x_corrections)
     assert _norm(rt_anachronical.z_corrections) == _norm(xz_with_anachronical.z_corrections)
     assert _norm(rt_future.x_corrections) == _norm(xz_with_future.x_corrections)
     assert _norm(rt_future.z_corrections) == _norm(xz_with_future.z_corrections)
 
     # Discriminator assertion: at least one of the two reconstructions must disagree with
-    # the trivial ``find_pauli_flow`` choice (the two flows differ from each other, so the
+    # the trivial ``to_pauliflow_or_none`` choice (the two flows differ from each other, so the
     # trivial impl -- which returns the same flow regardless -- cannot match both).
     assert (
         dict(rebuilt_anachronical.correction_function) != trivial_cf
@@ -242,12 +242,12 @@ def test_extract_pauli_flow_pins_the_pattern_specific_flow() -> None:
     )
 
 
-def test_to_pauli_flow_empty_pattern() -> None:
+def test_to_pauliflow_empty_pattern() -> None:
     # Regression for the production manifestation of #531: an empty pattern has a trivial
-    # Pauli flow, so `to_pauli_flow` must not raise. The well-formedness sanity check is no
+    # Pauli flow, so `to_pauliflow` must not raise. The well-formedness sanity check is no
     # longer run systematically in production (it lives in the test-suite); `check_well_formed`'s
     # own behaviour on an empty partial order is tracked separately in #531.
-    pf = Pattern().extract_xzcorrections().to_pauli_flow()
+    pf = Pattern().to_xzcorrections().to_pauliflow()
     assert dict(pf.correction_function) == {}
 
 
@@ -265,7 +265,7 @@ def test_to_pauli_flow_empty_pattern() -> None:
     ],
     ids=["z-input", "xz-input", "yz-input", "isolated-xy"],
 )
-def test_to_pauli_flow_raises_when_no_flow_exists(
+def test_to_pauliflow_raises_when_no_flow_exists(
     measurements: dict[int, Measurement],
     inputs: list[int],
     outputs: list[int],
@@ -277,7 +277,7 @@ def test_to_pauli_flow_raises_when_no_flow_exists(
     graph.add_nodes_from(extra_nodes)
     og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
     with pytest.raises(FlowGenericError) as exc_info:
-        XZCorrections(og, {}, {}, layers).to_pauli_flow()
+        XZCorrections(og, {}, {}, layers).to_pauliflow()
     assert exc_info.value.reason == FlowGenericErrorReason.NoPauliFlow
     # The rendered message names the failure so it is actionable in a traceback.
     assert "No Pauli flow" in str(exc_info.value)

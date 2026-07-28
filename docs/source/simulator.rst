@@ -35,7 +35,7 @@ Statevector
 .. autoclass:: StatevectorBackend
     :members:
 
-.. autoclass:: Statevec
+.. autoclass:: Statevector
     :members:
 
 Density Matrix

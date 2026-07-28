@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
     from graphix.sim.density_matrix import DensityMatrix
-    from graphix.sim.statevec import _ENCODING, Statevec
+    from graphix.sim.statevec import _ENCODING, Statevector
 
 
 class OutputFormat(Enum):
@@ -817,7 +817,7 @@ def _factor_uniform_magnitude(
 
 
 def statevec_to_str(
-    statevec: Statevec,
+    statevec: Statevector,
     output: OutputFormat,
     *,
     encoding: _ENCODING = "MSB",
@@ -828,18 +828,18 @@ def statevec_to_str(
 ) -> str:
     r"""Return a ket-notation string representation of a statevector.
 
-    Amplitudes close to zero are omitted (see :meth:`graphix.sim.statevec.Statevec.to_dict`)
+    Amplitudes close to zero are omitted (see :meth:`graphix.sim.statevec.Statevector.to_dict`)
     and the remaining ones are pretty-printed with :func:`complex_to_str`.
 
     Parameters
     ----------
-    statevec : Statevec
+    statevec : Statevector
         The statevector to format.
     output : OutputFormat
         Desired formatting style (``ASCII``, ``LaTeX`` or ``Unicode``).
     encoding : {"LSB", "MSB"}, optional
         Bit-ordering convention for the basis kets (default: ``"MSB"``).
-        See :meth:`graphix.sim.statevec.Statevec.to_dict`.
+        See :meth:`graphix.sim.statevec.Statevector.to_dict`.
     max_denominator : int, optional
         Maximum denominator used by the amplitude recognition (default: ``1000``).
     atol : float, optional

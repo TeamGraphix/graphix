@@ -12,7 +12,6 @@ from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import DrawPatternAnnotations, Pattern
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
     from numpy.random import PCG64, Generator
@@ -130,19 +129,6 @@ def test_parallel_substitution_with_zero() -> None:
     pattern.add(graphix.command.M(2, Measurement.XY(beta)))
     pattern23 = pattern.xreplace({alpha: 0, beta: 0})
     assert not pattern23.is_parameterized()
-
-
-def test_statevec_subs() -> None:
-    alpha = Placeholder("alpha")
-    statevec = Statevec([alpha])
-    assert np.allclose(statevec.subs(alpha, 1).psi, np.array([1]))
-
-
-def test_statevec_xreplace() -> None:
-    alpha = Placeholder("alpha")
-    beta = Placeholder("beta")
-    statevec = Statevec([alpha, beta])
-    assert np.allclose(statevec.xreplace({alpha: 1, beta: 2}).psi, np.array([1, 2]))
 
 
 def test_density_matrix_subs() -> None:

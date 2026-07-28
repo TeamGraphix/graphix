@@ -1089,45 +1089,45 @@ class TestOpenGraph:
         og = test_case.og.to_bloch()
 
         if test_case.has_cflow:
-            cf = og.extract_causal_flow()
+            cf = og.to_causalflow()
             cf.check_well_formed()
-            xz = cf.to_corrections()
+            xz = cf.to_xzcorrections()
             xz.check_well_formed()
             pattern = xz.to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a causal flow."):
-                og.extract_causal_flow()
+                og.to_causalflow()
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_gflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og.to_bloch()
 
         if test_case.has_gflow:
-            gf = og.extract_gflow()
+            gf = og.to_gflow()
             gf.check_well_formed()
-            xz = gf.to_corrections()
+            xz = gf.to_xzcorrections()
             xz.check_well_formed()
             pattern = xz.to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a gflow."):
-                og.extract_gflow()
+                og.to_gflow()
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_pflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
         if test_case.has_pflow:
-            pf = og.infer_pauli_measurements().extract_pauli_flow()
+            pf = og.infer_pauli_measurements().to_pauliflow()
             pf.check_well_formed()
-            xz = pf.to_corrections()
+            xz = pf.to_xzcorrections()
             xz.check_well_formed()
             pattern = xz.to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a Pauli flow."):
-                og.extract_pauli_flow()
+                og.to_pauliflow()
 
     def test_large_linear_graph(self) -> None:
         r"""Test causal-flow extraction algorithm on large linear open graphs.
@@ -1150,7 +1150,7 @@ class TestOpenGraph:
         c_ref = {i: frozenset({i + 1}) for i in og.measurements}
         pol_ref = tuple(frozenset({i}) for i in reversed(range(n_nodes)))
 
-        flow = og.extract_causal_flow()
+        flow = og.to_causalflow()
         assert flow.correction_function == c_ref
         assert flow.partial_order_layers == pol_ref
 
@@ -1158,19 +1158,19 @@ class TestOpenGraph:
     def test_gflow_focused(self, test_case: OpenGraphFlowTestCase) -> None:
         """Test that the algebraic flow-finding algorithm generated focused gflows."""
         if test_case.has_gflow:
-            gf = test_case.og.to_bloch().extract_gflow()
+            gf = test_case.og.to_bloch().to_gflow()
             assert gf.is_focused()
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_pflow_focused(self, test_case: OpenGraphFlowTestCase) -> None:
         """Test that the algebraic flow-finding algorithm generated focused Pauli flows."""
         if test_case.has_pflow:
-            pf = test_case.og.infer_pauli_measurements().extract_pauli_flow()
+            pf = test_case.og.infer_pauli_measurements().to_pauliflow()
             assert pf.is_focused()
 
     def test_double_entanglement(self) -> None:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
-        pattern2 = pattern.extract_opengraph().to_pattern()
+        pattern2 = pattern.to_opengraph().to_pattern()
         state = pattern.simulate_pattern()
         state2 = pattern2.simulate_pattern()
         assert state.isclose(state2)
@@ -1180,9 +1180,7 @@ class TestOpenGraph:
         depth = 2
         circuit = rand_circuit(n_qubits, depth, fx_rng)
         pattern_ref = circuit.transpile().pattern
-        pattern = StandardizedPattern.from_pattern(
-            pattern_ref.extract_opengraph().to_pattern()
-        ).to_space_optimal_pattern()
+        pattern = StandardizedPattern.from_pattern(pattern_ref.to_opengraph().to_pattern()).to_space_optimal_pattern()
 
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
             alpha = 2 * ANGLE_PI * fx_rng.random()
@@ -1332,8 +1330,8 @@ class TestOpenGraph:
         mapping = {0: 0}
         pc, _ = p1.compose(p2, mapping)
 
-        og1 = p1.extract_opengraph()
-        og2 = p2.extract_opengraph()
+        og1 = p1.to_opengraph()
+        og2 = p2.to_opengraph()
         og_c, _ = og1.compose(og2, mapping)
         pc_test = og_c.to_pattern()
 
