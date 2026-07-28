@@ -10,16 +10,16 @@ from graphix.clifford import Clifford
 from graphix.fundamentals import ANGLE_PI, Plane, angle_to_rad
 from graphix.graphsim import GraphState
 from graphix.ops import Ops
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevector
 
 if TYPE_CHECKING:
     from graphix.fundamentals import Angle
 
 
-def graph_state_to_statevec(g: GraphState) -> Statevec:
+def graph_state_to_statevec(g: GraphState) -> Statevector:
     node_list = list(g.nodes)
     nqubit = len(g.nodes)
-    gstate = Statevec(nqubit=nqubit)
+    gstate = Statevector(nqubit=nqubit)
     imapping = {node_list[i]: i for i in range(nqubit)}
     mapping = [node_list[i] for i in range(nqubit)]
     for i, j in g.edges:

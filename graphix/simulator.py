@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevec
+    from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevector
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ _BuiltinBackend = DensityMatrixBackend | StatevectorBackend | TensorNetworkBacke
 _BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"]
 
 if TYPE_CHECKING:
-    _BuiltinBackendState = DensityMatrix | MBQCTensorNet | Statevec
+    _BuiltinBackendState = DensityMatrix | MBQCTensorNet | Statevector
 
     _StateT = TypeVar("_StateT")
 
@@ -264,7 +264,7 @@ class PatternSimulator(Generic[_StateT_co]):
 
     @overload
     def __init__(
-        self: PatternSimulator[Statevec],
+        self: PatternSimulator[Statevector],
         pattern: Pattern,
         backend: Literal["statevector"] = ...,
         prepare_method: PrepareMethod | None = None,

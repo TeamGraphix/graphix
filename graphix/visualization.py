@@ -215,8 +215,6 @@ class GraphVisualizer:
         -------
         GraphVisualizer
         """
-        if not og.graph.nodes:
-            raise ValueError("Open graph is empty.")
         options = VisualizationOptions(**kwargs)
         pos = _compute_positions(og)
         pos = _scale_positions(pos, options.node_distance)
@@ -247,8 +245,6 @@ class GraphVisualizer:
         -------
         GraphVisualizer
         """
-        if not flow.og.graph.nodes:
-            raise ValueError("Open graph is empty.")
         options = VisualizationOptions(**kwargs)
         pos = _compute_positions(flow)
         pos = _scale_positions(pos, options.node_distance)
@@ -284,8 +280,6 @@ class GraphVisualizer:
         -------
         GraphVisualizer
         """
-        if not xz_corr.og.graph.nodes:
-            raise ValueError("Open graph is empty.")
         options = VisualizationOptions(**kwargs)
         pos = _compute_positions(xz_corr)
         pos = _scale_positions(pos, options.node_distance)
@@ -350,6 +344,10 @@ class GraphVisualizer:
         for node in self.og.graph.nodes():
             x_pos.add(self.pos[node][0])
             y_pos.add(self.pos[node][1])
+
+        # Empty graphs
+        if not x_pos or not y_pos:
+            return (2.0, 2.0)
 
         width = len(x_pos) * 0.8
         height = len(y_pos)
@@ -566,26 +564,30 @@ class GraphVisualizer:
 
         Legend is customized depending on the object being plotted (flow or XZ-corections) indicated in ``self._source``.
         """
-        plt.scatter(
-            [],
-            [],
-            edgecolor=DEFAULT_NODE_EC,
-            facecolor=DEFAULT_NODE_FC,
-            s=150,
-            zorder=2,
-            label="Input nodes",
-            marker=INPUT_NODE_MARKER,
-        )
-        plt.scatter(
-            [],
-            [],
-            edgecolor=DEFAULT_NODE_EC,
-            facecolor=OUTPUT_NODE_FC,
-            s=150,
-            zorder=2,
-            label="Output nodes",
-            marker=DEFAULT_NODE_MARKER,
-        )
+        if not self.og.graph.nodes:
+            return
+        if self.og.input_nodes:
+            plt.scatter(
+                [],
+                [],
+                edgecolor=DEFAULT_NODE_EC,
+                facecolor=DEFAULT_NODE_FC,
+                s=150,
+                zorder=2,
+                label="Input nodes",
+                marker=INPUT_NODE_MARKER,
+            )
+        if self.og.output_nodes:
+            plt.scatter(
+                [],
+                [],
+                edgecolor=DEFAULT_NODE_EC,
+                facecolor=OUTPUT_NODE_FC,
+                s=150,
+                zorder=2,
+                label="Output nodes",
+                marker=DEFAULT_NODE_MARKER,
+            )
         if self.options.pauli_measurements:
             has_pauli_measurements = any(
                 isinstance(measurement, PauliMeasurement) for measurement in self.og.measurements.values()
@@ -601,20 +603,28 @@ class GraphVisualizer:
                     label="Pauli-measured nodes",
                     marker=DEFAULT_NODE_MARKER,
                 )
-        plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
+        if self.og.graph.edges():
+            plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
 
-        assert self._source is not None
-        match self._source:
-            case _Source.Flow:
-                plt.plot([], [], color=FLOW_C, label="Correction function")
-            case _Source.XZCorr:
-                plt.plot([], [], color=X_C, label="X corrections")
-                plt.plot([], [], color=Z_C, label="Z corrections")
-                plt.plot([], [], color=XZ_C, label="X and Z corrections")
-            case _Source.OG:
-                pass
-            case _:
-                assert_never(self._source)
+        if self.arrow_paths:
+            assert self._source is not None
+            match self._source:
+                case _Source.Flow:
+                    plt.plot([], [], color=FLOW_C, label="Correction function")
+                case _Source.XZCorr:
+                    if len({X_C, Z_C, XZ_C}) != 3:
+                        raise RuntimeError(
+                            "X, Z, and X-and-Z corrections must have different arrow colors to display the legend correctly."
+                        )
+                    for color, label in ((X_C, "X corrections"), (Z_C, "Z corrections"), (XZ_C, "X and Z corrections")):
+                        # The type of arrow is determined from its color. This requires using different colors to display the legend correctly.
+                        has_corr = any(color == arrow.color for arrow in self.arrow_paths.values())
+                        if has_corr:
+                            plt.plot([], [], color=color, label=label)
+                case _Source.OG:
+                    pass
+                case _:
+                    assert_never(self._source)
 
         # Set scatterpoints=1 to prevent node icons from appearing
         # three times in the legend with the Agg backend used by
@@ -663,6 +673,8 @@ def _(obj: OpenGraph[AbstractMeasurement]) -> dict[int, _Point]:
         X-coordinates represent the layer in the partial order (higher x = earlier layer).
         Y-coordinates represent the vertical position within start node chains.
     """
+    if not obj.graph.nodes:
+        return {}
     layers: dict[int, int] = {}
     connected_components = list(nx.connected_components(obj.graph))
 

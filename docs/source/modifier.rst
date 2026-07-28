@@ -24,7 +24,7 @@ Pattern Manipulation
 
     .. automethod:: simulate_pattern
 
-    .. automethod:: compute_max_degree
+    .. automethod:: max_degree
 
     .. automethod:: compose
 
@@ -50,17 +50,17 @@ Pattern Manipulation
 
     .. automethod:: is_standard
 
-    .. automethod:: extract_graph
+    .. automethod:: graph
 
-    .. automethod:: extract_nodes
+    .. automethod:: nodes
 
-    .. automethod:: extract_causal_flow
+    .. automethod:: to_causalflow
 
-    .. automethod:: extract_gflow
+    .. automethod:: to_gflow
 
-    .. automethod:: extract_opengraph
+    .. automethod:: to_opengraph
 
-    .. automethod:: extract_measurement_commands
+    .. automethod:: measurement_commands
 
     .. automethod:: parallelize_pattern
 

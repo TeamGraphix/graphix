@@ -45,7 +45,7 @@ SWAP_TENSOR = np.array(
 )
 
 
-class Statevec(DenseState):
+class Statevector(DenseState):
     """Statevector object."""
 
     psi: Matrix
@@ -61,13 +61,13 @@ class Statevec(DenseState):
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
         - an iterable of scalars (A 2**n numerical statevector)
-        - a *graphix.statevec.Statevec* object
+        - a *graphix.statevec.Statevector* object
 
         If *nqubit* is not provided, the number of qubit is inferred from *data* and checked for consistency.
         If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
         in the tensor product state.
         If both *nqubit* and *data* are provided, consistency of the dimensions is checked.
-        If a *graphix.statevec.Statevec* is passed, returns a copy.
+        If a *graphix.statevec.Statevector* is passed, returns a copy.
 
         Parameters
         ----------
@@ -79,7 +79,7 @@ class Statevec(DenseState):
         if nqubit is not None and nqubit < 0:
             raise ValueError("nqubit must be a non-negative integer.")
 
-        if isinstance(data, Statevec):
+        if isinstance(data, Statevector):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
             if nqubit is not None and len(data.flatten()) != 2**nqubit:
                 raise ValueError(
@@ -119,7 +119,7 @@ class Statevec(DenseState):
             ) -> npt.NDArray[np.complex128]:
                 if not isinstance(s, states.State):
                     raise TypeError("Data should be an homogeneous sequence of states.")
-                return s.to_statevector()
+                return s.to_statevector_numpy()
 
             list_of_sv = [state_to_statevector(s) for s in input_list]
 
@@ -145,7 +145,7 @@ class Statevec(DenseState):
 
     def __str__(self) -> str:
         """Return a string description."""
-        return f"Statevec object with statevector {self.psi} and length {self.dims()}."
+        return f"Statevector object with statevector {self.psi} and length {self.dims()}."
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
@@ -166,13 +166,13 @@ class Statevec(DenseState):
             - A single-qubit state vector will be broadcast to all nodes.
             - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
               initializes the new nodes jointly.
-            - The type of nodes to be added is inferred from the type of the existing ``Statevec``.
+            - The type of nodes to be added is inferred from the type of the existing ``Statevector``.
 
         Notes
         -----
         Previously existing nodes remain unchanged.
         """
-        sv_to_add = Statevec(nqubit=nqubit, data=data)
+        sv_to_add = Statevector(nqubit=nqubit, data=data)
         self.tensor(sv_to_add)
 
     @override
@@ -289,14 +289,14 @@ class Statevec(DenseState):
         # sort back axes
         self.psi = np.moveaxis(psi, (0, 1), edge)
 
-    def tensor(self, other: Statevec) -> None:
+    def tensor(self, other: Statevector) -> None:
         r"""Tensor product state with other qubits.
 
         Results in self :math:`\otimes` other.
 
         Parameters
         ----------
-        other : :class:`graphix.sim.statevec.Statevec`
+        other : :class:`graphix.sim.statevec.Statevector`
             statevector to be tensored with self
         """
         psi_self = self.psi.flatten()
@@ -401,14 +401,14 @@ class Statevec(DenseState):
         st1.evolve(op, qargs)
         return complex(np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten()))
 
-    def fidelity(self, other: Statevec) -> float:
+    def fidelity(self, other: Statevector) -> float:
         r"""Calculate the fidelity against another statevector.
 
         The fidelity is defined as :math:`|\langle\psi_1|\psi_2\rangle|^2`.
 
         Parameters
         ----------
-        other : :class:`Statevec`
+        other : :class:`Statevector`
             statevector to compare with
 
         Returns
@@ -419,14 +419,14 @@ class Statevec(DenseState):
         inner = np.dot(self.flatten().conjugate(), other.flatten())
         return float(np.abs(inner) ** 2)
 
-    def isclose(self, other: Statevec, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
+    def isclose(self, other: Statevector, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
         """Check if two quantum states are equal up to global phase.
 
         Two states are considered close if their fidelity is close to 1.
 
         Parameters
         ----------
-        other : :class:`Statevec`
+        other : :class:`Statevector`
             statevector to compare with
         rtol : float
             relative tolerance for :func:`math.isclose`
@@ -486,8 +486,8 @@ class Statevec(DenseState):
         Example
         -------
         >>> from graphix.states import BasicStates
-        >>> from graphix.sim.statevec import Statevec
-        >>> sv = Statevec(data=[BasicStates.ZERO, BasicStates.ONE])
+        >>> from graphix.sim.statevec import Statevector
+        >>> sv = Statevector(data=[BasicStates.ZERO, BasicStates.ONE])
         >>> sv.to_dict()
         {'01': np.complex128(1+0j)}
         >>> sv.to_dict(encoding="LSB")
@@ -601,24 +601,24 @@ class Statevec(DenseState):
 
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevector:
         """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
-        result = Statevec()
+        result = Statevector()
         result.psi = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.psi)
         return result
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevec:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevector:
         """Return a copy of the state vector where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
-        result = Statevec()
+        result = Statevector()
         result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
         return result
 
 
 @dataclass(frozen=True)
-class StatevectorBackend(DenseStateBackend[Statevec]):
+class StatevectorBackend(DenseStateBackend[Statevector]):
     """MBQC simulator with statevector method."""
 
-    state: Statevec = dataclasses.field(init=False, default_factory=lambda: Statevec(nqubit=0))
+    state: Statevector = dataclasses.field(init=False, default_factory=lambda: Statevector(nqubit=0))
 
 
 def _norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:
@@ -643,7 +643,7 @@ def _norm(psi: Matrix) -> ExpressionOrFloat:
 
 
 def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:
-    """Format the i-th basis vector as a ket. See :meth:`Statevec.to_dict` for additional details."""
+    """Format the i-th basis vector as a ket. See :meth:`Statevector.to_dict` for additional details."""
     display_width = nqubit
     output = f"{i:0{display_width}b}"
     if encoding == "LSB":

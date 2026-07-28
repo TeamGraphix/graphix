@@ -13,7 +13,7 @@ from graphix.command import E
 from graphix.fundamentals import ANGLE_PI
 from graphix.ops import Ops
 from graphix.random_objects import rand_circuit
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevector
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
@@ -25,7 +25,7 @@ def random_op(sites: int, rng: Generator) -> npt.NDArray[np.complex128]:
 
 
 CZ = Ops.CZ
-plus = BasicStates.PLUS.to_statevector()
+plus = BasicStates.PLUS.to_statevector_numpy()
 
 
 class TestTN:
@@ -389,7 +389,7 @@ class TestTN:
         tn = pattern.simulate_pattern("tensornetwork", rng=fx_rng)
         statevec_tn = tn.to_statevector()
 
-        assert Statevec(data=statevec_tn).isclose(statevec_ref)
+        assert Statevector(data=statevec_tn).isclose(statevec_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_evolve(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:

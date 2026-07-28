@@ -18,14 +18,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from graphix import Circuit, Statevec
+from graphix import Circuit, Statevector
 from graphix.ops import Ops
 from graphix.states import BasicStates
 
 rng = np.random.default_rng()
 
 # %%
-# Here, :class:`~graphix.sim.statevec.Statevec` is our simple statevector simulator class.
+# Here, :class:`~graphix.sim.statevec.Statevector` is our simple statevector simulator class.
 # Next, let us define the problem with a standard quantum circuit.
 # Note that in graphix all qubits starts in ``|+>`` states. For this example,
 # we use Hadamard gate (:meth:`graphix.transpiler.Circuit.h`) to start with ``|0>`` states instead.
@@ -74,7 +74,7 @@ print(out_state.flatten())
 # %%
 # Let us compare with statevector simulation of the original circuit:
 
-state = Statevec(nqubit=2, data=BasicStates.ZERO)  # starts with |0> states
+state = Statevector(nqubit=2, data=BasicStates.ZERO)  # starts with |0> states
 state.evolve_single(Ops.rx(theta[0]), 0)
 state.evolve_single(Ops.rx(theta[1]), 1)
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))

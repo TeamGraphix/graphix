@@ -61,6 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #554, #560: Pauli-measurement entry is removed from the legend when visualizing an open graph without Pauli measurements.
 
+- #562: Fixed #553. Handle visualization of empty graphs.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
@@ -101,6 +103,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Consequently, the `pyproject.toml` no longer defines an `extra` dependency group for the `pyzx` package.
 
 - #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
+
+- #557: Homogeneize namespace. See commit text or COMPATIBILITY.md for a detailed renaming list. Fixed the following convention:
+  - `.to_<object>` for transformations that can only return `object` or raise an exception. Equivalently, we use `.from_<object>` for constructors.
+  - `.to_<object>_or_none` for transformations that can return `object` or `None`. Equivalently, we use `.from_<object>_or_none` for constructors.
+  - accessor methods use nouns instead of verb + noun. Example: `Pattern.max_degree` instead of `Pattern.compute_max_degree`.
 
 ## [0.3.5] - 2026-03-26
 

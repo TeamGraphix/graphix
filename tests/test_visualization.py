@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command
+from graphix import Circuit, Pattern, Plane, XZCorrections, command
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
@@ -90,10 +90,10 @@ def example_pflow(rng: Generator) -> Pattern:
 
     og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
     try:
-        og.to_bloch().extract_gflow()
+        og.to_bloch().to_gflow()
         pytest.fail("example graph shouldn't have gflow")
     except OpenGraphError:
-        og.extract_pauli_flow()  # example graph has Pauli flow
+        og.to_pauliflow()  # example graph has Pauli flow
 
     pattern = og.to_pattern()
     pattern.standardize()
@@ -199,6 +199,13 @@ def test_og() -> None:
     pattern.draw(annotations=None)
 
 
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.parametrize("annotations", [None, DrawPatternAnnotations.Flow, DrawPatternAnnotations.XZCorrections])
+def test_empty(annotations: DrawPatternAnnotations | None) -> None:
+    pattern = Pattern()
+    pattern.draw(annotations=annotations)
+
+
 # Compare with baseline/test_draw_graph_reference.png
 # Update baseline by running: pytest --mpl-generate-path=tests/baseline
 @pytest.mark.usefixtures("mock_plot")
@@ -213,7 +220,7 @@ def test_og_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_causal_flow_draw() -> Figure:
     og = example_og()
-    og.downcast_bloch().extract_causal_flow().draw(legend=False)
+    og.downcast_bloch().to_causalflow().draw(legend=False)
     return plt.gcf()
 
 
@@ -221,7 +228,7 @@ def test_causal_flow_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_gflow_draw() -> Figure:
     og = example_og()
-    og.downcast_bloch().extract_gflow().draw(legend=False)
+    og.downcast_bloch().to_gflow().draw(legend=False)
     return plt.gcf()
 
 
@@ -229,7 +236,7 @@ def test_gflow_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_pauli_flow_draw() -> Figure:
     og = example_og()
-    og.infer_pauli_measurements().extract_pauli_flow().draw(legend=False)
+    og.infer_pauli_measurements().to_pauliflow().draw(legend=False)
     return plt.gcf()
 
 
@@ -237,7 +244,7 @@ def test_pauli_flow_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_xzcorr_draw() -> Figure:
     og = example_og()
-    og.downcast_bloch().extract_causal_flow().to_corrections().draw(legend=False)
+    og.downcast_bloch().to_causalflow().to_xzcorrections().draw(legend=False)
     return plt.gcf()
 
 
@@ -278,4 +285,22 @@ def test_legend_pauli_measurements(infer_pauli_measurements: bool) -> Figure:
     if infer_pauli_measurements:
         pattern = pattern.infer_pauli_measurements()
     pattern.draw()
+    return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_legend_x_corrections_only() -> Figure:
+    # Related to https://github.com/TeamGraphix/graphix/issues/554
+    # Draw X-corrections on open graph without inputs, outputs, edges.
+    # Only "X corrections" label should be visible in legend.
+
+    graph: nx.Graph[int] = nx.Graph()
+    graph.add_node(0)
+    graph.add_node(1)
+
+    og = OpenGraph(graph, input_nodes=[], output_nodes=[], measurements=dict.fromkeys([0, 1], Plane.XY))
+
+    xz = XZCorrections.from_measured_nodes_mapping(og, {0: {1}}, {})
+    xz.draw()
     return plt.gcf()

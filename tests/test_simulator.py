@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from graphix import BasicStates, Pattern, Statevec, StatevectorBackend
+from graphix import BasicStates, Pattern, Statevector, StatevectorBackend
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -14,14 +14,14 @@ def test_no_explicit_input_state(hadamardpattern: Pattern, fx_rng: Generator) ->
     # No explicit input state: the default initial state is |+⟩.
     # H|+⟩ = |0⟩, so we expect the final state to be |0⟩.
     state = hadamardpattern.simulate_pattern(rng=fx_rng)
-    assert state.isclose(Statevec(BasicStates.ZERO))
+    assert state.isclose(Statevector(BasicStates.ZERO))
 
 
 def test_explicit_input_state_zero(hadamardpattern: Pattern, fx_rng: Generator) -> None:
     # Provide an explicit input state |0⟩.
     # H|0⟩ = |+⟩, so the final state should be |+⟩.
     state = hadamardpattern.simulate_pattern(input_state=BasicStates.ZERO, rng=fx_rng)
-    assert state.isclose(Statevec(BasicStates.PLUS))
+    assert state.isclose(Statevector(BasicStates.PLUS))
 
 
 def test_backend_prepared_zero(hadamardpattern: Pattern, fx_rng: Generator) -> None:
@@ -31,7 +31,7 @@ def test_backend_prepared_zero(hadamardpattern: Pattern, fx_rng: Generator) -> N
     backend = StatevectorBackend()
     backend.add_nodes(hadamardpattern.input_nodes, BasicStates.ZERO)
     state = hadamardpattern.simulate_pattern(backend=backend, input_state=None, rng=fx_rng)
-    assert state.isclose(Statevec(BasicStates.PLUS))
+    assert state.isclose(Statevector(BasicStates.PLUS))
 
 
 def test_no_prepared_qubits_and_input_state_none(hadamardpattern: Pattern, fx_rng: Generator) -> None:

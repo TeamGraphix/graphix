@@ -180,10 +180,10 @@ def verify_elimination(mat: MatGF2, mat_red: MatGF2, n_cols_red: int, full_reduc
 
 class TestLinAlg:
     @pytest.mark.parametrize("test_case", prepare_test_matrix())
-    def test_compute_rank(self, test_case: LinalgTestCase) -> None:
+    def test_rank(self, test_case: LinalgTestCase) -> None:
         mat = test_case.matrix
         rank = test_case.rank
-        assert mat.compute_rank() == rank
+        assert mat.rank() == rank
 
     @pytest.mark.parametrize("test_case", prepare_test_matrix())
     def test_right_inverse(self, benchmark: BenchmarkFixture, test_case: LinalgTestCase) -> None:
