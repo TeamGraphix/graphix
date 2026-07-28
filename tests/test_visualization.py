@@ -312,6 +312,7 @@ def test_legend_x_corrections_only() -> Figure:
 
     xz = XZCorrections.from_measured_nodes_mapping(og, {0: {1}}, {})
     xz.draw()
+    return plt.gcf()
 
 
 @pytest.mark.parametrize("flow_from_pattern", [False, True])
