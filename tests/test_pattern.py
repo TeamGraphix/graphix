@@ -1207,6 +1207,10 @@ class TestPattern:
 
         assert sv.isclose(sv_test)
 
+    def test_isolated_nodes(self) -> None:
+        pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
+        assert pattern.isolated_nodes() == {0, 1}
+
 
 def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401

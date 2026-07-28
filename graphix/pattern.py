@@ -1209,22 +1209,15 @@ class Pattern:
         return nodes
 
     def isolated_nodes(self) -> set[int]:
-        """Get isolated nodes.
+        """Return the set of isolated nodes in the pattern.
 
         Returns
         -------
-        isolated_nodes : set[int]
-            set of the isolated nodes
+        set[int]
+            Set of the isolated nodes
         """
-        nodes = set(self.input_nodes)
-        for cmd in self.__seq:
-            match cmd.kind:
-                case CommandKind.N:
-                    nodes.add(cmd.node)
-                case CommandKind.E:
-                    u, v = cmd.nodes
-                    nodes -= {u, v}
-        return nodes
+        graph = self.to_opengraph().graph
+        return {node for node, d in graph.degree if d == 0}
 
     def to_opengraph(self) -> OpenGraph[Measurement]:
         r"""Extract the underlying resource-state open graph from the pattern.
