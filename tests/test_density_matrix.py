@@ -24,7 +24,7 @@ from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.random_objects import rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevector
+from graphix.sim.statevec import Statevector
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
@@ -37,6 +37,19 @@ if TYPE_CHECKING:
 
     from graphix.measurements import Outcome
     from graphix.pattern import Pattern
+
+CZ_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
+    dtype=np.complex128,
+)
+CNOT_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],
+    dtype=np.complex128,
+)
+SWAP_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
+    dtype=np.complex128,
+)
 
 
 def _randstate_raw(nqubits: int, rng: Generator) -> npt.NDArray[np.complex128]:
