@@ -304,7 +304,7 @@ With the noise model written, we can simulate it.
     dm_result = simulator.run()
 
 
->>> print(dm_result.fidelity(out_state.psi.flatten()))
+>>> print(dm_result.fidelity(out_state.flatten()))
 0.9718678141724848
 
 We can plot the results from the model,
@@ -318,7 +318,7 @@ We can plot the results from the model,
     for i in range(10):
         simulator = PatternSimulator(pattern, backend="densitymatrix", noise_model=NoisyGraphState(p_z=err_arr[i]))
         dm_result = simulator.run()
-        fidelity[i] = dm_result.fidelity(out_state.psi.flatten())
+        fidelity[i] = dm_result.fidelity(out_state.flatten())
 
     plt.semilogx(err_arr, fidelity, "o:")
     plt.xlabel("dephasing error of qubit preparation")

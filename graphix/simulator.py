@@ -288,7 +288,7 @@ class SimulatorOptions:
     graph_prep: str, optional
         [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
     symbolic : bool, optional
-        [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+        [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
     """
 
     prepare_method: PrepareMethod | None = None
@@ -568,7 +568,12 @@ def _initialize_backend(
         case "statevector":
             if options.noise_model is not None:
                 raise ValueError("`noise_model` cannot be specified for state vector backend.")
-            return StatevectorBackend(branch_selector=branch_selector, symbolic=options.symbolic)
+            if options.symbolic:
+                raise ValueError(
+                    "Statevector backend does not support `symbolic` simulation. Consider using backend in `graphix-symbolic` plugin."
+                )
+            nqubits = pattern.max_space()
+            return StatevectorBackend.with_capacity(nqubits, branch_selector=branch_selector)
         case "densitymatrix":
             if options.noise_model is None:
                 warnings.warn(

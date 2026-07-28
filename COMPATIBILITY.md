@@ -4,6 +4,10 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
 
 ## Unreleased
 
+- #518: Numba-jit statevector backend.
+  - Changed statevector representation from a tensor to a flat array.
+  - Dropped support for symbolic simulation and removed `Statevector.xreplace` and `Statevector.subs` methods. Symbolic simulation via SymPy is still possible with the plugin `graphix-symbolic`.
+
 - #557: Namespace homogenisation.
 
   The following methods and classes have been renamed to provide a homogeneous, consistent and pythonic naming convention:
