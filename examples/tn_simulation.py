@@ -78,7 +78,7 @@ pattern.shift_signals()
 # %%
 # Print some properties of the graph.
 
-graph = pattern.extract_graph()
+graph = pattern.graph()
 print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 

@@ -96,7 +96,7 @@ class Measurement(AbstractMeasurement):
         For instance,
 
             >>> from graphix.measurements import Measurement
-            >>> Measurement.XY(0.5).try_to_pauli() == Measurement.YZ(0.5).try_to_pauli() == Measurement.Y
+            >>> Measurement.XY(0.5).to_pauli_or_none() == Measurement.YZ(0.5).to_pauli_or_none() == Measurement.Y
             True
 
 
@@ -129,7 +129,7 @@ class Measurement(AbstractMeasurement):
         """
 
     @abstractmethod
-    def try_to_pauli(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | None:
+    def to_pauli_or_none(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | None:
         """Return the measurement description as a Pauli measurement if possible, or ``None`` otherwise.
 
         Parameters
@@ -158,17 +158,17 @@ class Measurement(AbstractMeasurement):
         Examples
         --------
         >>> from graphix.measurements import Measurement
-        >>> Measurement.XY(0.5).try_to_pauli()
+        >>> Measurement.XY(0.5).to_pauli_or_none()
         Measurement.Y
-        >>> Measurement.Y.try_to_pauli()
+        >>> Measurement.Y.to_pauli_or_none()
         Measurement.Y
-        >>> Measurement.XY(0.25).try_to_pauli() is None
+        >>> Measurement.XY(0.25).to_pauli_or_none() is None
         True
         >>> from graphix.parameter import Placeholder
         >>> alpha = Placeholder("alpha")
-        >>> Measurement.XY(alpha).try_to_pauli() is None
+        >>> Measurement.XY(alpha).to_pauli_or_none() is None
         True
-        >>> Measurement.XY(alpha).subs(alpha, 0.5).try_to_pauli()
+        >>> Measurement.XY(alpha).subs(alpha, 0.5).to_pauli_or_none()
         Measurement.Y
         """
 
@@ -250,7 +250,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         return self
 
     @override
-    def try_to_pauli(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | None:
+    def to_pauli_or_none(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | None:
         if not isinstance(self.angle, (int, float)):
             return None
         angle_double = 2 * self.angle
@@ -264,7 +264,7 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
 
     @override
     def to_pauli_or_bloch(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | BlochMeasurement:
-        pm = self.try_to_pauli(rel_tol=rel_tol, abs_tol=abs_tol)
+        pm = self.to_pauli_or_none(rel_tol=rel_tol, abs_tol=abs_tol)
         return self if pm is None else pm
 
     @override
@@ -418,7 +418,7 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
         """Return the Pauli gate.
 
         This method returns an instance of :class:`Pauli` and should
-        not be confused with :meth:`try_to_pauli`, which overrides the
+        not be confused with :meth:`to_pauli_or_none`, which overrides the
         method from :class:`Measurement`, and returns ``self``.
 
         Examples
@@ -453,7 +453,7 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
         raise TypeError("Bloch measurement expected, but Pauli measurement was found.")
 
     @override
-    def try_to_pauli(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement:
+    def to_pauli_or_none(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement:
         """Return ``self`` (overridden from :class:`Measurement`)."""
         return self
 

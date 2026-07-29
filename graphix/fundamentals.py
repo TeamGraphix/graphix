@@ -166,7 +166,7 @@ class ComplexUnit(EnumReprMixin, Enum):
     MINUS_J = 3
 
     @staticmethod
-    def try_from(
+    def from_or_none(
         value: ComplexUnit | SupportsComplexCtor, rel_tol: float = 1e-09, abs_tol: float = 0.0
     ) -> ComplexUnit | None:
         """Return the ComplexUnit instance if the value is compatible, None otherwise.
@@ -234,7 +234,7 @@ class ComplexUnit(EnumReprMixin, Enum):
         if isinstance(
             other,
             (SupportsComplex, SupportsFloat, SupportsIndex, complex),
-        ) and (other_ := ComplexUnit.try_from(other)):
+        ) and (other_ := ComplexUnit.from_or_none(other)):
             return self.__mul__(other_)
         return NotImplemented
 
@@ -329,7 +329,7 @@ class AbstractMeasurement(ABC):
         -Measurement.Y
         >>> for pauli in PauliMeasurement:
         ...     for clifford in Clifford:
-        ...         assert pauli.to_bloch().clifford(clifford).try_to_pauli() == pauli.clifford(clifford)
+        ...         assert pauli.to_bloch().clifford(clifford).to_pauli_or_none() == pauli.clifford(clifford)
         >>> Measurement.Y.clifford(Clifford.H).to_bloch()
         Measurement.XY(1.5)
         >>> Measurement.Y.to_bloch().clifford(Clifford.H)

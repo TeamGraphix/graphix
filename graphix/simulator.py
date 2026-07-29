@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevec
+    from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevector
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ _BuiltinBackend = DensityMatrixBackend | StatevectorBackend | TensorNetworkBacke
 _BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"]
 
 if TYPE_CHECKING:
-    _BuiltinBackendState = DensityMatrix | MBQCTensorNet | Statevec
+    _BuiltinBackendState = DensityMatrix | MBQCTensorNet | Statevector
 
     _StateT = TypeVar("_StateT")
 
@@ -264,7 +264,7 @@ class PatternSimulator(Generic[_StateT_co]):
 
     @overload
     def __init__(
-        self: PatternSimulator[Statevec],
+        self: PatternSimulator[Statevector],
         pattern: Pattern,
         backend: Literal["statevector"] = ...,
         prepare_method: PrepareMethod | None = None,
@@ -356,7 +356,7 @@ class PatternSimulator(Generic[_StateT_co]):
         graph_prep: str, optional
             [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
         symbolic : bool, optional
-            [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+            [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
         stacklevel : int, optional
             Stack level to use for warnings. Defaults to 1, meaning that warnings
             are reported at this function's call site.
@@ -550,7 +550,7 @@ def _initialize_backend(
     graph_prep: str, optional
         [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
     symbolic : bool, optional
-        [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+        [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
 
     Returns
     -------
@@ -581,7 +581,12 @@ def _initialize_backend(
         case "statevector":
             if noise_model is not None:
                 raise ValueError("`noise_model` cannot be specified for state vector backend.")
-            return StatevectorBackend(branch_selector=branch_selector, symbolic=symbolic)
+            if symbolic:
+                raise ValueError(
+                    "Statevector backend does not support `symbolic` simulation. Consider using backend in `graphix-symbolic` plugin."
+                )
+            nqubits = pattern.max_space()
+            return StatevectorBackend.with_capacity(nqubits, branch_selector=branch_selector)
         case "densitymatrix":
             if noise_model is None:
                 warnings.warn(

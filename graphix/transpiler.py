@@ -29,7 +29,7 @@ from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.statevec import Statevector, StatevectorBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -73,7 +73,7 @@ class TranspiledFlow:
 
     def to_pattern(self) -> TranspiledPattern:
         """Return the transpiled pattern."""
-        pattern = StandardizedPattern.from_pattern(self.flow.to_corrections().to_pattern()).to_space_optimal_pattern()
+        pattern = StandardizedPattern.from_pattern(self.flow.to_xzcorrections().to_pattern()).to_space_optimal_pattern()
         pattern.extend(self.classical_outputs.values())
         return TranspiledPattern(pattern, tuple(self.classical_outputs.keys()))
 
@@ -426,7 +426,7 @@ class Circuit:
         self.instruction.append(instruction.M(target=qubit, axis=axis))
         self.active_qubits.remove(qubit)
 
-    def transpile_to_causal_flow(self) -> TranspiledFlow:
+    def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
 
         Parameters
@@ -509,9 +509,9 @@ class Circuit:
             The result of the transpilation: a pattern and classical outputs.
         """
         if not transpile_swaps:
-            return self.transpile_to_causal_flow().to_pattern()
+            return self.transpile_to_causalflow().to_pattern()
         swap = _transpile_swaps(self)
-        result = swap.circuit.transpile_to_causal_flow().to_pattern()
+        result = swap.circuit.transpile_to_causalflow().to_pattern()
         result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
         classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
         return TranspiledPattern(result.pattern, classical_outputs)
@@ -525,7 +525,7 @@ class Circuit:
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-    ) -> SimulateResult[Statevec]: ...
+    ) -> SimulateResult[Statevector]: ...
 
     @overload
     def simulate(
@@ -557,8 +557,8 @@ class Circuit:
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-    ) -> SimulateResult[_DenseStateT] | SimulateResult[_DenseStateT | Statevec | DensityMatrix]:
-        # `SimulateResult` is not covariant in `_DenseStateT` so `SimulateResult[_DenseStateT]` is not a subtype of `SimulateResult[_DenseStateT | Statevec | DensityMatrix]`
+    ) -> SimulateResult[_DenseStateT] | SimulateResult[_DenseStateT | Statevector | DensityMatrix]:
+        # `SimulateResult` is not covariant in `_DenseStateT` so `SimulateResult[_DenseStateT]` is not a subtype of `SimulateResult[_DenseStateT | Statevector | DensityMatrix]`
         r"""Simulate the gate sequence with a backend and input state of choice.
 
         By default, this method uses the statevector backend and initializes the register to :math:`|+\rangle^{\otimes n}`.
@@ -580,7 +580,7 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        _backend = _initialize_backend(backend, branch_selector)
+        _backend = _initialize_backend(backend, branch_selector, self.width)
 
         if input_state is None:
             _backend.add_nodes(range(self.width))
@@ -1065,6 +1065,7 @@ _transpile_swaps = transpile_swaps
 def _initialize_backend(
     backend: StatevectorBackend | Literal["statevector"],
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> StatevectorBackend: ...
 
 
@@ -1072,6 +1073,7 @@ def _initialize_backend(
 def _initialize_backend(
     backend: DensityMatrixBackend | Literal["densitymatrix"],
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> DensityMatrixBackend: ...
 
 
@@ -1079,12 +1081,14 @@ def _initialize_backend(
 def _initialize_backend(
     backend: DenseStateBackend[_DenseStateT],
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> DenseStateBackend[_DenseStateT]: ...
 
 
 def _initialize_backend(
     backend: DenseStateBackend[_DenseStateT] | _DenseStateBackendLiteral,
     branch_selector: BranchSelector | None,
+    width: int,
 ) -> _BuiltinDenseStateBackend | DenseStateBackend[_DenseStateT]:
     """Initialize backend for circuit simulation.
 
@@ -1094,6 +1098,9 @@ def _initialize_backend(
         Simulation backend
     branch_selector: :class:`BranchSelector`
         Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  If ``None``, it defaults to :class:`RandomBranchSelector`.
+    width : int
+        Number of qubits in circuit. It is required to initialize the :class:`StatevectorBackend` with the appropriate
+        capacity.
 
     Returns
     -------
@@ -1110,7 +1117,7 @@ def _initialize_backend(
 
     match backend:
         case "statevector":
-            return StatevectorBackend(branch_selector=branch_selector)
+            return StatevectorBackend.with_capacity(width, branch_selector=branch_selector)
         case "densitymatrix":
             return DensityMatrixBackend(branch_selector=branch_selector)
         case _:

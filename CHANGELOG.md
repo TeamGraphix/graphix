@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Empty outputs layer removed from flow's partial order.
   - Flow well-formedness check does not trigger false negative for flows on open graphs without outputs.
 
+- #562: Fixed #553. Handle visualization of empty graphs.
+
+- #561: Fixed #555. Method `Pattern.draw` computes Pauli flow from pattern.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
@@ -105,6 +109,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Method `Pattern.simulate_pattern` has been renamed `Pattern.simulate`.
 
   - Field `SimulateResult.statevec` has been renamed `SimulateResult.state`.
+
+- #557: Homogeneize namespace. See commit text or COMPATIBILITY.md for a detailed renaming list. Fixed the following convention:
+  - `.to_<object>` for transformations that can only return `object` or raise an exception. Equivalently, we use `.from_<object>` for constructors.
+  - `.to_<object>_or_none` for transformations that can return `object` or `None`. Equivalently, we use `.from_<object>_or_none` for constructors.
+  - accessor methods use nouns instead of verb + noun. Example: `Pattern.max_degree` instead of `Pattern.compute_max_degree`.
+
+- #518: Numba-jit statevector backend.
+  - Changed statevector representation from a tensor to a flat array.
+  - Added `.with_capacity` method to `StatevectorBackend` to preallocate a given space in memory.
+  - Added module constant `NUM_QUBIT_PARALLEL` to determine at which qubit count jit-compiled functions are parallelized.
+  - Dropped support for symbolic simulation and removed `Statevector.xreplace` and `Statevector.subs` methods.
+  - Added method `DenseState.project_qubit` which defaults to calling `evolve_single` and `remove_qubit`. Added specialized code for this method in `Statevector` class.
+  - Unified `test_statevec.py` and `test_statevec_backend.py` into a single file.
 
 ## [0.3.5] - 2026-03-26
 
