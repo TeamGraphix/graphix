@@ -64,7 +64,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         return MatGF2(_mat_mul_jit(np.ascontiguousarray(self), np.ascontiguousarray(other)), copy=False)
 
-    def compute_rank(self) -> np.intp:
+    def rank(self) -> np.intp:
         """Get the rank of the matrix.
 
         Returns
@@ -100,7 +100,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         red = aug.row_reduction(ncols=n, copy=False)  # Reduced row echelon form
 
         # Check that rank of right block is equal to the number of rows.
-        # We don't use `MatGF2.compute_rank()` to avoid row-reducing twice.
+        # We don't use `MatGF2.rank()` to avoid row-reducing twice.
         if m != np.count_nonzero(red[:, :n].any(axis=1)):
             return None
         rinv = np.zeros((n, m), dtype=np.uint8).view(MatGF2)

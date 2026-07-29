@@ -446,7 +446,7 @@ class TestExtraction:
         circuit_ref = rand_circuit(nqubits, depth, rng, use_ccx=False)
         pattern = circuit_ref.transpile().pattern
 
-        circuit = pattern.extract_opengraph().extract_circuit()
+        circuit = pattern.to_opengraph().to_circuit()
 
         s_ref = circuit.simulate_statevector(rng=rng).statevec
         s_test = circuit_ref.simulate_statevector(rng=rng).statevec
@@ -524,7 +524,7 @@ class TestExtraction:
     )
     def test_extract_og(self, test_case: OpenGraph[Measurement], fx_rng: Generator) -> None:
         pattern = test_case.to_pattern()
-        circuit = test_case.extract_circuit()
+        circuit = test_case.to_circuit()
 
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_ref = pattern.simulate_pattern(rng=fx_rng)
@@ -549,7 +549,7 @@ class TestExtraction:
         if infer_pauli:
             og = og.infer_pauli_measurements()
 
-        circuit = og.extract_circuit()
+        circuit = og.to_circuit()
 
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_ref = pattern.simulate_pattern(rng=fx_rng)
@@ -568,7 +568,7 @@ class TestExtraction:
             },
         )
         pattern = og.to_pattern()
-        circuit = og.extract_gflow().extract_circuit().to_circuit()
+        circuit = og.to_gflow().extract_circuit().to_circuit()
 
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_ref = pattern.simulate_pattern(rng=fx_rng)
@@ -591,13 +591,13 @@ class TestExtraction:
         )
 
         # Substitute parameter at the level of the extracted circuit
-        qc1 = og.extract_circuit()
+        qc1 = og.to_circuit()
         s1 = qc1.subs(alpha, alpha_val).simulate_statevector(rng=fx_rng).statevec
 
         # Substitute parameter at the level of the open graph object
         # Calling `infer_pauli_measurements` is not necessary for the test to pass
         # (and it should not be), but it suppresses the warnings.
-        qc2 = og.subs(alpha, alpha_val).infer_pauli_measurements().extract_circuit()
+        qc2 = og.subs(alpha, alpha_val).infer_pauli_measurements().to_circuit()
         s2 = qc2.simulate_statevector(rng=fx_rng).statevec
 
         assert s1.isclose(s2)
@@ -649,5 +649,5 @@ def test_extend_input() -> None:
     assert og_ext.isclose(og_ref)
     assert ancillary_inputs_map == {1: 8, 2: 7}
 
-    flow = og_ext.infer_pauli_measurements().extract_pauli_flow()
+    flow = og_ext.infer_pauli_measurements().to_pauliflow()
     assert flow.is_focused()

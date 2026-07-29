@@ -73,7 +73,7 @@ class PauliPushingCut:
         return self.pauli_measurements + self.non_pauli_measurements
 
     @classmethod
-    def from_standardized_pattern(
+    def from_standardizedpattern(
         cls, pattern: StandardizedPattern, leave_nodes: AbstractSet[Node] | None = None, *, stacklevel: int = 1
     ) -> PauliPushingCut:
         """Move Pauli measurements before the other measurements and return the cut between Pauli measurements and non-Pauli measurements.
@@ -159,7 +159,7 @@ class PauliPushingCut:
                 pauli_measurements.append(Command.M(node=cmd.node, measurement=cmd.measurement))
         return cls(pattern, tuple(pauli_measurements), tuple(non_pauli_measurements), shifted_domains)
 
-    def to_standardized_pattern(self) -> StandardizedPattern:
+    def to_standardizedpattern(self) -> StandardizedPattern:
         """Return the standardized pattern where all Pauli measurements have been pushed."""
         return StandardizedPattern(
             self.original_pattern.input_nodes,
@@ -219,7 +219,7 @@ class _RemovePauliMeasurements:
 
     This class is instantiated from a Pauli-pushing cut and can be
     converted back to a standardized pattern with the method
-    :meth:`to_standardized_pattern`. The public methods preserve the
+    :meth:`to_standardizedpattern`. The public methods preserve the
     pattern semantics as invariant, such that an equivalent
     standardized pattern can be obtained at any stage of the process.
     """
@@ -256,7 +256,7 @@ class _RemovePauliMeasurements:
 
     def __init__(self, cut: PauliPushingCut) -> None:
         self.cut = cut
-        self.graph = cut.original_pattern.extract_graph()
+        self.graph = cut.original_pattern.graph()
         self.node_specs = {node: _NodeSpec(node) for node in self.graph.nodes()}
         for node, domain in cut.original_pattern.x_dict.items():
             self.node_specs[node].domains.s_domain = _expand_domain(cut.shifted_domains, domain)
@@ -512,7 +512,7 @@ class _RemovePauliMeasurements:
         new_m.t_domain = _map_domain(self.node_map, new_m.t_domain)
         return new_m
 
-    def to_standardized_pattern(self) -> StandardizedPattern:
+    def to_standardizedpattern(self) -> StandardizedPattern:
         # Prepare only nodes that have not been removed (i.e., that still appear in `node_specs`)
         n_list = tuple(cmd_n for cmd_n in self.cut.original_pattern.n_list if cmd_n.node in self.node_specs)
         output_nodes = tuple(self.node_map[node] for node in self.cut.original_pattern.output_nodes)
@@ -621,4 +621,4 @@ def remove_pauli_measurements(cut: PauliPushingCut, *, stacklevel: int = 1) -> S
         ):
             break
     process.remove_isolated_internal_nodes(stacklevel=stacklevel + 1)
-    return process.to_standardized_pattern()
+    return process.to_standardizedpattern()

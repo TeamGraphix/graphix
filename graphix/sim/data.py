@@ -14,13 +14,13 @@ from typing import TypeAlias
 
 from graphix.parameter import ExpressionOrSupportsComplex
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevector
 from graphix.states import State
 
 Data: TypeAlias = (
     State
     | DensityMatrix
-    | Statevec
+    | Statevector
     | Iterable[State]
     | Iterable[ExpressionOrSupportsComplex]
     | Iterable[Iterable[ExpressionOrSupportsComplex]]

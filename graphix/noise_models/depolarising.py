@@ -44,7 +44,7 @@ class DepolarisingNoise(Noise):
         return 1
 
     @typing_extensions.override
-    def to_kraus_channel(self) -> KrausChannel:
+    def to_krauschannel(self) -> KrausChannel:
         """Return the Kraus channel describing the noise element."""
         return depolarising_channel(self.prob)
 
@@ -71,7 +71,7 @@ class TwoQubitDepolarisingNoise(Noise):
         return 2
 
     @typing_extensions.override
-    def to_kraus_channel(self) -> KrausChannel:
+    def to_krauschannel(self) -> KrausChannel:
         """Return the Kraus channel describing the noise element."""
         return two_qubit_depolarising_channel(self.prob)
 
