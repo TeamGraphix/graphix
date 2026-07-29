@@ -71,6 +71,18 @@ def test_pattern_substitution() -> None:
     assert list(pattern0.infer_pauli_measurements()) == [graphix.command.M(0), graphix.command.M(1)]
 
 
+def test_placeholder_with_parameter_subs() -> None:
+    alpha = Placeholder("alpha")
+    assert alpha.with_parameter(alpha, 1) == 1
+    assert alpha.subs(alpha, 1) == 1
+
+
+def test_placeholder_with_parameters_xreplace() -> None:
+    alpha = Placeholder("alpha")
+    assert alpha.with_parameters({alpha: 1}) == 1
+    assert alpha.xreplace({alpha: 1}) == 1
+
+
 def test_opengraph_with_parameter_subs() -> None:
     alpha = Placeholder("alpha")
     og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.XY(alpha)})
