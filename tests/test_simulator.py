@@ -72,4 +72,4 @@ def test_default_prepare_method_requires_n() -> None:
     with pytest.raises(
         TypeError, match=r"The default prepare method requires all preparation commands to be of type `N`."
     ):
-        pattern.simulate_pattern()
+        pattern.simulate()

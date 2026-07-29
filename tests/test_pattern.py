@@ -1393,7 +1393,7 @@ class TestMCOps:
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
-        out: Statevector | DensityMatrix = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
+        out: Statevector | DensityMatrix = randpattern.simulate(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate(input_state=states).state
         assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 
