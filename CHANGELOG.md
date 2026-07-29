@@ -67,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #561: Fixed #555. Method `Pattern.draw` computes Pauli flow from pattern.
 
+- #569: Keyword arguments for `simulate_pattern` are now type-checked.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
