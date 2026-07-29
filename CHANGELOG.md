@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
+- #556, #563: Added a context variable `default_output_format` to unify the default output format for displaying `PauliFlow`, `XZCorrections`, `Pattern`, and `StateVec`.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
@@ -59,9 +61,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Empty outputs layer removed from flow's partial order.
   - Flow well-formedness check does not trigger false negative for flows on open graphs without outputs.
 
+- #554, #560: Legends accompanying open graph visualizations only include elements present in the graph.
+
 - #562: Fixed #553. Handle visualization of empty graphs.
 
 - #561: Fixed #555. Method `Pattern.draw` computes Pauli flow from pattern.
+
+- #569: Keyword arguments for `simulate_pattern` are now type-checked.
 
 ### Changed
 

@@ -36,7 +36,7 @@ from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Container, Iterator
-    from typing import Any, TypeVar
+    from typing import TypeVar
 
     from numpy.random import Generator
 
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import TensorNetworkBackend
-    from graphix.simulator import _BackendLiteral
+    from graphix.simulator import SimulatorKwargs, _BackendLiteral
     from graphix.space_minimization import SpaceMinimizationHeuristic
     from graphix.states import State
     from graphix.visualization import DrawKwargs
@@ -446,7 +446,7 @@ class Pattern:
 
     def __str__(self) -> str:
         """Return a human-readable string of the pattern."""
-        return self.to_ascii()
+        return pattern_to_str(self)
 
     def __eq__(self, other: object) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
@@ -1415,7 +1415,7 @@ class Pattern:
         | Iterable[Iterable[ExpressionOrSupportsComplex]]
         | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> Statevector: ...
 
     @overload
@@ -1429,7 +1429,7 @@ class Pattern:
         | Iterable[Iterable[ExpressionOrSupportsComplex]]
         | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> DensityMatrix: ...
 
     @overload
@@ -1442,7 +1442,7 @@ class Pattern:
         | Iterable[Iterable[ExpressionOrSupportsComplex]]
         | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> MBQCTensorNet: ...
 
     @overload
@@ -1451,7 +1451,7 @@ class Pattern:
         backend: Backend[_StateT_co],
         input_state: Data | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> _StateT_co: ...
 
     def simulate(
@@ -1461,7 +1461,7 @@ class Pattern:
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> _StateT_co | _BuiltinBackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
@@ -1481,7 +1481,8 @@ class Pattern:
         stacklevel : int, optional
             Stack level to use for warnings. Defaults to 1, meaning that warnings
             are reported at this function's call site.
-        kwargs: keyword args for specified backend.
+        kwargs: Unpack[SimulatorKwargs]
+            Options controlling simulator. See :class:`SimulatorOptions`.
 
         Returns
         -------

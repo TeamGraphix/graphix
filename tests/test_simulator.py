@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from graphix import BasicStates, Pattern, Statevector, StatevectorBackend
+from graphix.command import BaseN
 
 if TYPE_CHECKING:
     from numpy.random import Generator
+
+    from graphix.command import CommandType
 
 
 def test_no_explicit_input_state(hadamardpattern: Pattern, fx_rng: Generator) -> None:
@@ -58,3 +61,15 @@ def test_node_index_after_finalize() -> None:
     backend = StatevectorBackend()
     pattern.simulate(backend=backend)
     assert list(backend.node_index) == [1, 0]
+
+
+def test_default_prepare_method_requires_n() -> None:
+    # The type annotations require the pattern to contain only
+    # elements of type `CommandType`, which excludes `BaseN`. We hope
+    # pattern types will become more precise in the near future.
+    # See https://github.com/TeamGraphix/graphix/issues/266
+    pattern = Pattern(cmds=[cast("CommandType", BaseN(0))])
+    with pytest.raises(
+        TypeError, match=r"The default prepare method requires all preparation commands to be of type `N`."
+    ):
+        pattern.simulate_pattern()

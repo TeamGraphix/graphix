@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command
+from graphix import Circuit, Pattern, Plane, XZCorrections, command, visualization
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.pattern import DrawPatternAnnotations
-from graphix.visualization import _edge_intersects_node
+from graphix.visualization import Colored, GraphVisualizer, _edge_intersects_node
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -284,6 +284,40 @@ def test_draw_graph_reference(flow_from_pattern_and_to_bloch: bool) -> Figure:
 
 
 @pytest.mark.usefixtures("mock_plot")
+@pytest.mark.parametrize("infer_pauli_measurements", [False, True])
+@pytest.mark.mpl_image_compare
+def test_legend_pauli_measurements(infer_pauli_measurements: bool) -> Figure:
+    # See https://github.com/TeamGraphix/graphix/issues/554
+    circuit = Circuit(1)
+    circuit.h(0)
+    pattern = circuit.transpile().pattern
+    if infer_pauli_measurements:
+        pattern = pattern.infer_pauli_measurements()
+    pattern.draw()
+    return plt.gcf()
+
+
+def x_corrections_only() -> XZCorrections[Plane]:
+    graph: nx.Graph[int] = nx.Graph()
+    graph.add_node(0)
+    graph.add_node(1)
+
+    og = OpenGraph(graph, input_nodes=[], output_nodes=[], measurements=dict.fromkeys([0, 1], Plane.XY))
+
+    return XZCorrections.from_measured_nodes_mapping(og, {0: {1}}, {})
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_legend_x_corrections_only() -> Figure:
+    # Related to https://github.com/TeamGraphix/graphix/issues/554
+    # Draw X-corrections on open graph without inputs, outputs, edges.
+    # Only "X corrections" label should be visible in legend.
+    xz = x_corrections_only()
+    xz.draw()
+    return plt.gcf()
+
+
 @pytest.mark.parametrize("flow_from_pattern", [False, True])
 @pytest.mark.mpl_image_compare
 def test_draw_graph_reference_pauli_flow(flow_from_pattern: bool) -> Figure:
@@ -292,3 +326,25 @@ def test_draw_graph_reference_pauli_flow(flow_from_pattern: bool) -> Figure:
     pattern = circuit.transpile().pattern.infer_pauli_measurements()
     pattern.draw(flow_from_pattern=flow_from_pattern, node_distance=(1, 1), measurement_labels=True, legend=False)
     return plt.gcf()
+
+
+def test_corrections_must_have_distinct_colors() -> None:
+    old_z_c = visualization.Z_C
+    visualization.Z_C = visualization.X_C
+    try:
+        xz = x_corrections_only()
+        with pytest.raises(
+            RuntimeError,
+            match=r"X, Z, and X-and-Z corrections must have different arrow colors to display the legend correctly.",
+        ):
+            xz.draw()
+    finally:
+        visualization.Z_C = old_z_c
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_unexpected_arrow_paths() -> None:
+    og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=(), output_nodes=[1], measurements={0: Plane.XY})
+    visualizer = GraphVisualizer(og=og, pos={}, edge_paths={}, arrow_paths={(0, 1): Colored([], "")})
+    with pytest.raises(RuntimeError, match="Unexpected arrow paths with source None"):
+        visualizer._draw_legend()

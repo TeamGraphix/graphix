@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import fields
+from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -238,12 +238,17 @@ def generate_pauli_flow_1() -> PauliFlow[Measurement]:
     )
 
 
-class XZCorrectionsTestCase(NamedTuple):
+@dataclass(frozen=True)
+class XZCorrectionsTestCase:
     flow: CausalFlow[AbstractPlanarMeasurement] | GFlow[AbstractPlanarMeasurement] | PauliFlow[AbstractMeasurement]
     x_corr: Mapping[int, set[int]]
     z_corr: Mapping[int, set[int]]
-    pattern: Pattern | None
-    # Patterns can only be extracted from `Measurement`-type objects. If `flow` is of parametric type, we set `pattern = None`.
+
+
+@dataclass(frozen=True)
+class PatternTestCase(XZCorrectionsTestCase):
+    flow: CausalFlow[BlochMeasurement] | GFlow[BlochMeasurement] | PauliFlow[Measurement]
+    pattern: Pattern
 
 
 def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
@@ -252,9 +257,9 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
     test_cases.extend(
         (
             XZCorrectionsTestCase(
-                flow=generate_causal_flow_0(), x_corr={0: {1}, 1: {2}, 2: {3}}, z_corr={0: {2}, 1: {3}}, pattern=None
+                flow=generate_causal_flow_0(), x_corr={0: {1}, 1: {2}, 2: {3}}, z_corr={0: {2}, 1: {3}}
             ),
-            XZCorrectionsTestCase(
+            PatternTestCase(
                 flow=generate_causal_flow_1(),
                 x_corr={0: {2}, 1: {3}, 2: {4}, 3: {5}},
                 z_corr={0: {3, 4}, 1: {2, 5}},
@@ -286,7 +291,7 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                     output_nodes=[4, 5],
                 ),
             ),
-            XZCorrectionsTestCase(
+            PatternTestCase(
                 flow=generate_gflow_0(),
                 x_corr={0: {2, 5}, 1: {3, 4}, 2: {4}, 3: {5}},
                 z_corr={0: {4}, 1: {5}},
@@ -322,18 +327,14 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                 flow=generate_gflow_1(),
                 x_corr={0: {3}, 2: {3, 4}},
                 z_corr={1: {4}, 2: {1, 4}},
-                pattern=None,
             ),
-            XZCorrectionsTestCase(
-                flow=generate_gflow_2(), x_corr={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}}, z_corr={}, pattern=None
-            ),
+            XZCorrectionsTestCase(flow=generate_gflow_2(), x_corr={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}}, z_corr={}),
             XZCorrectionsTestCase(
                 flow=generate_pauli_flow_0(),
                 x_corr={0: {3}, 2: {3}},
                 z_corr={1: {3}},
-                pattern=None,
             ),
-            XZCorrectionsTestCase(
+            PatternTestCase(
                 flow=generate_pauli_flow_1(),
                 x_corr={0: {7}, 1: {3}, 2: {7}, 3: {6, 7}, 4: {6}, 5: {7}},
                 z_corr={0: {7}, 1: {6}, 2: {6}, 3: {7}},
@@ -401,8 +402,8 @@ class TestFlowPatternConversion:
 
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
-        if test_case.pattern is not None:
-            pattern = test_case.flow.to_xzcorrections().to_pattern()  # type: ignore[misc]
+        if isinstance(test_case, PatternTestCase):
+            pattern = test_case.flow.to_xzcorrections().to_pattern()
             n_shots = 2
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
