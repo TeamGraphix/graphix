@@ -1106,14 +1106,13 @@ def transpile_swaps(circuit: Circuit, *, copy: bool = False) -> TranspileSwapsRe
             visitor.visit_qubit(u)
             visitor.visit_qubit(v)
             visitor.outputs[u], visitor.outputs[v] = visitor.outputs[v], visitor.outputs[u]
+        elif instr.kind == InstructionKind.M:
+            old_target = instr.target
+            new_circuit.add(instr.visit(visitor, copy=copy))
+            visitor.outputs[old_target] = OutputIndex(OutputKind.Bit, measurement_index)
+            measurement_index += 1
         else:
-            if instr.kind == InstructionKind.M:
-                old_target = instr.target
-            new_instr = instr.visit(visitor, copy=copy)
-            new_circuit.add(new_instr)
-            if instr.kind == InstructionKind.M:
-                visitor.outputs[old_target] = OutputIndex(OutputKind.Bit, measurement_index)
-                measurement_index += 1
+            new_circuit.add(instr.visit(visitor, copy=copy))
     if not copy:
         circuit.instruction = new_circuit.instruction
         new_circuit = circuit

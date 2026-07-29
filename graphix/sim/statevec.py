@@ -271,7 +271,7 @@ class AbstractStatevector(DenseState, Generic[_ScalarT]):
     ) -> dict[str, _ScalarT2]:
         mask = np.logical_not(np.isclose(np.abs(self.psi), 0, rtol=rtol, atol=atol))
         i_vals = np.arange(1 << self.nqubit)[mask]
-        amp_vals = f(self.flatten()[mask])
+        amp_vals = f(self.psi[mask])
 
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 

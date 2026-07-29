@@ -260,11 +260,11 @@ class AffineExpression(Expression):
 
     @override
     def with_parameter(
-        self, variable: Parameter, value: ExpressionOrSupportsFloat
+        self, variable: Parameter, substitute: ExpressionOrSupportsFloat
     ) -> AffineExpression | ExpressionOrComplex:
         """Look to the documentation in the parent class."""
         if variable == self.x:
-            return self.evaluate(value)
+            return self.evaluate(substitute)
         return self
 
     @override
