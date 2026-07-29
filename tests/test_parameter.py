@@ -3,20 +3,31 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import matplotlib as mpl
+import networkx as nx
 import numpy as np
 import pytest
 
+# override introduced in Python 3.12
+from typing_extensions import override
+
 import graphix.command
+from graphix import OpenGraph
 from graphix.measurements import Measurement
 from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import DrawPatternAnnotations, Pattern
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import AbstractStatevector
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import numpy.typing as npt
     from numpy.random import PCG64, Generator
 
     from graphix.parameter import Parameter
+    from graphix.sim.base_backend import Matrix
+    from graphix.sim.data import Data
 
 
 def test_pattern_affine_operations() -> None:
@@ -58,6 +69,32 @@ def test_pattern_substitution() -> None:
     assert not pattern0.is_parameterized()
     assert list(pattern0) == [graphix.command.M(0), graphix.command.M(1, Measurement.XY(0))]
     assert list(pattern0.infer_pauli_measurements()) == [graphix.command.M(0), graphix.command.M(1)]
+
+
+def test_opengraph_with_parameter_subs() -> None:
+    alpha = Placeholder("alpha")
+    og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.XY(alpha)})
+    og1 = og.with_parameter(alpha, 0.25)
+    og2 = og.subs(alpha, 0.25)
+    assert og.measurements == {0: Measurement.XY(alpha)}
+    assert og1.measurements == {0: Measurement.XY(0.25)}
+    assert og2.measurements == {0: Measurement.XY(0.25)}
+
+
+def test_opengraph_with_parameters_xreplace() -> None:
+    alpha = Placeholder("alpha")
+    beta = Placeholder("beta")
+    og = OpenGraph(
+        graph=nx.path_graph(3),
+        input_nodes=[0],
+        output_nodes=[2],
+        measurements={0: Measurement.XY(alpha), 1: Measurement.XY(beta)},
+    )
+    og1 = og.with_parameters({alpha: beta, beta: alpha})
+    og2 = og.xreplace({alpha: beta, beta: alpha})
+    assert og.measurements == {0: Measurement.XY(alpha), 1: Measurement.XY(beta)}
+    assert og1.measurements == {0: Measurement.XY(beta), 1: Measurement.XY(alpha)}
+    assert og2.measurements == {0: Measurement.XY(beta), 1: Measurement.XY(alpha)}
 
 
 def test_instantiated_pattern_simulation(fx_rng: Generator) -> None:
@@ -132,17 +169,76 @@ def test_parallel_substitution_with_zero() -> None:
     assert not pattern23.is_parameterized()
 
 
-def test_density_matrix_subs() -> None:
+def test_statevector_flatten() -> None:
+    alpha = Placeholder("alpha")
+
+    class PlaceholderStatevector(AbstractStatevector[np.object_]):
+        @property
+        @override
+        def psi(self) -> npt.NDArray[np.object_]:
+            return np.array([alpha])
+
+        @override
+        def add_nodes(self, nqubit: int, data: Data) -> None:
+            raise NotImplementedError
+
+        @override
+        def entangle(self, qubits: tuple[int, int]) -> None:
+            raise NotImplementedError
+
+        @override
+        def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
+            raise NotImplementedError
+
+        @override
+        def evolve_single(self, op: Matrix, qubit: int) -> None:
+            raise NotImplementedError
+
+        @override
+        def expectation_single(self, op: Matrix, qubit: int) -> complex:
+            raise NotImplementedError
+
+        @override
+        def remove_qubit(self, qubit: int) -> None:
+            raise NotImplementedError
+
+        @override
+        def swap(self, qubits: tuple[int, int]) -> None:
+            raise NotImplementedError
+
+        @override
+        def permute(self, permutation: Sequence[int]) -> None:
+            raise NotImplementedError
+
+        # Note that `@property` must appear before `@override` for pyright
+        @property
+        @override
+        def nqubit(self) -> int:
+            return 1
+
+    statevec = PlaceholderStatevector()
+    assert statevec.flatten()[0] == alpha
+
+
+def test_density_matrix_with_parameter() -> None:
     alpha = Placeholder("alpha")
     dm = DensityMatrix([[alpha]])
     assert np.allclose(dm.with_parameter(alpha, 1).rho, np.array([1]))
+    with pytest.raises(TypeError):
+        np.allclose(dm.rho, np.array([1]))
+    dm.replace_parameter(alpha, 1)
+    assert np.allclose(dm.rho, np.array([1]))
 
 
-def test_density_matrix_xreplace() -> None:
+def test_density_matrix_with_parameters() -> None:
     alpha = Placeholder("alpha")
     beta = Placeholder("beta")
     dm = DensityMatrix([[alpha, beta], [alpha, beta]])
     assert np.allclose(dm.with_parameters({alpha: 1, beta: 2}).rho, np.array([[1, 2], [1, 2]]))
+    with pytest.raises(TypeError):
+        np.allclose(dm.rho, np.array([[1, 2], [1, 2]]))
+    dm.replace_parameters({alpha: 1, beta: 2})
+    assert np.allclose(dm.rho, np.array([[1, 2], [1, 2]]))
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))

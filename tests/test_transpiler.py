@@ -18,6 +18,7 @@ from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
 from tests.test_branch_selector import CheckedBranchSelector
+from tests.test_instruction import VisitAngle
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -419,3 +420,13 @@ def test_backend_branch_selector() -> None:
     circ = Circuit(1)
     with pytest.raises(ValueError, match="already instantiated"):
         circ.simulate_statevector(backend=StatevectorBackend(), branch_selector=ConstBranchSelector(0))
+
+
+def test_visit() -> None:
+    circ = Circuit(1)
+    circ.rx(0, 0.5)
+    visitor = VisitAngle()
+    circ2 = circ.visit(visitor, copy=True)
+    assert circ.instruction != circ2.instruction
+    assert circ.visit(visitor) is circ
+    assert circ.instruction == circ2.instruction
