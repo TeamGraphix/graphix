@@ -216,7 +216,7 @@ class Statevector(DenseState):
 
     def __str__(self) -> str:
         """Return a string description."""
-        return f"Statevector object with psi/ {self.psi} and {self.nqubit} qubits."
+        return self.draw()
 
     @property
     def psi(self) -> npt.NDArray[np.complex128]:
@@ -678,7 +678,7 @@ class Statevector(DenseState):
 
     def draw(
         self,
-        output: OutputFormat = OutputFormat.Unicode,
+        output: OutputFormat | None = None,
         *,
         encoding: _ENCODING = "MSB",
         max_denominator: int = 1000,
@@ -722,7 +722,7 @@ class Statevector(DenseState):
         >>> circuit.h(0)
         >>> circuit.cz(0, 1)
         >>> print(circuit.simulate_statevector().statevec.draw())
-        √2/2(|00⟩ + |01⟩)
+        sqrt(2)/2(|00> + |01>)
         """
         return statevec_to_str(
             self,

@@ -446,7 +446,7 @@ class Pattern:
 
     def __str__(self) -> str:
         """Return a human-readable string of the pattern."""
-        return self.to_ascii()
+        return pattern_to_str(self)
 
     def __eq__(self, other: object) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
