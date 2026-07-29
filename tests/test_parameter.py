@@ -44,7 +44,7 @@ def test_pattern_without_parameter_subs_is_identity() -> None:
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     # Substitution in a pattern without parameterized angle is the identity.
-    assert list(pattern) == list(pattern.subs(alpha, 0))
+    assert list(pattern) == list(pattern.with_parameter(alpha, 0))
 
 
 def test_pattern_substitution() -> None:
@@ -54,7 +54,7 @@ def test_pattern_substitution() -> None:
     pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     assert pattern.is_parameterized()
     # Parameterized patterns can be substituted, even if some angles are not parameterized.
-    pattern0 = pattern.subs(alpha, 0)
+    pattern0 = pattern.with_parameter(alpha, 0)
     # If all parameterized angles have been instantiated, the pattern is no longer parameterized.
     assert not pattern0.is_parameterized()
     assert list(pattern0) == [graphix.command.M(0), graphix.command.M(1, Measurement.XY(0))]
@@ -66,10 +66,10 @@ def test_instantiated_pattern_simulation(fx_rng: Generator) -> None:
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
-    pattern0 = pattern.subs(alpha, 0)
+    pattern0 = pattern.with_parameter(alpha, 0)
     # Instantied patterns can be simulated.
     pattern0.simulate_pattern(rng=fx_rng)
-    pattern1 = pattern.subs(alpha, 1)
+    pattern1 = pattern.with_parameter(alpha, 1)
     assert not pattern1.is_parameterized()
     assert list(pattern1) == [graphix.command.M(node=0), graphix.command.M(1, Measurement.XY(1))]
     assert list(pattern1.infer_pauli_measurements()) == [
@@ -87,9 +87,10 @@ def test_multiple_parameters(fx_rng: Generator) -> None:
     beta = Placeholder("beta")
     pattern.add(graphix.command.N(node=2))
     pattern.add(graphix.command.M(2, Measurement.XY(beta)))
+    pattern.replace_parameter(alpha, 2)
     # A partially instantiated pattern is still parameterized.
-    assert pattern.subs(alpha, 2).is_parameterized()
-    pattern23 = pattern.subs(alpha, 2).subs(beta, 3)
+    assert pattern.is_parameterized()
+    pattern23 = pattern.subs(beta, 3)
     # A full instantiated pattern is no longer parameterized.
     assert not pattern23.is_parameterized()
     assert list(pattern23) == [
@@ -135,32 +136,32 @@ def test_parallel_substitution_with_zero() -> None:
 def test_statevec_subs() -> None:
     alpha = Placeholder("alpha")
     statevec = Statevec([alpha])
-    assert np.allclose(statevec.subs(alpha, 1).psi, np.array([1]))
+    assert np.allclose(statevec.with_parameter(alpha, 1).psi, np.array([1]))
 
 
 def test_statevec_xreplace() -> None:
     alpha = Placeholder("alpha")
     beta = Placeholder("beta")
     statevec = Statevec([alpha, beta])
-    assert np.allclose(statevec.xreplace({alpha: 1, beta: 2}).psi, np.array([1, 2]))
+    assert np.allclose(statevec.with_parameters({alpha: 1, beta: 2}).psi, np.array([1, 2]))
 
 
 def test_density_matrix_subs() -> None:
     alpha = Placeholder("alpha")
     dm = DensityMatrix([[alpha]])
-    assert np.allclose(dm.subs(alpha, 1).rho, np.array([1]))
+    assert np.allclose(dm.with_parameter(alpha, 1).rho, np.array([1]))
 
 
 def test_density_matrix_xreplace() -> None:
     alpha = Placeholder("alpha")
     beta = Placeholder("beta")
     dm = DensityMatrix([[alpha, beta], [alpha, beta]])
-    assert np.allclose(dm.xreplace({alpha: 1, beta: 2}).rho, np.array([[1, 2], [1, 2]]))
+    assert np.allclose(dm.with_parameters({alpha: 1, beta: 2}).rho, np.array([[1, 2], [1, 2]]))
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
-@pytest.mark.parametrize("use_xreplace", [False, True])
-def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_xreplace: bool) -> None:
+@pytest.mark.parametrize("use_parallel", [False, True])
+def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_parallel: bool) -> None:
     rng = np.random.Generator(fx_bg.jumped(jumps))
     nqubits = 5
     depth = 5
@@ -174,12 +175,16 @@ def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_xreplace: 
     pattern.remove_pauli_measurements()
     pattern.minimize_space()
     assignment: dict[Parameter, float] = {alpha: rng.uniform(high=2), beta: rng.uniform(high=2)}
-    if use_xreplace:
-        state = circuit.xreplace(assignment).simulate_statevector().statevec
-        state_mbqc = pattern.xreplace(assignment).simulate_pattern(rng=rng)
+    if use_parallel:
+        circuit.replace_parameters(assignment)
+        pattern.replace_parameters(assignment)
     else:
-        state = circuit.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_statevector().statevec
-        state_mbqc = pattern.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_pattern(rng=rng)
+        circuit.replace_parameter(alpha, assignment[alpha])
+        circuit.replace_parameter(beta, assignment[beta])
+        pattern.replace_parameter(alpha, assignment[alpha])
+        pattern.replace_parameter(beta, assignment[beta])
+    state = circuit.simulate_statevector().statevec
+    state_mbqc = pattern.simulate_pattern(rng=rng)
     assert state_mbqc.isclose(state)
 
 

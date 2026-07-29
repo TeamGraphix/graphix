@@ -19,13 +19,16 @@ from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
 from warnings import warn
 
 import networkx as nx
-from typing_extensions import assert_never
+
+# override introduced in Python 3.12
+from typing_extensions import assert_never, override
 
 from graphix import command, optimization
 from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
+from graphix.parameter import InplaceParameterizable
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevec
@@ -69,7 +72,7 @@ class DrawPatternAnnotations(Enum):
     XZCorrections = enum.auto()
 
 
-class Pattern:
+class Pattern(InplaceParameterizable):
     """
     MBQC pattern class.
 
@@ -257,7 +260,7 @@ class Pattern:
             default mapping is computed by using :meth:`node_mapping`.
 
         copy : bool, optional
-            If ``True``, the current pattern remains unchanged and a
+            If ``True``, the current pattern remains unchanged, and a
             new pattern is returned. The default is ``False``, meaning
             that changes are performed in place.
 
@@ -1621,89 +1624,17 @@ class Pattern:
             if cmd.kind == command.CommandKind.M and isinstance(cmd.measurement, BlochMeasurement)
         )
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
-        """Return a copy of the pattern where all occurrences of the given variable in measurement angles are substituted by the given value.
+    @override
+    def replace_parameter(
+        self, variable: Parameter, substitute: ExpressionOrSupportsFloat, *, copy: bool = False
+    ) -> Pattern:
+        return self.apply(lambda m: m.with_parameter(variable, substitute), copy=copy)
 
-        Equivalent to ``self.substitute(variable, substitute, copy=True)``
-
-        Parameters
-        ----------
-        variable : Parameter
-            The symbolic expression to be replaced within the measurement angles.
-
-        substitute : ExpressionOrSupportsFloat
-            The value or symbolic expression to substitute in place of ``variable``.
-
-        Returns
-        -------
-        Pattern
-            The pattern with the updated measurement parameters.
-        """
-        return self.substitute(variable, substitute, copy=True)
-
-    def substitute(self, variable: Parameter, substitute: ExpressionOrSupportsFloat, *, copy: bool = False) -> Pattern:
-        """Substitute all occurrences of the given variable in measurement angles by the given value.
-
-        Parameters
-        ----------
-        variable : Parameter
-            The symbolic expression to be replaced within the measurement angles.
-
-        substitute : ExpressionOrSupportsFloat
-            The value or symbolic expression to substitute in place of ``variable``.
-
-        copy : bool, optional
-            If ``True``, the current pattern remains unchanged and a
-            new pattern is returned. The default is ``False``, meaning
-            that changes are performed in place.
-
-        Returns
-        -------
-        Pattern
-            The pattern with the updated measurement parameters.
-            Equal to ``self`` if ``copy`` is ``False``.
-        """
-        return self.apply(lambda m: m.subs(variable, substitute), copy=copy)
-
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
-        """Return a copy of the pattern where all occurrences of the given keys in measurement angles are substituted by the given values in parallel.
-
-        Equivalent to ``self.replace_parameters(assignment, copy=True)``.
-
-        Parameters
-        ----------
-        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
-            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
-
-        Returns
-        -------
-        Pattern
-            The pattern with the updated measurement parameters.
-        """
-        return self.replace_parameters(assignment, copy=True)
-
+    @override
     def replace_parameters(
         self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat], *, copy: bool = False
     ) -> Pattern:
-        """Substitute all occurrences of the given keys in measurement angles by the given values in parallel.
-
-        Parameters
-        ----------
-        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
-            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
-
-        copy : bool, optional
-            If ``True``, the current pattern remains unchanged and a
-            new pattern is returned. The default is ``False``, meaning
-            that changes are performed in place.
-
-        Returns
-        -------
-        Pattern
-            The pattern with the updated measurement parameters.
-            Equal to ``self`` if ``copy`` is ``False``.
-        """
-        return self.apply(lambda m: m.xreplace(assignment), copy=copy)
+        return self.apply(lambda m: m.with_parameters(assignment), copy=copy)
 
     def copy(self) -> Pattern:
         """Return a copy of the pattern."""

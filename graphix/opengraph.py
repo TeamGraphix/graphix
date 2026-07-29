@@ -9,12 +9,16 @@ from warnings import warn
 
 import networkx as nx
 
+# override introduced in Python 3.12
+from typing_extensions import override
+
 from graphix.clifford import Clifford
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.measurements import BlochMeasurement, Measurement
+from graphix.parameter import Parameterizable
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -37,7 +41,7 @@ _B = TypeVar("_B", bound=AbstractMeasurement)
 
 
 @dataclass(frozen=True)
-class OpenGraph(Generic[_AM_co]):
+class OpenGraph(Parameterizable, Generic[_AM_co]):
     """An unmutable dataclass providing a representation of open graph states.
 
     Attributes
@@ -748,7 +752,10 @@ class OpenGraph(Generic[_AM_co]):
 
         return OpenGraph(g, inputs, outputs, measurements, output_cliffords), mapping_complete
 
-    def subs(self: OpenGraph[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> OpenGraph[_M]:
+    @override
+    def with_parameter(
+        self: OpenGraph[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> OpenGraph[_M]:
         """Substitute a parameter with a value or expression in all measurement angles.
 
         Creates a new open graph where every measurement angle containing the specified variable is updated using the provided substitution. The original open graph instance remains unmodified.
@@ -786,12 +793,15 @@ class OpenGraph(Generic[_AM_co]):
         ...     measurements=measurements,
         ... )
         >>> # To perform substitution, use the actual object in memory
-        >>> new_og = og.subs(parametric_angles[0], 0.3)
-        >>> # Note: og.subs(Placeholder("alpha0"), 0.3) would not trigger any substitution.
+        >>> new_og = og.with_parameter(parametric_angles[0], 0.3)
+        >>> # Note: og.with_parameter(Placeholder("alpha0"), 0.3) would not trigger any substitution.
         """
-        return self.map(lambda meas: meas.subs(variable, substitute))
+        return self.map(lambda meas: meas.with_parameter(variable, substitute))
 
-    def xreplace(self: OpenGraph[_M], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> OpenGraph[_M]:
+    @override
+    def with_parameters(
+        self: OpenGraph[_M], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> OpenGraph[_M]:
         """Perform parallel substitution of multiple parameters in measurement angles.
 
         Creates a new open graph where occurrences of parameters defined in the assignment mapping are replaced by their corresponding values. The original open graph instance remains unmodified.
@@ -824,9 +834,9 @@ class OpenGraph(Generic[_AM_co]):
         >>> og = OpenGraph(nx.Graph([(0, 1)]), [0], [], measurements)
         >>> # Substitute multiple parameters at once
         >>> subs_map = {alpha: 0.5, beta: 1.2}
-        >>> new_og = og.xreplace(subs_map)
+        >>> new_og = og.with_parameters(subs_map)
         """
-        return self.map(lambda meas: meas.xreplace(assignment))
+        return self.map(lambda meas: meas.with_parameters(assignment))
 
     def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
         for m in self.measurements.values():

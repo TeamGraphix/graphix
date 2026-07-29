@@ -45,11 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
-- #568: Added the following methods to `Pattern`. By default, they modify the pattern in place, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
-  - `apply`, an in-place variant of `map`,
-  - `blochify`, an in-place variant of `to_bloch`,
-  - `substitute`, an in-place variant of `subs`,
-  - `replace_parameters`, an-in place variant of `xreplace`.
+- #568:
+  - Added the following methods to `Pattern`. By default, they modify the pattern in place, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
+    - `apply`, an in-place variant of `map`,
+    - `blochify`, an in-place variant of `to_bloch`.
+  - All classes that have `subs` and `xreplace` methods (`Pattern`, `Circuit`, `OpenGraph`, `Measurement`, `PauliFlow`, `XZCorrections`, `Statevector`, `DensityMatrix`) now derive from the `Parameterizable` class, which exposes the method `with_parameter` and `with_parameters`, with `subs` and `xreplace` as their respective aliases.
+  - `Pattern` and `Circuit` now derive from the `InplaceParameterizable` subclass, which additionally provides the following methods:
+    - `replace_parameter`, an in-place variant of `with_parameter` (or `subs`),
+    - `replace_parameters`, an-in place variant of `with_parameters` (or `xreplace`).
 
 ### Fixed
 
@@ -106,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
 
-- #568: Method `Pattern.infer_pauli_measurements` now operates in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
+- #568: Method `Pattern.infer_pauli_measurements` and function `transpile_swaps` now operate in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
 
 ## [0.3.5] - 2026-03-26
 

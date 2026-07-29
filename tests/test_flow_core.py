@@ -437,7 +437,7 @@ class TestFlow:
         )
         flow_ref = og_ref.extract_pauli_flow()
 
-        flow_test = flow.subs(alpha, value)
+        flow_test = flow.with_parameter(alpha, value)
 
         assert not flow.og.isclose(flow_test.og)
         assert flow_ref.og.isclose(flow_test.og)
@@ -728,7 +728,7 @@ class TestXZCorrections:
         )
         xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
 
-        xzcorr_test = xzcorr.subs(alpha, value)
+        xzcorr_test = xzcorr.with_parameter(alpha, value)
 
         assert not xzcorr.og.isclose(xzcorr_test.og)
         assert xzcorr_ref.og.isclose(xzcorr_test.og)

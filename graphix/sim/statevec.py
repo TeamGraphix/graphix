@@ -14,8 +14,15 @@ import numpy as np
 import numpy.typing as npt
 from typing_extensions import override
 
-from graphix import parameter, states
-from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
+from graphix import states
+from graphix.parameter import (
+    Expression,
+    ExpressionOrSupportsComplex,
+    InplaceParameterizable,
+    check_expression_or_float,
+    with_parameter,
+    with_parameters,
+)
 from graphix.pretty_print import OutputFormat, statevec_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
@@ -45,7 +52,7 @@ SWAP_TENSOR = np.array(
 )
 
 
-class Statevec(DenseState):
+class Statevec(DenseState, InplaceParameterizable):
     """Statevector object."""
 
     psi: Matrix
@@ -601,17 +608,29 @@ class Statevec(DenseState):
 
         return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
-        """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
-        result = Statevec()
-        result.psi = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.psi)
-        return result
+    @override
+    def replace_parameter(
+        self, variable: Parameter, substitute: ExpressionOrSupportsFloat, *, copy: bool = False
+    ) -> Statevec:
+        psi = np.vectorize(lambda value: with_parameter(value, variable, substitute))(self.psi)
+        if copy:
+            result = Statevec()
+            result.psi = np.vectorize(lambda value: with_parameter(value, variable, substitute))(self.psi)
+            return result
+        self.psi = psi
+        return self
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevec:
-        """Return a copy of the state vector where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
-        result = Statevec()
-        result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
-        return result
+    @override
+    def replace_parameters(
+        self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat], *, copy: bool = False
+    ) -> Statevec:
+        psi = np.vectorize(lambda value: with_parameters(value, assignment))(self.psi)
+        if copy:
+            result = Statevec()
+            result.psi = np.vectorize(lambda value: with_parameters(value, assignment))(self.psi)
+            return result
+        self.psi = psi
+        return self
 
 
 @dataclass(frozen=True)
