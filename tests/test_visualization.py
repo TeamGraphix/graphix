@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command
+from graphix import Circuit, Pattern, Plane, XZCorrections, command, visualization
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.pattern import DrawPatternAnnotations
-from graphix.visualization import _edge_intersects_node
+from graphix.visualization import Colored, GraphVisualizer, _edge_intersects_node
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -90,10 +90,10 @@ def example_pflow(rng: Generator) -> Pattern:
 
     og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
     try:
-        og.to_bloch().extract_gflow()
+        og.to_bloch().to_gflow()
         pytest.fail("example graph shouldn't have gflow")
     except OpenGraphError:
-        og.extract_pauli_flow()  # example graph has Pauli flow
+        og.to_pauliflow()  # example graph has Pauli flow
 
     pattern = og.to_pattern()
     pattern.standardize()
@@ -199,6 +199,25 @@ def test_og() -> None:
     pattern.draw(annotations=None)
 
 
+@pytest.mark.usefixtures("mock_plot")
+def test_non_determinist() -> None:
+    pattern = Pattern(
+        input_nodes=[0],
+        cmds=[command.N(1), command.E((0, 1)), command.M(0)],
+    )
+    with pytest.warns(
+        UserWarning,
+        match="The pattern is not consistent with a flow. An attempt to be extract the flow from the underlying open graph will be made.",
+    ):
+        pattern.draw()
+
+
+@pytest.mark.parametrize("annotations", [None, DrawPatternAnnotations.Flow, DrawPatternAnnotations.XZCorrections])
+def test_empty(annotations: DrawPatternAnnotations | None) -> None:
+    pattern = Pattern()
+    pattern.draw(annotations=annotations)
+
+
 # Compare with baseline/test_draw_graph_reference.png
 # Update baseline by running: pytest --mpl-generate-path=tests/baseline
 @pytest.mark.usefixtures("mock_plot")
@@ -213,7 +232,7 @@ def test_og_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_causal_flow_draw() -> Figure:
     og = example_og()
-    og.downcast_bloch().extract_causal_flow().draw(legend=False)
+    og.downcast_bloch().to_causalflow().draw(legend=False)
     return plt.gcf()
 
 
@@ -221,7 +240,7 @@ def test_causal_flow_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_gflow_draw() -> Figure:
     og = example_og()
-    og.downcast_bloch().extract_gflow().draw(legend=False)
+    og.downcast_bloch().to_gflow().draw(legend=False)
     return plt.gcf()
 
 
@@ -229,7 +248,7 @@ def test_gflow_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_pauli_flow_draw() -> Figure:
     og = example_og()
-    og.infer_pauli_measurements().extract_pauli_flow().draw(legend=False)
+    og.infer_pauli_measurements().to_pauliflow().draw(legend=False)
     return plt.gcf()
 
 
@@ -237,14 +256,14 @@ def test_pauli_flow_draw() -> Figure:
 @pytest.mark.mpl_image_compare
 def test_xzcorr_draw() -> Figure:
     og = example_og()
-    og.downcast_bloch().extract_causal_flow().to_corrections().draw(legend=False)
+    og.downcast_bloch().to_causalflow().to_xzcorrections().draw(legend=False)
     return plt.gcf()
 
 
 @pytest.mark.usefixtures("mock_plot")
-@pytest.mark.parametrize("flow_and_not_pauli_presimulate", [False, True])
+@pytest.mark.parametrize("flow_from_pattern_and_to_bloch", [False, True])
 @pytest.mark.mpl_image_compare
-def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
+def test_draw_graph_reference(flow_from_pattern_and_to_bloch: bool) -> Figure:
     circuit = Circuit(3)
     circuit.cnot(0, 1)
     circuit.cnot(2, 1)
@@ -252,16 +271,80 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
     circuit.x(2)
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern
-    if flow_and_not_pauli_presimulate:
-        # Pauli flow extraction from pattern is not implemented yet;
-        # therefore, the pattern should not contain Pauli measurements
-        # to have causal flow.
+    if flow_from_pattern_and_to_bloch:
         pattern.blochify()
     else:
         pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
     pattern.standardize()
     pattern.draw(
-        flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(1, 1), measurement_labels=True, legend=False
+        flow_from_pattern=flow_from_pattern_and_to_bloch, node_distance=(1, 1), measurement_labels=True, legend=False
     )
     return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.parametrize("infer_pauli_measurements", [False, True])
+@pytest.mark.mpl_image_compare
+def test_legend_pauli_measurements(infer_pauli_measurements: bool) -> Figure:
+    # See https://github.com/TeamGraphix/graphix/issues/554
+    circuit = Circuit(1)
+    circuit.h(0)
+    pattern = circuit.transpile().pattern
+    if infer_pauli_measurements:
+        pattern = pattern.infer_pauli_measurements()
+    pattern.draw()
+    return plt.gcf()
+
+
+def x_corrections_only() -> XZCorrections[Plane]:
+    graph: nx.Graph[int] = nx.Graph()
+    graph.add_node(0)
+    graph.add_node(1)
+
+    og = OpenGraph(graph, input_nodes=[], output_nodes=[], measurements=dict.fromkeys([0, 1], Plane.XY))
+
+    return XZCorrections.from_measured_nodes_mapping(og, {0: {1}}, {})
+
+
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_legend_x_corrections_only() -> Figure:
+    # Related to https://github.com/TeamGraphix/graphix/issues/554
+    # Draw X-corrections on open graph without inputs, outputs, edges.
+    # Only "X corrections" label should be visible in legend.
+    xz = x_corrections_only()
+    xz.draw()
+    return plt.gcf()
+
+
+@pytest.mark.parametrize("flow_from_pattern", [False, True])
+@pytest.mark.mpl_image_compare
+def test_draw_graph_reference_pauli_flow(flow_from_pattern: bool) -> Figure:
+    circuit = Circuit(2)
+    circuit.rzz(0, 1, 0.3)
+    pattern = circuit.transpile().pattern.infer_pauli_measurements()
+    pattern.draw(flow_from_pattern=flow_from_pattern, node_distance=(1, 1), measurement_labels=True, legend=False)
+    return plt.gcf()
+
+
+def test_corrections_must_have_distinct_colors() -> None:
+    old_z_c = visualization.Z_C
+    visualization.Z_C = visualization.X_C
+    try:
+        xz = x_corrections_only()
+        with pytest.raises(
+            RuntimeError,
+            match=r"X, Z, and X-and-Z corrections must have different arrow colors to display the legend correctly.",
+        ):
+            xz.draw()
+    finally:
+        visualization.Z_C = old_z_c
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_unexpected_arrow_paths() -> None:
+    og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=(), output_nodes=[1], measurements={0: Plane.XY})
+    visualizer = GraphVisualizer(og=og, pos={}, edge_paths={}, arrow_paths={(0, 1): Colored([], "")})
+    with pytest.raises(RuntimeError, match="Unexpected arrow paths with source None"):
+        visualizer._draw_legend()

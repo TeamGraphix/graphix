@@ -20,7 +20,7 @@ class TestMeasurement:
 @pytest.mark.parametrize("pauli", PauliMeasurement)
 def test_pauli_to_bloch(pauli: PauliMeasurement) -> None:
     bloch = pauli.to_bloch()
-    pauli_back = bloch.try_to_pauli()
+    pauli_back = bloch.to_pauli_or_none()
     assert pauli == pauli_back
 
 

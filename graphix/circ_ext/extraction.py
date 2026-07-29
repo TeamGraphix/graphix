@@ -676,7 +676,7 @@ def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[Paul
     og_extended, ancillary_inputs_map = extend_input(og)
 
     # Here it's crucial to not infer Pauli measurements to avoid converting measurements inadvertently.
-    flow_extended = og_extended.extract_pauli_flow()
+    flow_extended = og_extended.to_pauliflow()
 
     # `flow_extended` is guaranteed to be focused if `flow` is focused.
     # This function assumes that `flow` is focused and does not check it.

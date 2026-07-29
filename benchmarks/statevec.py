@@ -85,7 +85,7 @@ for width in test_cases:
     pattern = circuit.transpile()
     pattern.standardize()
     pattern.minimize_space()
-    nqubit = len(pattern.extract_nodes())
+    nqubit = len(pattern.nodes())
     start = perf_counter()
     pattern.simulate_pattern(max_qubit_num=30)
     end = perf_counter()

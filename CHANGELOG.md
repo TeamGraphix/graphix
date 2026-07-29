@@ -45,11 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
+- #556, #563: Added a context variable `default_output_format` to unify the default output format for displaying `PauliFlow`, `XZCorrections`, `Pattern`, and `StateVec`.
+
 - #568:
   - Added the following methods to `Pattern`. By default, they modify the pattern in place, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
     - `apply`, an in-place variant of `map`,
     - `blochify`, an in-place variant of `to_bloch`.
-  - All classes that have `subs` and `xreplace` methods (`Pattern`, `Circuit`, `OpenGraph`, `Measurement`, `PauliFlow`, `XZCorrections`, `Statevector`, `DensityMatrix`) now derive from the `Parameterizable` class, which exposes the method `with_parameter` and `with_parameters`, with `subs` and `xreplace` as their respective aliases.
+  - All classes that have `subs` and `xreplace` methods (`Pattern`, `Circuit`, `OpenGraph`, `Measurement`, `PauliFlow`, `XZCorrections`, `DensityMatrix`) now derive from the `Parameterizable` class, which exposes the method `with_parameter` and `with_parameters`, with `subs` and `xreplace` as their respective aliases.
   - `Pattern` and `Circuit` now derive from the `InplaceParameterizable` subclass, which additionally provides the following methods:
     - `replace_parameter`, an in-place variant of `with_parameter` (or `subs`),
     - `replace_parameters`, an-in place variant of `with_parameters` (or `xreplace`).
@@ -67,6 +69,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #549: Fixed #531.
   - Empty outputs layer removed from flow's partial order.
   - Flow well-formedness check does not trigger false negative for flows on open graphs without outputs.
+
+- #554, #560: Legends accompanying open graph visualizations only include elements present in the graph.
+
+- #562: Fixed #553. Handle visualization of empty graphs.
+
+- #561: Fixed #555. Method `Pattern.draw` computes Pauli flow from pattern.
+
+- #569: Keyword arguments for `simulate_pattern` are now type-checked.
 
 ### Changed
 
@@ -109,6 +119,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
 
+- #557: Homogeneize namespace. See commit text or COMPATIBILITY.md for a detailed renaming list. Fixed the following convention:
+  - `.to_<object>` for transformations that can only return `object` or raise an exception. Equivalently, we use `.from_<object>` for constructors.
+  - `.to_<object>_or_none` for transformations that can return `object` or `None`. Equivalently, we use `.from_<object>_or_none` for constructors.
+  - accessor methods use nouns instead of verb + noun. Example: `Pattern.max_degree` instead of `Pattern.compute_max_degree`.
+
+- #518: Numba-jit statevector backend.
+  - Changed statevector representation from a tensor to a flat array.
+  - Added `.with_capacity` method to `StatevectorBackend` to preallocate a given space in memory.
+  - Added module constant `NUM_QUBIT_PARALLEL` to determine at which qubit count jit-compiled functions are parallelized.
+  - Dropped support for symbolic simulation and removed `Statevector.xreplace` and `Statevector.subs` methods.
+  - Added method `DenseState.project_qubit` which defaults to calling `evolve_single` and `remove_qubit`. Added specialized code for this method in `Statevector` class.
+  - Unified `test_statevec.py` and `test_statevec_backend.py` into a single file.
+  
 - #568: Method `Pattern.infer_pauli_measurements` and function `transpile_swaps` now operate in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
 
 ## [0.3.5] - 2026-03-26

@@ -20,18 +20,20 @@ class State(ABC):
     """Abstract base class for single qubit states objects.
 
     Only requirement for concrete classes is to have
-    a to_statevector() method that returns the statevector
+    a to_statevector_numpy() method that returns the statevector
     representation of the state
     """
 
     @abc.abstractmethod
-    def to_statevector(self) -> npt.NDArray[np.complex128]:
+    def to_statevector_numpy(self) -> npt.NDArray[np.complex128]:
         """Return the state vector."""
 
-    def to_densitymatrix(self) -> npt.NDArray[np.complex128]:
+    def to_densitymatrix_numpy(self) -> npt.NDArray[np.complex128]:
         """Return the density matrix."""
         # return DM in 2**n x 2**n dim (2x2 here)
-        return np.outer(self.to_statevector(), self.to_statevector().conj()).astype(np.complex128, copy=False)
+        return np.outer(self.to_statevector_numpy(), self.to_statevector_numpy().conj()).astype(
+            np.complex128, copy=False
+        )
 
 
 @dataclasses.dataclass
@@ -39,7 +41,7 @@ class PlanarState(State):
     """Light object used to instantiate backends.
 
     doesn't cover all possible states but this is
-    covered in :class:`graphix.sim.statevec.Statevec`
+    covered in :class:`graphix.sim.statevec.Statevector`
     and :class:`graphix.sim.densitymatrix.DensityMatrix`
     constructors.
 
@@ -62,7 +64,7 @@ class PlanarState(State):
         """Return a string description of the planar state."""
         return f"PlanarState object defined in plane {self.plane} with angle {self.angle}."
 
-    def to_statevector(self) -> npt.NDArray[np.complex128]:
+    def to_statevector_numpy(self) -> npt.NDArray[np.complex128]:
         """Return the state vector."""
         angle_rad = angle_to_rad(self.angle)
         match self.plane:
