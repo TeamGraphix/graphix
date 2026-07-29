@@ -607,7 +607,6 @@ class GraphVisualizer:
             plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
 
         if self.arrow_paths:
-            assert self._source is not None
             match self._source:
                 case _Source.Flow:
                     plt.plot([], [], color=FLOW_C, label="Correction function")
@@ -621,8 +620,8 @@ class GraphVisualizer:
                         has_corr = any(color == arrow.color for arrow in self.arrow_paths.values())
                         if has_corr:
                             plt.plot([], [], color=color, label=label)
-                case _Source.OG:
-                    pass
+                case _Source.OG | None:
+                    raise RuntimeError(f"Unexpected arrow paths with source {self._source}")
                 case _:
                     assert_never(self._source)
 
