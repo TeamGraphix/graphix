@@ -71,9 +71,10 @@ class AbstractStatevector(DenseState, Generic[_ScalarT]):
 
         A view of only the first ``2**self.nqubit`` elements of ``self._psi`` is returned.
         """
-        if self.psi.dtype == np.object_:
-            return self.psi.astype(np.object_, copy=False)
-        return self.psi.astype(np.complex128, copy=False)
+        flat_psi = self.psi.flatten()
+        if flat_psi.dtype == np.object_:
+            return flat_psi.astype(np.object_, copy=False)
+        return flat_psi.astype(np.complex128, copy=False)
 
     def fidelity(self, other: Statevector) -> float:
         r"""Calculate the fidelity against another statevector.
