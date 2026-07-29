@@ -64,7 +64,7 @@ class TestTranspilerUnitGates:
         circuit = Circuit(3, instr=[instruction(rng)])
         pattern = circuit.transpile().pattern
         input_state = rand_state_vector(3, rng=rng)
-        state = circuit.simulate(input_state=input_state).statevec
+        state = circuit.simulate(input_state=input_state).state
         state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
 
@@ -74,7 +74,7 @@ class TestTranspilerUnitGates:
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rand_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
         pattern = circuit.transpile().pattern
-        state = circuit.simulate(rng=fx_rng).statevec
+        state = circuit.simulate(rng=fx_rng).state
         state_mbqc = pattern.simulate(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
@@ -93,7 +93,7 @@ class TestTranspilerUnitGates:
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(
             rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend
-        ).statevec
+        ).state
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate(
             rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend
@@ -113,7 +113,7 @@ class TestTranspilerUnitGates:
         circuit.cnot(1, 2)
         input_state = rand_state_vector(3, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
-        state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+        state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector)
         assert state_mbqc.isclose(state)
@@ -152,10 +152,10 @@ class TestTranspilerUnitGates:
         circuit.m(0, axis)
         input_state = rand_state_vector(2, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
-        state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+        state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
         circuit_z = circuit.transpile_measurements_to_z_axis()
         assert all(instr.axis == Axis.Z for instr in circuit_z.instruction if instr.kind == InstructionKind.M)
-        state_z = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+        state_z = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
         assert state_z.isclose(state)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -168,8 +168,8 @@ class TestTranspilerUnitGates:
         assert any(instr.kind == InstructionKind.J for instr in circuit.instruction)
         circuit2 = circuit.transpile_j_to_rzh()
         assert not any(instr.kind == InstructionKind.J for instr in circuit2.instruction)
-        state = circuit.simulate(rng=rng).statevec
-        state2 = circuit2.simulate(rng=rng).statevec
+        state = circuit.simulate(rng=rng).state
+        state2 = circuit2.simulate(rng=rng).state
         assert state.fidelity(state2) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -189,8 +189,8 @@ class TestTranspilerUnitGates:
         assert I(2) in circuit2.instruction
         input_state = rand_state_vector(3, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
-        state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
-        state2 = circuit2.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+        state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
+        state2 = circuit2.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
         assert transpiled_swaps.outputs == (
             OutputIndex(OutputKind.Qubit, 2),
             OutputIndex(OutputKind.Bit, 0),
@@ -207,7 +207,7 @@ class TestTranspilerUnitGates:
         circuit = Circuit(width=3)
         circuit.cz(2, 0)
         circuit.ccx(0, 1, 2)
-        ref_state = circuit.simulate(rng=fx_rng).statevec
+        ref_state = circuit.simulate(rng=fx_rng).state
         pattern = circuit.transpile().pattern
         state = pattern.simulate(rng=fx_rng)
         assert state.isclose(ref_state)
@@ -219,14 +219,14 @@ class TestTranspilerUnitGates:
         circuit2 = Circuit(width=3)
         circuit2.cz(2, 0)
         circuit2.extend(decompose_ccx(instruction.CCX(controls=(0, 1), target=2)))
-        state = circuit.simulate().statevec
-        state2 = circuit2.simulate().statevec
+        state = circuit.simulate().state
+        state2 = circuit2.simulate().state
         assert state.isclose(state2)
 
     def test_cnot_cz(self, fx_rng: Generator) -> None:
         """Test regression about output node reordering."""
         circuit = Circuit(width=3, instr=[instruction.CNOT(0, 1), instruction.CZ((0, 1))])
-        state = circuit.simulate(rng=fx_rng).statevec
+        state = circuit.simulate(rng=fx_rng).state
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_mbqc)
@@ -314,7 +314,7 @@ class TestCircuits:
         circuit = Circuit(3, instr=[instruction(rng)])
         pattern = circuit.transpile().pattern
         input_state = rand_state_vector(3, rng=rng)
-        state = circuit.simulate(input_state=input_state).statevec
+        state = circuit.simulate(input_state=input_state).state
         state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
 
@@ -324,7 +324,7 @@ class TestCircuits:
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
         input_state = rand_state_vector(3, rng=rng)
-        state = circuit.simulate(input_state=input_state).statevec
+        state = circuit.simulate(input_state=input_state).state
         state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
 
@@ -336,7 +336,7 @@ class TestCircuits:
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
         input_state = rand_state_vector(nqubits, rng=rng)
-        state = circuit.simulate(input_state=input_state, backend="densitymatrix").statevec
+        state = circuit.simulate(input_state=input_state, backend="densitymatrix").state
         state_mbqc = pattern.simulate(input_state=input_state, backend="densitymatrix", rng=rng)
         assert np.allclose(state_mbqc.rho, state.rho)
 
@@ -351,8 +351,8 @@ def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
     transpiled_swaps = transpile_swaps(circuit)
     circuit2 = transpiled_swaps.circuit
     assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
-    state = circuit.simulate(rng=rng).statevec
-    state2 = circuit2.simulate(rng=rng).statevec
+    state = circuit.simulate(rng=rng).state
+    state2 = circuit2.simulate(rng=rng).state
     state2.permute(transpiled_swaps.extract_output_node_indices())
     assert state.isclose(state2)
 
@@ -374,8 +374,8 @@ def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis,
     assert I(2) in circuit2.instruction
     input_state = rand_state_vector(3, rng=rng)
     branch_selector = ConstBranchSelector(outcome)
-    state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
-    state2 = circuit2.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
+    state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
+    state2 = circuit2.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
     assert transpiled_swaps.outputs == (
         OutputIndex(OutputKind.Qubit, 2),
         OutputIndex(OutputKind.Bit, 0),

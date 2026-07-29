@@ -83,22 +83,14 @@ class SimulateResult(Generic[_DenseStateT]):
     """
     Result of a circuit simulation.
 
-    statevec : _DenseStateT
+    state : _DenseStateT
         State representation of the simulation output.
     classical_measures : tuple[int,...]
         Results of classical measurements.
     """
 
-    statevec: _DenseStateT  # mypy rejects covariant types as dataclass parameters as of Python 3.13
+    state: _DenseStateT  # mypy rejects covariant types as dataclass parameters as of Python 3.13
     classical_measures: tuple[int, ...]
-
-
-def _check_target(out: Sequence[int | None], index: int) -> int:
-    target = out[index]
-    if target is None:
-        msg = f"Qubit {index} has already been measured."
-        raise ValueError(msg)
-    return target
 
 
 @dataclass

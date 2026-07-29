@@ -42,7 +42,7 @@ def test_noiseless_noise_model_simulation(fx_rng: Generator) -> None:
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
-    state = circuit.simulate().statevec
+    state = circuit.simulate().state
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.minimize_space()
@@ -94,7 +94,7 @@ def test_compose_noise_model_simulation(fx_rng: Generator) -> None:
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
-    state = circuit.simulate().statevec
+    state = circuit.simulate().state
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.minimize_space()
@@ -228,7 +228,7 @@ def test_compose_amplitude_damping_depolarising_simulation(fx_rng: Generator) ->
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
-    state = circuit.simulate().statevec
+    state = circuit.simulate().state
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.minimize_space()

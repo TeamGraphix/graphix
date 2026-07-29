@@ -104,6 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Method `Circuit.simulate_statevector` has been renamed `Circuit.simulate`.
   - Method `Pattern.simulate_pattern` has been renamed `Pattern.simulate`.
 
+  - Field `SimulateResult.statevec` has been renamed `SimulateResult.state`.
+
 ## [0.3.5] - 2026-03-26
 
 ### Added
