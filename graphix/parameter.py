@@ -12,13 +12,14 @@ import cmath
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self, SupportsComplex, SupportsFloat, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeAlias, TypeVar, overload
 
 # override introduced in Python 3.12
 from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from typing import Self
 
 
 class Expression(ABC):
