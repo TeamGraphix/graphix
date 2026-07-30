@@ -85,7 +85,7 @@ def generate_clifford_pauli_decomposition(rng: Generator) -> tuple[tuple[PauliMe
         (
             clifford,
             tuple(
-                Pattern(input_nodes=[0], cmds=[Command.C(0, clifford)]).simulate_pattern(input_state=input_state)
+                Pattern(input_nodes=[0], cmds=[Command.C(0, clifford)]).simulate(input_state=input_state)
                 for input_state in input_states
             ),
         )
@@ -107,7 +107,7 @@ def generate_clifford_pauli_decomposition(rng: Generator) -> tuple[tuple[PauliMe
                 if patterns[clifford.value] is not None:
                     continue
                 if all(
-                    pattern.simulate_pattern(input_state=input_state, rng=rng).isclose(output_state_ref)
+                    pattern.simulate(input_state=input_state, rng=rng).isclose(output_state_ref)
                     for input_state, output_state_ref in zip(input_states, output_states_ref, strict=True)
                 ):
                     patterns[clifford.value] = measurement_list

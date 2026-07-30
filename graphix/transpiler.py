@@ -83,22 +83,14 @@ class SimulateResult(Generic[_DenseStateT]):
     """
     Result of a circuit simulation.
 
-    statevec : _DenseStateT
+    state : _DenseStateT
         State representation of the simulation output.
     classical_measures : tuple[int,...]
         Results of classical measurements.
     """
 
-    statevec: _DenseStateT  # mypy rejects covariant types as dataclass parameters as of Python 3.13
+    state: _DenseStateT  # mypy rejects covariant types as dataclass parameters as of Python 3.13
     classical_measures: tuple[int, ...]
-
-
-def _check_target(out: Sequence[int | None], index: int) -> int:
-    target = out[index]
-    if target is None:
-        msg = f"Qubit {index} has already been measured."
-        raise ValueError(msg)
-    return target
 
 
 @dataclass
@@ -525,7 +517,7 @@ class Circuit:
         return TranspiledPattern(result.pattern, classical_outputs)
 
     @overload
-    def simulate_statevector(
+    def simulate(
         self,
         backend: StatevectorBackend | Literal["statevector"] = ...,
         input_state: Data | None = None,
@@ -536,7 +528,7 @@ class Circuit:
     ) -> SimulateResult[Statevector]: ...
 
     @overload
-    def simulate_statevector(
+    def simulate(
         self,
         backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: Data | None = None,
@@ -547,7 +539,7 @@ class Circuit:
     ) -> SimulateResult[DensityMatrix]: ...
 
     @overload
-    def simulate_statevector(
+    def simulate(
         self,
         backend: DenseStateBackend[_DenseStateT],
         input_state: Data | None = None,
@@ -557,7 +549,7 @@ class Circuit:
         stacklevel: int = 1,
     ) -> SimulateResult[_DenseStateT]: ...
 
-    def simulate_statevector(
+    def simulate(
         self,
         backend: DenseStateBackend[_DenseStateT] | _DenseStateBackendLiteral = "statevector",
         input_state: Data | None = None,
@@ -649,24 +641,24 @@ class Circuit:
         return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor) -> Circuit:
-        """Apply `visitor` to all instructions in the circuit."""
+        """Apply ``visitor`` to all instructions in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
             result.instruction.append(instr.visit(visitor))
         return result
 
     def map_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle]) -> Circuit:
-        """Apply `f` to all angles that occur in the circuit."""
+        """Apply ``f`` to all angles that occur in the circuit."""
         return self.visit(_MapAngleVisitor(f))
 
     def is_parameterized(self) -> bool:
         """
-        Return `True` if there is at least one measurement angle that is not just an instance of `SupportsFloat`.
+        Return ``True`` if there is at least one measurement angle that is not just an instance of :class:`SupportsFloat`.
 
         A parameterized circuit is a circuit where at least one
         measurement angle is an expression that is not a number,
-        typically an instance of `sympy.Expr` (but we don't force to
-        choose `sympy` here).
+        typically an instance of :class:`sympy.Expr` (but we don't force to
+        choose ``sympy`` here).
 
         """
         for instr in self.instruction:

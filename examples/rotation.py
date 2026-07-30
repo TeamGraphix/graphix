@@ -68,7 +68,7 @@ pattern.draw(flow_from_pattern=False)
 # Internally, we are executing the command sequence we inspected above on a statevector simulator.
 # We also have a tensornetwork simulation backend to handle larger MBQC patterns. see other examples for how to use it.
 
-out_state = pattern.simulate_pattern(backend="statevector")
+out_state = pattern.simulate(backend="statevector")
 print(out_state.flatten())
 
 # %%

@@ -5,7 +5,7 @@ Statevector simulation of MBQC patterns
 Here we benchmark our statevector simulator for MBQC.
 
 The methods and modules we use are the followings:
-    1. :meth:`graphix.pattern.Pattern.simulate_pattern`
+    1. :meth:`graphix.pattern.Pattern.simulate`
         Pattern simulator with statevector backend.
     2. :mod:`paddle_quantum.mbqc`
         Pattern simulation using :mod:`paddle_quantum.mbqc`.
@@ -87,12 +87,12 @@ for width in test_cases:
     pattern.minimize_space()
     nqubit = len(pattern.nodes())
     start = perf_counter()
-    pattern.simulate_pattern(max_qubit_num=30)
+    pattern.simulate(max_qubit_num=30)
     end = perf_counter()
     print(f"width: {width}, nqubit: {nqubit}, depth: {DEPTH}, time: {end - start}")
     pattern_time.append(end - start)
     start = perf_counter()
-    circuit.simulate_statevector()
+    circuit.simulate()
     end = perf_counter()
     circuit_time.append(end - start)
 
