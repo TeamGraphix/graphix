@@ -90,8 +90,8 @@ pattern.draw(flow_from_pattern=True)
 # So the preprocessing has done all the necessary computations, and all nodes are isolated with no further measurements required.
 # Let us make sure the result is correct:
 
-out_state = pattern.simulate_pattern()
-state = circuit.simulate_statevector().statevec
+out_state = pattern.simulate()
+state = circuit.simulate().state
 print("overlap of states: ", np.abs(np.dot(state.flatten().conjugate(), out_state.flatten())))
 
 # %%

@@ -42,12 +42,12 @@ def test_noiseless_noise_model_simulation(fx_rng: Generator) -> None:
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
-    state = circuit.simulate_statevector().statevec
+    state = circuit.simulate().state
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.minimize_space()
     noise_model = NoiselessNoiseModel()
-    state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
+    state_mbqc = pattern.simulate(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
 
 
@@ -94,13 +94,13 @@ def test_compose_noise_model_simulation(fx_rng: Generator) -> None:
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
-    state = circuit.simulate_statevector().statevec
+    state = circuit.simulate().state
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.minimize_space()
     # By default, `DepolarisingNoiseModel` is noiseless.
     noise_model = ComposeNoiseModel([NoiselessNoiseModel(), DepolarisingNoiseModel()])
-    state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
+    state_mbqc = pattern.simulate(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
 
 
@@ -162,14 +162,12 @@ def test_confuse_result(fx_rng: Generator, noise_model: NoiseModel) -> None:
     # Pattern that measures 0 on qubit 0 with probability 1.
     pattern = Pattern(cmds=[N(0), M(0)])
     measure_method = DefaultMeasureMethod()
-    pattern.simulate_pattern(
+    pattern.simulate(
         backend="densitymatrix", noise_model=NoiselessNoiseModel(), rng=fx_rng, measure_method=measure_method
     )
     assert measure_method.results[0] == 0
     measure_method = DefaultMeasureMethod()
-    pattern.simulate_pattern(
-        backend="densitymatrix", noise_model=noise_model, rng=fx_rng, measure_method=measure_method
-    )
+    pattern.simulate(backend="densitymatrix", noise_model=noise_model, rng=fx_rng, measure_method=measure_method)
     assert measure_method.results[0] == 1
 
 
@@ -230,13 +228,13 @@ def test_compose_amplitude_damping_depolarising_simulation(fx_rng: Generator) ->
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
-    state = circuit.simulate_statevector().statevec
+    state = circuit.simulate().state
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.minimize_space()
     # both models default to noiseless (all probs 0)
     noise_model = ComposeNoiseModel([AmplitudeDampingNoiseModel(), DepolarisingNoiseModel()])
-    state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
+    state_mbqc = pattern.simulate(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten())) == pytest.approx(1)
 
 
