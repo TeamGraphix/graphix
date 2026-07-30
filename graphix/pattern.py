@@ -1714,7 +1714,7 @@ class Pattern(InplaceParameterizable):
                     check_active(cmd, cmd.node)
 
     def apply(self, f: Callable[[Measurement], Measurement], *, copy: bool = False) -> Pattern:
-        """Apply the function ``f` to each measurement.
+        """Apply the function ``f`` to each measurement.
 
         Parameters
         ----------
