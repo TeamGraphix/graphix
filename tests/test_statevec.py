@@ -475,7 +475,7 @@ class TestStatevector:
         pattern = qc.transpile().pattern
         data = generate_rnd_data(fx_rng, nqubits)
         sv = Statevector(data=data)
-        sv_test = pattern.simulate_pattern(backend="statevector", input_state=sv, rng=fx_rng)
+        sv_test = pattern.simulate(backend="statevector", input_state=sv, rng=fx_rng)
 
         assert sv_test.isclose(sv)
 

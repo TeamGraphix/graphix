@@ -566,53 +566,84 @@ class GraphVisualizer:
         """
         if not self.og.graph.nodes:
             return
-        plt.scatter(
-            [],
-            [],
-            edgecolor=DEFAULT_NODE_EC,
-            facecolor=DEFAULT_NODE_FC,
-            s=150,
-            zorder=2,
-            label="Input nodes",
-            marker=INPUT_NODE_MARKER,
-        )
-        plt.scatter(
-            [],
-            [],
-            edgecolor=DEFAULT_NODE_EC,
-            facecolor=OUTPUT_NODE_FC,
-            s=150,
-            zorder=2,
-            label="Output nodes",
-            marker=DEFAULT_NODE_MARKER,
-        )
-        if self.options.pauli_measurements:
+        if self.og.input_nodes:
             plt.scatter(
                 [],
                 [],
                 edgecolor=DEFAULT_NODE_EC,
-                facecolor=PAULI_NODE_FC,
+                facecolor=DEFAULT_NODE_FC,
                 s=150,
                 zorder=2,
-                label="Pauli-measured nodes",
+                label="Input nodes",
+                marker=INPUT_NODE_MARKER,
+            )
+        if self.og.output_nodes:
+            plt.scatter(
+                [],
+                [],
+                edgecolor=DEFAULT_NODE_EC,
+                facecolor=OUTPUT_NODE_FC,
+                s=150,
+                zorder=2,
+                label="Output nodes",
                 marker=DEFAULT_NODE_MARKER,
             )
-        plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
+        if self.options.pauli_measurements:
+            has_pauli_measurements = any(
+                isinstance(measurement, PauliMeasurement) for measurement in self.og.measurements.values()
+            )
+            if has_pauli_measurements:
+                plt.scatter(
+                    [],
+                    [],
+                    edgecolor=DEFAULT_NODE_EC,
+                    facecolor=PAULI_NODE_FC,
+                    s=150,
+                    zorder=2,
+                    label="Pauli-measured nodes",
+                    marker=DEFAULT_NODE_MARKER,
+                )
+        if self.og.graph.edges():
+            plt.plot([], [], "--", c=EDGE_C, label="Graph edge")
 
-        assert self._source is not None
-        match self._source:
-            case _Source.Flow:
-                plt.plot([], [], color=FLOW_C, label="Correction function")
-            case _Source.XZCorr:
-                plt.plot([], [], color=X_C, label="X corrections")
-                plt.plot([], [], color=Z_C, label="Z corrections")
-                plt.plot([], [], color=XZ_C, label="X and Z corrections")
-            case _Source.OG:
-                pass
-            case _:
-                assert_never(self._source)
+        if self.arrow_paths:
+            match self._source:
+                case _Source.Flow:
+                    plt.plot([], [], color=FLOW_C, label="Correction function")
+                case _Source.XZCorr:
+                    if len({X_C, Z_C, XZ_C}) != 3:
+                        raise RuntimeError(
+                            "X, Z, and X-and-Z corrections must have different arrow colors to display the legend correctly."
+                        )
+                    for color, label in ((X_C, "X corrections"), (Z_C, "Z corrections"), (XZ_C, "X and Z corrections")):
+                        # The type of arrow is determined from its color. This requires using different colors to display the legend correctly.
+                        has_corr = any(color == arrow.color for arrow in self.arrow_paths.values())
+                        if has_corr:
+                            plt.plot([], [], color=color, label=label)
+                case _Source.OG | None:
+                    raise RuntimeError(f"Unexpected arrow paths with source {self._source}")
+                case _:
+                    assert_never(self._source)
 
-        plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
+        # Set scatterpoints=1 to prevent node icons from appearing
+        # three times in the legend with the Agg backend used by
+        # pytest-mpl.
+        legend = plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5), scatterpoints=1)
+
+        # Resize the figure to accommodate the legend.
+        fig = plt.gcf()
+        fig.canvas.draw()  # Force layout
+
+        bbox = legend.get_window_extent()
+
+        # Width of the legend in inches
+        padding = 0.5
+        legend_width = bbox.width / fig.dpi + padding
+        legend_height = bbox.height / fig.dpi + padding
+
+        width, height = fig.get_size_inches()
+        fig.set_size_inches(width + legend_width, max(height, legend_height), forward=True)
+        fig.subplots_adjust(right=width / (width + legend_width))
 
 
 @singledispatch

@@ -62,7 +62,7 @@ def test_expectation_value(fx_rng: Generator, backend: _BackendLiteral) -> None:
     # Pattern that measures 0 on qubit 0 with probability 1.
     pattern = Pattern(cmds=[N(0), M(0)])
     branch_selector = CheckedBranchSelector(expected={0: 1.0})
-    pattern.simulate_pattern(backend, branch_selector=branch_selector, rng=fx_rng)
+    pattern.simulate(backend, branch_selector=branch_selector, rng=fx_rng)
 
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
@@ -84,7 +84,7 @@ def test_random_branch_selector(fx_rng: Generator, backend: _BackendLiteral) -> 
     pattern = Pattern(cmds=[N(0), M(0)])
     for _ in range(NB_ROUNDS):
         measure_method = DefaultMeasureMethod()
-        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method, rng=fx_rng)
+        pattern.simulate(backend, branch_selector=branch_selector, measure_method=measure_method, rng=fx_rng)
         assert measure_method.results[0] == 0
 
 
@@ -104,7 +104,7 @@ def test_random_branch_selector_without_pr_calc(fx_rng: Generator, backend: _Bac
     nb_outcome_1 = 0
     for _ in range(NB_ROUNDS):
         measure_method = DefaultMeasureMethod()
-        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method, rng=fx_rng)
+        pattern.simulate(backend, branch_selector=branch_selector, measure_method=measure_method, rng=fx_rng)
         if measure_method.results[0]:
             nb_outcome_1 += 1
     assert abs(nb_outcome_1 - NB_ROUNDS / 2) < NB_ROUNDS / 5
@@ -126,7 +126,7 @@ def test_fixed_branch_selector(backend: _BackendLiteral, outcome: list[Outcome])
     branch_selector = FixedBranchSelector(results1, default=FixedBranchSelector(results2))
     pattern = Pattern(cmds=[cmd for qubit in range(3) for cmd in (N(qubit), M(qubit, Measurement.XY(0.1)))])
     measure_method = DefaultMeasureMethod()
-    pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
+    pattern.simulate(backend, branch_selector=branch_selector, measure_method=measure_method)
     for qubit, value in enumerate(outcome):
         assert measure_method.results[qubit] == value
 
@@ -146,7 +146,7 @@ def test_fixed_branch_selector_no_default(backend: _BackendLiteral) -> None:
     pattern = Pattern(cmds=[N(0), M(0, Measurement.XY(1e-5))])
     measure_method = DefaultMeasureMethod()
     with pytest.raises(ValueError):
-        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
+        pattern.simulate(backend, branch_selector=branch_selector, measure_method=measure_method)
 
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
@@ -164,5 +164,5 @@ def test_const_branch_selector(backend: _BackendLiteral, outcome: Outcome) -> No
     pattern = Pattern(cmds=[N(0), M(0, Measurement.XY(1e-5))])
     for _ in range(NB_ROUNDS):
         measure_method = DefaultMeasureMethod()
-        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
+        pattern.simulate(backend, branch_selector=branch_selector, measure_method=measure_method)
         assert measure_method.results[0] == outcome

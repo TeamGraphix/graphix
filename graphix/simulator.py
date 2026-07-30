@@ -9,7 +9,8 @@ from __future__ import annotations
 import abc
 import logging
 import warnings
-from typing import TYPE_CHECKING, Generic, Literal, TypeVar, overload
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Generic, Literal, TypedDict, TypeVar, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -31,6 +32,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from numpy.random import Generator
+
+    # Unpack introduced in Python 3.12
+    from typing_extensions import Unpack
 
     from graphix.command import BaseN
     from graphix.measurements import Measurement, Outcome
@@ -56,11 +60,11 @@ _StateT_co = TypeVar("_StateT_co", covariant=True)
 class PrepareMethod(abc.ABC):
     """Prepare method used by the simulator.
 
-    See `DefaultPrepareMethod` for the default prepare method that implements MBQC.
+    See :class:`DefaultPrepareMethod` for the default prepare method that implements MBQC.
 
     To be overwritten by custom preparation methods in the case of delegated QC protocols.
 
-    Example: class `ClientPrepareMethod` in https://github.com/qat-inria/veriphix
+    Example: class ``ClientPrepareMethod`` in https://github.com/qat-inria/veriphix
     """
 
     @abc.abstractmethod
@@ -84,7 +88,7 @@ class MeasureMethod(abc.ABC):
 
     To be overwritten by custom measurement methods in the case of delegated QC protocols.
 
-    Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
+    Example: class ``ClientMeasureMethod`` in https://github.com/qat-inria/veriphix
     """
 
     def measure(
@@ -192,8 +196,8 @@ class DefaultMeasureMethod(MeasureMethod):
         Notes
         -----
         If a mapping is provided, it is treated as read-only. Measurements
-        performed during simulation are stored in `self.results`, which is a copy
-        of the given mapping. The original `results` mapping is not modified.
+        performed during simulation are stored in ``self.results``, which is a copy
+        of the given mapping. The original ``results`` mapping is not modified.
         """
         # results is coerced into dict, since `store_measurement_outcome` mutates it.
         self.results = {} if results is None else dict(results)
@@ -253,6 +257,48 @@ class DefaultMeasureMethod(MeasureMethod):
         self.results[node] = result
 
 
+class SimulatorKwargs(TypedDict, total=False):
+    """Common keyword arguments for simulator.
+
+    The keys correspond to the fields of :class:`SimulatorOptions`.
+    """
+
+    prepare_method: PrepareMethod | None
+    measure_method: MeasureMethod | None
+    noise_model: NoiseModel | None
+    branch_selector: BranchSelector | None
+    graph_prep: str | None
+    symbolic: bool
+
+
+@dataclass(frozen=True)
+class SimulatorOptions:
+    """Options controlling simulator.
+
+    Parameters
+    ----------
+    prepare_method: :class:`PrepareMethod`, optional
+        Prepare method used by the simulator. Default is :class:`DefaultPrepareMethod`.
+    measure_method: :class:`MeasureMethod`, optional
+        Measure method used by the simulator. Default is :class:`DefaultMeasureMethod`.
+    noise_model: :class:`NoiseModel`, optional
+        [Density matrix backend only] Noise model used by the simulator.
+    branch_selector: :class:`BranchSelector`, optional
+        Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  Default is :class:`RandomBranchSelector`.
+    graph_prep: str, optional
+        [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
+    symbolic : bool, optional
+        [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+    """
+
+    prepare_method: PrepareMethod | None = None
+    measure_method: MeasureMethod | None = None
+    noise_model: NoiseModel | None = None
+    branch_selector: BranchSelector | None = None
+    graph_prep: str | None = None
+    symbolic: bool = False
+
+
 class PatternSimulator(Generic[_StateT_co]):
     """MBQC simulator.
 
@@ -267,14 +313,9 @@ class PatternSimulator(Generic[_StateT_co]):
         self: PatternSimulator[Statevector],
         pattern: Pattern,
         backend: Literal["statevector"] = ...,
-        prepare_method: PrepareMethod | None = None,
-        measure_method: MeasureMethod | None = None,
-        noise_model: NoiseModel | None = None,
-        branch_selector: BranchSelector | None = None,
-        graph_prep: str | None = None,
-        symbolic: bool = False,
         *,
         stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> None: ...
 
     @overload
@@ -282,14 +323,9 @@ class PatternSimulator(Generic[_StateT_co]):
         self: PatternSimulator[DensityMatrix],
         pattern: Pattern,
         backend: Literal["densitymatrix"] = ...,
-        prepare_method: PrepareMethod | None = None,
-        measure_method: MeasureMethod | None = None,
-        noise_model: NoiseModel | None = None,
-        branch_selector: BranchSelector | None = None,
-        graph_prep: str | None = None,
-        symbolic: bool = False,
         *,
         stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> None: ...
 
     @overload
@@ -297,14 +333,9 @@ class PatternSimulator(Generic[_StateT_co]):
         self: PatternSimulator[MBQCTensorNet],
         pattern: Pattern,
         backend: Literal["tensornetwork", "mps"] = ...,
-        prepare_method: PrepareMethod | None = None,
-        measure_method: MeasureMethod | None = None,
-        noise_model: NoiseModel | None = None,
-        branch_selector: BranchSelector | None = None,
-        graph_prep: str | None = None,
-        symbolic: bool = False,
         *,
         stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> None: ...
 
     @overload
@@ -312,28 +343,18 @@ class PatternSimulator(Generic[_StateT_co]):
         self: PatternSimulator[_StateT],
         pattern: Pattern,
         backend: Backend[_StateT] = ...,
-        prepare_method: PrepareMethod | None = None,
-        measure_method: MeasureMethod | None = None,
-        noise_model: NoiseModel | None = None,
-        branch_selector: BranchSelector | None = None,
-        graph_prep: str | None = None,
-        symbolic: bool = False,
         *,
         stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> None: ...
 
     def __init__(
         self: PatternSimulator[_StateT | _BuiltinBackendState],
         pattern: Pattern,
         backend: Backend[_StateT] | _BackendLiteral = "statevector",
-        prepare_method: PrepareMethod | None = None,
-        measure_method: MeasureMethod | None = None,
-        noise_model: NoiseModel | None = None,
-        branch_selector: BranchSelector | None = None,
-        graph_prep: str | None = None,
-        symbolic: bool = False,
         *,
         stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> None:
         """
         Construct a pattern simulator.
@@ -345,37 +366,22 @@ class PatternSimulator(Generic[_StateT_co]):
         backend : :class:`Backend` or {'statevector', 'densitymatrix', 'tensornetwork'}, optional
             The simulator backend to use: either an instantiated backend or the
             name of a built-in backend. Default: ``'statevector'``.
-        prepare_method: :class:`PrepareMethod`, optional
-            Prepare method used by the simulator. Default is :class:`DefaultPrepareMethod`.
-        measure_method: :class:`MeasureMethod`, optional
-            Measure method used by the simulator. Default is :class:`DefaultMeasureMethod`.
-        noise_model: :class:`NoiseModel`, optional
-            [Density matrix backend only] Noise model used by the simulator.
-        branch_selector: :class:`BranchSelector`, optional
-            Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  Default is :class:`RandomBranchSelector`.
-        graph_prep: str, optional
-            [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
-        symbolic : bool, optional
-            [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
         stacklevel : int, optional
             Stack level to use for warnings. Defaults to 1, meaning that warnings
             are reported at this function's call site.
+        kwargs: Unpack[SimulatorKwargs]
+            Options controlling simulator. See :class:`SimulatorOptions`.
 
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
             :class:`graphix.sim.tensornet.TensorNetworkBackend`\
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
-        self.backend = _initialize_backend(
-            pattern, backend, noise_model, branch_selector, graph_prep, symbolic, stacklevel=stacklevel + 1
-        )
-        self.noise_model = noise_model
+        options = SimulatorOptions(**kwargs)
+        self.backend = _initialize_backend(pattern, backend, stacklevel=stacklevel + 1, **kwargs)
+        self.noise_model = options.noise_model
         self.__pattern = pattern
-        if prepare_method is None:
-            prepare_method = DefaultPrepareMethod()
-        self.__prepare_method = prepare_method
-        if measure_method is None:
-            measure_method = DefaultMeasureMethod()
-        self.__measure_method = measure_method
+        self.__prepare_method = options.prepare_method or DefaultPrepareMethod()
+        self.__measure_method = options.measure_method or DefaultMeasureMethod()
 
     @property
     def pattern(self) -> Pattern:
@@ -477,12 +483,9 @@ class PatternSimulator(Generic[_StateT_co]):
 def _initialize_backend(
     pattern: Pattern,
     backend: StatevectorBackend | Literal["statevector"],
-    noise_model: NoiseModel | None,
-    branch_selector: BranchSelector | None,
-    graph_prep: str | None,
-    symbolic: bool,
     *,
     stacklevel: int = 1,
+    **kwargs: Unpack[SimulatorKwargs],
 ) -> StatevectorBackend: ...
 
 
@@ -490,12 +493,9 @@ def _initialize_backend(
 def _initialize_backend(
     pattern: Pattern,
     backend: DensityMatrixBackend | Literal["densitymatrix"],
-    noise_model: NoiseModel | None,
-    branch_selector: BranchSelector | None,
-    graph_prep: str | None,
-    symbolic: bool,
     *,
     stacklevel: int = 1,
+    **kwargs: Unpack[SimulatorKwargs],
 ) -> DensityMatrixBackend: ...
 
 
@@ -503,12 +503,9 @@ def _initialize_backend(
 def _initialize_backend(
     pattern: Pattern,
     backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
-    noise_model: NoiseModel | None,
-    branch_selector: BranchSelector | None,
-    graph_prep: str | None,
-    symbolic: bool,
     *,
     stacklevel: int = 1,
+    **kwargs: Unpack[SimulatorKwargs],
 ) -> TensorNetworkBackend: ...
 
 
@@ -516,24 +513,18 @@ def _initialize_backend(
 def _initialize_backend(
     pattern: Pattern,
     backend: Backend[_StateT_co],
-    noise_model: NoiseModel | None,
-    branch_selector: BranchSelector | None,
-    graph_prep: str | None,
-    symbolic: bool,
     *,
     stacklevel: int = 1,
+    **kwargs: Unpack[SimulatorKwargs],
 ) -> Backend[_StateT_co]: ...
 
 
 def _initialize_backend(
     pattern: Pattern,
     backend: Backend[_StateT_co] | _BackendLiteral,
-    noise_model: NoiseModel | None,
-    branch_selector: BranchSelector | None,
-    graph_prep: str | None,
-    symbolic: bool,
     *,
     stacklevel: int = 1,
+    **kwargs: Unpack[SimulatorKwargs],
 ) -> _BuiltinBackend | Backend[_StateT_co]:
     """
     Initialize the backend.
@@ -543,56 +534,52 @@ def _initialize_backend(
     backend: :class:`Backend` object,
         'statevector', or 'densitymatrix', or 'tensornetwork'
         simulation backend (optional), default is 'statevector'.
-    noise_model: :class:`NoiseModel`, optional
-        [Density matrix backend only] Noise model used by the simulator.
-    branch_selector: :class:`BranchSelector`, optional
-        Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  Default is :class:`RandomBranchSelector`.
-    graph_prep: str, optional
-        [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
-    symbolic : bool, optional
-        [Density matrix backend only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+    stacklevel : int, optional
+        Stack level to use for warnings. Defaults to 1, meaning that warnings
+        are reported at this function's call site.
+    kwargs: Unpack[SimulatorKwargs]
+        Options controlling simulator. See :class:`SimulatorOptions`.
 
     Returns
     -------
     :class:`Backend`
         matching the appropriate backend
     """
+    options = SimulatorOptions(**kwargs)
     if isinstance(backend, Backend):
-        if branch_selector is not None:
+        if options.branch_selector is not None:
             raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
-        if graph_prep is not None:
+        if options.graph_prep is not None:
             raise ValueError("`graph_prep` cannot be specified if `backend` is already instantiated.")
-        if symbolic:
+        if options.symbolic:
             raise ValueError("`symbolic` cannot be specified if `backend` is already instantiated.")
         return backend
-    if branch_selector is None:
-        branch_selector = RandomBranchSelector()
+    branch_selector = RandomBranchSelector() if options.branch_selector is None else options.branch_selector
     if backend in {"tensornetwork", "mps"}:
-        if noise_model is not None:
+        if options.noise_model is not None:
             raise ValueError("`noise_model` cannot be specified for tensor network backend.")
-        if symbolic:
+        if options.symbolic:
             raise ValueError("`symbolic` cannot be specified for tensor network backend.")
-        if graph_prep is None:
-            graph_prep = "auto"
+        graph_prep = "auto" if options.graph_prep is None else options.graph_prep
         return TensorNetworkBackend(pattern, branch_selector=branch_selector, graph_prep=graph_prep)
-    if graph_prep is not None:
+    if options.graph_prep is not None:
         raise ValueError("`graph_prep` can only be specified for tensor network backend.")
     match backend:
         case "statevector":
-            if noise_model is not None:
+            if options.noise_model is not None:
                 raise ValueError("`noise_model` cannot be specified for state vector backend.")
-            if symbolic:
+            if options.symbolic:
                 raise ValueError(
                     "Statevector backend does not support `symbolic` simulation. Consider using backend in `graphix-symbolic` plugin."
                 )
             nqubits = pattern.max_space()
             return StatevectorBackend.with_capacity(nqubits, branch_selector=branch_selector)
         case "densitymatrix":
-            if noise_model is None:
+            if options.noise_model is None:
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
                     stacklevel=stacklevel + 1,
                 )
-            return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
+            return DensityMatrixBackend(branch_selector=branch_selector, symbolic=options.symbolic)
         case _:
             raise ValueError(f"Unknown backend {backend}.")

@@ -49,9 +49,9 @@ class TestNoisyDensityMatrixBackend:
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_noiseless_noisy_hadamard(self, fx_rng: Generator) -> None:
         hadamardpattern = hpat()
-        noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
+        noiselessres = hadamardpattern.simulate(backend="densitymatrix", rng=fx_rng)
         # noiseless noise model
-        noisynoiselessres = hadamardpattern.simulate_pattern(
+        noisynoiselessres = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=NoiselessNoiseModel(),
             rng=fx_rng,
@@ -65,7 +65,7 @@ class TestNoisyDensityMatrixBackend:
     # test measurement confuse outcome
     def test_noisy_measure_confuse_hadamard(self, fx_rng: Generator) -> None:
         hadamardpattern = hpat()
-        res = hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_error_prob=1.0),
             rng=fx_rng,
@@ -80,7 +80,7 @@ class TestNoisyDensityMatrixBackend:
         hadamardpattern = hpat()
         measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}, outcome = {outcome}")
-        res = hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_error_prob=measure_error_pr),
             branch_selector=ConstBranchSelector(outcome),
@@ -100,7 +100,7 @@ class TestNoisyDensityMatrixBackend:
         measure_channel_pr = fx_rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
-        res = hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_channel_prob=measure_channel_pr),
             rng=fx_rng,
@@ -119,7 +119,7 @@ class TestNoisyDensityMatrixBackend:
         # x error only
         x_error_pr = fx_rng.random()
         print(f"x_error_pr = {x_error_pr}, outcome = {outcome}")
-        res = hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr),
             branch_selector=ConstBranchSelector(outcome),
@@ -141,7 +141,7 @@ class TestNoisyDensityMatrixBackend:
     def test_noisy_entanglement_hadamard(self, fx_rng: Generator) -> None:
         hadamardpattern = hpat()
         entanglement_error_pr = fx_rng.uniform()
-        res = hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(entanglement_error_prob=entanglement_error_pr),
             rng=fx_rng,
@@ -174,7 +174,7 @@ class TestNoisyDensityMatrixBackend:
         hadamardpattern = hpat()
         prepare_error_pr = fx_rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
-        res = hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(prepare_error_prob=prepare_error_pr),
             rng=fx_rng,
@@ -193,9 +193,9 @@ class TestNoisyDensityMatrixBackend:
     def test_noiseless_noisy_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
-        noiselessres = rzpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
+        noiselessres = rzpattern.simulate(backend="densitymatrix", rng=fx_rng)
         # noiseless noise model or DepolarisingNoiseModel() since all probas are 0
-        noisynoiselessres = rzpattern.simulate_pattern(
+        noisynoiselessres = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(),
             rng=fx_rng,
@@ -212,7 +212,7 @@ class TestNoisyDensityMatrixBackend:
         rzpattern = rzpat(alpha)
         prepare_error_pr = fx_rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(prepare_error_prob=prepare_error_pr),
             rng=fx_rng,
@@ -246,7 +246,7 @@ class TestNoisyDensityMatrixBackend:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
         entanglement_error_pr = fx_rng.uniform()
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(entanglement_error_prob=entanglement_error_pr),
             rng=fx_rng,
@@ -299,7 +299,7 @@ class TestNoisyDensityMatrixBackend:
         measure_channel_pr = fx_rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_channel_prob=measure_channel_pr),
             rng=fx_rng,
@@ -341,7 +341,7 @@ class TestNoisyDensityMatrixBackend:
         m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
         results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
 
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr),
             branch_selector=FixedBranchSelector(results),
@@ -379,7 +379,7 @@ class TestNoisyDensityMatrixBackend:
         # M(0) determines Z, M(1) determines X
         results: dict[int, Outcome] = {0: outcome_z, 1: outcome_x}
 
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(z_error_prob=z_error_pr),
             branch_selector=FixedBranchSelector(results),
@@ -420,7 +420,7 @@ class TestNoisyDensityMatrixBackend:
         # M(0) determines Z correction, M(1) determines X correction
         results: dict[int, Outcome] = {0: z_outcome, 1: x_outcome}
 
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr, z_error_prob=z_error_pr),
             branch_selector=FixedBranchSelector(results),
@@ -481,7 +481,7 @@ class TestNoisyDensityMatrixBackend:
         results: dict[int, Outcome] = {0: z_outcome, 1: x_outcome}
 
         # Test with probability 1 to flip both outcomes
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_error_prob=1.0),
             branch_selector=FixedBranchSelector(results),
@@ -507,7 +507,7 @@ class TestNoisyDensityMatrixBackend:
         # Test with arbitrary probability
         measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}, z_outcome = {z_outcome}, x_outcome = {x_outcome}")
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_error_prob=measure_error_pr),
             branch_selector=FixedBranchSelector(results),
@@ -535,8 +535,8 @@ class TestNoisyDensityMatrixAmplitudeDamping:
     def test_noiseless_amplitude_damping_hadamard(self, fx_rng: Generator) -> None:
         """A zero-parameter amplitude damping model reproduces the noiseless result."""
         hadamardpattern = hpat()
-        noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
-        noisynoiselessres = hadamardpattern.simulate_pattern(
+        noiselessres = hadamardpattern.simulate(backend="densitymatrix", rng=fx_rng)
+        noisynoiselessres = hadamardpattern.simulate(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(),
             rng=fx_rng,
@@ -551,8 +551,8 @@ class TestNoisyDensityMatrixAmplitudeDamping:
         """A zero-parameter amplitude damping model reproduces the noiseless RZ result."""
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
-        noiselessres = rzpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
-        noisynoiselessres = rzpattern.simulate_pattern(
+        noiselessres = rzpattern.simulate(backend="densitymatrix", rng=fx_rng)
+        noisynoiselessres = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(),
             rng=fx_rng,
@@ -569,8 +569,8 @@ class TestNoisyDensityMatrixAmplitudeDamping:
         ad = AmplitudeDampingNoiseModel(prepare_error_prob=0.2)
         composed = ComposeNoiseModel([depol, ad])
 
-        r_depol = hadamardpattern.simulate_pattern(backend="densitymatrix", noise_model=depol, rng=fx_rng)
-        r_both = hadamardpattern.simulate_pattern(backend="densitymatrix", noise_model=composed, rng=fx_rng)
+        r_depol = hadamardpattern.simulate(backend="densitymatrix", noise_model=depol, rng=fx_rng)
+        r_both = hadamardpattern.simulate(backend="densitymatrix", noise_model=composed, rng=fx_rng)
         assert isinstance(r_depol, DensityMatrix)
         assert isinstance(r_both, DensityMatrix)
         assert np.isclose(r_both.rho.trace(), 1.0)
@@ -673,7 +673,7 @@ class TestAmplitudeDampingAnalytic:
         self, param: str, outcome: Outcome, fx_rng: Generator
     ) -> None:
         gamma = fx_rng.random()
-        res = hpat().simulate_pattern(
+        res = hpat().simulate(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(**{param: gamma}),
             branch_selector=ConstBranchSelector(outcome),
@@ -752,7 +752,7 @@ class TestAmplitudeDampingAnalytic:
         # transpiler puts Z corrections before X corrections by
         # default.
         results: dict[int, Outcome] = {0: outcome_z, 1: outcome_x}
-        res = rzpattern.simulate_pattern(
+        res = rzpattern.simulate(
             backend="densitymatrix",
             noise_model=AmplitudeDampingNoiseModel(**{param: gamma}),
             branch_selector=FixedBranchSelector(results),

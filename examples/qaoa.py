@@ -47,8 +47,8 @@ pattern.draw(flow_from_pattern=False)
 # %%
 # finally, simulate the QAOA circuit
 
-out_state = pattern.simulate_pattern()
-state = circuit.simulate_statevector().statevec
+out_state = pattern.simulate()
+state = circuit.simulate().state
 print("overlap of states: ", np.abs(np.dot(state.flatten().conjugate(), out_state.flatten())))
 # sphinx_gallery_thumbnail_number = 2
 

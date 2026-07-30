@@ -36,7 +36,7 @@ from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Container, Iterator
-    from typing import Any, TypeVar
+    from typing import TypeVar
 
     from numpy.random import Generator
 
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import TensorNetworkBackend
-    from graphix.simulator import _BackendLiteral
+    from graphix.simulator import SimulatorKwargs, _BackendLiteral
     from graphix.space_minimization import SpaceMinimizationHeuristic
     from graphix.states import State
     from graphix.visualization import DrawKwargs
@@ -389,7 +389,7 @@ class Pattern:
 
     @property
     def output_nodes(self) -> list[int]:
-        """List all nodes that are either `input_nodes` or prepared with `N` commands and that have not been measured with an `M` command."""
+        """List all nodes that are either ``input_nodes`` or prepared with ``N`` commands and that have not been measured with an ``M`` command."""
         return list(self.__output_nodes)  # copy for preventing modification
 
     def __len__(self) -> int:
@@ -446,7 +446,7 @@ class Pattern:
 
     def __str__(self) -> str:
         """Return a human-readable string of the pattern."""
-        return self.to_ascii()
+        return pattern_to_str(self)
 
     def __eq__(self, other: object) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
@@ -1125,7 +1125,7 @@ class Pattern:
         return self.to_xzcorrections().to_pauliflow()
 
     def to_xzcorrections(self) -> XZCorrections[Measurement]:
-        """Extract the XZ-corrections from the current measurement pattern.
+        r"""Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
@@ -1137,7 +1137,7 @@ class Pattern:
         XZCorrectionsError
             If the extracted correction dictionaries are not well formed.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -1384,7 +1384,7 @@ class Pattern:
         return n_list
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: StatevectorBackend | Literal["statevector"] = "statevector",
         input_state: State
@@ -1394,11 +1394,11 @@ class Pattern:
         | Iterable[Iterable[ExpressionOrSupportsComplex]]
         | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> Statevector: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: State
@@ -1408,11 +1408,11 @@ class Pattern:
         | Iterable[Iterable[ExpressionOrSupportsComplex]]
         | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> DensityMatrix: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
         input_state: State
@@ -1421,26 +1421,26 @@ class Pattern:
         | Iterable[Iterable[ExpressionOrSupportsComplex]]
         | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> MBQCTensorNet: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: Backend[_StateT_co],
         input_state: Data | None = ...,
         rng: Generator | None = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> _StateT_co: ...
 
-    def simulate_pattern(
+    def simulate(
         self,
         backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
         input_state: Data | None = BasicStates.PLUS,
         rng: Generator | None = None,
         *,
         stacklevel: int = 1,
-        **kwargs: Any,
+        **kwargs: Unpack[SimulatorKwargs],
     ) -> _StateT_co | _BuiltinBackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
@@ -1460,7 +1460,8 @@ class Pattern:
         stacklevel : int, optional
             Stack level to use for warnings. Defaults to 1, meaning that warnings
             are reported at this function's call site.
-        kwargs: keyword args for specified backend.
+        kwargs: Unpack[SimulatorKwargs]
+            Options controlling simulator. See :class:`SimulatorOptions`.
 
         Returns
         -------
