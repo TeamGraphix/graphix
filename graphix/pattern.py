@@ -392,7 +392,7 @@ class Pattern(InplaceParameterizable):
 
     @property
     def output_nodes(self) -> list[int]:
-        """List all nodes that are either `input_nodes` or prepared with `N` commands and that have not been measured with an `M` command."""
+        """List all nodes that are either ``input_nodes`` or prepared with ``N`` commands and that have not been measured with an ``M`` command."""
         return list(self.__output_nodes)  # copy for preventing modification
 
     def __len__(self) -> int:
@@ -1128,7 +1128,7 @@ class Pattern(InplaceParameterizable):
         return self.to_xzcorrections().to_pauliflow()
 
     def to_xzcorrections(self) -> XZCorrections[Measurement]:
-        """Extract the XZ-corrections from the current measurement pattern.
+        r"""Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
@@ -1140,7 +1140,7 @@ class Pattern(InplaceParameterizable):
         XZCorrectionsError
             If the extracted correction dictionaries are not well formed.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If ``N`` commands in the pattern do not represent a :math:`\ket{+}` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -1408,7 +1408,7 @@ class Pattern(InplaceParameterizable):
         return n_list
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: StatevectorBackend | Literal["statevector"] = "statevector",
         input_state: State
@@ -1422,7 +1422,7 @@ class Pattern(InplaceParameterizable):
     ) -> Statevector: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: State
@@ -1436,7 +1436,7 @@ class Pattern(InplaceParameterizable):
     ) -> DensityMatrix: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
         input_state: State
@@ -1449,7 +1449,7 @@ class Pattern(InplaceParameterizable):
     ) -> MBQCTensorNet: ...
 
     @overload
-    def simulate_pattern(
+    def simulate(
         self,
         backend: Backend[_StateT_co],
         input_state: Data | None = ...,
@@ -1457,7 +1457,7 @@ class Pattern(InplaceParameterizable):
         **kwargs: Unpack[SimulatorKwargs],
     ) -> _StateT_co: ...
 
-    def simulate_pattern(
+    def simulate(
         self,
         backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
         input_state: Data | None = BasicStates.PLUS,

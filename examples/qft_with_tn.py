@@ -78,7 +78,7 @@ pattern.remove_pauli_measurements(standardize=True)
 import time
 
 t1 = time.time()
-tn = pattern.simulate_pattern(backend="tensornetwork")
+tn = pattern.simulate(backend="tensornetwork")
 value = tn.basis_amplitude(0)
 t2 = time.time()
 print("amplitude of |00...0> is ", value)

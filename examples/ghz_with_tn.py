@@ -45,7 +45,7 @@ plt.show()
 # %%
 # Calculate the amplitudes of ``|00...0>`` and ``|11...1>`` states.
 
-tn = pattern.simulate_pattern(backend="tensornetwork")
+tn = pattern.simulate(backend="tensornetwork")
 print(f"The amplitude of |00...0>: {tn.basis_amplitude(0)}")
 print(f"The amplitude of |11...1>: {tn.basis_amplitude(2**n - 1)}")
 

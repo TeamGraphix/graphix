@@ -52,8 +52,8 @@ def test_standardize_clifford_entanglement(fx_rng: Generator) -> None:
                 assert p[2].kind == CommandKind.C
                 assert p[3].kind == CommandKind.C
 
-                state_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XY, alpha))
-                state_p = p.simulate_pattern(input_state=PlanarState(Plane.XY, alpha))
+                state_ref = p_ref.simulate(input_state=PlanarState(Plane.XY, alpha))
+                state_p = p.simulate(input_state=PlanarState(Plane.XY, alpha))
                 assert state_p.isclose(state_ref)
 
 
@@ -87,8 +87,8 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern.remove_pauli_measurements()
     pattern2 = remove_useless_domains(pattern)
     pattern2 = StandardizedPattern.from_pattern(pattern2).to_space_optimal_pattern()
-    state = pattern.simulate_pattern(rng=rng)
-    state2 = pattern2.simulate_pattern(rng=rng)
+    state = pattern.simulate(rng=rng)
+    state2 = pattern2.simulate(rng=rng)
     assert state.isclose(state2)
 
 
@@ -109,8 +109,8 @@ def test_to_space_optimal_pattern(fx_rng: Generator) -> None:
         output_nodes=[17, 18],
     )
     pattern2 = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
-    state = pattern.simulate_pattern(rng=fx_rng)
-    state2 = pattern2.simulate_pattern(rng=fx_rng)
+    state = pattern.simulate(rng=fx_rng)
+    state2 = pattern2.simulate(rng=fx_rng)
     assert state.isclose(state2)
 
 
@@ -149,8 +149,8 @@ def test_remove_local_clifford_commands(fx_bg: PCG64, jumps: int) -> None:
     new_pattern = pattern.remove_local_clifford_commands(copy=True)
     assert not any(cmd.kind == CommandKind.C for cmd in new_pattern)
     input_state = rand_state_vector(nqubits, rng=rng)
-    state_ref = pattern.simulate_pattern(input_state=input_state, rng=rng)
-    state = new_pattern.simulate_pattern(input_state=input_state, rng=rng)
+    state_ref = pattern.simulate(input_state=input_state, rng=rng)
+    state = new_pattern.simulate(input_state=input_state, rng=rng)
     assert state.isclose(state_ref)
 
 

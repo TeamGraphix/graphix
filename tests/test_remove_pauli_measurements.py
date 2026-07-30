@@ -199,8 +199,8 @@ def check_pattern_equivalence(pattern: Pattern, pattern2: Pattern, rng: Generato
     pattern2.minimize_space()
     for _ in range(4):
         input_state = rand_state_vector(len(pattern.input_nodes), rng=rng)
-        state = pattern.simulate_pattern(input_state=input_state, rng=rng)
-        state2 = pattern2.simulate_pattern(input_state=input_state, rng=rng)
+        state = pattern.simulate(input_state=input_state, rng=rng)
+        state2 = pattern2.simulate(input_state=input_state, rng=rng)
         assert state.isclose(state2)
 
 
@@ -288,7 +288,7 @@ def test_pattern_remove_pauli_measurements_output_nodes() -> None:
     )
     pattern = og.to_pattern()
     pattern.remove_pauli_measurements()
-    pattern.simulate_pattern()
+    pattern.simulate()
 
 
 def test_try_pivot_x_with_output_node_after_pivot() -> None:

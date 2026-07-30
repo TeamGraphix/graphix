@@ -98,16 +98,18 @@ class ReverseDependency:
         ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="in-place_methods"),
         ReverseDependency("https://github.com/matulni/graphix-stim-backend", branch="rename_methods"),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
-        ReverseDependency("https://github.com/matulni/graphix-ibmq", doctest_modules=False, branch="rename_methods"),
-        ReverseDependency("https://github.com/matulni/graphix-stim-compiler", branch="rename_methods"),
-        ReverseDependency("https://github.com/matulni/graphix-pyzx", branch="rename_methods"),
         ReverseDependency(
-            "https://github.com/matulni/veriphix",
+            "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="rename-simulate"
+        ),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-compiler", branch="rename-simulate"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="rename-simulate"),
+        ReverseDependency(
+            "https://github.com/thierry-martinez/veriphix",
             doctest_modules=False,
             install_target=".[dev]",
-            branch="rename_methods",
+            branch="rename-simulate",
         ),
-        ReverseDependency("https://github.com/matulni/graphix-mqtbench", branch="rename_methods"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="rename-simulate"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
