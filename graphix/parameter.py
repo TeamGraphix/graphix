@@ -386,7 +386,7 @@ def with_parameter(value: _T, variable: Parameter, substitute: ExpressionOrSuppo
     """
     Substitute in `value`.
 
-    If `value` is in instance of :class:`Expression`, then return
+    If `value` is an instance of :class:`Expression`, then return
     `value.with_parameter(variable, substitute)` (coerced into a complex or a
     float if the result is a number).
 
