@@ -77,7 +77,7 @@ def test_minimization_by_degree_edge_ordering() -> None:
         ]
     )
     # Verify Networkx node ordering behaves as expected
-    graph = p.graph()
+    graph = p.to_opengraph().graph
     assert set(graph.edges()) == {(0, 2), (1, 2)}
     assert set(graph.edges(2)) == {(2, 0), (2, 1)}
 

@@ -129,6 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added method `DenseState.project_qubit` which defaults to calling `evolve_single` and `remove_qubit`. Added specialized code for this method in `Statevector` class.
   - Unified `test_statevec.py` and `test_statevec_backend.py` into a single file.
 
+- #571: Removed method `Pattern.graph`
+
 ## [0.3.5] - 2026-03-26
 
 ### Added

@@ -59,7 +59,7 @@ qft(circuit, n)
 pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
-graph = pattern.graph()
+graph = pattern.to_opengraph().graph
 print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 
