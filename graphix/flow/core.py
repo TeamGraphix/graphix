@@ -883,7 +883,7 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.subs`.
+        See notes and examples in :meth:`OpenGraph.with_parameter`.
         """
         new_og = self.og.with_parameter(variable, substitute)
         return dataclasses.replace(self, og=new_og)
