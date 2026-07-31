@@ -562,7 +562,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.xreplace`.
+        See notes and examples in :meth:`OpenGraph.with_parameters`.
         """
         new_og = self.og.with_parameters(assignment)
         return dataclasses.replace(self, og=new_og)
