@@ -16,7 +16,6 @@ from graphix._db import (
     CLIFFORD,
     CLIFFORD_CONJ,
     CLIFFORD_HSZ_DECOMPOSITION,
-    CLIFFORD_LABEL,
     CLIFFORD_MEASURE,
     CLIFFORD_MUL,
     CLIFFORD_PAULI_DECOMPOSITION,
@@ -29,11 +28,12 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
     from graphix import OpenGraph, PauliMeasurement
+    from graphix.pretty_print import OutputFormat
 
 
 @dataclass
 class Domains:
-    """Represent `X^sZ^t` where s and t are XOR of results from given sets of indices."""
+    """Represent :math:`X^sZ^t` where s and t are XOR of results from given sets of indices."""
 
     s_domain: set[int]
     t_domain: set[int]
@@ -112,8 +112,34 @@ class Clifford(Enum):
         return f"({formula})"
 
     def __str__(self) -> str:
-        """Return the name of the Clifford gate."""
-        return CLIFFORD_LABEL[self.value]
+        """Return a string representation of a Clifford in the default output format.
+
+        Example
+        -------
+        >>> from graphix import Clifford
+        >>> print(Clifford.SDG @ Clifford.H @ Clifford.SDG @ Clifford.Y)
+        S H Sdg
+        """
+        return self.draw()
+
+    def draw(self, output: OutputFormat | None = None) -> str:
+        """Return a string representation of a Clifford.
+
+        Parameters
+        ----------
+        clifford : Clifford
+            The statevector to format.
+        output : OutputFormat | None
+            Desired formatting style (``ASCII``, ``LaTeX`` or ``Unicode``).
+
+        Returns
+        -------
+        str
+            The formatted Clifford.
+        """
+        from graphix.pretty_print import clifford_to_str  # noqa: PLC0415
+
+        return clifford_to_str(self, output)
 
     @property
     def conj(self) -> Clifford:
@@ -122,7 +148,7 @@ class Clifford(Enum):
 
     @property
     def hsz(self) -> list[Clifford]:
-        """Return a decomposition of the Clifford gate with the gates `H`, `S`, `Z`."""
+        """Return a decomposition of the Clifford gate with the gates ``H``, ``S``, ``Z``."""
         return [Clifford(i) for i in CLIFFORD_HSZ_DECOMPOSITION[self.value]]
 
     @property
@@ -158,13 +184,13 @@ class Clifford(Enum):
         return pauli.unit * new_pauli
 
     def commute_domains(self, domains: Domains) -> Domains:
-        """
-        Commute `X^sZ^t` with `C`.
+        r"""
+        Commute :math:`X^sZ^t` with :math:`C`.
 
-        Given `X^sZ^t`, return `X^s'Z^t'` such that `X^sZ^tC = CX^s'Z^t'`.
+        Given :math:`X^sZ^t`, return :math:`X^{s'}Z^{t'}` such that :math:`X^sZ^tC = CX^{s'}Z^{t'}`.
 
-        Note that applying the method to `self.conj` computes the reverse commutation:
-        indeed, `C†X^sZ^t = (X^sZ^tC)† = (CX^s'Z^t')† = X^s'Z^t'C†`.
+        Note that applying the method to :meth:`conj` computes the reverse commutation:
+        indeed, :math:`C^\dag X^s Z^t = (X^s Z^t C)^\dag = (C X^{s'} Z^{t'})^\dag = X^{s'}Z^{t'}C^\dag`.
         """
         s_domain = domains.s_domain.copy()
         t_domain = domains.t_domain.copy()
