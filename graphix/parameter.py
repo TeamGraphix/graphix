@@ -430,7 +430,7 @@ def with_parameters(value: _T, assignment: Mapping[Parameter, ExpressionOrSuppor
     `value.with_parameters(assignment)` (coerced into a complex if the result
     is a number).
 
-    If `value` does not implement `xreplace`, `value` is returned
+    If ``value``` does not implement ``with_parameters``, ``value`` is returned
     unchanged.
 
     This function is used to apply parallel substitutions to
