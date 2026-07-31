@@ -17,7 +17,6 @@ from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 
 if TYPE_CHECKING:
-
     from numpy.random import PCG64, Generator
 
     from graphix.parameter import Parameter
