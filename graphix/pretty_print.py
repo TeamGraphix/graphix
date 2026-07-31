@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 from typing_extensions import assert_never
 
 from graphix import command
+from graphix._db import CLIFFORD_TO_QASM3
 from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad, rad_to_angle
 from graphix.measurements import BlochMeasurement, PauliMeasurement
 from graphix.parameter import AffineExpression
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
 
+    from graphix import Clifford
     from graphix.command import Node
     from graphix.flow.core import PauliFlow, XZCorrections
     from graphix.fundamentals import Angle
@@ -996,3 +998,53 @@ def density_matrix_to_str(
     widths = [max(len(row[col]) for row in rows) for col in range(len(rows[0]))] if rows else []
     lines = ["  ".join(entry.rjust(widths[col]) for col, entry in enumerate(row)) for row in rows]
     return "\n".join(f"[ {line} ]" for line in lines)
+
+
+QASM3_INSTR_TO_STR = {
+    OutputFormat.ASCII: {
+        "id": "I",
+        "x": "X",
+        "y": "Y",
+        "z": "Z",
+        "s": "S",
+        "sdg": "Sdg",
+        "h": "H",
+    },
+    OutputFormat.Unicode: {
+        "id": "I",
+        "x": "X",
+        "y": "Y",
+        "z": "Z",
+        "s": "S",
+        "sdg": "S†",
+        "h": "H",
+    },
+    OutputFormat.LaTeX: {
+        "id": "I",
+        "x": "X",
+        "y": "Y",
+        "z": "Z",
+        "s": "S",
+        "sdg": r"S^\dag",
+        "h": "H",
+    },
+}
+
+
+def clifford_to_str(clifford: Clifford, output: OutputFormat | None = None) -> str:
+    r"""Return a string representation of a Clifford.
+
+    Parameters
+    ----------
+    clifford : Clifford
+        The statevector to format.
+    output : OutputFormat | None
+        Desired formatting style (``ASCII``, ``LaTeX`` or ``Unicode``).
+
+    Returns
+    -------
+    str
+        The formatted Clifford.
+    """
+    output = ensure_output_format(output)
+    return " ".join(QASM3_INSTR_TO_STR[output][instr] for instr in reversed(CLIFFORD_TO_QASM3[clifford.value]))
