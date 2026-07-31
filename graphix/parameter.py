@@ -426,7 +426,7 @@ def with_parameters(value: _T, assignment: Mapping[Parameter, ExpressionOrSuppor
     """
     Substitute in parallel in `value`.
 
-    If `value` is an an instance of :class:`Expression`, then return
+    If `value` is an instance of :class:`Expression`, then return
     `value.with_parameters(assignment)` (coerced into a complex if the result
     is a number).
 
