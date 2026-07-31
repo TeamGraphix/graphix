@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -17,6 +18,7 @@ from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
 from tests.test_branch_selector import CheckedBranchSelector
+from tests.test_instruction import VisitAngle
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -183,10 +185,14 @@ class TestTranspilerUnitGates:
         circuit.cnot(1, 2)
         circuit.m(1, axis)
         circuit.i(0)
-        transpiled_swaps = transpile_swaps(circuit)
+        transpiled_swaps = transpile_swaps(circuit, copy=True)
         circuit2 = transpiled_swaps.circuit
         assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
         assert I(2) in circuit2.instruction
+        assert any(instr.kind == InstructionKind.SWAP for instr in circuit.instruction)
+        circuit_copy = deepcopy(circuit)
+        transpile_swaps(circuit_copy)
+        assert circuit_copy.instruction == circuit2.instruction
         input_state = rand_state_vector(3, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
@@ -348,7 +354,7 @@ def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
     depth = 6
     circuit = rand_circuit(nqubits, depth, rng, use_ccx=True, use_rzz=True)
     assert any(instr.kind == InstructionKind.SWAP for instr in circuit.instruction)
-    transpiled_swaps = transpile_swaps(circuit)
+    transpiled_swaps = transpile_swaps(circuit, copy=True)
     circuit2 = transpiled_swaps.circuit
     assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
     state = circuit.simulate(rng=rng).state
@@ -368,7 +374,7 @@ def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis,
     circuit.cnot(1, 2)
     circuit.m(1, axis)
     circuit.i(0)
-    transpiled_swaps = transpile_swaps(circuit)
+    transpiled_swaps = transpile_swaps(circuit, copy=True)
     circuit2 = transpiled_swaps.circuit
     assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
     assert I(2) in circuit2.instruction
@@ -410,3 +416,13 @@ def test_backend_branch_selector() -> None:
     circ = Circuit(1)
     with pytest.raises(ValueError, match="already instantiated"):
         circ.simulate(backend=StatevectorBackend(), branch_selector=ConstBranchSelector(0))
+
+
+def test_visit() -> None:
+    circ = Circuit(1)
+    circ.rx(0, 0.5)
+    visitor = VisitAngle()
+    circ2 = circ.visit(visitor, copy=True)
+    assert circ.instruction != circ2.instruction
+    assert circ.visit(visitor) is circ
+    assert circ.instruction == circ2.instruction

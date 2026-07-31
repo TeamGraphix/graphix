@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix import Circuit, instruction
+from graphix import Circuit, Instruction
 from graphix.fundamentals import ANGLE_PI
+from graphix.instruction import InstructionKind
 from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
+from tests.test_instruction import ALL_INSTRUCTIONS
 
 if TYPE_CHECKING:
     from graphix.instruction import InstructionType
@@ -46,32 +48,15 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     check_round_trip(rand_circuit(nqubits, depth, rng, use_j=True, use_cz=True))
 
 
-@pytest.mark.parametrize(
-    "instruction",
-    [
-        instruction.CCX(target=0, controls=(1, 2)),
-        instruction.RZZ(target=0, control=1, angle=ANGLE_PI / 4),
-        instruction.CNOT(target=0, control=1),
-        instruction.SWAP(targets=(0, 1)),
-        instruction.CZ(targets=(0, 1)),
-        instruction.H(target=0),
-        instruction.S(target=0),
-        instruction.X(target=0),
-        instruction.Y(target=0),
-        instruction.Z(target=0),
-        instruction.I(target=0),
-        instruction.RX(target=0, angle=ANGLE_PI / 4),
-        instruction.RY(target=0, angle=ANGLE_PI / 4),
-        instruction.RZ(target=0, angle=ANGLE_PI / 4),
-        instruction.J(target=0, angle=ANGLE_PI / 4),
-    ],
-)
+@pytest.mark.parametrize("instruction", ALL_INSTRUCTIONS)
 def test_instruction_to_qasm3(instruction: InstructionType) -> None:
+    if instruction.kind == InstructionKind.M:
+        pytest.skip()
     check_round_trip(Circuit(3, instr=[instruction]))
 
 
 def test_j_to_qasm3() -> None:
-    circuit = Circuit(3, instr=[instruction.J(target=0, angle=ANGLE_PI / 4)])
+    circuit = Circuit(3, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
@@ -79,6 +64,6 @@ def test_j_to_qasm3() -> None:
 
 
 def test_j_to_qasm3_failure() -> None:
-    circuit = Circuit(3, instr=[instruction.J(target=0, angle=ANGLE_PI / 4)])
+    circuit = Circuit(3, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
     with pytest.raises(ValueError):
         circuit_to_qasm3(circuit, transpile=False)

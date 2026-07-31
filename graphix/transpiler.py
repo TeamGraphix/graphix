@@ -26,6 +26,7 @@ from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMe
 from graphix.opengraph import OpenGraph
 from graphix.ops import Ops
 from graphix.optimization import StandardizedPattern
+from graphix.parameter import InplaceParameterizable
 from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
@@ -40,7 +41,7 @@ if TYPE_CHECKING:
     from graphix.command import Node
     from graphix.fundamentals import ParameterizedAngle
     from graphix.instruction import InstructionType
-    from graphix.parameter import ExpressionOrFloat, Parameter
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
     from graphix.sim import Data
     from graphix.sim.base_backend import DenseState, Matrix
@@ -102,7 +103,7 @@ class _MapAngleVisitor(InstructionVisitor):
         return self.f(angle)
 
 
-class Circuit:
+class Circuit(InplaceParameterizable):
     """Gate-to-MBQC transpiler.
 
     Holds gate operations and translates into MBQC measurement patterns.
@@ -510,7 +511,7 @@ class Circuit:
         """
         if not transpile_swaps:
             return self.transpile_to_causalflow().to_pattern()
-        swap = _transpile_swaps(self)
+        swap = _transpile_swaps(self, copy=True)
         result = swap.circuit.transpile_to_causalflow().to_pattern()
         result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
         classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
@@ -640,16 +641,52 @@ class Circuit:
                     raise ValueError(f"Unknown instruction: {instr}")
         return SimulateResult(_backend.state, tuple(classical_measures))
 
-    def visit(self, visitor: InstructionVisitor) -> Circuit:
-        """Apply ``visitor`` to all instructions in the circuit."""
-        result = Circuit(self.width)
-        for instr in self.instruction:
-            result.instruction.append(instr.visit(visitor))
-        return result
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Circuit:
+        """Apply ``visitor`` to all instructions in the circuit.
 
-    def map_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle]) -> Circuit:
-        """Apply ``f`` to all angles that occur in the circuit."""
-        return self.visit(_MapAngleVisitor(f))
+        Parameters
+        ----------
+        visitor : InstructionVisitor
+            The visitor specifying the rewriting.
+
+        copy : bool, optional
+            If ``True``, the current circuit remains unchanged, and a
+            new circuit is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Self
+            The rewritten circuit. Equal to ``self`` if ``copy`` is ``False``.
+        """
+        if copy:
+            result = Circuit(self.width)
+            for instr in self.instruction:
+                result.instruction.append(instr.visit(visitor, copy=True))
+            return result
+        for instr in self.instruction:
+            instr.visit(visitor, copy=False)
+        return self
+
+    def apply_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle], *, copy: bool = False) -> Circuit:
+        """Apply ``f`` to all angles that occur in the circuit.
+
+        Parameters
+        ----------
+        f : Callable[[ParameterizedAngle], ParameterizedAngle]
+            The function to apply to every angle.
+
+        copy : bool, optional
+            If ``True``, the current circuit remains unchanged, and a
+            new circuit is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Self
+            The rewritten circuit. Equal to ``self`` if ``copy`` is ``False``.
+        """
+        return self.visit(_MapAngleVisitor(f), copy=copy)
 
     def is_parameterized(self) -> bool:
         """
@@ -668,13 +705,17 @@ class Circuit:
                         return True
         return False
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Circuit:
-        """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""
-        return self.map_angle(lambda angle: parameter.subs(angle, variable, substitute))
+    @override
+    def replace_parameter(
+        self, variable: Parameter, substitute: ExpressionOrSupportsFloat, *, copy: bool = False
+    ) -> Circuit:
+        return self.apply_angle(lambda angle: parameter.with_parameter(angle, variable, substitute), copy=copy)
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> Circuit:
-        """Return a copy of the circuit where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
-        return self.map_angle(lambda angle: parameter.xreplace(angle, assignment))
+    @override
+    def replace_parameters(
+        self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat], *, copy: bool = False
+    ) -> Circuit:
+        return self.apply_angle(lambda angle: parameter.with_parameters(angle, assignment), copy=copy)
 
     def transpile_measurements_to_z_axis(self) -> Circuit:
         """Return an equivalent circuit where all measurements are on Z axis."""
@@ -1021,7 +1062,7 @@ class _TranspileSwapVisitor(InstructionVisitor):
         return target.index
 
 
-def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
+def transpile_swaps(circuit: Circuit, *, copy: bool = False) -> TranspileSwapsResult:
     """Return a new circuit equivalent to the original one but without SWAP gates.
 
     Parameters
@@ -1029,11 +1070,18 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
     circuit : Circuit
         The original circuit
 
+    copy : bool, optional
+        If ``True``, the current pattern remains unchanged, and a
+        new pattern is returned. The default is ``False``, meaning
+        that changes are performed in place.
+
     Returns
     -------
     TranspileSwapsResult
         The field ``circuit`` contains an equivalent circuit without
-        SWAP gates.  The field ``outputs`` contains a tuple which has
+        SWAP gates. Equal to ``self`` if ``copy`` is ``False``.
+
+        The field ``outputs`` contains a tuple which has
         the same width as the circuit. For every qubit of the original
         circuit, either the qubit is not measured, and ``outputs``
         provides the index of the corresponding qubit in the output of
@@ -1050,14 +1098,21 @@ def transpile_swaps(circuit: Circuit) -> TranspileSwapsResult:
             visitor.visit_qubit(u)
             visitor.visit_qubit(v)
             visitor.outputs[u], visitor.outputs[v] = visitor.outputs[v], visitor.outputs[u]
+        elif instr.kind == InstructionKind.M:
+            old_target = instr.target
+            new_circuit.add(instr.visit(visitor, copy=copy))
+            visitor.outputs[old_target] = OutputIndex(OutputKind.Bit, measurement_index)
+            measurement_index += 1
         else:
-            new_circuit.add(instr.visit(visitor))
-            if instr.kind == InstructionKind.M:
-                visitor.outputs[instr.target] = OutputIndex(OutputKind.Bit, measurement_index)
-                measurement_index += 1
+            new_circuit.add(instr.visit(visitor, copy=copy))
+    if not copy:
+        circuit.instruction = new_circuit.instruction
+        new_circuit = circuit
     return TranspileSwapsResult(new_circuit, tuple(visitor.outputs))
 
 
+# Alias `_transpile_swaps` to call the function in `Circuit.transpile`
+# method where `transpile_swaps` is shadowed by the keyword parameter.
 _transpile_swaps = transpile_swaps
 
 

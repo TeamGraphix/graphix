@@ -158,7 +158,7 @@ def example_hadamard() -> Pattern:
 
 def example_local_clifford() -> Pattern:
     pattern = example_hadamard()
-    pattern = pattern.infer_pauli_measurements()
+    pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements()
     return pattern
 
@@ -272,9 +272,9 @@ def test_draw_graph_reference(flow_from_pattern_and_to_bloch: bool) -> Figure:
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern
     if flow_from_pattern_and_to_bloch:
-        pattern = pattern.to_bloch()
+        pattern.blochify()
     else:
-        pattern = pattern.infer_pauli_measurements()
+        pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
     pattern.standardize()
     pattern.draw(

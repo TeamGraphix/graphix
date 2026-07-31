@@ -55,9 +55,4 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
     | `MatGF2.compute_rank` | `MatGF2.rank` |
     | `Statevec` | `Statevector` |
 
- 
-
-
-
-
-
+- #568: Method `Pattern.infer_pauli_measurements` and function `transpile_swaps` now operate in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.

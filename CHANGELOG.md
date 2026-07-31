@@ -47,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #556, #563: Added a context variable `default_output_format` to unify the default output format for displaying `PauliFlow`, `XZCorrections`, `Pattern`, and `StateVec`.
 
+- #568:
+  - Added the following methods to `Pattern`. By default, they modify the pattern in place, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
+    - `apply`, an in-place variant of `map`,
+    - `blochify`, an in-place variant of `to_bloch`.
+  - All classes that have `subs` and `xreplace` methods (`Pattern`, `Circuit`, `OpenGraph`, `Measurement`, `PauliFlow`, `XZCorrections`, `DensityMatrix`) now derive from the `Parameterizable` class, which exposes the method `with_parameter` and `with_parameters`, with `subs` and `xreplace` as their respective aliases.
+  - `Pattern` and `Circuit` now derive from the `InplaceParameterizable` subclass, which additionally provides the following methods:
+    - `replace_parameter`, an in-place variant of `with_parameter` (or `subs`),
+    - `replace_parameters`, an in-place variant of `with_parameters` (or `xreplace`).
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
@@ -128,6 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Dropped support for symbolic simulation and removed `Statevector.xreplace` and `Statevector.subs` methods.
   - Added method `DenseState.project_qubit` which defaults to calling `evolve_single` and `remove_qubit`. Added specialized code for this method in `Statevector` class.
   - Unified `test_statevec.py` and `test_statevec_backend.py` into a single file.
+  
+- #568: Method `Pattern.infer_pauli_measurements` and function `transpile_swaps` now operate in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
 
 - #571: Removed method `Pattern.graph`
 

@@ -71,7 +71,7 @@ class TestPattern:
         depth = 1
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
-        pattern = pattern.infer_pauli_measurements()
+        pattern.infer_pauli_measurements()
         pattern.standardize()
         assert pattern.is_standard()
         state = circuit.simulate().state
@@ -155,7 +155,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
-        pattern = pattern.infer_pauli_measurements()
+        pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate().state
@@ -235,7 +235,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
-        pattern = pattern.infer_pauli_measurements()
+        pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate().state
@@ -251,7 +251,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
-        pattern = pattern.infer_pauli_measurements()
+        pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         input_node_set = set(pattern.input_nodes)
         assert not any(
@@ -290,7 +290,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
-        pattern = pattern.infer_pauli_measurements()
+        pattern.infer_pauli_measurements()
         pattern_opt = pattern.remove_pauli_measurements(copy=True)
         isolated_nodes = pattern_opt.isolated_nodes()
         assert isolated_nodes == set()
@@ -309,7 +309,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
         pattern1 = copy.deepcopy(pattern)
-        pattern1 = pattern1.infer_pauli_measurements()
+        pattern1.infer_pauli_measurements()
         pattern1.remove_pauli_measurements()
         state = pattern.simulate(rng=rng)
         state1 = pattern1.simulate(rng=rng)
@@ -415,7 +415,7 @@ class TestPattern:
         depth = 3
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern = pattern.infer_pauli_measurements()
+        pattern.infer_pauli_measurements()
         pattern.remove_pauli_measurements()
         pattern.standardize()
         pattern.minimize_space()
@@ -683,7 +683,7 @@ class TestPattern:
         circuit_1.rz(0, alpha)
         p1 = circuit_1.transpile().pattern
         p1.remove_input_nodes()
-        p1 = p1.infer_pauli_measurements()
+        p1.infer_pauli_measurements()
         p1.remove_pauli_measurements()
 
         circuit_2 = Circuit(1)
@@ -804,12 +804,12 @@ class TestPattern:
         c = Circuit(1)
         c.rz(0, 0.2)
         p = c.transpile().pattern
-        p = p.infer_pauli_measurements()
+        p.infer_pauli_measurements()
         p.remove_pauli_measurements()
         assert p.partial_order_layers() == (frozenset({1}), frozenset({0}))
 
         p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, Measurement.XY(0.3))])
-        p = p.infer_pauli_measurements()
+        p.infer_pauli_measurements()
         p.remove_pauli_measurements()
         assert p.partial_order_layers() == (frozenset({1}), frozenset({2}))
 
@@ -936,10 +936,10 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().to_causalflow().to_xzcorrections().to_pattern().infer_pauli_measurements()
+        p_ref.infer_pauli_measurements()
+        p_test = p_ref.to_bloch().to_causalflow().to_xzcorrections().to_pattern()
+        p_test.infer_pauli_measurements()
 
-        p_ref = p_ref.infer_pauli_measurements()
-        p_test = p_test.infer_pauli_measurements()
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
 
@@ -956,10 +956,10 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().to_gflow().to_xzcorrections().to_pattern().infer_pauli_measurements()
+        p_ref.infer_pauli_measurements()
+        p_test = p_ref.to_bloch().to_gflow().to_xzcorrections().to_pattern()
+        p_test.infer_pauli_measurements()
 
-        p_ref = p_ref.infer_pauli_measurements()
-        p_test = p_test.infer_pauli_measurements()
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
 
@@ -976,7 +976,9 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().to_pauliflow().to_xzcorrections().to_pattern().infer_pauli_measurements()
+        p_ref.infer_pauli_measurements()
+        p_test = p_ref.to_bloch().to_pauliflow().to_xzcorrections().to_pattern()
+        p_test.infer_pauli_measurements()
 
         p_ref.remove_pauli_measurements()
         p_test.remove_pauli_measurements()
@@ -1089,9 +1091,9 @@ class TestPattern:
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
-        p_ref = p_ref.infer_pauli_measurements()
+        p_ref.infer_pauli_measurements()
         p_ref.remove_pauli_measurements()
-        p_test = p_test.infer_pauli_measurements()
+        p_test.infer_pauli_measurements()
         p_test.remove_pauli_measurements()
 
         s_ref = p_ref.simulate(rng=rng)
