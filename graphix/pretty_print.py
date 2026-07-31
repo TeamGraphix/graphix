@@ -22,18 +22,13 @@ from graphix.parameter import AffineExpression
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
-    from typing import Any, TypeVar
-
-    import numpy as np
 
     from graphix.command import Node
     from graphix.flow.core import PauliFlow, XZCorrections
     from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
     from graphix.sim.density_matrix import DensityMatrix
-    from graphix.sim.statevec import _ENCODING, AbstractStatevector
-
-    _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
+    from graphix.sim.statevec import _ENCODING, Statevector
 
 
 class OutputFormat(Enum):
@@ -875,7 +870,7 @@ def _factor_uniform_magnitude(
 
 
 def statevec_to_str(
-    statevec: AbstractStatevector[_ScalarT],
+    statevec: Statevector,
     output: OutputFormat | None = None,
     *,
     encoding: _ENCODING = "MSB",

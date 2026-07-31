@@ -8,10 +8,9 @@ from __future__ import annotations
 import dataclasses
 import functools
 import math
-from abc import abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generic, SupportsComplex, SupportsFloat, TypeVar
+from typing import TYPE_CHECKING, Any, SupportsComplex, SupportsFloat, TypeVar
 
 import numba as nb
 import numpy as np
@@ -41,9 +40,6 @@ if TYPE_CHECKING:
 
     _ENCODING = Literal["LSB", "MSB"]
     _ScalarT = TypeVar("_ScalarT", bound=np.generic[Any])
-    _ScalarT2 = TypeVar("_ScalarT2", bound=np.generic[Any])
-else:
-    _ScalarT = TypeVar("_ScalarT", bound=np.generic)
 
 
 NUM_QUBIT_PARALLEL = 15
@@ -53,231 +49,7 @@ overhead of initalizing multiple threads.
 This number was determined empirically and may be platform dependent."""
 
 
-class AbstractStatevector(DenseState, Generic[_ScalarT]):
-    """Base class for statevectors.
-
-    This base class exposes methods that can be shared with other implementations.
-    """
-
-    @property
-    @abstractmethod
-    def psi(self) -> npt.NDArray[_ScalarT]:
-        """Return the statevector as a numpy array."""
-        ...
-
-    @override
-    def flatten(self) -> Matrix:
-        """Return flattened state vector.
-
-        A view of only the first ``2**self.nqubit`` elements of ``self._psi`` is returned.
-        """
-        flat_psi = self.psi.flatten()
-        if flat_psi.dtype == np.object_:
-            return flat_psi.astype(np.object_, copy=False)
-        return flat_psi.astype(np.complex128, copy=False)
-
-    def fidelity(self, other: Statevector) -> float:
-        r"""Calculate the fidelity against another statevector.
-
-        The fidelity is defined as :math:`|\langle\psi_1|\psi_2\rangle|^2`.
-
-        Parameters
-        ----------
-        other : :class:`graphix.sim.statevec.Statevector`
-            Statevector to compare with.
-
-        Returns
-        -------
-        float
-            Fidelity between the two statevectors.
-        """
-        inner = np.dot(self.flatten().conjugate(), other.flatten())
-        return float(np.abs(inner) ** 2)
-
-    def isclose(self, other: Statevector, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
-        """Check if two quantum states are equal up to global phase.
-
-        Two states are considered close if their fidelity is close to 1.
-
-        Parameters
-        ----------
-        other : :class:`graphix.sim.statevec.Statevector`
-            Statevector to compare with.
-        rtol : float
-            Relative tolerance for :func:`math.isclose`.
-        atol : float
-            Absolute tolerance for :func:`math.isclose`.
-
-        Returns
-        -------
-        bool
-            ``True`` if the states are equal up to global phase.
-        """
-        return math.isclose(self.fidelity(other), 1, rel_tol=rtol, abs_tol=atol)
-
-    def to_dict(
-        self,
-        encoding: _ENCODING = "MSB",
-        *,
-        rtol: float = 0.0,
-        atol: float = 1e-8,
-    ) -> dict[str, _ScalarT]:
-        r"""Convert the statevector to dictionary form.
-
-        This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding complex amplitudes. Amplitudes below a certain threshold are filtered out.
-
-        Parameters
-        ----------
-        encoding : Literal["LSB", "MSB"], default="MSB"
-            Encoding for the basis kets. See notes for additional information.
-
-        rtol : float, default=0.0
-            Relative tolerance used when deciding whether a coefficient should be
-            treated as zero. Values whose magnitude is within this relative tolerance
-            of zero are omitted from the resulting dictionary.
-
-        atol : float, default=1e-8
-            Absolute tolerance used when deciding whether a coefficient should be
-            treated as zero. Values whose magnitude is within this relative tolerance
-            of zero are omitted from the resulting dictionary.
-
-        Returns
-        -------
-        dict[str, complex]
-            The statevector in dictionary form.
-
-        Notes
-        -----
-        The encoding determines the bit ordering convention used when mapping basis states to dictionary
-        keys. Consider a tensor product of three qubits:
-
-        .. math::
-
-        \lvert\psi\rangle = q_0 \otimes q_1 \otimes q_2.
-
-        If ``encoding == "MSB"`` the first qubit is represented in the Most Significant Bit -> ``q0q1q2``. This is the default representation in Graphix.
-        If ``encoding == "LSB"`` the first qubit is represented in the Least Significant Bit -> ``q2q1q0``. This is the default representation in other software packages such as Qiskit.
-
-        Example
-        -------
-        >>> from graphix.states import BasicStates
-        >>> from graphix.sim.statevec import Statevector
-        >>> sv = Statevector(data=[BasicStates.ZERO, BasicStates.ONE])
-        >>> sv.to_dict()
-        {'01': np.complex128(1+0j)}
-        >>> sv.to_dict(encoding="LSB")
-        {'10': np.complex128(1+0j)}
-        """
-        return self._to_dict_map(lambda x: x, encoding, rtol=rtol, atol=atol)
-
-    def to_prob_dict(
-        self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8
-    ) -> dict[str, np.object_ | np.float64]:
-        r"""Convert the statevector to a probability distirbution in a dictionary form.
-
-        This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding probabilities.
-        Basis vector whose amplitude is below a certain threshold are filtered out.
-
-        Parameters
-        ----------
-        encoding: Literal["LSB", "MSB"], default="MSB"
-            Encoding for the basis kets. See :meth:`to_dict` for additional information.
-
-        rtol : float, default=0.0
-            Relative tolerance used when deciding whether a coefficient should be
-            treated as zero. Values whose magnitude is within this relative tolerance
-            of zero are omitted from the resulting dictionary.
-
-        atol : float, default=1e-8
-            Absolute tolerance used when deciding whether a coefficient should be
-            treated as zero. Values whose magnitude is within this relative tolerance
-            of zero are omitted from the resulting dictionary.
-
-        Returns
-        -------
-        dict[str, float]
-            The probability distribution associated to the statevector in dictionary form.
-
-        See Also
-        --------
-        .. :meth:`to_dict`
-        """
-        return self._to_dict_map(lambda x: np.abs(x) ** 2, encoding, rtol=rtol, atol=atol)
-
-    def draw(
-        self,
-        output: OutputFormat | None = None,
-        *,
-        encoding: _ENCODING = "MSB",
-        max_denominator: int = 1000,
-        atol: float = 1e-9,
-        rtol: float = 0.0,
-        precision: int = 4,
-    ) -> str:
-        r"""Return a pretty-printed ket-notation representation of the statevector.
-
-        Amplitudes are rendered with :func:`graphix.pretty_print.complex_to_str`,
-        so common values appear as exact expressions (e.g. ``√2/2``) rather than
-        floating-point numbers.
-
-        Parameters
-        ----------
-        output : OutputFormat, optional
-            Desired formatting style. Defaults to :attr:`OutputFormat.Unicode`.
-        encoding : {"LSB", "MSB"}, optional
-            Bit-ordering convention for the basis kets (default: ``"MSB"``).
-            See :meth:`to_dict`.
-        max_denominator : int, optional
-            Maximum denominator used by the amplitude recognition (default: ``1000``).
-        atol : float, optional
-            Absolute tolerance for dropping near-zero amplitudes and for the
-            recognition heuristics (default: ``1e-9``).
-        rtol : float, optional
-            Relative tolerance for dropping near-zero amplitudes (default: ``0.0``).
-        precision : int, optional
-            Number of significant digits to use for amplitudes that fall back to
-            a decimal representation (default: ``4``).
-
-        Returns
-        -------
-        str
-            The formatted statevector.
-
-        Examples
-        --------
-        >>> from graphix.transpiler import Circuit
-        >>> circuit = Circuit(2)
-        >>> circuit.h(0)
-        >>> circuit.cz(0, 1)
-        >>> print(circuit.simulate().state.draw())
-        sqrt(2)/2(|00> + |01>)
-        """
-        return statevec_to_str(
-            self,
-            output,
-            encoding=encoding,
-            max_denominator=max_denominator,
-            atol=atol,
-            rtol=rtol,
-            precision=precision,
-        )
-
-    def _to_dict_map(
-        self,
-        f: Callable[[npt.NDArray[_ScalarT]], npt.NDArray[_ScalarT2]],
-        encoding: _ENCODING = "MSB",
-        *,
-        rtol: float = 0.0,
-        atol: float = 1e-8,
-    ) -> dict[str, _ScalarT2]:
-        mask = np.logical_not(np.isclose(np.abs(self.psi), 0, rtol=rtol, atol=atol))
-        i_vals = np.arange(1 << self.nqubit)[mask]
-        amp_vals = f(self.psi[mask])
-
-        return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
-
-
-class Statevector(AbstractStatevector[np.complex128]):
+class Statevector(DenseState):
     """Statevector object.
 
     Attributes
@@ -448,7 +220,6 @@ class Statevector(AbstractStatevector[np.complex128]):
         return self.draw()
 
     @property
-    @override
     def psi(self) -> npt.NDArray[np.complex128]:
         r"""View of the meaningful elements in ``self._psi``.
 
@@ -486,6 +257,14 @@ class Statevector(AbstractStatevector[np.complex128]):
             new_psi[: len(self._psi)] = self._psi
             self._psi = new_psi
             self._max_qubits = required_qubits
+
+    @override
+    def flatten(self) -> Matrix:
+        """Return flattened state vector.
+
+        A view of only the first ``2**self.nqubit`` elements of ``self._psi`` is returned.
+        """
+        return self.psi
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
@@ -769,6 +548,206 @@ class Statevector(AbstractStatevector[np.complex128]):
         psi_tensor_perm = np.transpose(psi_tensor, permutation)
         len_psi = len(self.psi)
         self._psi[:len_psi] = psi_tensor_perm.reshape(len_psi)
+
+    def fidelity(self, other: Statevector) -> float:
+        r"""Calculate the fidelity against another statevector.
+
+        The fidelity is defined as :math:`|\langle\psi_1|\psi_2\rangle|^2`.
+
+        Parameters
+        ----------
+        other : :class:`graphix.sim.statevec.Statevector`
+            Statevector to compare with.
+
+        Returns
+        -------
+        float
+            Fidelity between the two statevectors.
+        """
+        inner = np.dot(self.flatten().conjugate(), other.flatten())
+        return float(np.abs(inner) ** 2)
+
+    def isclose(self, other: Statevector, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
+        """Check if two quantum states are equal up to global phase.
+
+        Two states are considered close if their fidelity is close to 1.
+
+        Parameters
+        ----------
+        other : :class:`graphix.sim.statevec.Statevector`
+            Statevector to compare with.
+        rtol : float
+            Relative tolerance for :func:`math.isclose`.
+        atol : float
+            Absolute tolerance for :func:`math.isclose`.
+
+        Returns
+        -------
+        bool
+            ``True`` if the states are equal up to global phase.
+        """
+        return math.isclose(self.fidelity(other), 1, rel_tol=rtol, abs_tol=atol)
+
+    def to_dict(
+        self,
+        encoding: _ENCODING = "MSB",
+        *,
+        rtol: float = 0.0,
+        atol: float = 1e-8,
+    ) -> dict[str, np.object_ | np.complex128]:
+        r"""Convert the statevector to dictionary form.
+
+        This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding complex amplitudes. Amplitudes below a certain threshold are filtered out.
+
+        Parameters
+        ----------
+        encoding : Literal["LSB", "MSB"], default="MSB"
+            Encoding for the basis kets. See notes for additional information.
+
+        rtol : float, default=0.0
+            Relative tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        atol : float, default=1e-8
+            Absolute tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        Returns
+        -------
+        dict[str, complex]
+            The statevector in dictionary form.
+
+        Notes
+        -----
+        The encoding determines the bit ordering convention used when mapping basis states to dictionary
+        keys. Consider a tensor product of three qubits:
+
+        .. math::
+
+        \lvert\psi\rangle = q_0 \otimes q_1 \otimes q_2.
+
+        If ``encoding == "MSB"`` the first qubit is represented in the Most Significant Bit -> ``q0q1q2``. This is the default representation in Graphix.
+        If ``encoding == "LSB"`` the first qubit is represented in the Least Significant Bit -> ``q2q1q0``. This is the default representation in other software packages such as Qiskit.
+
+        Example
+        -------
+        >>> from graphix.states import BasicStates
+        >>> from graphix.sim.statevec import Statevector
+        >>> sv = Statevector(data=[BasicStates.ZERO, BasicStates.ONE])
+        >>> sv.to_dict()
+        {'01': np.complex128(1+0j)}
+        >>> sv.to_dict(encoding="LSB")
+        {'10': np.complex128(1+0j)}
+        """
+        return self._to_dict_map(lambda x: x, encoding, rtol=rtol, atol=atol)
+
+    def to_prob_dict(
+        self, encoding: _ENCODING = "MSB", *, rtol: float = 0.0, atol: float = 1e-8
+    ) -> dict[str, np.object_ | np.float64]:
+        r"""Convert the statevector to a probability distirbution in a dictionary form.
+
+        This dictionary representation uses a ket-like notation where the dictionary ``keys`` are qubit strings for the basis vectors and ``values`` are the corresponding probabilities.
+        Basis vector whose amplitude is below a certain threshold are filtered out.
+
+        Parameters
+        ----------
+        encoding: Literal["LSB", "MSB"], default="MSB"
+            Encoding for the basis kets. See :meth:`to_dict` for additional information.
+
+        rtol : float, default=0.0
+            Relative tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        atol : float, default=1e-8
+            Absolute tolerance used when deciding whether a coefficient should be
+            treated as zero. Values whose magnitude is within this relative tolerance
+            of zero are omitted from the resulting dictionary.
+
+        Returns
+        -------
+        dict[str, float]
+            The probability distribution associated to the statevector in dictionary form.
+
+        See Also
+        --------
+        .. :meth:`to_dict`
+        """
+        return self._to_dict_map(lambda x: np.abs(x) ** 2, encoding, rtol=rtol, atol=atol)
+
+    def draw(
+        self,
+        output: OutputFormat | None = None,
+        *,
+        encoding: _ENCODING = "MSB",
+        max_denominator: int = 1000,
+        atol: float = 1e-9,
+        rtol: float = 0.0,
+        precision: int = 4,
+    ) -> str:
+        r"""Return a pretty-printed ket-notation representation of the statevector.
+
+        Amplitudes are rendered with :func:`graphix.pretty_print.complex_to_str`,
+        so common values appear as exact expressions (e.g. ``√2/2``) rather than
+        floating-point numbers.
+
+        Parameters
+        ----------
+        output : OutputFormat, optional
+            Desired formatting style. Defaults to :attr:`OutputFormat.Unicode`.
+        encoding : {"LSB", "MSB"}, optional
+            Bit-ordering convention for the basis kets (default: ``"MSB"``).
+            See :meth:`to_dict`.
+        max_denominator : int, optional
+            Maximum denominator used by the amplitude recognition (default: ``1000``).
+        atol : float, optional
+            Absolute tolerance for dropping near-zero amplitudes and for the
+            recognition heuristics (default: ``1e-9``).
+        rtol : float, optional
+            Relative tolerance for dropping near-zero amplitudes (default: ``0.0``).
+        precision : int, optional
+            Number of significant digits to use for amplitudes that fall back to
+            a decimal representation (default: ``4``).
+
+        Returns
+        -------
+        str
+            The formatted statevector.
+
+        Examples
+        --------
+        >>> from graphix.transpiler import Circuit
+        >>> circuit = Circuit(2)
+        >>> circuit.h(0)
+        >>> circuit.cz(0, 1)
+        >>> print(circuit.simulate().state.draw())
+        sqrt(2)/2(|00> + |01>)
+        """
+        return statevec_to_str(
+            self,
+            output,
+            encoding=encoding,
+            max_denominator=max_denominator,
+            atol=atol,
+            rtol=rtol,
+            precision=precision,
+        )
+
+    def _to_dict_map(
+        self,
+        f: Callable[[npt.NDArray[np.object_ | np.complex128]], npt.NDArray[_ScalarT]],
+        encoding: _ENCODING = "MSB",
+        *,
+        rtol: float = 0.0,
+        atol: float = 1e-8,
+    ) -> dict[str, _ScalarT]:
+        mask = np.logical_not(np.isclose(np.abs(self.flatten()), 0, rtol=rtol, atol=atol))
+        i_vals = np.arange(1 << self.nqubit)[mask]
+        amp_vals = f(self.flatten()[mask])
+
+        return {_format_encoding(self.nqubit, i, encoding): amp for i, amp in zip(i_vals, amp_vals, strict=True)}
 
 
 def _format_encoding(nqubit: int, i: int, encoding: _ENCODING) -> str:

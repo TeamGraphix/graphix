@@ -8,8 +8,6 @@ import numpy as np
 import pytest
 
 # override introduced in Python 3.12
-from typing_extensions import override
-
 import graphix.command
 from graphix import OpenGraph
 from graphix.measurements import Measurement
@@ -17,17 +15,12 @@ from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import DrawPatternAnnotations, Pattern
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import AbstractStatevector
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
 
-    import numpy.typing as npt
     from numpy.random import PCG64, Generator
 
     from graphix.parameter import Parameter
-    from graphix.sim.base_backend import Matrix
-    from graphix.sim.data import Data
 
 
 def test_pattern_affine_operations() -> None:
@@ -179,57 +172,6 @@ def test_parallel_substitution_with_zero() -> None:
     pattern.add(graphix.command.M(2, Measurement.XY(beta)))
     pattern23 = pattern.xreplace({alpha: 0, beta: 0})
     assert not pattern23.is_parameterized()
-
-
-def test_statevector_flatten() -> None:
-    alpha = Placeholder("alpha")
-
-    class PlaceholderStatevector(AbstractStatevector[np.object_]):
-        @property
-        @override
-        def psi(self) -> npt.NDArray[np.object_]:
-            return np.array([alpha])
-
-        @override
-        def add_nodes(self, nqubit: int, data: Data) -> None:
-            raise NotImplementedError
-
-        @override
-        def entangle(self, qubits: tuple[int, int]) -> None:
-            raise NotImplementedError
-
-        @override
-        def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
-            raise NotImplementedError
-
-        @override
-        def evolve_single(self, op: Matrix, qubit: int) -> None:
-            raise NotImplementedError
-
-        @override
-        def expectation_single(self, op: Matrix, qubit: int) -> complex:
-            raise NotImplementedError
-
-        @override
-        def remove_qubit(self, qubit: int) -> None:
-            raise NotImplementedError
-
-        @override
-        def swap(self, qubits: tuple[int, int]) -> None:
-            raise NotImplementedError
-
-        @override
-        def permute(self, permutation: Sequence[int]) -> None:
-            raise NotImplementedError
-
-        # Note that `@property` must appear before `@override` for pyright
-        @property
-        @override
-        def nqubit(self) -> int:
-            return 1
-
-    statevec = PlaceholderStatevector()
-    assert statevec.flatten()[0] == alpha
 
 
 def test_density_matrix_with_parameter() -> None:
