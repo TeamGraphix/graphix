@@ -390,7 +390,7 @@ def with_parameter(value: _T, variable: Parameter, substitute: ExpressionOrSuppo
     `value.with_parameter(variable, substitute)` (coerced into a complex or a
     float if the result is a number).
 
-    If `value` does not implement `subs`, `value` is returned
+    If ``value`` does not implement ``with_parameter``, ``value`` is returned
     unchanged.
 
     This function is used to apply substitution to collections where
