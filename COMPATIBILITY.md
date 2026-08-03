@@ -2,7 +2,7 @@
 
 Graphix does not guarantee backwards compatibility between 0.x version releases. Here we list API changes which may break existing code using Graphix. 
 
-## Unreleased
+## [0.4] - 2026-08-03
 
 - #571: Method `Pattern.graph` (formely `Pattern.extract_graph`) is removed. Use instead `Pattern.to_opengraph().graph` which standardizes the pattern and fails gracefully if there are non-commutative Cliffords.
   
