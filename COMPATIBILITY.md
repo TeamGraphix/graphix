@@ -4,6 +4,14 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
 
 ## [0.4] - 2026-08-03
 
+- #484: J & CZ transpilation.
+  - Replaced `Circuit.transpile()` with a new approach based decomposing circuits into J & CZ gates.
+  - The transpiler now returns `TranspiledPattern` or `TranspiledFlow`, instead of `TranspileResult`.
+
+- #168, #498: `Pattern.remove_pauli_measurements` replaces `Pattern.perform_pauli_measurements`.
+
+- #468, #511: The `pyzx` module has been moved to a separate plugin: https://github.com/thierry-martinez/graphix-pyzx/
+
 - #571: Method `Pattern.graph` (formely `Pattern.extract_graph`) is removed. Use instead `Pattern.to_opengraph().graph` which standardizes the pattern and fails gracefully if there are non-commutative Cliffords.
   
 - #518: Numba-jit statevector backend.
@@ -54,5 +62,11 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
     | `ComplexUnit.try_from` | `ComplexUnit.from_or_none` |
     | `MatGF2.compute_rank` | `MatGF2.rank` |
     | `Statevec` | `Statevector` |
+
+- #567:
+  - Method `Circuit.simulate_statevector` has been renamed `Circuit.simulate`.
+  - Method `Pattern.simulate_pattern` has been renamed `Pattern.simulate`.
+
+  - Field `SimulateResult.statevec` has been renamed `SimulateResult.state`.
 
 - #568: Method `Pattern.infer_pauli_measurements` and function `transpile_swaps` now operate in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
