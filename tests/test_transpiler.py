@@ -51,21 +51,27 @@ INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
 
 
 class TestTranspilerUnitGates:
+    @pytest.mark.parametrize("with_ancillas", [False, True])
     @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
-        circuit = Circuit(3, instr=[instruction(fx_rng)])
+    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase, with_ancillas: bool) -> None:
+        instr = [instruction(fx_rng)]
+        circuit = Circuit(1, instr=instr, ancillas=2) if with_ancillas else Circuit(3, instr=instr)
         pattern = circuit.transpile().pattern
         circuit.transpile_to_causalflow().flow.check_well_formed()
         flow = pattern.to_bloch().to_causalflow()
         flow.check_well_formed()
 
+    @pytest.mark.parametrize("with_ancillas", [False, True])
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
+    def test_instructions(
+        self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase, with_ancillas: bool
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(3, instr=[instruction(rng)])
+        instr = [instruction(rng)]
+        circuit = Circuit(1, instr=instr, ancillas=2) if with_ancillas else Circuit(3, instr=instr)
         pattern = circuit.transpile().pattern
-        input_state = rand_state_vector(3, rng=rng)
+        input_state = rand_state_vector(1, rng=rng) if with_ancillas else rand_state_vector(3, rng=rng)
         state = circuit.simulate(input_state=input_state).state
         state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
@@ -80,17 +86,29 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate(rng=fx_rng)
         assert state_mbqc.isclose(state)
 
+    @pytest.mark.parametrize("with_ancillas", [False, True])
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("outcome", [0, 1])
     def test_measure(
-        self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome, backend: _DenseStateBackendLiteral
+        self,
+        fx_bg: PCG64,
+        jumps: int,
+        axis: Axis,
+        outcome: Outcome,
+        backend: _DenseStateBackendLiteral,
+        with_ancillas: bool,
     ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(2)
+        circuit = Circuit(2, ancillas=2) if with_ancillas else Circuit(2)
         circuit.cnot(0, 1)
         circuit.m(0, axis)
+        if with_ancillas:
+            circuit.cnot(1, 2)
+            circuit.cnot(2, 3)
+            circuit.ry(3, 0.2) # This rotation is crucial to avoid errors measuring |+> along X and selecting outcome 1.
+            circuit.m(3, axis)
         input_state = rand_state_vector(2, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(
@@ -105,14 +123,21 @@ class TestTranspilerUnitGates:
         elif isinstance(state_mbqc, DensityMatrix) and isinstance(state, DensityMatrix):
             assert np.allclose(state_mbqc.rho, state.rho)
 
+    @pytest.mark.parametrize("with_ancillas", [False, True])
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_measure_early(self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
+    def test_measure_early(self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome, with_ancillas: bool) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(3)
+        circuit = Circuit(3, ancillas=2) if with_ancillas else Circuit(3)
         circuit.m(0, axis)
+        if with_ancillas:
+            if axis is Axis.X and outcome == 1:
+                circuit.ry(3, 0.2)
+            circuit.m(3, axis)
         circuit.cnot(1, 2)
+        if with_ancillas:
+            circuit.cnot(2, 4)
         input_state = rand_state_vector(3, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
@@ -306,24 +331,6 @@ class TestCircuits:
         circuit2 = Circuit(3, instr=circuit.instruction)
         assert circuit.instruction == circuit2.instruction
 
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
-        circuit = Circuit(3, instr=[instruction(fx_rng)])
-        pattern = circuit.transpile().pattern
-        flow = pattern.to_bloch().to_causalflow()
-        flow.check_well_formed()
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(3, instr=[instruction(rng)])
-        pattern = circuit.transpile().pattern
-        input_state = rand_state_vector(3, rng=rng)
-        state = circuit.simulate(input_state=input_state).state
-        state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
-        assert state_mbqc.isclose(state)
-
     def test_simple(self) -> None:
         rng = np.random.default_rng(420)
         circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
@@ -333,6 +340,14 @@ class TestCircuits:
         state = circuit.simulate(input_state=input_state).state
         state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
+
+    def test_simple_ancillas(self, fx_rng: Generator) -> None:
+        circuit = Circuit(1, ancillas=1)
+        circuit.x(0)
+        circuit.h(1)
+        state = circuit.simulate(rng=fx_rng, input_state=BasicStates.ZERO).state
+        state_ref = Statevector([BasicStates.ONE, BasicStates.ZERO])
+        assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 3))
     def test_dm_backend(self, fx_bg: PCG64, jumps: int) -> None:
@@ -344,6 +359,17 @@ class TestCircuits:
         input_state = rand_state_vector(nqubits, rng=rng)
         state = circuit.simulate(input_state=input_state, backend="densitymatrix").state
         state_mbqc = pattern.simulate(input_state=input_state, backend="densitymatrix", rng=rng)
+        assert np.allclose(state_mbqc.rho, state.rho)
+
+    def test_dm_backend_with_ancillas(self, fx_rng: Generator) -> None:
+        circuit = Circuit(1, ancillas=1)
+        circuit.x(0)
+        circuit.cnot(0, 1)
+        pattern = circuit.transpile().pattern
+        pattern.minimize_space()
+        input_state = rand_state_vector(1, rng=fx_rng)
+        state = circuit.simulate(input_state=input_state, backend="densitymatrix").state
+        state_mbqc = pattern.simulate(input_state=input_state, backend="densitymatrix", rng=fx_rng)
         assert np.allclose(state_mbqc.rho, state.rho)
 
 
@@ -362,18 +388,28 @@ def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
     state2.permute(transpiled_swaps.extract_output_node_indices())
     assert state.isclose(state2)
 
-
+@pytest.mark.parametrize("with_ancillas", [False, True])
 @pytest.mark.parametrize("jumps", range(1, 11))
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
 @pytest.mark.parametrize("outcome", [0, 1])
-def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
+def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome, with_ancillas: bool) -> None:
     rng = Generator(fx_bg.jumped(jumps))
-    circuit = Circuit(3)
+    circuit = Circuit(3, ancillas=2) if with_ancillas else Circuit(3)
     circuit.swap(0, 1)
     circuit.swap(0, 2)
     circuit.cnot(1, 2)
     circuit.m(1, axis)
+
+    if with_ancillas:
+        circuit.swap(2, 3)
+        # circuit.swap(3, 4)
+        if axis is Axis.X and outcome == 1:
+            circuit.ry(3, 0.2)
+        circuit.m(3, axis)
+
     circuit.i(0)
+
+
     transpiled_swaps = transpile_swaps(circuit, copy=True)
     circuit2 = transpiled_swaps.circuit
     assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
@@ -382,12 +418,22 @@ def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis,
     branch_selector = ConstBranchSelector(outcome)
     state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
     state2 = circuit2.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
-    assert transpiled_swaps.outputs == (
-        OutputIndex(OutputKind.Qubit, 2),
-        OutputIndex(OutputKind.Bit, 0),
-        OutputIndex(OutputKind.Qubit, 1),
-    )
-    state2.swap((0, 1))
+    if not with_ancillas:
+        assert transpiled_swaps.outputs == (
+            OutputIndex(OutputKind.Qubit, 2),
+            OutputIndex(OutputKind.Bit, 0),
+            OutputIndex(OutputKind.Qubit, 1),
+        )
+        state2.swap((0, 1))
+    else:
+        assert transpiled_swaps.outputs == (
+            OutputIndex(OutputKind.Qubit, 2),
+            OutputIndex(OutputKind.Bit, 0),
+            OutputIndex(OutputKind.Qubit, 3),
+            OutputIndex(OutputKind.Bit, 1),
+            OutputIndex(OutputKind.Qubit, 4),
+        )
+
     assert state.isclose(state2)
 
 
@@ -399,18 +445,21 @@ def test_transpile_double_cz() -> None:
     assert len(cf.flow.og.graph.edges) == 0
 
 
-def test_transpile_swaps_vs_no_transpile_swaps() -> None:
-    circuit = Circuit(2)
+@pytest.mark.parametrize("with_ancillas", [False, True])
+def test_transpile_swaps_vs_no_transpile_swaps(fx_rng: Generator, with_ancillas: bool) -> None:
+    circuit = Circuit(2, ancillas=1) if with_ancillas else Circuit(2)
     circuit.rx(0, 0.25)
     circuit.ry(0, 0.25)
     circuit.cz(0, 1)
     circuit.swap(0, 1)
+    if with_ancillas:
+        circuit.rz(2, 0.3)
+        circuit.swap(0, 2)
     pattern_without_swap = circuit.transpile().pattern
     pattern_with_swap = circuit.transpile(transpile_swaps=False).pattern
-    state_without_swap = pattern_without_swap.simulate()
-    state_with_swap = pattern_with_swap.simulate()
+    state_without_swap = pattern_without_swap.simulate(rng=fx_rng)
+    state_with_swap = pattern_with_swap.simulate(rng=fx_rng)
     assert state_without_swap.isclose(state_with_swap)
-
 
 def test_backend_branch_selector() -> None:
     circ = Circuit(1)

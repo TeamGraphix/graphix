@@ -31,6 +31,7 @@ from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import Statevector, StatevectorBackend
+from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -118,7 +119,14 @@ class Circuit(InplaceParameterizable):
 
     instruction: list[InstructionType]
 
-    def __init__(self, width: int, instr: Iterable[InstructionType] | None = None) -> None:
+    def __init__(
+        self,
+        width: int,
+        instr: Iterable[InstructionType] | None = None,
+        *,
+        ancillas: int = 0,
+        ancilla_state: PlanarState = BasicStates.PLUS,
+    ) -> None:
         """
         Construct a circuit.
 
@@ -130,10 +138,20 @@ class Circuit(InplaceParameterizable):
             Optional. List of initial instructions.
         """
         self.width = width
+        self.ancillas = ancillas
+        self.ancilla_state = ancilla_state
         self.instruction = []
-        self.active_qubits = set(range(width))
+        self.active_qubits = set(range(width + ancillas))
         if instr is not None:
             self.extend(instr)
+
+    @property
+    def nqubit(self) -> int:
+        """Total number of qubits in the circuit.
+
+        It includes input and ancilla qubits.
+        """
+        return self.width + self.ancillas
 
     def add(self, instr: InstructionType) -> None:
         """Add an instruction to the circuit."""
@@ -438,13 +456,12 @@ class Circuit(InplaceParameterizable):
         -------
             the result of the transpilation: a causal flow and classical outputs.
         """
-        indices: list[int | None] = list(range(self.width))
-        n_nodes = self.width
+        n_nodes = self.nqubit
+        indices: list[int | None] = list(range(n_nodes))
         measurements: dict[int, BlochMeasurement] = {}
         classical_outputs: dict[int, command.M] = {}
-        inputs = list(range(n_nodes))
-        graph: nx.Graph[int] = nx.Graph()
-        graph.add_nodes_from(inputs)
+        inputs = list(range(self.width))
+        graph: nx.Graph[int] = nx.empty_graph(n_nodes)
         x_corrections: dict[int, set[int]] = {}
         for instr in instructions_to_jcz(self.instruction):
             match instr.kind:
@@ -581,12 +598,14 @@ class Circuit(InplaceParameterizable):
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        _backend = _initialize_backend(backend, branch_selector, self.width)
+        _backend = _initialize_backend(backend, branch_selector, self.nqubit)
 
         if input_state is None:
             _backend.add_nodes(range(self.width))
         else:
             _backend.add_nodes(range(self.width), input_state)
+        if self.ancillas:
+            _backend.add_nodes(range(self.width, self.nqubit), self.ancilla_state)
 
         classical_measures: list[Outcome] = []
 
@@ -1088,8 +1107,8 @@ def transpile_swaps(circuit: Circuit, *, copy: bool = False) -> TranspileSwapsRe
         the returned circuit; or the qubit has been measured, and
         ``outputs`` provides the index of the measurement.
     """
-    new_circuit = Circuit(circuit.width)
-    visitor = _TranspileSwapVisitor(circuit.width)
+    new_circuit = Circuit(circuit.width, ancillas=circuit.ancillas, ancilla_state=circuit.ancilla_state)
+    visitor = _TranspileSwapVisitor(circuit.nqubit)
     measurement_index = 0
     for instr in circuit.instruction:
         if instr.kind == InstructionKind.SWAP:
