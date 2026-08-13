@@ -160,11 +160,11 @@ def generate_qasm3_decomposition() -> tuple[tuple[str, ...], ...]:
     new_decompositions: dict[Clifford, tuple[str, ...]] = {
         clifford: (instr,) for clifford, instr in QASM3_BASIS.items()
     }
+    for clifford, decomposition in new_decompositions.items():
+        decompositions[clifford.value] = decomposition
     while new_decompositions:
         current_decompositions = new_decompositions
         new_decompositions = {}
-        for clifford, decomposition in current_decompositions.items():
-            decompositions[clifford.value] = decomposition
         for clifford, decomposition in current_decompositions.items():
             for instr_clifford, instr in QASM3_BASIS.items():
                 result = instr_clifford @ clifford
