@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
 
+- #482, #483: Ensure that `to_space_optimal_pattern` reorders output nodes
+
 - #510
   - `Pattern.extract_opengraph` returns the same open graph before and after standardization.
   - The round trip `Pattern` -> `OpenGraph` -> `Flow` -> `XZCorrections` -> `Pattern` is guaranteed for deterministic patterns in the LC fragment.
