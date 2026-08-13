@@ -29,7 +29,7 @@ dependencies = [
     "matplotlib",
     "networkx",
     "numba>=0.65.1",
-    "numpy>=2",
+    "numpy>=2,<2.5",
     "quimb",
     "scipy",
     "sympy",

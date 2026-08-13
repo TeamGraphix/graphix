@@ -936,7 +936,7 @@ requires-dist = [
     { name = "nox", marker = "extra == 'dev'", specifier = "==2026.7.11" },
     { name = "numba", specifier = ">=0.65.1" },
     { name = "numba", marker = "python_full_version >= '3.11' and extra == 'typing'", specifier = "==0.66.0" },
-    { name = "numpy", specifier = ">=2" },
+    { name = "numpy", specifier = ">=2,<2.5" },
     { name = "numpy", marker = "python_full_version == '3.10.*' and extra == 'typing'", specifier = "<2.4.2" },
     { name = "numpy", marker = "python_full_version >= '3.11' and extra == 'typing'", specifier = "==2.4.2" },
     { name = "pre-commit", marker = "extra == 'dev'" },
