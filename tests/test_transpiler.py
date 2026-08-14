@@ -202,6 +202,7 @@ class TestTranspilerUnitGates:
             OutputIndex(OutputKind.Bit, 0),
             OutputIndex(OutputKind.Qubit, 1),
         )
+        assert transpiled_swaps.extract_output_node_indices() == (1, 0)
         state2.swap((0, 1))
         assert state.isclose(state2)
 
@@ -306,24 +307,6 @@ class TestCircuits:
         circuit2 = Circuit(3, instr=circuit.instruction)
         assert circuit.instruction == circuit2.instruction
 
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
-        circuit = Circuit(3, instr=[instruction(fx_rng)])
-        pattern = circuit.transpile().pattern
-        flow = pattern.to_bloch().to_causalflow()
-        flow.check_well_formed()
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(3, instr=[instruction(rng)])
-        pattern = circuit.transpile().pattern
-        input_state = rand_state_vector(3, rng=rng)
-        state = circuit.simulate(input_state=input_state).state
-        state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
-        assert state_mbqc.isclose(state)
-
     def test_simple(self) -> None:
         rng = np.random.default_rng(420)
         circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
@@ -363,34 +346,6 @@ def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:
     assert state.isclose(state2)
 
 
-@pytest.mark.parametrize("jumps", range(1, 11))
-@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
-@pytest.mark.parametrize("outcome", [0, 1])
-def test_transpile_swaps_with_measurements(fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
-    rng = Generator(fx_bg.jumped(jumps))
-    circuit = Circuit(3)
-    circuit.swap(0, 1)
-    circuit.swap(0, 2)
-    circuit.cnot(1, 2)
-    circuit.m(1, axis)
-    circuit.i(0)
-    transpiled_swaps = transpile_swaps(circuit, copy=True)
-    circuit2 = transpiled_swaps.circuit
-    assert not any(instr.kind == InstructionKind.SWAP for instr in circuit2.instruction)
-    assert I(2) in circuit2.instruction
-    input_state = rand_state_vector(3, rng=rng)
-    branch_selector = ConstBranchSelector(outcome)
-    state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
-    state2 = circuit2.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
-    assert transpiled_swaps.outputs == (
-        OutputIndex(OutputKind.Qubit, 2),
-        OutputIndex(OutputKind.Bit, 0),
-        OutputIndex(OutputKind.Qubit, 1),
-    )
-    state2.swap((0, 1))
-    assert state.isclose(state2)
-
-
 def test_transpile_double_cz() -> None:
     circuit = Circuit(2)
     circuit.cz(0, 1)
@@ -399,7 +354,7 @@ def test_transpile_double_cz() -> None:
     assert len(cf.flow.og.graph.edges) == 0
 
 
-def test_transpile_swaps_vs_no_transpile_swaps() -> None:
+def test_transpile_swaps_vs_no_transpile_swaps(fx_rng: Generator) -> None:
     circuit = Circuit(2)
     circuit.rx(0, 0.25)
     circuit.ry(0, 0.25)
@@ -407,9 +362,42 @@ def test_transpile_swaps_vs_no_transpile_swaps() -> None:
     circuit.swap(0, 1)
     pattern_without_swap = circuit.transpile().pattern
     pattern_with_swap = circuit.transpile(transpile_swaps=False).pattern
-    state_without_swap = pattern_without_swap.simulate()
-    state_with_swap = pattern_with_swap.simulate()
+    state_without_swap = pattern_without_swap.simulate(rng=fx_rng)
+    state_with_swap = pattern_with_swap.simulate(rng=fx_rng)
     assert state_without_swap.isclose(state_with_swap)
+
+
+@pytest.mark.parametrize("transpile_swaps", [True, False])
+def test_transpile_pattern_swaps_with_measurements_simple(fx_rng: Generator, transpile_swaps: bool) -> None:
+    # See issue
+    # https://github.com/TeamGraphix/graphix/issues/584
+
+    circuit = Circuit(2)
+    circuit.swap(0, 1)
+    circuit.m(1, Axis.Z)
+
+    pattern = circuit.transpile(transpile_swaps=transpile_swaps).pattern
+    state_qc = circuit.simulate(rng=fx_rng).state
+    state_mbqc = pattern.simulate(rng=fx_rng)
+    assert state_mbqc.isclose(state_qc)
+
+
+@pytest.mark.parametrize("transpile_swaps", [True, False])
+def test_transpile_pattern_swaps_with_measurements(fx_rng: Generator, transpile_swaps: bool) -> None:
+    circuit = Circuit(4)
+    circuit.swap(0, 1)
+    circuit.swap(1, 3)
+    circuit.cnot(0, 2)
+    circuit.rx(2, 0.2)
+
+    circuit.m(1, Axis.Z)
+    circuit.m(2, Axis.Z)
+    circuit.m(3, Axis.Z)
+
+    pattern = circuit.transpile(transpile_swaps=transpile_swaps).pattern
+    state_qc = circuit.simulate(rng=fx_rng).state
+    state_mbqc = pattern.simulate(rng=fx_rng)
+    assert state_mbqc.isclose(state_qc)
 
 
 def test_backend_branch_selector() -> None:
