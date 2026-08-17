@@ -21,6 +21,8 @@ from graphix.fundamentals import (
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.repr_mixins import DataclassReprMixin
 
+if TYPE_CHECKING:
+    from collections.abc import Set as AbstractSet
 
 def repr_angle(angle: ParameterizedAngle) -> str:
     """
@@ -55,6 +57,7 @@ class InstructionKind(Enum):
     RX = enum.auto()
     RY = enum.auto()
     RZ = enum.auto()
+    CONDINSTR = enum.auto()
 
 
 class _KindChecker:
@@ -90,6 +93,10 @@ class InstructionVisitor:
     def visit_axis(self, axis: Axis) -> Axis:
         """Rewrite an axis."""
         return axis
+
+    def visit_domain(self, domain: AbstractSet[int]) -> AbstractSet[int]:
+        """Rewrite a domain of a conditional instruction."""
+        return domain
 
 
 class BaseInstruction(ABC, DataclassReprMixin):
@@ -333,6 +340,23 @@ class J(_KindChecker, RotationInstruction):
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
 
 
+@dataclass(repr=False)
+class CONDINSTR(_KindChecker, BaseInstruction):
+    """Base class for single-target circuit instructions."""
+
+    instructions: list[InstructionType]
+    domain: AbstractSet[int]
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        instructions = [instr.visit(visitor, copy=copy) for instr in self.instructions]
+        domain = visitor.visit_domain(self.domain)
+        if copy:
+            return type(self)(instructions, domain)
+        self.instructions = instructions
+        self.domain = domain
+        return self
+
 class InstructionWithoutRZZ:
     """Grouping of all instructions except RZZ for namespace exposure.
 
@@ -357,6 +381,7 @@ class InstructionWithoutRZZ:
     RY: TypeAlias = RY
     RZ: TypeAlias = RZ
     J: TypeAlias = J
+    CONDINSTR: TypeAlias = CONDINSTR
 
     def __init__(self) -> None:
         raise TypeError("InstructionWithoutRZZ is a namespace, not a class.")
@@ -378,5 +403,5 @@ class Instruction(InstructionWithoutRZZ):
 
 
 if TYPE_CHECKING:
-    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
+    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J | CONDINSTR
     InstructionType = InstructionTypeWithoutRZZ | RZZ
