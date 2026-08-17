@@ -31,7 +31,7 @@ from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import Statevector, StatevectorBackend
-from graphix.states import BasicStates, PlanarState
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from graphix.sim import Data
     from graphix.sim.base_backend import DenseState, Matrix
     from graphix.sim.density_matrix import DensityMatrix
+    from graphix.states import State
 
     _BuiltinDenseStateBackend = DensityMatrixBackend | StatevectorBackend
     _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
@@ -105,16 +106,25 @@ class _MapAngleVisitor(InstructionVisitor):
 
 
 class Circuit(InplaceParameterizable):
-    """Gate-to-MBQC transpiler.
+    """Quantum circuit.
 
-    Holds gate operations and translates into MBQC measurement patterns.
+    Stores a sequence of gate operations. Supports transpilation into
+    measurement-based quantum computing (MBQC) measurement patterns and
+    state vector simulation.
 
     Attributes
     ----------
     width : int
-        Number of logical qubits (for gate network)
-    instruction : list
-        List containing the gate sequence applied.
+        Number of logical qubits in the gate network.
+    instruction : list of InstructionType
+        Sequence of gate instructions applied to the circuit.
+    ancillas : int
+        Number of ancilla qubits.
+    ancilla_state : State
+        Initial state of the ancilla qubits.
+    active_qubits : set of int
+        Indices of qubits currently active in the circuit, including logical
+        and ancilla qubits.
     """
 
     instruction: list[InstructionType]
@@ -125,17 +135,27 @@ class Circuit(InplaceParameterizable):
         instr: Iterable[InstructionType] | None = None,
         *,
         ancillas: int = 0,
-        ancilla_state: PlanarState = BasicStates.PLUS,
+        ancilla_state: State = BasicStates.PLUS,
     ) -> None:
-        """
-        Construct a circuit.
+        """Initialize a circuit.
 
         Parameters
         ----------
         width : int
-            number of logical qubits for the gate network
-        instr : list[instruction.InstructionType] | None
-            Optional. List of initial instructions.
+            Number of logical qubits in the gate network.
+        instr : Iterable[InstructionType] or None, optional
+            Initial sequence of instructions to add to the circuit. If
+            ``None``, no instructions are added.
+        ancillas : int, default=0
+            Number of ancilla qubits.
+        ancilla_state : State, default=BasicStates.PLUS
+            Initial state assigned to the ancilla qubits.
+
+        Notes
+        -----
+        Circuit simulation is supported for any ``ancilla_state``. However,
+        transpilation to a measurement pattern is currently supported only when
+        ``ancilla_state`` is a member of ``BasicStates``.
         """
         self.width = width
         self.ancillas = ancillas
@@ -149,7 +169,7 @@ class Circuit(InplaceParameterizable):
     def nqubit(self) -> int:
         """Total number of qubits in the circuit.
 
-        It includes input and ancilla qubits.
+        It includes logical and ancilla qubits, whether they are active or not.
         """
         return self.width + self.ancillas
 
@@ -198,7 +218,7 @@ class Circuit(InplaceParameterizable):
 
     def __repr__(self) -> str:
         """Return a representation of the Circuit."""
-        return f"Circuit(width={self.width}, instr={self.instruction})"
+        return f"Circuit(width={self.width}, instr={self.instruction}, ancillas={self.ancillas}, ancilla_state={self.ancilla_state!r})"
 
     def cnot(self, control: int, target: int) -> None:
         """Apply a CNOT gate.
@@ -463,7 +483,14 @@ class Circuit(InplaceParameterizable):
         inputs = list(range(self.width))
         graph: nx.Graph[int] = nx.empty_graph(n_nodes)
         x_corrections: dict[int, set[int]] = {}
-        for instr in instructions_to_jcz(self.instruction):
+
+        if self.ancillas and self.ancilla_state is not BasicStates.PLUS:
+            new_circuit = self.transpile_ancilla_to_plus()
+            instructions = new_circuit.instruction
+        else:
+            instructions = self.instruction
+
+        for instr in instructions_to_jcz(instructions):
             match instr.kind:
                 case InstructionKind.M:
                     target = indices[instr.target]
@@ -766,6 +793,34 @@ class Circuit(InplaceParameterizable):
                     new_circuit.add(instruction.H(target=instr.target))
                 case _:
                     new_circuit.add(instr)
+        return new_circuit
+
+    def transpile_ancilla_to_plus(self) -> Circuit:
+        r"""Return an equivalent circuit where ancilla states are replaced with :math:`|+\rangle`."""
+        new_circuit = Circuit(self.width, ancillas=self.ancillas)
+        instructions_prepend: list[Callable[[int], InstructionType]] = []
+        match self.ancilla_state:
+            case BasicStates.PLUS:
+                pass
+            case BasicStates.MINUS:
+                instructions_prepend.append(instruction.Z)
+            case BasicStates.ZERO:
+                instructions_prepend.append(instruction.H)
+            case BasicStates.ONE:
+                instructions_prepend.extend((instruction.H, instruction.X))
+            case BasicStates.PLUS_I:
+                instructions_prepend.append(instruction.S)
+            case BasicStates.MINUS_I:
+                instructions_prepend.extend((instruction.S, instruction.Z))
+            case _:
+                raise NotImplementedError(
+                    f"Transpilation only supports `BasicStates` ancillas. Ancilla state is {self.ancilla_state}"
+                )
+
+        for qubit in range(self.width, self.nqubit):
+            for instr in instructions_prepend:
+                new_circuit.add(instr(qubit))
+        new_circuit.instruction += self.instruction
         return new_circuit
 
 
