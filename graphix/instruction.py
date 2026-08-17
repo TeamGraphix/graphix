@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 from abc import ABC, abstractmethod
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias
@@ -21,8 +22,6 @@ from graphix.fundamentals import (
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.repr_mixins import DataclassReprMixin
 
-if TYPE_CHECKING:
-    from collections.abc import Set as AbstractSet
 
 def repr_angle(angle: ParameterizedAngle) -> str:
     """
@@ -354,12 +353,15 @@ class J(_KindChecker, RotationInstruction):
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
 
 
+InstructionTypeWithoutCONDINSTR = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
+
 @dataclass(repr=False)
 class CONDINSTR(_KindChecker, BaseInstruction):
-    """Base class for single-target circuit instructions."""
+    """Base class for conditional circuit instructions."""
 
-    instructions: list[InstructionType]
+    instructions: list[InstructionTypeWithoutCONDINSTR | CONDINSTR]
     domain: AbstractSet[int]
+    kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
@@ -419,3 +421,4 @@ class Instruction(InstructionWithoutRZZ):
 if TYPE_CHECKING:
     InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J | CONDINSTR
     InstructionType = InstructionTypeWithoutRZZ | RZZ
+
