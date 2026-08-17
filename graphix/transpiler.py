@@ -1027,14 +1027,13 @@ class TranspileSwapsResult:
         return tuple(output.index for output in self.outputs if output.kind == kind)
 
     def extract_output_node_indices(self) -> tuple[int, ...]:
-        """Return for each output node, sorted in the order of the original circuit, the index of the corresponding output node in the order of the swapped circuit."""
-        reduced_index = {}
-        reduced_counter = 0
-        for index, output in enumerate(self.outputs):
-            if output.kind == OutputKind.Qubit:
-                reduced_index[index] = reduced_counter
-                reduced_counter += 1
-        return tuple(reduced_index[index] for index in self.extract_outputs(OutputKind.Qubit))
+        """Return for each output node, sorted in the order of the original circuit, the index of the corresponding output node in the order of the swapped circuit.
+
+        This method returns a permutation of ``range(number_of_output_qubits)``.
+        """
+        qubit_indices = self.extract_outputs(OutputKind.Qubit)
+        rank = {q: i for i, q in enumerate(sorted(qubit_indices))}
+        return tuple(rank[q] for q in qubit_indices)
 
     def swap_output_nodes(self, output_nodes: Sequence[Node]) -> tuple[Node, ...]:
         """Reorder the output nodes of a pattern obtained from a swapped circuit to restore the qubit ordering of the original circuit."""
