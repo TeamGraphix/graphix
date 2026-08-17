@@ -434,6 +434,28 @@ class TestCircuits:
         circuit2 = Circuit(3, instr=circuit.instruction)
         assert circuit.instruction == circuit2.instruction
 
+    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
+    def test_inactive_qubits(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
+        circuit = Circuit(0)
+        with pytest.raises(RuntimeError, match=r"Qubit 0 is not an active qubit."):
+            circuit.add(instruction(fx_rng))
+
+    @pytest.mark.parametrize(
+        ("instruction", "msg"),
+        [
+            (instruction.CCX(0, (1, 1)), r"Control qubits cannot be the same. Qubit index: 1"),
+            (instruction.CCX(0, (0, 1)), r"Target and control-0 qubits cannot be the same. Qubit index: 0"),
+            (instruction.RZZ(2, 2, 0.3), r"Target and control qubits cannot be the same. Qubit index: 2"),
+            (instruction.CZ((1, 1)), r"Target qubits cannot be the same. Qubit index: 1"),
+            (instruction.CNOT(0, 0), r"Target and control qubits cannot be the same. Qubit index: 0"),
+            (instruction.SWAP((1, 1)), r"Target qubits cannot be the same. Qubit index: 1"),
+        ],
+    )
+    def test_repeated_qubits(self, instruction: InstructionType, msg: str) -> None:
+        circuit = Circuit(3)
+        with pytest.raises(RuntimeError, match=msg):
+            circuit.add(instruction)
+
     def test_simple(self) -> None:
         rng = np.random.default_rng(420)
         circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])

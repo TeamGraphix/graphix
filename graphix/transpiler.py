@@ -106,6 +106,25 @@ class _MapAngleVisitor(InstructionVisitor):
         return self.f(angle)
 
 
+class _InstructionValidatorVisitor(InstructionVisitor):
+    """Instruction visitor that validates operations on active qubits.
+
+    The ``active_qubits`` attribute references the same mutable set as the
+    circuit's ``active_qubits`` attribute. The circuit updates this set after measurement gates are applied. See :meth:`Circuit.m`.
+    """
+
+    active_qubits: set[int]
+
+    def __init__(self, active_qubits: set[int]) -> None:
+        self.active_qubits = active_qubits
+
+    @override
+    def visit_qubit(self, qubit: int) -> int:
+        if qubit not in self.active_qubits:
+            raise RuntimeError(f"Qubit {qubit} is not an active qubit.")
+        return qubit
+
+
 class Circuit(InplaceParameterizable):
     """Quantum circuit.
 
@@ -163,6 +182,9 @@ class Circuit(InplaceParameterizable):
         self.ancilla_state = ancilla_state
         self.instruction = []
         self.active_qubits = set(range(width + ancillas))
+        # The visitor contains a reference to the `active_qubits` mutable set.
+        # Changes on `self.active_qubits` also occur on `self._visitor.active_qubits`.
+        self._visitor = _InstructionValidatorVisitor(self.active_qubits)
         if instr is not None:
             self.extend(instr)
 
@@ -231,10 +253,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(instruction.CNOT(control=control, target=target))
+        self.instruction.append(instruction.CNOT(control=control, target=target).visit(self._visitor))
 
     def swap(self, qubit1: int, qubit2: int) -> None:
         """Apply a SWAP gate.
@@ -246,10 +265,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             second qubit to be swapped
         """
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert qubit1 != qubit2
-        self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)))
+        self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)).visit(self._visitor))
 
     def cz(self, qubit1: int, qubit2: int) -> None:
         """Apply a CNOT gate.
@@ -261,10 +277,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             target qubit
         """
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert qubit1 != qubit2
-        self.instruction.append(instruction.CZ(targets=(qubit1, qubit2)))
+        self.instruction.append(instruction.CZ(targets=(qubit1, qubit2)).visit(self._visitor))
 
     def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
@@ -274,8 +287,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.H(target=qubit))
+        self.instruction.append(instruction.H(target=qubit).visit(self._visitor))
 
     def s(self, qubit: int) -> None:
         """Apply an S gate.
@@ -285,8 +297,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.S(target=qubit))
+        self.instruction.append(instruction.S(target=qubit).visit(self._visitor))
 
     def x(self, qubit: int) -> None:
         """Apply a Pauli X gate.
@@ -296,8 +307,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.X(target=qubit))
+        self.instruction.append(instruction.X(target=qubit).visit(self._visitor))
 
     def y(self, qubit: int) -> None:
         """Apply a Pauli Y gate.
@@ -307,8 +317,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.Y(target=qubit))
+        self.instruction.append(instruction.Y(target=qubit).visit(self._visitor))
 
     def z(self, qubit: int) -> None:
         """Apply a Pauli Z gate.
@@ -318,8 +327,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.Z(target=qubit))
+        self.instruction.append(instruction.Z(target=qubit).visit(self._visitor))
 
     def rx(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply an X rotation gate.
@@ -331,8 +339,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.RX(target=qubit, angle=angle))
+        self.instruction.append(instruction.RX(target=qubit, angle=angle).visit(self._visitor))
 
     def ry(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Y rotation gate.
@@ -344,8 +351,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.RY(target=qubit, angle=angle))
+        self.instruction.append(instruction.RY(target=qubit, angle=angle).visit(self._visitor))
 
     def rz(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Z rotation gate.
@@ -357,8 +363,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.RZ(target=qubit, angle=angle))
+        self.instruction.append(instruction.RZ(target=qubit, angle=angle).visit(self._visitor))
 
     def j(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a J rotation gate.
@@ -370,8 +375,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.J(target=qubit, angle=angle))
+        self.instruction.append(instruction.J(target=qubit, angle=angle).visit(self._visitor))
 
     def r(self, qubit: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a rotation gate on the given axis.
@@ -415,9 +419,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        self.instruction.append(instruction.RZZ(control=control, target=target, angle=angle))
+        self.instruction.append(instruction.RZZ(control=control, target=target, angle=angle).visit(self._visitor))
 
     def ccx(self, control1: int, control2: int, target: int) -> None:
         r"""Apply a CCX (Toffoli) gate.
@@ -431,13 +433,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        assert control1 in self.active_qubits
-        assert control2 in self.active_qubits
-        assert target in self.active_qubits
-        assert control1 != control2
-        assert control1 != target
-        assert control2 != target
-        self.instruction.append(instruction.CCX(controls=(control1, control2), target=target))
+        self.instruction.append(instruction.CCX(controls=(control1, control2), target=target).visit(self._visitor))
 
     def i(self, qubit: int) -> None:
         """Apply an identity (teleportation) gate.
@@ -447,8 +443,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.I(target=qubit))
+        self.instruction.append(instruction.I(target=qubit).visit(self._visitor))
 
     def m(self, qubit: int, axis: Axis) -> None:
         """Measure a quantum qubit.
@@ -462,8 +457,7 @@ class Circuit(InplaceParameterizable):
         axis : Axis
             measurement basis
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(instruction.M(target=qubit, axis=axis))
+        self.instruction.append(instruction.M(target=qubit, axis=axis).visit(self._visitor))
         self.active_qubits.remove(qubit)
 
     def cond_instr(self, instrs: Iterable[InstructionType], domain = AbstractSet[int]) -> None:
