@@ -1013,17 +1013,8 @@ class TranspileSwapsResult:
         This method returns a permutation of ``range(number_of_output_qubits)``.
         """
         qubit_indices = self.extract_outputs(OutputKind.Qubit)
-        qubit_indices_set = set(qubit_indices)
-
-        bit_index = 0
-        qubit_indices_shifted = {}
-        for index in range(self.circuit.width):
-            if index not in qubit_indices_set:
-                bit_index += 1
-            else:
-                qubit_indices_shifted[index] = index - bit_index
-
-        return tuple(qubit_indices_shifted[qubit_index] for qubit_index in qubit_indices)
+        rank = {q: i for i, q in enumerate(sorted(qubit_indices))}
+        return tuple(rank[q] for q in qubit_indices)
 
     def swap_output_nodes(self, output_nodes: Sequence[Node]) -> tuple[Node, ...]:
         """Reorder the output nodes of a pattern obtained from a swapped circuit to restore the qubit ordering of the original circuit."""
