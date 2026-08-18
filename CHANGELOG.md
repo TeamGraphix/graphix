@@ -78,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #569: Keyword arguments for `simulate_pattern` are now type-checked.
 
+- #586: Fixed #584 Swap transpilation of measured qubits.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
