@@ -16,7 +16,7 @@ from graphix.instruction import Instruction
 from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.pauli import Pauli
-from graphix.random_objects import rand_state_vector, rand_unit
+from graphix.random_objects import rand_outcome, rand_state_vector, rand_unit
 from graphix.sim.base_backend import NodeIndex
 from graphix.sim.statevec import NUM_QUBIT_PARALLEL, Statevector, StatevectorBackend
 from graphix.states import BasicStates, PlanarState
@@ -559,7 +559,7 @@ class TestStatevectorBackend:
         # plus state & zero state (default), but with tossed coins
 
         backend = StatevectorBackend()
-        coins = [rng.choice([0, 1]), rng.choice([0, 1])]
+        coins = [rand_outcome(rng), rand_outcome(rng)]
         expected_result = sum(coins) % 2
         states = [
             Pauli.X.eigenstate(coins[0]),
@@ -631,7 +631,7 @@ class TestStatevectorBackend:
         # plus state (default)
         backend = StatevectorBackend()
         n_neighbors = 10
-        coins = [rng.choice([0, 1])] + [rng.choice([0, 1]) for _ in range(n_neighbors)]
+        coins = [rand_outcome(rng)] + [rand_outcome(rng) for _ in range(n_neighbors)]
         expected_result = sum(coins) % 2
         states = [Pauli.X.eigenstate(coins[0])] + [Pauli.Z.eigenstate(coins[i + 1]) for i in range(n_neighbors)]
         nodes = range(len(states))
