@@ -16,26 +16,26 @@ _C0 = Ops.I  # I
 _C1 = Ops.X  # X
 _C2 = Ops.Y  # Y
 _C3 = Ops.Z  # Z
-_C4 = Ops.S  # S = \sqrt{Z}
-_C5 = Ops.SDG  # SDG = S^{\dagger}
+_C4 = Ops.S  # S
+_C5 = Ops.SDG  # S†
 _C6 = Ops.H  # H
-_C7 = utils.lock(np.asarray([[1, -1j], [-1j, 1]]) / np.sqrt(2))  # \sqrt{iX}
-_C8 = utils.lock(np.asarray([[1, -1], [1, 1]]) / np.sqrt(2))  # \sqrt{iY}
-_C9 = utils.lock(np.asarray([[0, 1 - 1j], [-1 - 1j, 0]]) / np.sqrt(2))  # sqrt{I}
-_C10 = utils.lock(np.asarray([[0, -1 - 1j], [1 - 1j, 0]]) / np.sqrt(2))  # sqrt{-I}
-_C11 = utils.lock(np.asarray([[1, -1], [-1, -1]]) / np.sqrt(2))  # sqrt{I}
-_C12 = utils.lock(np.asarray([[-1, -1], [1, -1]]) / np.sqrt(2))  # sqrt{-iY}
-_C13 = utils.lock(np.asarray([[1j, -1], [1, -1j]]) / np.sqrt(2))  # sqrt{-I}
-_C14 = utils.lock(np.asarray([[1j, 1], [-1, -1j]]) / np.sqrt(2))  # sqrt{-I}
-_C15 = utils.lock(np.asarray([[-1, -1j], [-1j, -1]]) / np.sqrt(2))  # sqrt{-iX}
-_C16 = utils.lock(np.asarray([[-1 + 1j, 1 + 1j], [-1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C17 = utils.lock(np.asarray([[-1 + 1j, -1 - 1j], [1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C18 = utils.lock(np.asarray([[1 + 1j, 1 - 1j], [-1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
-_C19 = utils.lock(np.asarray([[-1 - 1j, 1 - 1j], [-1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
-_C20 = utils.lock(np.asarray([[-1 - 1j, -1 - 1j], [1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
-_C21 = utils.lock(np.asarray([[-1 + 1j, -1 + 1j], [1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C22 = utils.lock(np.asarray([[1 + 1j, -1 - 1j], [1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
-_C23 = utils.lock(np.asarray([[-1 + 1j, 1 - 1j], [-1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
+_C7 = utils.lock(np.asarray([[1, -1j], [-1j, 1]]) / np.sqrt(2))  # S† H S†
+_C8 = utils.lock(np.asarray([[1, -1], [1, 1]]) / np.sqrt(2))  # H Z
+_C9 = utils.lock(np.asarray([[0, 1 - 1j], [-1 - 1j, 0]]) / np.sqrt(2))  # S† X
+_C10 = utils.lock(np.asarray([[0, -1 - 1j], [1 - 1j, 0]]) / np.sqrt(2))  # S X
+_C11 = utils.lock(np.asarray([[1, -1], [-1, -1]]) / np.sqrt(2))  # H Y
+_C12 = utils.lock(np.asarray([[-1, -1], [1, -1]]) / np.sqrt(2))  # H X
+_C13 = utils.lock(np.asarray([[1j, -1], [1, -1j]]) / np.sqrt(2))  # S† H S
+_C14 = utils.lock(np.asarray([[1j, 1], [-1, -1j]]) / np.sqrt(2))  # S H S†
+_C15 = utils.lock(np.asarray([[-1, -1j], [-1j, -1]]) / np.sqrt(2))  # S H S
+_C16 = utils.lock(np.asarray([[-1 + 1j, 1 + 1j], [-1 + 1j, -1 - 1j]]) / 2)  # H S†
+_C17 = utils.lock(np.asarray([[-1 + 1j, -1 - 1j], [1 - 1j, -1 - 1j]]) / 2)  # H S† X
+_C18 = utils.lock(np.asarray([[1 + 1j, 1 - 1j], [-1 - 1j, 1 - 1j]]) / 2)  # H S X
+_C19 = utils.lock(np.asarray([[-1 - 1j, 1 - 1j], [-1 - 1j, -1 + 1j]]) / 2)  # H S
+_C20 = utils.lock(np.asarray([[-1 - 1j, -1 - 1j], [1 - 1j, -1 + 1j]]) / 2)  # S H
+_C21 = utils.lock(np.asarray([[-1 + 1j, -1 + 1j], [1 + 1j, -1 - 1j]]) / 2)  # S† H
+_C22 = utils.lock(np.asarray([[1 + 1j, -1 - 1j], [1 - 1j, 1 - 1j]]) / 2)  # S H Y
+_C23 = utils.lock(np.asarray([[-1 + 1j, 1 - 1j], [-1 - 1j, -1 - 1j]]) / 2)  # S† H Y
 
 
 CLIFFORD = (
@@ -63,35 +63,6 @@ CLIFFORD = (
     _C21,
     _C22,
     _C23,
-)
-
-# Human-readable labels
-CLIFFORD_LABEL = (
-    "I",
-    "X",
-    "Y",
-    "Z",
-    "S",
-    "Sdagger",
-    "H",
-    r"\sqrt{iX}",
-    r"\sqrt{iY}",
-    r"\sqrt{I}",
-    r"\sqrt{-I}",
-    r"\sqrt{I}",
-    r"\sqrt{-iY}",
-    r"\sqrt{-I}",
-    r"\sqrt{-I}",
-    r"\sqrt{-iX}",
-    "I^{1/3}",
-    "I^{1/3}",
-    "I^{1/3}",
-    "I^{1/3}",
-    "I^{1/3}",
-    "I^{1/3}",
-    "I^{1/3}",
-    "I^{1/3}",
-    "I^{1/3}",
 )
 
 # Clifford(CLIFFORD_MUL[i][j]) ~ CLIFFORD[i] @ CLIFFORD[j] (up to phase)
@@ -210,22 +181,22 @@ CLIFFORD_TO_QASM3 = (
     ("sdg",),
     ("h",),
     ("sdg", "h", "sdg"),
-    ("h", "x"),
-    ("sdg", "y"),
-    ("sdg", "x"),
-    ("h", "y"),
-    ("h", "z"),
-    ("sdg", "h", "sdg", "y"),
+    ("z", "h"),
+    ("x", "sdg"),
+    ("x", "s"),
+    ("y", "h"),
+    ("x", "h"),
+    ("s", "h", "sdg"),
     ("sdg", "h", "s"),
-    ("sdg", "h", "sdg", "x"),
+    ("s", "h", "s"),
     ("sdg", "h"),
-    ("sdg", "h", "y"),
-    ("sdg", "h", "z"),
-    ("sdg", "h", "x"),
+    ("x", "sdg", "h"),
+    ("x", "s", "h"),
+    ("s", "h"),
     ("h", "s"),
     ("h", "sdg"),
-    ("h", "x", "sdg"),
-    ("h", "x", "s"),
+    ("y", "h", "s"),
+    ("y", "h", "sdg"),
 )
 
 CLIFFORD_PAULI_DECOMPOSITION = (

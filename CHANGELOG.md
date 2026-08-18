@@ -56,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `replace_parameter`, an in-place variant of `with_parameter` (or `subs`),
     - `replace_parameters`, an in-place variant of `with_parameters` (or `xreplace`).
 
+- #585: Added `rand_outcome`.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
@@ -77,6 +79,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #561: Fixed #555. Method `Pattern.draw` computes Pauli flow from pattern.
 
 - #569: Keyword arguments for `simulate_pattern` are now type-checked.
+
+- #576: Clifford gates are now properly printed, and their QASM3 decompositions are now optimal.
+
+- #583, #585: Compatibility with numpy 2.5.
+
+- #586: Fixed #584 Swap transpilation of measured qubits.
 
 ### Changed
 

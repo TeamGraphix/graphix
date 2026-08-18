@@ -29,7 +29,7 @@ dependencies = [
     "matplotlib",
     "networkx",
     "numba>=0.65.1",
-    "numpy>=2,<2.5",
+    "numpy>=2",
     "quimb",
     "scipy",
     "sympy",
@@ -47,7 +47,7 @@ dev = [
     "mypy==2.3.0",
     "pre-commit",
     "pyright",
-    "ruff==0.16.1",
+    "ruff==0.16.2",
     "types-networkx==3.6.1.20260728",
     "types-psutil",
     "types-setuptools",
@@ -72,8 +72,10 @@ doc = [
     "sphinx-gallery",
 ]
 typing = [
-    "numpy==2.4.2; python_version >= '3.11'",
-    "numba==0.66.0; python_version >= '3.11'",
+    "numpy==2.5.2; python_version >= '3.12'",
+    "numba==0.67.0; python_version >= '3.12'",
+    "numpy==2.4.6; python_version == '3.11'",
+    "numba==0.66.0; python_version == '3.11'",
     "numpy<2.4.2; python_version == '3.10'",
 ]
 
