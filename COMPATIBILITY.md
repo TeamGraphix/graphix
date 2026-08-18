@@ -2,7 +2,7 @@
 
 Graphix does not guarantee backwards compatibility between 0.x version releases. Here we list API changes which may break existing code using Graphix. 
 
-## [0.4] - 2026-08-13
+## [0.4] - 2026-08-18
 
 - #484: J & CZ transpilation.
   - Replaced `Circuit.transpile()` with a new approach based on decomposing circuits into J & CZ gates.
