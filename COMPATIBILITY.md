@@ -4,6 +4,8 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
 
 ## Unreleased
 
+- #571: Method `Pattern.graph` (formely `Pattern.extract_graph`) is removed. Use instead `Pattern.to_opengraph().graph` which standardizes the pattern and fails gracefully if there are non-commutative Cliffords.
+  
 - #518: Numba-jit statevector backend.
   - Changed statevector representation from a tensor to a flat array.
   - Dropped support for symbolic simulation and removed `Statevector.xreplace` and `Statevector.subs` methods. Symbolic simulation via SymPy is still possible with the plugin `graphix-symbolic`.
@@ -53,9 +55,4 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
     | `MatGF2.compute_rank` | `MatGF2.rank` |
     | `Statevec` | `Statevector` |
 
- 
-
-
-
-
-
+- #568: Method `Pattern.infer_pauli_measurements` and function `transpile_swaps` now operate in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.

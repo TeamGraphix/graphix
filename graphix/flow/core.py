@@ -47,6 +47,7 @@ from graphix.flow.exceptions import (
 )
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
+from graphix.parameter import Parameterizable
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
 
 if TYPE_CHECKING:
@@ -74,7 +75,7 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class XZCorrections(Generic[_AM_co]):
+class XZCorrections(Parameterizable, Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
     Attributes
@@ -518,7 +519,10 @@ class XZCorrections(Generic[_AM_co]):
         gv = GraphVisualizer.from_xzcorrections(xz_corr=self, **options)
         gv.visualize()
 
-    def subs(self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> XZCorrections[_M]:
+    @override
+    def with_parameter(
+        self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> XZCorrections[_M]:
         """Substitute a parameter with a value or expression in all measurement angles of the open graph.
 
         Parameters
@@ -535,12 +539,13 @@ class XZCorrections(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.subs`.
+        See notes and examples in :meth:`OpenGraph.with_parameter`.
         """
-        new_og = self.og.subs(variable, substitute)
+        new_og = self.og.with_parameter(variable, substitute)
         return dataclasses.replace(self, og=new_og)
 
-    def xreplace(
+    @override
+    def with_parameters(
         self: XZCorrections[_M], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     ) -> XZCorrections[_M]:
         """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
@@ -557,14 +562,14 @@ class XZCorrections(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.xreplace`.
+        See notes and examples in :meth:`OpenGraph.with_parameters`.
         """
-        new_og = self.og.xreplace(assignment)
+        new_og = self.og.with_parameters(assignment)
         return dataclasses.replace(self, og=new_og)
 
 
 @dataclass(frozen=True)
-class PauliFlow(Generic[_AM_co]):
+class PauliFlow(Parameterizable, Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
     Attributes
@@ -858,7 +863,8 @@ class PauliFlow(Generic[_AM_co]):
         gv = GraphVisualizer.from_flow(flow=self, **options)
         gv.visualize()
 
-    def subs(  # noqa: PYI019 Annotating with ``Self`` is not possible since ``self`` must be of parametric type ``Measurement``.
+    @override
+    def with_parameter(  # noqa: PYI019 Annotating with ``Self`` is not possible since ``self`` must be of parametric type ``Measurement``.
         self: _T_PauliFlowMeasurement, variable: Parameter, substitute: ExpressionOrSupportsFloat
     ) -> _T_PauliFlowMeasurement:
         """Substitute a parameter with a value or expression in all measurement angles of the open graph.
@@ -877,12 +883,13 @@ class PauliFlow(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.subs`.
+        See notes and examples in :meth:`OpenGraph.with_parameter`.
         """
-        new_og = self.og.subs(variable, substitute)
+        new_og = self.og.with_parameter(variable, substitute)
         return dataclasses.replace(self, og=new_og)
 
-    def xreplace(  # noqa: PYI019
+    @override
+    def with_parameters(  # noqa: PYI019
         self: _T_PauliFlowMeasurement, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     ) -> _T_PauliFlowMeasurement:
         """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
@@ -899,9 +906,9 @@ class PauliFlow(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.xreplace`.
+        See notes and examples in :meth:`OpenGraph.with_parameters`.
         """
-        new_og = self.og.xreplace(assignment)
+        new_og = self.og.with_parameters(assignment)
         return dataclasses.replace(self, og=new_og)
 
     def is_focused(self) -> bool:

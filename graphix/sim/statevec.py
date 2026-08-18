@@ -10,7 +10,7 @@ import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
+from typing import TYPE_CHECKING, Any, SupportsComplex, SupportsFloat, TypeVar
 
 import numba as nb
 import numpy as np
@@ -18,6 +18,7 @@ import numpy.typing as npt
 from typing_extensions import override
 
 from graphix import states
+from graphix.parameter import ExpressionOrSupportsComplex
 from graphix.pretty_print import OutputFormat, statevec_to_str
 from graphix.sim.base_backend import (
     DenseState,
@@ -29,7 +30,7 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
-    from typing import Any, Literal, Self, TypeVar
+    from typing import Literal, Self
 
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack

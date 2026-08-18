@@ -78,14 +78,14 @@ pattern.shift_signals()
 # %%
 # Print some properties of the graph.
 
-graph = pattern.graph()
+graph = pattern.to_opengraph().graph
 print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 
 # %%
 # Optimizing by removing Pauli measurements in the pattern.
 pattern.remove_input_nodes()
-pattern = pattern.infer_pauli_measurements()
+pattern.infer_pauli_measurements()
 pattern.remove_pauli_measurements(standardize=True)
 
 # %%
@@ -204,7 +204,7 @@ def cost(
     pattern.standardize()
     pattern.shift_signals()
     pattern.remove_input_nodes()
-    pattern = pattern.infer_pauli_measurements()
+    pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements(standardize=True)
     mbqc_tn = pattern.simulate(backend="tensornetwork", graph_prep="parallel")
     exp_val: float = 0

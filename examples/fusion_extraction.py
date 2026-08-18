@@ -26,7 +26,7 @@ from graphix.extraction import Graph, graph_to_fusion_network
 
 # %%
 # Here we say we want a graph state with 9 nodes and 12 edges.
-# We can obtain resource graph for a measurement pattern by using :code:`pattern.graph()`.
+# We can obtain resource graph for a measurement pattern by using :code:`pattern.to_opengraph().graph`.
 gs = Graph()
 nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 edges = [(0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (0, 5), (4, 5), (5, 6), (6, 7), (7, 0), (7, 8), (8, 1)]

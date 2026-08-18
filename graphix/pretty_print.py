@@ -888,7 +888,7 @@ def statevec_to_str(
 
     Parameters
     ----------
-    statevec : Statevector
+    statevec : AbstractStatevector
         The statevector to format.
     output : OutputFormat
         Desired formatting style (``ASCII``, ``LaTeX`` or ``Unicode``).

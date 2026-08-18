@@ -592,12 +592,13 @@ class TestExtraction:
 
         # Substitute parameter at the level of the extracted circuit
         qc1 = og.to_circuit()
-        s1 = qc1.subs(alpha, alpha_val).simulate(rng=fx_rng).state
+        qc1.replace_parameter(alpha, alpha_val)
+        s1 = qc1.simulate(rng=fx_rng).state
 
         # Substitute parameter at the level of the open graph object
         # Calling `infer_pauli_measurements` is not necessary for the test to pass
         # (and it should not be), but it suppresses the warnings.
-        qc2 = og.subs(alpha, alpha_val).infer_pauli_measurements().to_circuit()
+        qc2 = og.with_parameter(alpha, alpha_val).infer_pauli_measurements().to_circuit()
         s2 = qc2.simulate(rng=fx_rng).state
 
         assert s1.isclose(s2)

@@ -93,11 +93,27 @@ class InstructionVisitor:
 
 
 class BaseInstruction(ABC, DataclassReprMixin):
-    """Base class for circuit instruction."""
+    """Base class for circuit instructions."""
 
     @abstractmethod
-    def visit(self, visitor: InstructionVisitor) -> Self:
-        """Rewrite the instruction according to the given visitor."""
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        """Rewrite the instruction according to the given visitor.
+
+        Parameters
+        ----------
+        visitor : InstructionVisitor
+            The visitor specifying the rewriting.
+
+        copy : bool, optional
+            If ``True``, the current instruction remains unchanged, and a
+            new instruction is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Self
+            The rewritten instruction. Equal to ``self`` if ``copy`` is ``False``.
+        """
 
 
 @dataclass(repr=False)
@@ -109,9 +125,15 @@ class CCX(_KindChecker, BaseInstruction):
     kind: ClassVar[Literal[InstructionKind.CCX]] = field(default=InstructionKind.CCX, init=False)
 
     @override
-    def visit(self, visitor: InstructionVisitor) -> CCX:
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CCX:
         u, v = self.controls
-        return CCX(visitor.visit_qubit(self.target), (visitor.visit_qubit(u), visitor.visit_qubit(v)))
+        target = visitor.visit_qubit(self.target)
+        controls = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if copy:
+            return CCX(target, controls)
+        self.target = target
+        self.controls = controls
+        return self
 
 
 @dataclass(repr=False)
@@ -124,8 +146,16 @@ class RZZ(_KindChecker, BaseInstruction):
     kind: ClassVar[Literal[InstructionKind.RZZ]] = field(default=InstructionKind.RZZ, init=False)
 
     @override
-    def visit(self, visitor: InstructionVisitor) -> RZZ:
-        return RZZ(visitor.visit_qubit(self.target), visitor.visit_qubit(self.control), visitor.visit_angle(self.angle))
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> RZZ:
+        target = visitor.visit_qubit(self.target)
+        control = visitor.visit_qubit(self.control)
+        angle = visitor.visit_angle(self.angle)
+        if copy:
+            return RZZ(target, control, angle)
+        self.target = target
+        self.control = control
+        self.angle = angle
+        return self
 
 
 @dataclass(repr=False)
@@ -137,8 +167,14 @@ class CNOT(_KindChecker, BaseInstruction):
     kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
 
     @override
-    def visit(self, visitor: InstructionVisitor) -> CNOT:
-        return CNOT(visitor.visit_qubit(self.target), visitor.visit_qubit(self.control))
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CNOT:
+        target = visitor.visit_qubit(self.target)
+        control = visitor.visit_qubit(self.control)
+        if copy:
+            return CNOT(target, control)
+        self.target = target
+        self.control = control
+        return self
 
 
 @dataclass(repr=False)
@@ -149,9 +185,13 @@ class CZ(_KindChecker, BaseInstruction):
     kind: ClassVar[Literal[InstructionKind.CZ]] = field(default=InstructionKind.CZ, init=False)
 
     @override
-    def visit(self, visitor: InstructionVisitor) -> CZ:
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CZ:
         u, v = self.targets
-        return CZ((visitor.visit_qubit(u), visitor.visit_qubit(v)))
+        targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if copy:
+            return CZ(targets)
+        self.targets = targets
+        return self
 
 
 @dataclass(repr=False)
@@ -162,81 +202,70 @@ class SWAP(_KindChecker, BaseInstruction):
     kind: ClassVar[Literal[InstructionKind.SWAP]] = field(default=InstructionKind.SWAP, init=False)
 
     @override
-    def visit(self, visitor: InstructionVisitor) -> SWAP:
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> SWAP:
         u, v = self.targets
-        return SWAP((visitor.visit_qubit(u), visitor.visit_qubit(v)))
+        targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if copy:
+            return SWAP(targets)
+        self.targets = targets
+        return self
 
 
 @dataclass(repr=False)
-class H(_KindChecker, BaseInstruction):
+class SingleTargetInstruction(BaseInstruction):
+    """Base class for single-target circuit instructions."""
+
+    target: int
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        target = visitor.visit_qubit(self.target)
+        if copy:
+            return type(self)(target)
+        self.target = target
+        return self
+
+
+@dataclass(repr=False)
+class H(_KindChecker, SingleTargetInstruction):
     """H circuit instruction."""
 
-    target: int
     kind: ClassVar[Literal[InstructionKind.H]] = field(default=InstructionKind.H, init=False)
 
-    @override
-    def visit(self, visitor: InstructionVisitor) -> H:
-        return H(visitor.visit_qubit(self.target))
-
 
 @dataclass(repr=False)
-class S(_KindChecker, BaseInstruction):
+class S(_KindChecker, SingleTargetInstruction):
     """S circuit instruction."""
 
-    target: int
     kind: ClassVar[Literal[InstructionKind.S]] = field(default=InstructionKind.S, init=False)
 
-    @override
-    def visit(self, visitor: InstructionVisitor) -> S:
-        return S(visitor.visit_qubit(self.target))
-
 
 @dataclass(repr=False)
-class X(_KindChecker, BaseInstruction):
+class X(_KindChecker, SingleTargetInstruction):
     """X circuit instruction."""
 
-    target: int
     kind: ClassVar[Literal[InstructionKind.X]] = field(default=InstructionKind.X, init=False)
 
-    @override
-    def visit(self, visitor: InstructionVisitor) -> X:
-        return X(visitor.visit_qubit(self.target))
-
 
 @dataclass(repr=False)
-class Y(_KindChecker, BaseInstruction):
+class Y(_KindChecker, SingleTargetInstruction):
     """Y circuit instruction."""
 
-    target: int
     kind: ClassVar[Literal[InstructionKind.Y]] = field(default=InstructionKind.Y, init=False)
 
-    @override
-    def visit(self, visitor: InstructionVisitor) -> Y:
-        return Y(visitor.visit_qubit(self.target))
-
 
 @dataclass(repr=False)
-class Z(_KindChecker, BaseInstruction):
+class Z(_KindChecker, SingleTargetInstruction):
     """Z circuit instruction."""
 
-    target: int
     kind: ClassVar[Literal[InstructionKind.Z]] = field(default=InstructionKind.Z, init=False)
-
-    @override
-    def visit(self, visitor: InstructionVisitor) -> Z:
-        return Z(visitor.visit_qubit(self.target))
 
 
 @dataclass(repr=False)
-class I(_KindChecker, BaseInstruction):
+class I(_KindChecker, SingleTargetInstruction):
     """I circuit instruction."""
 
-    target: int
     kind: ClassVar[Literal[InstructionKind.I]] = field(default=InstructionKind.I, init=False)
-
-    @override
-    def visit(self, visitor: InstructionVisitor) -> I:
-        return I(visitor.visit_qubit(self.target))
 
 
 @dataclass(repr=False)
@@ -248,60 +277,60 @@ class M(_KindChecker, BaseInstruction):
     kind: ClassVar[Literal[InstructionKind.M]] = field(default=InstructionKind.M, init=False)
 
     @override
-    def visit(self, visitor: InstructionVisitor) -> M:
-        return M(visitor.visit_qubit(self.target), visitor.visit_axis(self.axis))
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> M:
+        target = visitor.visit_qubit(self.target)
+        axis = visitor.visit_axis(self.axis)
+        if copy:
+            return M(target, axis)
+        self.target = target
+        self.axis = axis
+        return self
 
 
 @dataclass(repr=False)
-class RX(_KindChecker, BaseInstruction):
+class RotationInstruction(BaseInstruction):
+    """Base class for rotation instructions."""
+
+    target: int
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        target = visitor.visit_qubit(self.target)
+        angle = visitor.visit_angle(self.angle)
+        if copy:
+            return type(self)(target, angle)
+        self.target = target
+        self.angle = angle
+        return self
+
+
+@dataclass(repr=False)
+class RX(_KindChecker, RotationInstruction):
     """X rotation circuit instruction."""
 
-    target: int
-    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RX]] = field(default=InstructionKind.RX, init=False)
 
-    @override
-    def visit(self, visitor: InstructionVisitor) -> RX:
-        return RX(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
-
 
 @dataclass(repr=False)
-class RY(_KindChecker, BaseInstruction):
+class RY(_KindChecker, RotationInstruction):
     """Y rotation circuit instruction."""
 
-    target: int
-    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RY]] = field(default=InstructionKind.RY, init=False)
 
-    @override
-    def visit(self, visitor: InstructionVisitor) -> RY:
-        return RY(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
-
 
 @dataclass(repr=False)
-class RZ(_KindChecker, BaseInstruction):
+class RZ(_KindChecker, RotationInstruction):
     """Z rotation circuit instruction."""
 
-    target: int
-    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RZ]] = field(default=InstructionKind.RZ, init=False)
-
-    @override
-    def visit(self, visitor: InstructionVisitor) -> RZ:
-        return RZ(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
 
 
 @dataclass(repr=False)
-class J(_KindChecker, BaseInstruction):
+class J(_KindChecker, RotationInstruction):
     """J circuit instruction."""
 
-    target: int
-    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
-
-    @override
-    def visit(self, visitor: InstructionVisitor) -> J:
-        return J(visitor.visit_qubit(self.target), visitor.visit_angle(self.angle))
 
 
 class InstructionWithoutRZZ:

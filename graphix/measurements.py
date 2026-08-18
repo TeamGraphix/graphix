@@ -14,7 +14,6 @@ from typing import (
 # override introduced in Python 3.12
 from typing_extensions import override
 
-from graphix import parameter
 from graphix.fundamentals import (
     ANGLE_PI,
     AbstractMeasurement,
@@ -25,6 +24,7 @@ from graphix.fundamentals import (
     Plane,
     Sign,
 )
+from graphix.parameter import Parameterizable, with_parameter, with_parameters
 from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ def toggle_outcome(outcome: Outcome) -> Outcome:
 
 
 @dataclass(frozen=True)
-class Measurement(AbstractMeasurement):
+class Measurement(AbstractMeasurement, Parameterizable):
     r"""An MBQC measurement.
 
     Base class for :class:`BlochMeasurement` and :class:`PauliMeasurement`.
@@ -168,7 +168,7 @@ class Measurement(AbstractMeasurement):
         >>> alpha = Placeholder("alpha")
         >>> Measurement.XY(alpha).to_pauli_or_none() is None
         True
-        >>> Measurement.XY(alpha).subs(alpha, 0.5).to_pauli_or_none()
+        >>> Measurement.XY(alpha).with_parameter(alpha, 0.5).to_pauli_or_none()
         Measurement.Y
         """
 
@@ -202,14 +202,6 @@ class Measurement(AbstractMeasurement):
         >>> Measurement.XY(0.25).to_pauli_or_bloch()
         Measurement.XY(0.25)
         """
-
-    @abstractmethod
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Self:
-        """Substitute a parameter with a value or expression in measurement angles."""
-
-    @abstractmethod
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Self:
-        """Perform parallel substitution of multiple parameters in measurement angles."""
 
 
 @dataclass(frozen=True)
@@ -337,12 +329,12 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         return BlochMeasurement(angle, new_plane)
 
     @override
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> BlochMeasurement:
-        return BlochMeasurement(parameter.subs(self.angle, variable, substitute), self.plane)
+    def with_parameter(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> BlochMeasurement:
+        return BlochMeasurement(with_parameter(self.angle, variable, substitute), self.plane)
 
     @override
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> BlochMeasurement:
-        return BlochMeasurement(parameter.xreplace(self.angle, assignment), self.plane)
+    def with_parameters(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> BlochMeasurement:
+        return BlochMeasurement(with_parameters(self.angle, assignment), self.plane)
 
 
 class PauliMeasurementMeta(ABCMeta):
@@ -477,11 +469,11 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
         return PauliMeasurement(pauli.axis, pauli.unit.sign)
 
     @override
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Self:
+    def with_parameter(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Self:
         return self
 
     @override
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Self:
+    def with_parameters(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Self:
         return self
 
 

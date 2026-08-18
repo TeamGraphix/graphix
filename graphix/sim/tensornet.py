@@ -648,7 +648,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         if graph_prep == "parallel":
             if not pattern.is_standard():
                 raise ValueError("parallel preparation strategy does not support not-standardized pattern")
-            graph = pattern.graph()
+            graph = pattern.to_opengraph().graph
             state = MBQCTensorNet(
                 graph_nodes=graph.nodes,
                 graph_edges=graph.edges,

@@ -5,7 +5,7 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
-import copy
+import copy as _copy
 import dataclasses
 import math
 from collections.abc import Collection, Iterable
@@ -16,10 +16,16 @@ import numpy as np
 from typing_extensions import override
 
 from graphix import linalg_validations as lv
-from graphix import parameter
 from graphix.channels import KrausChannel
 from graphix.ops import Ops
-from graphix.parameter import Expression, ExpressionOrFloat, ExpressionOrSupportsComplex
+from graphix.parameter import (
+    Expression,
+    ExpressionOrFloat,
+    ExpressionOrSupportsComplex,
+    InplaceParameterizable,
+    with_parameter,
+    with_parameters,
+)
 from graphix.pretty_print import OutputFormat, density_matrix_to_str
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, matmul, outer, tensordot, vdot
 from graphix.sim.statevec import Statevector, _check_permutation
@@ -34,7 +40,7 @@ if TYPE_CHECKING:
     from graphix.sim.data import Data
 
 
-class DensityMatrix(DenseState):
+class DensityMatrix(DenseState, InplaceParameterizable):
     """DensityMatrix object."""
 
     rho: Matrix
@@ -272,7 +278,7 @@ class DensityMatrix(DenseState):
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
 
-        st1 = copy.copy(self)
+        st1 = _copy.copy(self)
         st1.normalize()
 
         nqubit = self.nqubit
@@ -434,7 +440,7 @@ class DensityMatrix(DenseState):
             raise TypeError("Can't apply a channel that is not a Channel object.")
 
         for k_op in channel:
-            dm = copy.copy(self)
+            dm = _copy.copy(self)
             dm.evolve(k_op.operator, qargs)
             result_array += k_op.coef * np.conj(k_op.coef) * dm.rho
             # reinitialize to input density matrix
@@ -458,17 +464,29 @@ class DensityMatrix(DenseState):
         channel = noise.to_krauschannel()
         self.apply_channel(channel, qubits)
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> DensityMatrix:
-        """Return a copy of the density matrix where all occurrences of the given variable in measurement angles are substituted by the given value."""
-        result = copy.copy(self)
-        result.rho = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.rho)
-        return result
+    @override
+    def replace_parameter(
+        self, variable: Parameter, substitute: ExpressionOrSupportsFloat, *, copy: bool = False
+    ) -> DensityMatrix:
+        rho = np.vectorize(lambda value: with_parameter(value, variable, substitute))(self.rho)
+        if copy:
+            result = _copy.copy(self)
+            result.rho = rho
+            return result
+        self.rho = rho
+        return self
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> DensityMatrix:
-        """Return a copy of the density matrix where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
-        result = copy.copy(self)
-        result.rho = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.rho)
-        return result
+    @override
+    def replace_parameters(
+        self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat], *, copy: bool = False
+    ) -> DensityMatrix:
+        rho = np.vectorize(lambda value: with_parameters(value, assignment))(self.rho)
+        if copy:
+            result = _copy.copy(self)
+            result.rho = rho
+            return result
+        self.rho = rho
+        return self
 
 
 @dataclass(frozen=True)

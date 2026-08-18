@@ -157,7 +157,7 @@ This reveals the graph structure of the resource state which we can inspect:
 .. code-block:: python
 
     import networkx as nx
-    graph = pattern.graph()
+    graph = pattern.to_opengraph().graph
     pos = {0: (0, 0), 1: (0, -0.5), 2: (1, 0), 3: (4, 0), 4: (1, -0.5), 5: (2, -0.5), 6: (3, -0.5), 7: (4, -0.5)}
     graph_params = {'node_size': 240, 'node_color': 'w', 'edgecolors': 'k', 'with_labels': True}
     nx.draw(graph, pos=pos, **graph_params)
