@@ -135,10 +135,10 @@ class CCX(_KindChecker, BaseInstruction):
         target = visitor.visit_qubit(self.target)
         controls = (visitor.visit_qubit(u), visitor.visit_qubit(v))
         if controls[0] == controls[1]:
-            raise RuntimeError(f"Control qubits cannot be the same. Qubit index: {controls[0]}.")
+            raise ValueError(f"Control qubits cannot be the same. Qubit index: {controls[0]}.")
         for i, c in enumerate(controls):
             if target == c:
-                raise RuntimeError(f"Target and control-{i} qubits cannot be the same. Qubit index: {target}.")
+                raise ValueError(f"Target and control-{i} qubits cannot be the same. Qubit index: {target}.")
 
         if copy:
             return CCX(target, controls)
@@ -161,7 +161,7 @@ class RZZ(_KindChecker, BaseInstruction):
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
         if target == control:
-            raise RuntimeError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         angle = visitor.visit_angle(self.angle)
         if copy:
             return RZZ(target, control, angle)
@@ -184,7 +184,7 @@ class CNOT(_KindChecker, BaseInstruction):
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
         if target == control:
-            raise RuntimeError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         if copy:
             return CNOT(target, control)
         self.target = target
@@ -204,7 +204,7 @@ class CZ(_KindChecker, BaseInstruction):
         u, v = self.targets
         targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
         if targets[0] == targets[1]:
-            raise RuntimeError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
+            raise ValueError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
         if copy:
             return CZ(targets)
         self.targets = targets
@@ -223,7 +223,7 @@ class SWAP(_KindChecker, BaseInstruction):
         u, v = self.targets
         targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
         if targets[0] == targets[1]:
-            raise RuntimeError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
+            raise ValueError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
         if copy:
             return SWAP(targets)
         self.targets = targets

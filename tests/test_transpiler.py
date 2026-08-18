@@ -77,6 +77,13 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
 
+    def test_cond_instr(self) -> None:
+        circuit = Circuit(2)
+        circuit.m(0, Axis.Z)
+        circuit.cond_instr([instruction.H(1)], {0})
+        with pytest.raises(NotImplementedError):
+            circuit.transpile()
+
     @pytest.mark.parametrize(
         "ancilla_state",
         [
@@ -453,7 +460,7 @@ class TestCircuits:
     def test_wrong_qubits(self, instruction: InstructionType, msg: str) -> None:
         circuit = Circuit(3)
         circuit.m(0, Axis.X)
-        with pytest.raises(RuntimeError, match=msg):
+        with pytest.raises(ValueError, match=msg):
             circuit.add(instruction)
 
     @pytest.mark.parametrize(
@@ -470,7 +477,7 @@ class TestCircuits:
     )
     def test_repeated_qubits(self, instruction: InstructionType, msg: str) -> None:
         circuit = Circuit(3)
-        with pytest.raises(RuntimeError, match=msg):
+        with pytest.raises(ValueError, match=msg):
             circuit.add(instruction)
 
     def test_simple(self) -> None:

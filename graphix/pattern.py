@@ -27,6 +27,7 @@ from graphix import command, optimization
 from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Plane
+from graphix.instruction import Instruction
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
 from graphix.parameter import InplaceParameterizable
 from graphix.pretty_print import OutputFormat, pattern_to_str
@@ -57,6 +58,7 @@ if TYPE_CHECKING:
     from graphix.simulator import SimulatorKwargs, _BackendLiteral
     from graphix.space_minimization import SpaceMinimizationHeuristic
     from graphix.states import State
+    from graphix.transpiler import Circuit
     from graphix.visualization import DrawKwargs
 
     K = TypeVar("K")
@@ -1592,6 +1594,57 @@ class Pattern(InplaceParameterizable):
         """
         with Path(filename).with_suffix(".qasm").open("w", encoding="utf-8") as file:
             file.writelines(pattern_to_qasm3_lines(self, input_state=input_state))
+
+    def to_circuit(self) -> Circuit:
+        from graphix import Circuit  # noqa: PLC0415 # Avoid circular imports
+
+        width = len(self.input_nodes)
+        ancillas = sum(cmd.kind == CommandKind.N for cmd in self.__seq)
+        circuit = Circuit(width, ancillas=ancillas)
+        ancilla_state: State | None = None
+
+        for cmd in self.__seq:
+            match cmd.kind:
+                case CommandKind.N:
+                    if ancilla_state is None:
+                        ancilla_state = cmd.state
+                    elif ancilla_state != cmd.state:
+                        raise NotImplementedError(f"Pattern to circuit conversion is only possible if all N commands have the same state. {ancilla_state} and {cmd.state} were found.")
+                case CommandKind.E:
+                    circuit.cz(*cmd.nodes)
+                case CommandKind.M:
+                    pass
+                case CommandKind.X:
+                    circuit.cond_instr((Instruction.X(cmd.node), ), cmd.domain)
+                case CommandKind.Z:
+                    circuit.cond_instr((Instruction.Z(cmd.node), ), cmd.domain)
+                case CommandKind.C:
+                    # TODO: May be worth to encapsulate
+                    # as a method of Clifford (.to_instruction)
+                    match cmd.clifford:
+                        case Clifford.X:
+                            circuit.x(cmd.node)
+                        case Clifford.Y:
+                            circuit.y(cmd.node)
+                        case _:
+                            for clifford in cmd.clifford.hsz:
+                                match clifford:
+                                    case Clifford.I:
+                                        circuit.i(cmd.node)
+                                    case Clifford.Z:
+                                        circuit.z(cmd.node)
+                                    case Clifford.S:
+                                        circuit.s(cmd.node)
+                                    case Clifford.H:
+                                        circuit.h(cmd.node)
+                                    case _:
+                                        raise RuntimeError("Invalid Clifford decomposition.")
+
+        if ancilla_state is not None:
+            circuit.ancilla_state = ancilla_state
+
+        return circuit
+
 
     def is_parameterized(self) -> bool:
         """

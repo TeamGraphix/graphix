@@ -121,14 +121,14 @@ class _InstructionValidatorVisitor(InstructionVisitor):
     @override
     def visit_qubit(self, qubit: int) -> int:
         if self.output_kind.get(qubit) is not OutputKind.Qubit:
-            raise RuntimeError(f"Qubit {qubit} is not an active qubit.")
+            raise ValueError(f"Qubit {qubit} is not an active qubit.")
         return qubit
 
     @override
     def visit_domain(self, domain: set[int]) -> set[int]:
         for bit in domain:
             if self.output_kind.get(bit) is not OutputKind.Bit:
-                raise RuntimeError(f"Qubit {bit} is not a measured qubit.")
+                raise ValueError(f"Qubit {bit} is not a measured qubit.")
         return domain
 
 
@@ -277,7 +277,7 @@ class Circuit(InplaceParameterizable):
         self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)).visit(self._visitor))
 
     def cz(self, qubit1: int, qubit2: int) -> None:
-        """Apply a CNOT gate.
+        """Apply a CZ gate.
 
         Parameters
         ----------
