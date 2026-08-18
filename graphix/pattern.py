@@ -26,9 +26,9 @@ from typing_extensions import assert_never, override
 from graphix import command, optimization
 from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 from graphix.instruction import Instruction
-from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.parameter import InplaceParameterizable
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
@@ -1609,15 +1609,36 @@ class Pattern(InplaceParameterizable):
                     if ancilla_state is None:
                         ancilla_state = cmd.state
                     elif ancilla_state != cmd.state:
-                        raise NotImplementedError(f"Pattern to circuit conversion is only possible if all N commands have the same state. {ancilla_state} and {cmd.state} were found.")
+                        raise NotImplementedError(
+                            f"Pattern to circuit conversion is only possible if all N commands have the same state. {ancilla_state} and {cmd.state} were found."
+                        )
                 case CommandKind.E:
                     circuit.cz(*cmd.nodes)
                 case CommandKind.M:
-                    pass
+                    if cmd.s_domain:
+                        circuit.cond_instr((Instruction.X(cmd.node),), cmd.s_domain)
+                    if cmd.t_domain:
+                        circuit.cond_instr((Instruction.Z(cmd.node),), cmd.t_domain)
+                    meas = cmd.measurement.to_pauli_or_bloch()
+                    if isinstance(meas, PauliMeasurement):
+                        circuit.m(cmd.node, meas.axis)
+                    else:
+                        match meas.plane:
+                            case Plane.XY:
+                                circuit.rz(cmd.node, -meas.angle)
+                                circuit.m(cmd.node, Axis.X)
+                            case Plane.XZ:
+                                circuit.ry(cmd.node, -meas.angle)
+                                circuit.m(cmd.node, Axis.Z)
+                            case Plane.YZ:
+                                circuit.rx(cmd.node, -meas.angle)
+                                circuit.m(cmd.node, Axis.Z)
+                            case _:
+                                assert_never(meas.plane)
                 case CommandKind.X:
-                    circuit.cond_instr((Instruction.X(cmd.node), ), cmd.domain)
+                    circuit.cond_instr((Instruction.X(cmd.node),), cmd.domain)
                 case CommandKind.Z:
-                    circuit.cond_instr((Instruction.Z(cmd.node), ), cmd.domain)
+                    circuit.cond_instr((Instruction.Z(cmd.node),), cmd.domain)
                 case CommandKind.C:
                     # TODO: May be worth to encapsulate
                     # as a method of Clifford (.to_instruction)
@@ -1644,7 +1665,6 @@ class Pattern(InplaceParameterizable):
             circuit.ancilla_state = ancilla_state
 
         return circuit
-
 
     def is_parameterized(self) -> bool:
         """
