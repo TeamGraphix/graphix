@@ -78,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #569: Keyword arguments for `simulate_pattern` are now type-checked.
 
+- #576: Clifford gates are now properly printed, and their QASM3 decompositions are now optimal.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
