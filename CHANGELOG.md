@@ -82,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #583, #585: Compatibility with numpy 2.5.
 
+- #586: Fixed #584 Swap transpilation of measured qubits.
+
 ### Changed
 
 - #452: Use `uv` for dependency management
