@@ -113,16 +113,23 @@ class _InstructionValidatorVisitor(InstructionVisitor):
     circuit's ``active_qubits`` attribute. The circuit updates this set after measurement gates are applied. See :meth:`Circuit.m`.
     """
 
-    active_qubits: set[int]
+    output_kind: dict[int, OutputKind]
 
-    def __init__(self, active_qubits: set[int]) -> None:
-        self.active_qubits = active_qubits
+    def __init__(self, nqubit: int) -> None:
+        self.output_kind = dict.fromkeys(range(nqubit), OutputKind.Qubit)
 
     @override
     def visit_qubit(self, qubit: int) -> int:
-        if qubit not in self.active_qubits:
+        if self.output_kind.get(qubit) is not OutputKind.Qubit:
             raise RuntimeError(f"Qubit {qubit} is not an active qubit.")
         return qubit
+
+    @override
+    def visit_domain(self, domain: set[int]) -> set[int]:
+        for bit in domain:
+            if self.output_kind.get(bit) is not OutputKind.Bit:
+                raise RuntimeError(f"Qubit {bit} is not a measured qubit.")
+        return domain
 
 
 class Circuit(InplaceParameterizable):
@@ -184,7 +191,7 @@ class Circuit(InplaceParameterizable):
         self.active_qubits = set(range(width + ancillas))
         # The visitor contains a reference to the `active_qubits` mutable set.
         # Changes on `self.active_qubits` also occur on `self._visitor.active_qubits`.
-        self._visitor = _InstructionValidatorVisitor(self.active_qubits)
+        self._visitor = _InstructionValidatorVisitor(width + ancillas)
         if instr is not None:
             self.extend(instr)
 
@@ -461,10 +468,25 @@ class Circuit(InplaceParameterizable):
         """
         self.instruction.append(instruction.M(target=qubit, axis=axis).visit(self._visitor))
         self.active_qubits.remove(qubit)
+        self._visitor.output_kind[qubit] = OutputKind.Bit
 
-    def cond_instr(self, instrs: Iterable[InstructionType], domain: AbstractSet[int]) -> None:
+    def cond_instr(self, instrs: Iterable[InstructionType], domain: AbstractSet[int] | None) -> None:
+        """Apply a conditional sequence of gates.
+
+        Parameters
+        ----------
+        instrs : Iterable[InstructionType]
+            Sequence of instructions to apply conditionally.
+        domain : AbstractSet[int] or None, optional
+            Indices of measured qubits whose outcomes determine the condition. Defaults to ``None``.
+
+        Notes
+        -----
+        The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
+        """
+        domain_set = set(domain) if domain is not None else set()
         self.instruction.append(
-            instruction.CONDINSTR(instructions=tuple(instrs), domain=set(domain)).visit(self._visitor)
+            instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set).visit(self._visitor)
         )
 
     def transpile_to_causalflow(self) -> TranspiledFlow:
@@ -637,56 +659,11 @@ class Circuit(InplaceParameterizable):
             _backend.add_nodes(range(self.width, self.nqubit), self.ancilla_state)
 
         classical_measures: list[Outcome] = []
+        results: dict[int, Outcome] = {}  # Mimics `DefaultMeasureMethod.results`
 
-        for i in range(len(self.instruction)):
-            instr = self.instruction[i]
+        # Modifies in place `_backend`, `results`, `classical_measures`
+        simulate_instructions(self.instruction, _backend, rng, results, classical_measures, stacklevel=stacklevel + 1)
 
-            def evolve_single(op: Matrix, target: int) -> None:
-                _backend.state.evolve_single(op, _backend.node_index.index(target))
-
-            def evolve(op: Matrix, qargs: Iterable[int]) -> None:
-                _backend.state.evolve(op, [_backend.node_index.index(qarg) for qarg in qargs])
-
-            match instr.kind:
-                case instruction.InstructionKind.CNOT:
-                    evolve(Ops.CNOT, [instr.control, instr.target])
-                case instruction.InstructionKind.SWAP:
-                    u, v = instr.targets
-                    _backend.state.swap((_backend.node_index.index(u), _backend.node_index.index(v)))
-                case instruction.InstructionKind.CZ:
-                    u, v = instr.targets
-                    _backend.state.entangle((_backend.node_index.index(u), _backend.node_index.index(v)))
-                case instruction.InstructionKind.I:
-                    pass
-                case instruction.InstructionKind.S:
-                    evolve_single(Ops.S, instr.target)
-                case instruction.InstructionKind.H:
-                    evolve_single(Ops.H, instr.target)
-                case instruction.InstructionKind.X:
-                    evolve_single(Ops.X, instr.target)
-                case instruction.InstructionKind.Y:
-                    evolve_single(Ops.Y, instr.target)
-                case instruction.InstructionKind.Z:
-                    evolve_single(Ops.Z, instr.target)
-                case instruction.InstructionKind.RX:
-                    evolve_single(Ops.rx(instr.angle), instr.target)
-                case instruction.InstructionKind.RY:
-                    evolve_single(Ops.ry(instr.angle), instr.target)
-                case instruction.InstructionKind.RZ:
-                    evolve_single(Ops.rz(instr.angle), instr.target)
-                case instruction.InstructionKind.J:
-                    evolve_single(Ops.j(instr.angle), instr.target)
-                case instruction.InstructionKind.RZZ:
-                    evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
-                case instruction.InstructionKind.CCX:
-                    evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
-                case instruction.InstructionKind.M:
-                    result = _backend.measure(
-                        instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1
-                    )
-                    classical_measures.append(result)
-                case _:
-                    raise ValueError(f"Unknown instruction: {instr}")
         return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Circuit:
@@ -1041,6 +1018,8 @@ def instructions_to_jcz(instrs: Iterable[InstructionType]) -> Iterator[instructi
                 yield from instructions_to_jcz(decompose_cnot(instr))
             case InstructionKind.SWAP:
                 yield from instructions_to_jcz(decompose_swap(instr))
+            case InstructionKind.CONDINSTR:
+                raise NotImplementedError("Transpilation of conditional instructions is not supported.")
             case _:
                 assert_never(instr.kind)
 
@@ -1252,3 +1231,88 @@ def _initialize_backend(
             return DensityMatrixBackend(branch_selector=branch_selector)
         case _:
             raise ValueError(f"Unknown backend {backend}.")
+
+
+def simulate_instructions(
+    instructions: Iterable[InstructionType],
+    backend: _BuiltinDenseStateBackend | DenseStateBackend[_DenseStateT],
+    rng: Generator | None,
+    results: dict[int, Outcome],
+    classical_outputs: list[Outcome],
+    *,
+    stacklevel: int = 1,
+) -> None:
+    """Simulate a sequence of quantum instructions.
+
+    Parameters
+    ----------
+    instructions : Iterable[InstructionType]
+        Sequence of instructions to simulate.
+    backend : _BuiltinDenseStateBackend or DenseStateBackend[_DenseStateT]
+        Backend containing the quantum state.
+    rng : Generator or None
+        Random number generator used for stochastic measurements. If ``None``, the backend's default random number generation behavior is used.
+    results : dict[int, Outcome]
+        Mapping from measured qubit indices to their measurement outcomes. This mapping is updated in place as measurement instructions are simulated.
+    classical_outputs : list[Outcome]
+        List of measurement outcomes. This list is updated in place and retained for backwards compatibility.
+    stacklevel : int, default=1
+        Stack level used when reporting warnings generated during measurement.
+    """
+
+    def evolve_single(op: Matrix, target: int) -> None:
+        backend.state.evolve_single(op, backend.node_index.index(target))
+
+    def evolve(op: Matrix, qargs: Iterable[int]) -> None:
+        backend.state.evolve(op, [backend.node_index.index(qarg) for qarg in qargs])
+
+    # Mimics `MeasureMethod.check_domain`
+    def check_domain(domain: set[int]) -> bool:
+        return sum(results[j] for j in domain) % 2 == 1
+
+    for instr in instructions:
+        match instr.kind:
+            case instruction.InstructionKind.CNOT:
+                evolve(Ops.CNOT, [instr.control, instr.target])
+            case instruction.InstructionKind.SWAP:
+                u, v = instr.targets
+                backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))
+            case instruction.InstructionKind.CZ:
+                u, v = instr.targets
+                backend.state.entangle((backend.node_index.index(u), backend.node_index.index(v)))
+            case instruction.InstructionKind.I:
+                pass
+            case instruction.InstructionKind.S:
+                evolve_single(Ops.S, instr.target)
+            case instruction.InstructionKind.H:
+                evolve_single(Ops.H, instr.target)
+            case instruction.InstructionKind.X:
+                evolve_single(Ops.X, instr.target)
+            case instruction.InstructionKind.Y:
+                evolve_single(Ops.Y, instr.target)
+            case instruction.InstructionKind.Z:
+                evolve_single(Ops.Z, instr.target)
+            case instruction.InstructionKind.RX:
+                evolve_single(Ops.rx(instr.angle), instr.target)
+            case instruction.InstructionKind.RY:
+                evolve_single(Ops.ry(instr.angle), instr.target)
+            case instruction.InstructionKind.RZ:
+                evolve_single(Ops.rz(instr.angle), instr.target)
+            case instruction.InstructionKind.J:
+                evolve_single(Ops.j(instr.angle), instr.target)
+            case instruction.InstructionKind.RZZ:
+                evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
+            case instruction.InstructionKind.CCX:
+                evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
+            case instruction.InstructionKind.M:
+                result = backend.measure(instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1)
+                # We keep `classical_outputs` for backwards compatibility
+                classical_outputs.append(result)
+                results[instr.target] = result
+            case instruction.InstructionKind.CONDINSTR:
+                if check_domain(instr.domain):
+                    simulate_instructions(
+                        instr.instructions, backend, rng, results, classical_outputs, stacklevel=stacklevel + 1
+                    )
+            case _:
+                raise ValueError(f"Unknown instruction: {instr}")

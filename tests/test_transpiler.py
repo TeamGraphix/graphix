@@ -434,11 +434,27 @@ class TestCircuits:
         circuit2 = Circuit(3, instr=circuit.instruction)
         assert circuit.instruction == circuit2.instruction
 
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_inactive_qubits(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
-        circuit = Circuit(0)
-        with pytest.raises(RuntimeError, match=r"Qubit 0 is not an active qubit."):
-            circuit.add(instruction(fx_rng))
+    @pytest.mark.parametrize(
+        ("instruction", "msg"),
+        [
+            (instruction.S(0), r"Qubit 0 is not an active qubit."),
+            (instruction.RZ(4, 0.3), r"Qubit 4 is not an active qubit."),
+            (instruction.CNOT(0, 1), r"Qubit 0 is not an active qubit."),
+            (instruction.CONDINSTR((instruction.H(0), instruction.Z(2)), {0}), r"Qubit 0 is not an active qubit."),
+            (instruction.CONDINSTR((instruction.H(1), instruction.X(0)), {0}), r"Qubit 0 is not an active qubit."),
+            (
+                instruction.CONDINSTR((instruction.H(1), instruction.X(2), instruction.SWAP((1, 4))), {0}),
+                r"Qubit 4 is not an active qubit.",
+            ),
+            (instruction.CONDINSTR((instruction.RX(2, 0.2),), {0, 1}), r"Qubit 1 is not a measured qubit."),
+            (instruction.CONDINSTR((instruction.J(1, 0.2),), {0, 4}), r"Qubit 4 is not a measured qubit."),
+        ],
+    )
+    def test_wrong_qubits(self, instruction: InstructionType, msg: str) -> None:
+        circuit = Circuit(3)
+        circuit.m(0, Axis.X)
+        with pytest.raises(RuntimeError, match=msg):
+            circuit.add(instruction)
 
     @pytest.mark.parametrize(
         ("instruction", "msg"),
@@ -449,6 +465,7 @@ class TestCircuits:
             (instruction.CZ((1, 1)), r"Target qubits cannot be the same. Qubit index: 1"),
             (instruction.CNOT(0, 0), r"Target and control qubits cannot be the same. Qubit index: 0"),
             (instruction.SWAP((1, 1)), r"Target qubits cannot be the same. Qubit index: 1"),
+            (instruction.CONDINSTR((instruction.SWAP((1, 1)),)), r"Target qubits cannot be the same. Qubit index: 1"),
         ],
     )
     def test_repeated_qubits(self, instruction: InstructionType, msg: str) -> None:
@@ -492,6 +509,30 @@ class TestCircuits:
         state = circuit.simulate(rng=fx_rng, input_state=BasicStates.ZERO).state
         state_ref = Statevector([BasicStates.ZERO, ancilla_state])
         assert state.isclose(state_ref)
+
+    @pytest.mark.parametrize(
+        ("domain", "outcome", "output"),
+        [
+            (set(), 0, BasicStates.ZERO),
+            (set(), 1, BasicStates.ZERO),
+            ({0}, 0, BasicStates.ZERO),
+            ({0}, 1, BasicStates.MINUS),
+            ({0, 1}, 0, BasicStates.ZERO),
+            ({0, 1}, 1, BasicStates.ZERO),
+        ],
+    )
+    def test_cond_instr(self, fx_rng: Generator, domain: set[int], outcome: Outcome, output: State) -> None:
+        circuit = Circuit(3)
+        circuit.m(0, Axis.Z)
+        circuit.m(1, Axis.Z)
+        circuit.cond_instr((instruction.H(2), instruction.Z(2)), domain)
+        branch_selector = ConstBranchSelector(outcome)
+        state = circuit.simulate(
+            rng=fx_rng,
+            input_state=[BasicStates.PLUS, BasicStates.PLUS, BasicStates.ZERO],
+            branch_selector=branch_selector,
+        ).state
+        assert state.isclose(Statevector(nqubit=1, data=output))
 
     def test_ancilla_error(self) -> None:
         state = PlanarState(Plane.XY, 0.3)

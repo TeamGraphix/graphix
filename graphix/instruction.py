@@ -352,6 +352,8 @@ class J(_KindChecker, RotationInstruction):
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
 
 
+# Needed to specify dataclass attributes in CONDINSTR,
+# so it cannot be inside TYPE_CHECKING block.
 InstructionTypeWithoutCONDINSTR = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J | RZZ
 
 
@@ -360,7 +362,7 @@ class CONDINSTR(_KindChecker, BaseInstruction):
     """Base class for conditional circuit instructions."""
 
     instructions: tuple[InstructionTypeWithoutCONDINSTR | CONDINSTR, ...]
-    domain: set[int]
+    domain: set[int] = field(default_factory=set)
     kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
 
     @override
