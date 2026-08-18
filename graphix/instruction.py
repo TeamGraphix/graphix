@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import enum
 from abc import ABC, abstractmethod
-from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias
@@ -93,7 +92,7 @@ class InstructionVisitor:
         """Rewrite an axis."""
         return axis
 
-    def visit_domain(self, domain: AbstractSet[int]) -> AbstractSet[int]:
+    def visit_domain(self, domain: set[int]) -> set[int]:
         """Rewrite a domain of a conditional instruction."""
         return domain
 
@@ -353,25 +352,27 @@ class J(_KindChecker, RotationInstruction):
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
 
 
-InstructionTypeWithoutCONDINSTR = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
+InstructionTypeWithoutCONDINSTR = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J | RZZ
+
 
 @dataclass(repr=False)
 class CONDINSTR(_KindChecker, BaseInstruction):
     """Base class for conditional circuit instructions."""
 
-    instructions: list[InstructionTypeWithoutCONDINSTR | CONDINSTR]
-    domain: AbstractSet[int]
+    instructions: tuple[InstructionTypeWithoutCONDINSTR | CONDINSTR, ...]
+    domain: set[int]
     kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
-        instructions = [instr.visit(visitor, copy=copy) for instr in self.instructions]
+        instructions = tuple(instr.visit(visitor, copy=copy) for instr in self.instructions)
         domain = visitor.visit_domain(self.domain)
         if copy:
             return type(self)(instructions, domain)
         self.instructions = instructions
         self.domain = domain
         return self
+
 
 class InstructionWithoutRZZ:
     """Grouping of all instructions except RZZ for namespace exposure.
@@ -420,5 +421,5 @@ class Instruction(InstructionWithoutRZZ):
 
 if TYPE_CHECKING:
     InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J | CONDINSTR
-    InstructionType = InstructionTypeWithoutRZZ | RZZ
-
+    # InstructionType = InstructionTypeWithoutRZZ | RZZ
+    InstructionType = InstructionTypeWithoutCONDINSTR | CONDINSTR

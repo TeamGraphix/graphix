@@ -35,6 +35,7 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+    from collections.abc import Set as AbstractSet
     from typing import Literal
 
     from numpy.random import Generator
@@ -230,6 +231,8 @@ class Circuit(InplaceParameterizable):
                 self.rz(instr.target, instr.angle)
             case InstructionKind.J:
                 self.j(instr.target, instr.angle)
+            case InstructionKind.CONDINSTR:
+                self.cond_instr(instr.instructions, instr.domain)
             case _:
                 assert_never(instr.kind)
 
@@ -459,8 +462,10 @@ class Circuit(InplaceParameterizable):
         self.instruction.append(instruction.M(target=qubit, axis=axis).visit(self._visitor))
         self.active_qubits.remove(qubit)
 
-    # def cond_instr(self, instrs: Iterable[InstructionType], domain = AbstractSet[int]) -> None:
-
+    def cond_instr(self, instrs: Iterable[InstructionType], domain: AbstractSet[int]) -> None:
+        self.instruction.append(
+            instruction.CONDINSTR(instructions=tuple(instrs), domain=set(domain)).visit(self._visitor)
+        )
 
     def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
