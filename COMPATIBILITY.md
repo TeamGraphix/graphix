@@ -12,7 +12,7 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
 
 - #468, #511: The `pyzx` module has been moved to a separate plugin: https://github.com/thierry-martinez/graphix-pyzx/
 
-- #571: Method `Pattern.graph` (formely `Pattern.extract_graph`) is removed. Use instead `Pattern.to_opengraph().graph` which standardizes the pattern and fails gracefully if there are non-commutative Cliffords.
+- #571: Method `Pattern.graph` (formerly `Pattern.extract_graph`) is removed. Use instead `Pattern.to_opengraph().graph` which standardizes the pattern and fails gracefully if there are non-commutative Cliffords.
   
 - #518: Numba-jit statevector backend.
   - Changed statevector representation from a tensor to a flat array.
