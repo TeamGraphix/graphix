@@ -5,7 +5,7 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
 ## [0.4] - 2026-08-13
 
 - #484: J & CZ transpilation.
-  - Replaced `Circuit.transpile()` with a new approach based decomposing circuits into J & CZ gates.
+  - Replaced `Circuit.transpile()` with a new approach based on decomposing circuits into J & CZ gates.
   - The transpiler now returns `TranspiledPattern` or `TranspiledFlow`, instead of `TranspileResult`.
 
 - #168, #498: `Pattern.remove_pauli_measurements` replaces `Pattern.perform_pauli_measurements`.
