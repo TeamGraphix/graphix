@@ -744,7 +744,7 @@ class Circuit(InplaceParameterizable):
 
     def transpile_measurements_to_z_axis(self) -> Circuit:
         """Return an equivalent circuit where all measurements are on Z axis."""
-        circuit = Circuit(width=self.width)
+        circuit = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
         for instr in self.instruction:
             if instr.kind == InstructionKind.M:
                 match instr.axis:
@@ -764,7 +764,7 @@ class Circuit(InplaceParameterizable):
 
     def transpile_j_to_rzh(self) -> Circuit:
         """Return an equivalent circuit where all J gates have been replaced with RZ and H gates."""
-        new_circuit = Circuit(self.width)
+        new_circuit = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
         for instr in self.instruction:
             match instr.kind:
                 case InstructionKind.J:

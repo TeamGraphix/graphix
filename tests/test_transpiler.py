@@ -256,13 +256,20 @@ class TestTranspilerUnitGates:
         branch_selector = CheckedBranchSelector(expected={0: expectation_value0}, abs_tol=1e-15)
         circuit.simulate(input_state=input_state, branch_selector=branch_selector, rng=fx_rng)
 
+    @pytest.mark.parametrize("with_ancillas", [False, True])
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_transpile_measurements_to_z_axis(self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome) -> None:
+    def test_transpile_measurements_to_z_axis(
+        self, fx_bg: PCG64, jumps: int, axis: Axis, outcome: Outcome, with_ancillas: bool
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(2)
+        circuit = Circuit(2, ancillas=1) if with_ancillas else Circuit(2)
         circuit.m(0, axis)
+        if with_ancillas:
+            if axis is Axis.X and outcome == 1:
+                circuit.ry(2, 0.4)
+            circuit.m(2, axis)
         input_state = rand_state_vector(2, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state

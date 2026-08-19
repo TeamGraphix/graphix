@@ -16,24 +16,28 @@ from graphix.flow.core import XZCorrections
 from graphix.flow.exceptions import (
     FlowError,
 )
-from graphix.fundamentals import ANGLE_PI, Angle, Plane
+from graphix.fundamentals import ANGLE_PI, Angle, Axis, Plane, Sign
+from graphix.instruction import Instruction, InstructionKind
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
-from graphix.random_objects import rand_circuit, rand_gate
+from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevector
 from graphix.sim.tensornet import MBQCTensorNet
 from graphix.simulator import PatternSimulator
-from graphix.states import PlanarState
+from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
+from tests.test_transpiler import INSTRUCTION_TEST_CASES
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from graphix.command import CommandType
+    from graphix.instruction import InstructionType
     from graphix.simulator import _BackendLiteral
+    from tests.test_transpiler import InstructionTestCase
 
 
 def compare_backend_result_with_statevec(backend_state: Statevector | DensityMatrix, statevec: Statevector) -> float:
@@ -1212,6 +1216,165 @@ class TestPattern:
     def test_isolated_nodes(self) -> None:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
         assert pattern.isolated_nodes() == {0, 1}
+
+    @pytest.mark.parametrize(
+        ("pattern", "circuit"),
+        [
+            (Pattern(), Circuit(0)),
+            (Pattern(input_nodes=[0, 1]), Circuit(2)),
+            (Pattern(input_nodes=[0, 1], cmds=[N(2)]), Circuit(2, ancillas=1)),
+            (Pattern(input_nodes=[0, 1], cmds=[N(2), E((0, 1))]), Circuit(2, [Instruction.CZ((0, 1))], ancillas=1)),
+            (Pattern(input_nodes=[6, 3], cmds=[N(2), E((6, 3))]), Circuit(2, [Instruction.CZ((0, 1))], ancillas=1)),
+            (
+                Pattern(
+                    input_nodes=[0],
+                    cmds=[
+                        N(1),
+                        E((0, 1)),
+                        C(0, Clifford.H),
+                        C(1, Clifford.X),
+                    ],
+                ),
+                Circuit(1, [Instruction.CZ((0, 1)), Instruction.H(0), Instruction.X(1)], ancillas=1),
+            ),
+            (
+                Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Measurement.XY(0)), X(1, {0})]),
+                Circuit(
+                    1,
+                    [Instruction.CZ((0, 1)), Instruction.M(0, Axis.X), Instruction.CONDINSTR((Instruction.X(1),), {0})],
+                    ancillas=1,
+                ),
+            ),
+        ],
+    )
+    def test_to_circuit_simple(self, pattern: Pattern, circuit: Circuit) -> None:
+        circuit_test = pattern.to_circuit()
+        assert circuit.width == circuit_test.width
+        assert circuit.instruction == circuit_test.instruction
+        assert circuit.ancillas == circuit_test.ancillas
+
+    @pytest.mark.parametrize(
+        "instruction",
+        [
+            Instruction.H(0),
+            Instruction.S(0),
+            Instruction.X(0),
+            Instruction.Y(0),
+            Instruction.Z(0),
+            Instruction.RX(0, 0.2),
+            Instruction.RY(0, 0.3),
+            Instruction.RZ(0, 0.4),
+            Instruction.I(0),
+            Instruction.J(0, 0.6),
+        ],
+    )
+    def test_to_circuit_single_qubit_instructions(self, fx_rng: Generator, instruction: InstructionType) -> None:
+        circuit_ref = Circuit(1)
+        circuit_ref.add(instruction)
+
+        pattern = (
+            circuit_ref.transpile().pattern
+        )  # Tested in test_transpile.TestTranspilerUnitGates.test_instructions()
+        circuit_test = pattern.to_circuit()
+
+        input_state = rand_state_vector(1, rng=fx_rng)
+        state_ref = circuit_ref.simulate(input_state=input_state, rng=fx_rng).state
+        state_test = circuit_test.simulate(input_state=input_state, rng=fx_rng).state
+        assert state_ref.isclose(state_test)
+
+    # This test requires swapping qubits at the end contrary to
+    # test_to_circuit_single_qubit_instructions
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
+    def test_to_circuit_basic_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        instr = [instruction(rng)]
+        circuit_ref = Circuit(3, instr=instr)
+        if any(instr.kind == InstructionKind.CCX for instr in circuit_ref.instruction):
+            # We skip this test because it returns a Circuit with too many qubits.
+            return
+        pattern = (
+            circuit_ref.transpile().pattern
+        )  # Tested in test_transpile.TestTranspilerUnitGates.test_instructions()
+        circuit_test = pattern.to_circuit()
+
+        input_state = rand_state_vector(3, rng=rng)
+        state_ref = circuit_ref.simulate(input_state=input_state, rng=rng).state
+        state_test = circuit_test.simulate(input_state=input_state, rng=rng).state
+        assert state_ref.isclose(state_test)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_to_circuit_random_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 1
+        circuit_ref = rand_circuit(nqubits, depth, rng)
+        pattern = circuit_ref.transpile().pattern
+        circuit_test = pattern.to_circuit()
+        if circuit_test.nqubit > 12:
+            # Avoid too long tests
+            return
+        input_state = rand_state_vector(nqubits, rng=rng)
+        state_ref = circuit_ref.simulate(input_state=input_state, rng=rng).state
+        state_test = circuit_test.simulate(input_state=input_state, rng=rng).state
+        assert state_ref.isclose(state_test)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    @pytest.mark.parametrize("plane", [Plane.XY, Plane.YZ, Plane.XZ])
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_to_circuit_bloch(self, fx_bg: PCG64, jumps: int, plane: Plane, outcome: Outcome) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        angle = rng.random() * 2 * ANGLE_PI
+        pattern = Pattern(input_nodes=[0], cmds=[N(2), E((0, 2)), M(0, BlochMeasurement(angle, plane)), Z(2, {0})])
+        circuit = pattern.to_circuit()
+
+        input_state = rand_state_vector(1, rng=rng)
+        branch_selector = ConstBranchSelector(outcome)
+
+        state_mbqc = pattern.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector)
+        state_circuit = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
+
+        assert state_mbqc.isclose(state_circuit)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+    @pytest.mark.parametrize("sign", [Sign.PLUS, Sign.MINUS])
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_to_circuit_pauli(self, fx_bg: PCG64, jumps: int, axis: Axis, sign: Sign, outcome: Outcome) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        pattern = Pattern(input_nodes=[0], cmds=[N(2), E((0, 2)), M(0, PauliMeasurement(axis, sign)), Z(2, {0})])
+        circuit = pattern.to_circuit()
+
+        input_state = rand_state_vector(1, rng=rng)
+        branch_selector = ConstBranchSelector(outcome)
+
+        state_mbqc = pattern.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector)
+        state_circuit = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
+
+        assert state_mbqc.isclose(state_circuit)
+
+    @pytest.mark.parametrize(
+        "state",
+        [
+            BasicStates.PLUS,
+            BasicStates.MINUS,
+            BasicStates.ZERO,
+            BasicStates.ONE,
+            BasicStates.PLUS_I,
+            BasicStates.MINUS_I,
+        ],
+    )
+    def test_to_circuit_custom_ancilla(self, fx_rng: Generator, state: PlanarState) -> None:
+        pattern = Pattern(input_nodes=[0, 1], cmds=[N(4, state), E((1, 4)), C(4, Clifford.X)])
+        circuit = pattern.to_circuit()
+
+        input_state = rand_state_vector(2, rng=fx_rng)
+
+        state_mbqc = pattern.simulate(rng=fx_rng, input_state=input_state)
+        state_circuit = circuit.simulate(rng=fx_rng, input_state=input_state).state
+
+        assert state_mbqc.isclose(state_circuit)
 
 
 def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
