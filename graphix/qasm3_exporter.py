@@ -151,6 +151,8 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
                     qasm3_qubit(instruction.target),
                 ],
             )
+        case InstructionKind.CONDINSTR:
+            raise NotImplementedError("QASM export not supported for circuits with conditonal instructions.")
         case _:
             assert_never(instruction.kind)
 
