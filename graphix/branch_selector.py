@@ -87,8 +87,11 @@ class RandomBranchSelector(BranchSelector):
         if self.pr_calc:
             prob_0 = f_expectation0()
             return outcome(rng.random() > prob_0)
-        result: Outcome = rng.choice([0, 1])
-        return result
+
+        # Circumvent circular import
+        from graphix.random_objects import rand_outcome  # noqa: PLC0415
+
+        return rand_outcome(rng)
 
 
 _T = TypeVar("_T", bound=Mapping[int, Outcome])

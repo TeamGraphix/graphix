@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.4] - 2026-08-18
 
 ### Added
 
@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #526: Added new method `XZCorrections.to_pauli_flow`, which reconstructs a Pauli flow directly from XZ-corrections by solving the per-node correction sets over GF(2). Added `FlowGenericErrorReason.NoPauliFlow`, raised when the XZ-corrections admit no compatible Pauli flow.
 
-- #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
+- #497, #540: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
 
 - #556, #563: Added a context variable `default_output_format` to unify the default output format for displaying `PauliFlow`, `XZCorrections`, `Pattern`, and `StateVec`.
 
@@ -56,11 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `replace_parameter`, an in-place variant of `with_parameter` (or `subs`),
     - `replace_parameters`, an in-place variant of `with_parameters` (or `xreplace`).
 
+- #585: Added `rand_outcome`.
+
 ### Fixed
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
 
-- #235, #489: Correct sign for `YZ` measurements in `from_pyzx_graph`. ZX diagrams are now correctly converted into open graphs, even if they are reduced.
+- #482, #483: Ensure that `to_space_optimal_pattern` reorders output nodes
 
 - #510
   - `Pattern.extract_opengraph` returns the same open graph before and after standardization.
@@ -77,6 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #561: Fixed #555. Method `Pattern.draw` computes Pauli flow from pattern.
 
 - #569: Keyword arguments for `simulate_pattern` are now type-checked.
+
+- #576: Clifford gates are now properly printed, and their QASM3 decompositions are now optimal.
+
+- #583, #585: Compatibility with numpy 2.5.
 
 - #586: Fixed #584 Swap transpilation of measured qubits.
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import itertools
+from functools import reduce
+from operator import matmul
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -15,6 +17,7 @@ from graphix._db import (
     CLIFFORD_MEASURE,
     CLIFFORD_MUL,
     CLIFFORD_PAULI_DECOMPOSITION,
+    CLIFFORD_TO_QASM3,
 )
 from graphix.clifford import Clifford
 from graphix.opengraph import OpenGraphError
@@ -131,3 +134,49 @@ def unwrap(v: T | None) -> T:
 def test_generate_clifford_pauli_decomposition(fx_rng: Generator) -> None:
     clifford_pauli_decomposition = generate_clifford_pauli_decomposition(fx_rng)
     assert clifford_pauli_decomposition == CLIFFORD_PAULI_DECOMPOSITION
+
+
+QASM3_BASIS = {
+    Clifford.I: "id",
+    Clifford.X: "x",
+    Clifford.Y: "y",
+    Clifford.Z: "z",
+    Clifford.S: "s",
+    Clifford.SDG: "sdg",
+    Clifford.H: "h",
+}
+
+QASM3_TO_CLIFFORD = {instr: clifford for clifford, instr in QASM3_BASIS.items()}
+
+
+def test_clifford_to_qasm3() -> None:
+    for clifford, decomposition in zip(Clifford, CLIFFORD_TO_QASM3, strict=True):
+        clifford2 = reduce(matmul, (QASM3_TO_CLIFFORD[instr] for instr in reversed(decomposition)))
+        assert clifford == clifford2
+
+
+def generate_qasm3_decomposition() -> tuple[tuple[str, ...], ...]:
+    decompositions: list[tuple[str, ...] | None] = [None] * len(Clifford)
+    new_decompositions: dict[Clifford, tuple[str, ...]] = {
+        clifford: (instr,) for clifford, instr in QASM3_BASIS.items()
+    }
+    for clifford, decomposition in new_decompositions.items():
+        decompositions[clifford.value] = decomposition
+    while new_decompositions:
+        current_decompositions = new_decompositions
+        new_decompositions = {}
+        for clifford, decomposition in current_decompositions.items():
+            for instr_clifford, instr in QASM3_BASIS.items():
+                result = instr_clifford @ clifford
+                if decompositions[result.value] is not None:
+                    continue
+                result_decomposition = (*decomposition, instr)
+                decompositions[result.value] = result_decomposition
+                new_decompositions[result] = result_decomposition
+    assert all(decomposition is not None for decomposition in decompositions)
+    return tuple(map(unwrap, decompositions))
+
+
+def test_clifford_to_qasm3_optimal() -> None:
+    qasm3_decomposition = generate_qasm3_decomposition()
+    assert qasm3_decomposition == CLIFFORD_TO_QASM3

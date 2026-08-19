@@ -392,7 +392,7 @@ class Statevector(DenseState):
             res_idx[s] = out_idx[i]
 
         len_psi = len(self.psi)
-        self._psi[:len_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(len_psi)  # type: ignore[arg-type] # https://github.com/numpy/numpy/issues/31513
+        self._psi[:len_psi] = np.einsum(op_t, op_idx, psi_t, psi_idx, res_idx).reshape(len_psi)
 
     def expectation_value(self, op: Matrix, qubits: Sequence[int]) -> complex:
         """Return the expectation value of a multi-qubit operator.
