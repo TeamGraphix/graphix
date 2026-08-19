@@ -1688,6 +1688,9 @@ class Pattern(InplaceParameterizable):
                                     case _:
                                         raise RuntimeError("Invalid Clifford decomposition.")
 
+        # The following code adds SWAP gates so that qubits are in the same
+        # order that output nodes.
+
         sorted_qubits = (node_idx.index(node) for node in self.output_nodes)
         sorted_idx = NodeIndex()
         sorted_idx.extend(sorted_qubits)
