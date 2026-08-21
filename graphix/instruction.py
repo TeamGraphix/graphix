@@ -404,8 +404,8 @@ class RX(_KindChecker, RotationInstruction):
     .. math::
 
       \left[\begin{matrix}
-        \cos \theta & -\mathrm i \sin \theta\\
-        -\mathrm i \sin \theta & \cos \theta
+        \cos \frac \theta 2 & -\mathrm i \sin \frac \theta 2\\
+        -\mathrm i \sin \frac \theta 2 & \cos \frac \theta 2
       \end{matrix}\right]
     """
 
@@ -421,8 +421,8 @@ class RY(_KindChecker, RotationInstruction):
     .. math::
 
       \left[\begin{matrix}
-        \cos \theta & - \sin \theta\\
-        \sin \theta & \cos \theta
+        \cos \frac \theta 2 & - \sin \frac \theta 2\\
+        \sin \frac \theta 2 & \cos \frac \theta 2
       \end{matrix}\right]
     """
 
