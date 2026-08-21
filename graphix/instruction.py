@@ -459,7 +459,7 @@ class J(_KindChecker, RotationInstruction):
         1 & - \mathrm e^{\mathrm i \theta}
       \end{matrix}\right]
 
-    We have :math:`J(\theta) = H \mathrm{RZ}(\theta)`.
+    We have :math:`J(\theta) = \mathrm e^{\mathrm i \theta/2} H \mathrm{RZ}(\theta)`.
     """
 
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
