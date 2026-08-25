@@ -152,6 +152,6 @@ def test_instruction_to_qasm3(fx_rng: Generator, test_case: InstructionTestCase)
     instr = test_case.instruction(fx_rng)
     if instr.kind in {InstructionKind.CJ, InstructionKind.RZZ, InstructionKind.M}:
         pytest.skip()
-    if instr.kind in {InstructionKind.SXDG, InstructionKind.U}:
-        pytest.skip("qiskit_qasm3_import.exceptions.ConversionError: gate 'sxdg'/'u' is not defined.")
+    if instr.kind == InstructionKind.SXDG:
+        pytest.skip("qiskit_qasm3_import.exceptions.ConversionError: gate 'sxdg' is not defined.")
     check_qasm3_circuit(Circuit(3, instr=[instr]))
