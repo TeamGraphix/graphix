@@ -97,7 +97,7 @@ class ReverseDependency:
     [
         ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="in-place_methods"),
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="rename-simulate"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-qasm-parser", branch="add_openqasm_gates"),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="rename-simulate"
         ),
@@ -109,7 +109,7 @@ class ReverseDependency:
             install_target=".[dev]",
             branch="rename-simulate",
         ),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="rename-simulate"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
