@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+import math
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,10 +14,10 @@ from graphix.fundamentals import ANGLE_PI
 from graphix.instruction import InstructionKind
 from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
-from tests.test_instruction import ALL_INSTRUCTIONS
+from tests.test_instruction import INSTRUCTION_TEST_CASES
 
 if TYPE_CHECKING:
-    from graphix.instruction import InstructionType
+    from tests.test_instruction import InstructionTestCase
 
 try:
     from graphix_qasm_parser import OpenQASMParser  # type: ignore[import-not-found, unused-ignore]
@@ -36,7 +38,13 @@ def check_round_trip(circuit: Circuit) -> None:
     check_circuit = circuit.transpile_j_to_rzh()
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == check_circuit.instruction
+    for parsed_instr, instr in zip(parsed_circuit.instruction, check_circuit.instruction, strict=True):
+        assert parsed_instr.kind == instr.kind
+        assert all(
+            math.isclose(x, y) if isinstance(x, float) and isinstance(y, float) else x == y
+            for field in dataclasses.fields(parsed_instr)
+            for x, y in [(getattr(parsed_instr, field.name), getattr(instr, field.name))]
+        )
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -48,11 +56,12 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     check_round_trip(rand_circuit(nqubits, depth, rng, use_j=True, use_cz=True))
 
 
-@pytest.mark.parametrize("instruction", ALL_INSTRUCTIONS)
-def test_instruction_to_qasm3(instruction: InstructionType) -> None:
-    if instruction.kind == InstructionKind.M:
+@pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+def test_instruction_to_qasm3(fx_rng: Generator, test_case: InstructionTestCase) -> None:
+    instr = test_case.instruction(fx_rng)
+    if instr.kind in {InstructionKind.CJ, InstructionKind.RZZ, InstructionKind.M}:
         pytest.skip()
-    check_round_trip(Circuit(3, instr=[instruction]))
+    check_round_trip(Circuit(3, instr=[instr]))
 
 
 def test_j_to_qasm3() -> None:

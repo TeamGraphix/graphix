@@ -7,63 +7,55 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix import instruction
+from graphix import Instruction, instruction
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
-from graphix.fundamentals import ANGLE_PI, Axis, Sign
+from graphix.fundamentals import Axis, Sign
 from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevector, StatevectorBackend
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
-from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
+from graphix.transpiler import (
+    Circuit,
+    OutputIndex,
+    OutputKind,
+    decompose_ccx,
+    decompose_cu,
+    decompose_p,
+    decompose_rx,
+    decompose_rz,
+    decompose_y,
+    insert_control,
+    instructions_to_jcz,
+    transpile_swaps,
+)
 from tests.test_branch_selector import CheckedBranchSelector
-from tests.test_instruction import VisitAngle
+from tests.test_instruction import INSTRUCTION_TEST_CASES, VisitAngle
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Literal, TypeAlias
+    from typing import Literal
 
-    from graphix.instruction import InstructionType
     from graphix.measurements import Outcome
+    from tests.test_instruction import InstructionTestCase
 
-    InstructionTestCase: TypeAlias = Callable[[Generator], InstructionType]
     _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
 
 
-INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
-    lambda _rng: instruction.CCX(0, (1, 2)),
-    lambda rng: instruction.RZZ(0, 1, rng.random() * 2 * ANGLE_PI),
-    lambda _rng: instruction.CZ((0, 1)),
-    lambda _rng: instruction.CNOT(0, 1),
-    lambda _rng: instruction.SWAP((0, 1)),
-    lambda _rng: instruction.H(0),
-    lambda _rng: instruction.S(0),
-    lambda _rng: instruction.X(0),
-    lambda _rng: instruction.Y(0),
-    lambda _rng: instruction.Z(0),
-    lambda _rng: instruction.I(0),
-    lambda rng: instruction.RX(0, rng.random() * 2 * ANGLE_PI),
-    lambda rng: instruction.RY(0, rng.random() * 2 * ANGLE_PI),
-    lambda rng: instruction.RZ(0, rng.random() * 2 * ANGLE_PI),
-    lambda rng: instruction.J(0, rng.random() * 2 * ANGLE_PI),
-]
-
-
 class TestTranspilerUnitGates:
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
-        circuit = Circuit(3, instr=[instruction(fx_rng)])
+    @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+    def test_instruction_flow(self, fx_rng: Generator, test_case: InstructionTestCase) -> None:
+        circuit = Circuit(3, instr=[test_case.instruction(fx_rng)])
         pattern = circuit.transpile().pattern
         circuit.transpile_to_causalflow().flow.check_well_formed()
         flow = pattern.to_bloch().to_causalflow()
         flow.check_well_formed()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
+    @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+    def test_instructions(self, fx_bg: PCG64, jumps: int, test_case: InstructionTestCase) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(3, instr=[instruction(rng)])
+        circuit = Circuit(3, instr=[test_case.instruction(rng)])
         pattern = circuit.transpile().pattern
         input_state = rand_state_vector(3, rng=rng)
         state = circuit.simulate(input_state=input_state).state
@@ -414,3 +406,81 @@ def test_visit() -> None:
     assert circ.instruction != circ2.instruction
     assert circ.visit(visitor) is circ
     assert circ.instruction == circ2.instruction
+
+
+def test_transpile_cj(fx_rng: Generator) -> None:
+    alpha = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.cj(0, 1, alpha)
+    decomposed_circuit = circuit.transpile_cj()
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
+    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
+    assert state.isclose(state2, atol=1e-15)
+
+
+def test_decompose_cy(fx_rng: Generator) -> None:
+    circuit = Circuit(2)
+    circuit.cy(0, 1)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_y(Instruction.Y(1))))
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
+    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
+    assert state.isclose(state2, atol=1e-15)
+
+
+def test_decompose_cp(fx_rng: Generator) -> None:
+    angle = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.cp(0, 1, angle)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_p(Instruction.P(1, angle))))
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
+    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
+    assert state.isclose(state2, atol=1e-15)
+
+
+def test_decompose_crx(fx_rng: Generator) -> None:
+    angle = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.crx(0, 1, angle)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_rx(Instruction.RX(1, angle))))
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
+    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
+    assert state.isclose(state2, atol=1e-15)
+
+
+def test_decompose_crz(fx_rng: Generator) -> None:
+    angle = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.crz(0, 1, angle)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_rz(Instruction.RZ(1, angle))))
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
+    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
+    assert state.isclose(state2, atol=1e-15)
+
+
+def test_decompose_cu(fx_rng: Generator) -> None:
+    theta = fx_rng.random()
+    phi = fx_rng.random()
+    lambda_ = fx_rng.random()
+    gamma = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.cu(0, 1, theta, phi, lambda_, gamma)
+    decomposed_circuit = Circuit(2, instr=decompose_cu(Instruction.CU(0, 1, theta, phi, lambda_, gamma)))
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
+    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
+    assert state.isclose(state2, atol=1e-15)
+
+
+@pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+def test_instructions_to_jcz(fx_rng: Generator, test_case: InstructionTestCase) -> None:
+    circuit = Circuit(3, instr=[test_case.instruction(fx_rng)])
+    decomposed_circuit = Circuit(3, instr=instructions_to_jcz(circuit.instruction))
+    input_state = rand_state_vector(3, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
+    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
+    assert state.isclose(state2, atol=1e-15)

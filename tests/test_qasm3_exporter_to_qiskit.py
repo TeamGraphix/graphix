@@ -13,16 +13,19 @@ from graphix.branch_selector import FixedBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N
 from graphix.fundamentals import Plane
+from graphix.instruction import InstructionKind
 from graphix.measurements import BlochMeasurement, Measurement, outcome
 from graphix.optimization import single_qubit_domains
-from graphix.qasm3_exporter import pattern_to_qasm3
+from graphix.qasm3_exporter import circuit_to_qasm3, pattern_to_qasm3
 from graphix.random_objects import rand_circuit
 from graphix.sim.statevec import StatevectorBackend
 from graphix.states import BasicStates
+from tests.test_instruction import INSTRUCTION_TEST_CASES
 
 if TYPE_CHECKING:
     from graphix.measurements import Outcome
     from graphix.states import State
+    from tests.test_instruction import InstructionTestCase
 
 try:
     import qiskit
@@ -40,7 +43,7 @@ except ImportError:
         sys.exit(1)
 
 
-def check_qasm3(pattern: Pattern) -> None:
+def check_qasm3_pattern(pattern: Pattern) -> None:
     """Check that we obtain equivalent statevectors whether we simulate the pattern with Graphix or we use Qiskit AER simulator."""
     qasm3 = pattern_to_qasm3(pattern)
     qc = qiskit_qasm3_import.parse(qasm3)
@@ -81,13 +84,13 @@ def check_qasm3(pattern: Pattern) -> None:
 
 
 def test_to_qasm3_qubits_preparation() -> None:
-    check_qasm3(Pattern(cmds=[N(0), N(1)]))
-    check_qasm3(Pattern(input_nodes=[0], cmds=[N(1)]))
+    check_qasm3_pattern(Pattern(cmds=[N(0), N(1)]))
+    check_qasm3_pattern(Pattern(input_nodes=[0], cmds=[N(1)]))
 
 
 def test_to_qasm3_entanglement() -> None:
-    check_qasm3(Pattern(input_nodes=[0, 1], cmds=[E((0, 1))]))
-    check_qasm3(Pattern(input_nodes=[0, 1], cmds=[N(2), E((1, 2))]))
+    check_qasm3_pattern(Pattern(input_nodes=[0, 1], cmds=[E((0, 1))]))
+    check_qasm3_pattern(Pattern(input_nodes=[0, 1], cmds=[N(2), E((1, 2))]))
 
 
 @pytest.mark.parametrize("clifford", Clifford)
@@ -95,21 +98,21 @@ def test_to_qasm3_entanglement() -> None:
     "state", [BasicStates.ZERO, BasicStates.PLUS, pytest.param(BasicStates.MINUS, marks=pytest.mark.xfail)]
 )
 def test_to_qasm3_clifford(clifford: Clifford, state: State) -> None:
-    check_qasm3(Pattern(cmds=[N(0, state), C(0, clifford)]))
+    check_qasm3_pattern(Pattern(cmds=[N(0, state), C(0, clifford)]))
 
 
 @pytest.mark.parametrize("state", [BasicStates.ZERO, BasicStates.PLUS])
 @pytest.mark.parametrize("plane", list(Plane))
 @pytest.mark.parametrize("angle", [0, 0.25, 1.75])
 def test_to_qasm3_measurement(state: State, plane: Plane, angle: float) -> None:
-    check_qasm3(Pattern(cmds=[N(0, state), N(1), E((0, 1)), M(0, BlochMeasurement(angle, plane))]))
+    check_qasm3_pattern(Pattern(cmds=[N(0, state), N(1), E((0, 1)), M(0, BlochMeasurement(angle, plane))]))
 
 
 def test_to_qasm3_hadamard() -> None:
     circuit = Circuit(1)
     circuit.h(0)
     pattern = circuit.transpile().pattern
-    check_qasm3(pattern)
+    check_qasm3_pattern(pattern)
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -126,4 +129,29 @@ def test_to_qasm3_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     # qiskit_qasm3_import.exceptions.ConversionError: unhandled binary operator '^'
     pattern = single_qubit_domains(pattern)
 
-    check_qasm3(pattern)
+    check_qasm3_pattern(pattern)
+
+
+def check_qasm3_circuit(circuit: Circuit) -> None:
+    """Check that we obtain equivalent statevectors whether we simulate the circuit with Graphix or we use Qiskit AER simulator."""
+    qasm3 = circuit_to_qasm3(circuit)
+    qc = qiskit_qasm3_import.parse(qasm3)
+    qc.save_statevector()  # type:ignore[attr-defined]
+    aer_backend = AerSimulator(method="statevector")
+    transpiled = qiskit.transpile(qc, aer_backend)
+    result = aer_backend.run(transpiled, shots=1, memory=True).result()
+    state_qiskit = result.get_statevector()
+    n = int(np.log2(len(state_qiskit)))
+    state_qiskit = state_qiskit.reshape((2,) * n).transpose(*reversed(range(n))).reshape(-1)
+    state_graphix = circuit.simulate(input_state=BasicStates.ZERO).state
+    assert state_graphix.isclose(state_qiskit)
+
+
+@pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+def test_instruction_to_qasm3(fx_rng: Generator, test_case: InstructionTestCase) -> None:
+    instr = test_case.instruction(fx_rng)
+    if instr.kind in {InstructionKind.CJ, InstructionKind.RZZ, InstructionKind.M}:
+        pytest.skip()
+    if instr.kind in {InstructionKind.SXDG, InstructionKind.U}:
+        pytest.skip("qiskit_qasm3_import.exceptions.ConversionError: gate 'sxdg'/'u' is not defined.")
+    check_qasm3_circuit(Circuit(3, instr=[instr]))

@@ -55,6 +55,22 @@ class InstructionKind(Enum):
     RX = enum.auto()
     RY = enum.auto()
     RZ = enum.auto()
+    SDG = enum.auto()
+    T = enum.auto()
+    TDG = enum.auto()
+    SX = enum.auto()
+    SXDG = enum.auto()
+    CY = enum.auto()
+    P = enum.auto()
+    U = enum.auto()
+    CJ = enum.auto()
+    CP = enum.auto()
+    CRX = enum.auto()
+    CRY = enum.auto()
+    CRZ = enum.auto()
+    CU = enum.auto()
+    CSWAP = enum.auto()
+    GPHASE = enum.auto()
 
 
 class _KindChecker:
@@ -159,24 +175,39 @@ class RZZ(_KindChecker, BaseInstruction):
 
 
 @dataclass(repr=False)
-class CNOT(_KindChecker, BaseInstruction):
-    """CNOT circuit instruction."""
+class ControlledSingleTargetInstruction(BaseInstruction):
+    """Base class for controlled single-target circuit instructions."""
 
     target: int
     control: int
-    kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
 
     @override
-    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CNOT:
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
         if copy:
-            return CNOT(target, control)
+            return type(self)(target, control)
         self.target = target
         self.control = control
         return self
 
 
+@dataclass(repr=False)
+class CY(_KindChecker, ControlledSingleTargetInstruction):
+    """CY circuit instruction."""
+
+    kind: ClassVar[Literal[InstructionKind.CY]] = field(default=InstructionKind.CY, init=False)
+
+
+@dataclass(repr=False)
+class CNOT(_KindChecker, ControlledSingleTargetInstruction):
+    """CNOT circuit instruction."""
+
+    kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
+
+
+# CZ is not defined as a ControlledSingleTargetInstruction because of
+# the symmetry between the control and the target.
 @dataclass(repr=False)
 class CZ(_KindChecker, BaseInstruction):
     """CZ circuit instruction."""
@@ -212,6 +243,51 @@ class SWAP(_KindChecker, BaseInstruction):
 
 
 @dataclass(repr=False)
+class CSWAP(_KindChecker, BaseInstruction):
+    r"""CSWAP circuit instruction.
+
+    The CSWAP gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & \cos \frac \theta 2 & -\mathrm i \sin \frac \theta 2\\
+        0 & 0 & -\mathrm i \sin \frac \theta 2 & \cos \frac \theta 2
+      \end{matrix}\right]
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0 & 0 & 0 & 0 & 0\\
+        0 & 0 & 1 & 0 & 0 & 0 & 0 & 0\\
+        0 & 0 & 0 & 1 & 0 & 0 & 0 & 0\\
+        0 & 0 & 0 & 0 & 1 & 0 & 0 & 0\\
+        0 & 0 & 0 & 0 & 0 & 0 & 1 & 0\\
+        0 & 0 & 0 & 0 & 0 & 1 & 0 & 0\
+        0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
+      \end{matrix}\right]
+    """
+
+    control: int
+    targets: tuple[int, int]
+    kind: ClassVar[Literal[InstructionKind.CSWAP]] = field(default=InstructionKind.CSWAP, init=False)
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CSWAP:
+        control = visitor.visit_qubit(self.control)
+        u, v = self.targets
+        targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if copy:
+            return CSWAP(control, targets)
+        self.control = control
+        self.targets = targets
+        return self
+
+
+@dataclass(repr=False)
 class SingleTargetInstruction(BaseInstruction):
     """Base class for single-target circuit instructions."""
 
@@ -238,6 +314,71 @@ class S(_KindChecker, SingleTargetInstruction):
     """S circuit instruction."""
 
     kind: ClassVar[Literal[InstructionKind.S]] = field(default=InstructionKind.S, init=False)
+
+
+@dataclass(repr=False)
+class SDG(_KindChecker, SingleTargetInstruction):
+    r"""SDG circuit instruction.
+
+    The :math:`S^\dagger` gate applies the matrix
+    :math:`\left[\begin{matrix}1 & 0\\0 & - \mathrm i\end{matrix}\right]`.
+
+    We have :math:`S^\dagger = \mathrm e^{\mathrm i \frac \pi 4} R_Z(-\frac \pi 2)`.
+    """
+
+    kind: ClassVar[Literal[InstructionKind.SDG]] = field(default=InstructionKind.SDG, init=False)
+
+
+@dataclass(repr=False)
+class T(_KindChecker, SingleTargetInstruction):
+    r"""T circuit instruction.
+
+    The :math:`T` gate applies the matrix
+    :math:`\left[\begin{matrix}1 & 0\\0 & \mathrm e^{\mathrm i \frac \pi 4}\end{matrix}\right]`.
+
+    We have :math:`T = \mathrm e^{\mathrm i \frac \pi 8} R_Z(\frac \pi 4)`.
+    """
+
+    kind: ClassVar[Literal[InstructionKind.T]] = field(default=InstructionKind.T, init=False)
+
+
+@dataclass(repr=False)
+class TDG(_KindChecker, SingleTargetInstruction):
+    r"""TDG circuit instruction.
+
+    The :math:`T^\dagger` gate applies the matrix
+    :math:`\left[\begin{matrix}1 & 0\\0 & \mathrm e^{- \mathrm i \frac \pi 4}\end{matrix}\right]`.
+
+    We have :math:`T^\dagger = \mathrm e^{\mathrm i \frac \pi 8} R_Z(- \frac \pi 4)`.
+    """
+
+    kind: ClassVar[Literal[InstructionKind.TDG]] = field(default=InstructionKind.TDG, init=False)
+
+
+@dataclass(repr=False)
+class SX(_KindChecker, SingleTargetInstruction):
+    r"""SX circuit instruction.
+
+    The :math:`SX` (:math:`\sqrt X`) gate applies the matrix
+    :math:`\frac 1 2 \left[\begin{matrix}1 + \mathrm i & 1 - \mathrm i\\1 - \mathrm i & 1 + \mathrm i\end{matrix}\right]`.
+
+    We have :math:`SX = \mathrm e^{\mathrm i \frac \pi 4} R_X(\frac \pi 2)`.
+    """
+
+    kind: ClassVar[Literal[InstructionKind.SX]] = field(default=InstructionKind.SX, init=False)
+
+
+@dataclass(repr=False)
+class SXDG(_KindChecker, SingleTargetInstruction):
+    r"""SXDG circuit instruction.
+
+    The :math:`SX^\dagger` (:math:`{\sqrt X}^\dagger`) gate applies the matrix
+    :math:`\frac 1 2 \left[\begin{matrix}1 - \mathrm i & 1 + \mathrm i\\1 + \mathrm i & 1 - \mathrm i\end{matrix}\right]`.
+
+    We have :math:`SX^\dagger = \mathrm e^{\mathrm i \frac \pi 4} R_X(-\frac \pi 2)`.
+    """
+
+    kind: ClassVar[Literal[InstructionKind.SXDG]] = field(default=InstructionKind.SXDG, init=False)
 
 
 @dataclass(repr=False)
@@ -306,6 +447,25 @@ class RotationInstruction(BaseInstruction):
 
 
 @dataclass(repr=False)
+class P(_KindChecker, RotationInstruction):
+    r"""P rotation circuit instruction.
+
+    The :math:`P(\theta)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0\\
+        0 & \mathrm e^{\mathrm i \theta}
+      \end{matrix}\right]
+
+    We have :math:`P(\theta) = \mathrm e^{\theta/2} R_Z(\theta)`.
+    """
+
+    kind: ClassVar[Literal[InstructionKind.P]] = field(default=InstructionKind.P, init=False)
+
+
+@dataclass(repr=False)
 class RX(_KindChecker, RotationInstruction):
     """X rotation circuit instruction."""
 
@@ -333,36 +493,265 @@ class J(_KindChecker, RotationInstruction):
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
 
 
-class InstructionWithoutRZZ:
-    """Grouping of all instructions except RZZ for namespace exposure.
+@dataclass(repr=False)
+class U(_KindChecker, BaseInstruction):
+    r"""U circuit instruction.
 
-    Notes
-    -----
-    This class is not meant to be instantiated, but rather serves as a namespace for all instructions except RZZ.
-    The type alias for "any command" is :data:`InstructionKind`.
+    The :math:`U(\theta, \phi, \lambda)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        \cos \frac \theta 2 & - \mathrm e^{\mathrm i\lambda} \sin \frac \theta 2 \\
+        \mathrm e^{\mathrm i \phi} \sin \frac \theta 2 & \mathrm e^{\mathrm i (\phi + \lambda)} \cos \frac \theta 2
+      \end{matrix}\right]
+
+    It can be decomposed as
+
+    .. math::
+
+      U(\theta, \phi, \lambda) = \mathrm e^{\mathrm i\frac{\phi + \lambda}{2}} R_Z(\phi) R_Y(\theta) R_Z(\lambda)
+      = \mathrm e^{\mathrm i\frac{\theta}{2}}
+        H J\left(\phi + \frac{\pi}{2}\right)
+        J(\theta)
+        J\left(\lambda - \frac{\pi}{2}\right)
     """
 
-    CCX: TypeAlias = CCX
-    CNOT: TypeAlias = CNOT
-    CZ: TypeAlias = CZ
-    SWAP: TypeAlias = SWAP
-    H: TypeAlias = H
-    S: TypeAlias = S
-    X: TypeAlias = X
-    Y: TypeAlias = Y
-    Z: TypeAlias = Z
-    I: TypeAlias = I
-    M: TypeAlias = M
-    RX: TypeAlias = RX
-    RY: TypeAlias = RY
-    RZ: TypeAlias = RZ
-    J: TypeAlias = J
+    target: int
+    theta: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    phi: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    lambda_: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    kind: ClassVar[Literal[InstructionKind.U]] = field(default=InstructionKind.U, init=False)
 
-    def __init__(self) -> None:
-        raise TypeError("InstructionWithoutRZZ is a namespace, not a class.")
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        target = visitor.visit_qubit(self.target)
+        theta = visitor.visit_angle(self.theta)
+        phi = visitor.visit_angle(self.phi)
+        lambda_ = visitor.visit_angle(self.lambda_)
+        if copy:
+            return type(self)(target, theta, phi, lambda_)
+        self.target = target
+        self.theta = theta
+        self.phi = phi
+        self.lambda_ = lambda_
+        return self
 
 
-class Instruction(InstructionWithoutRZZ):
+@dataclass(repr=False)
+class CU(_KindChecker, BaseInstruction):
+    r"""Controlled-U circuit instruction.
+
+    The :math:`CU(\theta, \phi, \lambda, \gamma)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0 \\
+        0 & 1 & 0 & 0 \\
+        0 & 0 & \mathrm e^{\mathrm i\gamma}
+          \cos\left(\frac{\theta}{2}\right) &
+          -\mathrm e^{\mathrm i(\gamma + \lambda)}
+          \sin\left(\frac{\theta}{2}\right) \\
+        0 & 0 & \mathrm e^{\mathrm i(\gamma + \phi)}
+          \sin\left(\frac{\theta}{2}\right) &
+          \mathrm e^{\mathrm i(\gamma + \phi + \lambda)}
+          \cos\left(\frac{\theta}{2}\right)
+      \end{matrix}\right]
+
+    It can be decomposed as
+
+    .. math::
+
+      CU(\theta, \phi, \lambda, \gamma) =
+        \left(P\left(\frac{\gamma - \theta} 2\right) \otimes I)
+        CJ(0) CJ\left(\phi + \frac \pi 2\right)
+        CJ(\theta) CJ\left(\lambda - \frac \pi 2\right)
+    """
+
+    control: int
+    target: int
+    theta: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    phi: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    lambda_: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    gamma: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    kind: ClassVar[Literal[InstructionKind.CU]] = field(default=InstructionKind.CU, init=False)
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
+        theta = visitor.visit_angle(self.theta)
+        phi = visitor.visit_angle(self.phi)
+        lambda_ = visitor.visit_angle(self.lambda_)
+        gamma = visitor.visit_angle(self.gamma)
+        if copy:
+            return type(self)(control, target, theta, phi, lambda_, gamma)
+        self.control = control
+        self.target = target
+        self.theta = theta
+        self.phi = phi
+        self.lambda_ = lambda_
+        self.gamma = gamma
+        return self
+
+
+@dataclass(repr=False)
+class ControlledRotationInstruction(BaseInstruction):
+    """Base class for rotation instructions."""
+
+    target: int
+    control: int
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        target = visitor.visit_qubit(self.target)
+        control = visitor.visit_qubit(self.control)
+        angle = visitor.visit_angle(self.angle)
+        if copy:
+            return type(self)(target, control, angle)
+        self.target = target
+        self.control = control
+        self.angle = angle
+        return self
+
+
+@dataclass(repr=False)
+class CP(_KindChecker, ControlledRotationInstruction):
+    r"""Controlled-P rotation circuit instruction.
+
+    The :math:`CP(\theta)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & 1 & 0\\
+        0 & 0 & 0 & \mathrm e^{\mathrm i \theta}
+      \end{matrix}\right]
+    """
+
+    kind: ClassVar[Literal[InstructionKind.CP]] = field(default=InstructionKind.CP, init=False)
+
+
+@dataclass(repr=False)
+class CRX(_KindChecker, ControlledRotationInstruction):
+    r"""Controlled-X rotation circuit instruction.
+
+    The :math:`CRX(\theta)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & \cos \frac \theta 2 & -\mathrm i \sin \frac \theta 2\\
+        0 & 0 & -\mathrm i \sin \frac \theta 2 & \cos \frac \theta 2
+      \end{matrix}\right]
+    """
+
+    kind: ClassVar[Literal[InstructionKind.CRX]] = field(default=InstructionKind.CRX, init=False)
+
+
+@dataclass(repr=False)
+class CRY(_KindChecker, ControlledRotationInstruction):
+    r"""Controlled-Y rotation circuit instruction.
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & \cos \frac \theta 2 & - \sin \frac \theta 2\\
+        0 & 0 & \sin \frac \theta 2 & \cos \frac \theta 2
+      \end{matrix}\right]
+    """
+
+    kind: ClassVar[Literal[InstructionKind.CRY]] = field(default=InstructionKind.CRY, init=False)
+
+
+@dataclass(repr=False)
+class CRZ(_KindChecker, ControlledRotationInstruction):
+    r"""Controlled-Z rotation circuit instruction.
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & \mathrm e^{-\mathrm i \frac \theta 2} & 0\\
+        0 & 0 & 0 & \mathrm e^{\mathrm i \frac \theta 2}
+      \end{matrix}\right]
+    """
+
+    kind: ClassVar[Literal[InstructionKind.CRZ]] = field(default=InstructionKind.CRZ, init=False)
+
+
+@dataclass(repr=False)
+class CJ(_KindChecker, ControlledRotationInstruction):
+    r"""Controlled-J circuit instruction.
+
+    The :math:`CJ(\alpha)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & \frac 1 {\sqrt 2} & \frac 1 {\sqrt 2} \mathrm e^{\mathrm i \alpha}\\
+        0 & 0 & \frac 1 {\sqrt 2} & - \frac 1 {\sqrt 2} \mathrm e^{\mathrm i \alpha}
+      \end{matrix}\right]
+
+    Following Lemmas 4.3 and 5.1 of Barenco et al. (1995), we define:
+
+    .. math::
+
+      \begin{aligned}
+        A &= R_Y\left(\frac \pi 4\right),\\
+        B &= R_Y\left(- \frac \pi 4\right) R_Z(- \delta),\\
+        C &= R_Z(\delta),\\
+        \delta &= \frac {\alpha + \pi} 2
+      \end{aligned}
+
+    These operators satisfy :math:`ABC = I` and
+    :math:`AXBXC = \mathrm e^{-\mathrm i \delta} J(\alpha)` with
+    :math:``.
+
+    Consequently, :math:`CJ(\alpha)` can be decomposed as:
+
+    .. math::
+
+      CJ(\alpha) = (P(\delta) \otimes I) \, (I \otimes A) \, CX \, (I \otimes B) \, CX \, (I \otimes C)
+
+    References
+    ----------
+    Barenco, A., Bennett, C. H., Cleve, R., DiVincenzo, D. P., Margolus, N., Shor, P., Sleator, T., Smolin, J. A., & Weinfurter, H. (1995).
+    Elementary gates for quantum computation. Physical Review A, 52(5), 3457-3467.
+    https://doi.org/10.1103/physreva.52.3457
+    """
+
+    kind: ClassVar[Literal[InstructionKind.CJ]] = field(default=InstructionKind.CJ, init=False)
+
+
+@dataclass(repr=False)
+class GPHASE(_KindChecker, BaseInstruction):
+    """GPHASE circuit instruction."""
+
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
+    kind: ClassVar[Literal[InstructionKind.GPHASE]] = field(default=InstructionKind.GPHASE, init=False)
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> GPHASE:
+        angle = visitor.visit_angle(self.angle)
+        if copy:
+            return GPHASE(angle)
+        self.angle = angle
+        return self
+
+
+class Instruction:
     """Grouping of all instructions for namespace exposure.
 
     Notes
@@ -371,12 +760,75 @@ class Instruction(InstructionWithoutRZZ):
     The type alias for "any command" is :data:`InstructionKind`.
     """
 
+    I: TypeAlias = I
+    X: TypeAlias = X
+    Y: TypeAlias = Y
+    Z: TypeAlias = Z
+    H: TypeAlias = H
+    S: TypeAlias = S
+    SDG: TypeAlias = SDG
+    T: TypeAlias = T
+    TDG: TypeAlias = TDG
+    SX: TypeAlias = SX
+    SXDG: TypeAlias = SXDG
+    J: TypeAlias = J
+    P: TypeAlias = P
+    RX: TypeAlias = RX
+    RY: TypeAlias = RY
+    RZ: TypeAlias = RZ
+    U: TypeAlias = U
+    CJ: TypeAlias = CJ
+    CP: TypeAlias = CP
+    CRX: TypeAlias = CRX
+    CRY: TypeAlias = CRY
+    CRZ: TypeAlias = CRZ
+    CU: TypeAlias = CU
+    CNOT: TypeAlias = CNOT
+    CY: TypeAlias = CY
+    CZ: TypeAlias = CZ
+    CCX: TypeAlias = CCX
     RZZ: TypeAlias = RZZ
+    SWAP: TypeAlias = SWAP
+    CSWAP: TypeAlias = CSWAP
+    M: TypeAlias = M
+    GPHASE: TypeAlias = GPHASE
 
     def __init__(self) -> None:
         raise TypeError("Instruction is a namespace, not a class.")
 
 
 if TYPE_CHECKING:
-    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
-    InstructionType = InstructionTypeWithoutRZZ | RZZ
+    InstructionType = (
+        I
+        | X
+        | Y
+        | Z
+        | H
+        | S
+        | SDG
+        | T
+        | TDG
+        | SX
+        | SXDG
+        | J
+        | P
+        | RX
+        | RY
+        | RZ
+        | U
+        | CJ
+        | CP
+        | CRX
+        | CRY
+        | CRZ
+        | CU
+        | CNOT
+        | CY
+        | CZ
+        | CCX
+        | RZZ
+        | SWAP
+        | CSWAP
+        | M
+        | GPHASE
+    )
