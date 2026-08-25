@@ -3,9 +3,9 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import math
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-import warnings
 
 import pytest
 from typing_extensions import override
@@ -13,7 +13,6 @@ from typing_extensions import override
 from graphix import Pattern
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector, RandomBranchSelector
 from graphix.command import M, N
-from graphix.fundamentals import Angle
 from graphix.measurements import Measurement
 from graphix.simulator import DefaultMeasureMethod
 
@@ -149,6 +148,7 @@ def test_fixed_branch_selector_no_default(backend: _BackendLiteral) -> None:
     measure_method = DefaultMeasureMethod()
     with pytest.raises(ValueError):
         pattern.simulate(backend, branch_selector=branch_selector, measure_method=measure_method)
+
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
 @pytest.mark.parametrize(
