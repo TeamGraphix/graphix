@@ -9,7 +9,7 @@ from numpy.random import PCG64, Generator
 
 from graphix import Instruction, instruction
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
-from graphix.fundamentals import Axis, Sign
+from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import I, InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix
@@ -408,25 +408,26 @@ def test_visit() -> None:
     assert circ.instruction == circ2.instruction
 
 
+def check_circuit_equivalence(circuit1: Circuit, circuit2: Circuit, rng: Generator) -> bool:
+    input_state = rand_state_vector(circuit1.width, rng=rng)
+    state1 = circuit1.simulate(input_state=input_state, rng=rng).state
+    state2 = circuit2.simulate(input_state=input_state, rng=rng).state
+    return state1.isclose(state2, atol=1e-15)
+
+
 def test_transpile_cj(fx_rng: Generator) -> None:
     alpha = fx_rng.random()
     circuit = Circuit(2)
     circuit.cj(0, 1, alpha)
     decomposed_circuit = circuit.transpile_cj()
-    input_state = rand_state_vector(2, rng=fx_rng)
-    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
-    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
-    assert state.isclose(state2, atol=1e-15)
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
 def test_decompose_cy(fx_rng: Generator) -> None:
     circuit = Circuit(2)
     circuit.cy(0, 1)
     decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_y(Instruction.Y(1))))
-    input_state = rand_state_vector(2, rng=fx_rng)
-    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
-    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
-    assert state.isclose(state2, atol=1e-15)
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
 def test_decompose_cp(fx_rng: Generator) -> None:
@@ -434,10 +435,7 @@ def test_decompose_cp(fx_rng: Generator) -> None:
     circuit = Circuit(2)
     circuit.cp(0, 1, angle)
     decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_p(Instruction.P(1, angle))))
-    input_state = rand_state_vector(2, rng=fx_rng)
-    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
-    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
-    assert state.isclose(state2, atol=1e-15)
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
 def test_decompose_crx(fx_rng: Generator) -> None:
@@ -445,10 +443,7 @@ def test_decompose_crx(fx_rng: Generator) -> None:
     circuit = Circuit(2)
     circuit.crx(0, 1, angle)
     decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_rx(Instruction.RX(1, angle))))
-    input_state = rand_state_vector(2, rng=fx_rng)
-    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
-    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
-    assert state.isclose(state2, atol=1e-15)
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
 def test_decompose_crz(fx_rng: Generator) -> None:
@@ -456,10 +451,7 @@ def test_decompose_crz(fx_rng: Generator) -> None:
     circuit = Circuit(2)
     circuit.crz(0, 1, angle)
     decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_rz(Instruction.RZ(1, angle))))
-    input_state = rand_state_vector(2, rng=fx_rng)
-    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
-    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
-    assert state.isclose(state2, atol=1e-15)
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
 def test_decompose_cu(fx_rng: Generator) -> None:
@@ -470,17 +462,23 @@ def test_decompose_cu(fx_rng: Generator) -> None:
     circuit = Circuit(2)
     circuit.cu(0, 1, theta, phi, lambda_, gamma)
     decomposed_circuit = Circuit(2, instr=decompose_cu(Instruction.CU(0, 1, theta, phi, lambda_, gamma)))
-    input_state = rand_state_vector(2, rng=fx_rng)
-    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
-    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
-    assert state.isclose(state2, atol=1e-15)
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
 @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
 def test_instructions_to_jcz(fx_rng: Generator, test_case: InstructionTestCase) -> None:
     circuit = Circuit(3, instr=[test_case.instruction(fx_rng)])
     decomposed_circuit = Circuit(3, instr=instructions_to_jcz(circuit.instruction))
-    input_state = rand_state_vector(3, rng=fx_rng)
-    state = circuit.simulate(input_state=input_state, rng=fx_rng).state
-    state2 = decomposed_circuit.simulate(input_state=input_state, rng=fx_rng).state
-    assert state.isclose(state2, atol=1e-15)
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+def test_cr() -> None:
+    circuit = Circuit(2)
+    circuit.cr(control=0, target=1, axis=Axis.X, angle=ANGLE_PI / 2)
+    circuit.cr(control=1, target=0, axis=Axis.Y, angle=ANGLE_PI / 4)
+    circuit.cr(control=0, target=1, axis=Axis.Z, angle=ANGLE_PI / 8)
+    assert circuit.instruction == [
+        Instruction.CRX(control=0, target=1, angle=ANGLE_PI / 2),
+        Instruction.CRY(control=1, target=0, angle=ANGLE_PI / 4),
+        Instruction.CRZ(control=0, target=1, angle=ANGLE_PI / 8),
+    ]

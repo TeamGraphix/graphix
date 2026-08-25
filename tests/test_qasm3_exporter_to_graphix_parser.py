@@ -65,14 +65,33 @@ def test_instruction_to_qasm3(fx_rng: Generator, test_case: InstructionTestCase)
 
 
 def test_j_to_qasm3() -> None:
-    circuit = Circuit(3, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
+    circuit = Circuit(1, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
     assert parsed_circuit.instruction == circuit.transpile_j_to_rzh().instruction
 
 
-def test_j_to_qasm3_failure() -> None:
-    circuit = Circuit(3, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
-    with pytest.raises(ValueError):
-        circuit_to_qasm3(circuit, transpile=False)
+def test_cj_to_qasm3() -> None:
+    circuit = Circuit(2, instr=[Instruction.CJ(control=0, target=1, angle=ANGLE_PI / 4)])
+    qasm = circuit_to_qasm3(circuit)
+    parser = OpenQASMParser()
+    parsed_circuit = parser.parse_str(qasm)
+    assert parsed_circuit.instruction == circuit.transpile_cj().instruction
+
+
+def test_rzz_to_qasm3() -> None:
+    circuit = Circuit(2, instr=[Instruction.RZZ(control=0, target=1, angle=ANGLE_PI / 4)])
+    qasm = circuit_to_qasm3(circuit)
+    parser = OpenQASMParser()
+    parsed_circuit = parser.parse_str(qasm)
+    assert parsed_circuit.instruction == circuit.transpile_rzz().instruction
+
+
+def test_gphase_to_qasm3() -> None:
+    instr = Instruction.GPHASE(ANGLE_PI / 4)
+    circuit = Circuit(1, instr=[instr])
+    qasm = circuit_to_qasm3(circuit)
+    parser = OpenQASMParser()
+    parsed_circuit = parser.parse_str(qasm)
+    assert parsed_circuit.instruction == [instr]

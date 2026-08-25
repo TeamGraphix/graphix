@@ -1368,13 +1368,7 @@ def decompose_cu(instr: instruction.CU) -> Iterator[instruction.CJ | Instruction
 def insert_control(
     control: int,
     instrs: Iterable[
-        Instruction.GPHASE
-        | Instruction.X
-        | Instruction.Z
-        | Instruction.J
-        | Instruction.CZ
-        | Instruction.CNOT
-        | Instruction.RZ
+        Instruction.GPHASE | Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ
     ],
 ) -> Iterable[InstructionType]:
     """Yield a controlled gate sequence from a gate sequence.
@@ -1383,8 +1377,8 @@ def insert_control(
     ----------
     control: int
         The control qubit.
-    instrs: Iterable[Instruction.J | Instruction.CZ]
-        The J-∧z decomposition.
+    instrs: Iterable[Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ]
+        The gate sequence.
 
     Yields
     ------
@@ -1400,11 +1394,6 @@ def insert_control(
                 yield instruction.CZ((control, instr.target))
             case InstructionKind.J:
                 yield instruction.CJ(control=control, target=instr.target, angle=instr.angle)
-            case InstructionKind.CZ:
-                u, v = instr.targets
-                yield instruction.H(v)
-                yield instruction.CCX(target=v, controls=(control, u))
-                yield instruction.H(v)
             case InstructionKind.CNOT:
                 yield instruction.CCX(target=instr.target, controls=(control, instr.control))
             case InstructionKind.RZ:

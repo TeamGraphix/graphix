@@ -76,6 +76,7 @@ INSTRUCTION_TEST_CASES: tuple[InstructionTestCase, ...] = (
         ),
     ),
     InstructionTestCase("CSWAP", lambda _rng: Instruction.CSWAP(0, (1, 2))),
+    InstructionTestCase("GPHASE", lambda rng: Instruction.GPHASE(rng.random() * 2 * ANGLE_PI)),
 )
 
 
@@ -104,9 +105,11 @@ def test_visit_qubit(fx_rng: Generator, test_case: InstructionTestCase) -> None:
     visitor = VisitQubit()
     instr_visited = instr.visit(visitor, copy=True)
     assert instr == instr_copy
-    assert instr_visited != instr_copy
+    if test_case.name != "GPHASE":
+        assert instr_visited != instr_copy
     instr.visit(visitor, copy=False)
-    assert instr != instr_copy
+    if test_case.name != "GPHASE":
+        assert instr != instr_copy
     assert instr_visited == instr
 
 

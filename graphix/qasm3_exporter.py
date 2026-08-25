@@ -183,7 +183,7 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
             theta = angle_to_qasm3(instruction.theta)
             phi = angle_to_qasm3(instruction.phi)
             lambda_ = angle_to_qasm3(instruction.lambda_)
-            return qasm3_gate_call("u", args=[theta, phi, lambda_], operands=[qasm3_qubit(instruction.target)])
+            return qasm3_gate_call("U", args=[theta, phi, lambda_], operands=[qasm3_qubit(instruction.target)])
         case InstructionKind.CU:
             theta = angle_to_qasm3(instruction.theta)
             phi = angle_to_qasm3(instruction.phi)
@@ -195,7 +195,7 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
                 operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)],
             )
         case InstructionKind.GPHASE:
-            return qasm3_gate_call("gphase", [angle_to_qasm3(instruction.angle)])
+            return qasm3_gate_call("gphase", operands=[], args=[angle_to_qasm3(instruction.angle)])
         case _:
             assert_never(instruction.kind)
 
