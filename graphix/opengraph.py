@@ -549,13 +549,16 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
 
         Example
         -------
+        >>> import warnings
         >>> import networkx as nx
         >>> from graphix.opengraph import OpenGraph
         >>> from graphix.measurements import Measurement
         >>> graph = nx.Graph([(0, 1), (1, 2)])
         >>> measurements = {0: Measurement.XZ(0.5), 1: Measurement.XZ(0.5)}
         >>> og = OpenGraph(graph, [0], [2], measurements)
-        >>> og.to_pauliflow()
+        >>> with warnings.catch_warnings():
+        ...     warnings.filterwarnings("ignore", message="Open graph with non-inferred Pauli measurements.")
+        ...     og.to_pauliflow()
         Traceback (most recent call last):
             ...
         graphix.opengraph.OpenGraphError: The open graph does not have a Pauli flow.
@@ -632,6 +635,7 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
 
         Examples
         --------
+        >>> import warnings
         >>> import networkx as nx
         >>> from graphix.opengraph import OpenGraph
         >>> from graphix.measurements import Measurement
@@ -641,14 +645,16 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         ...     output_nodes=(2, 5, 8),
         ...     measurements=dict.fromkeys((0, 1, 3, 4, 6, 7), Measurement.XY(angle=0)),
         ... )
-        >>> og.to_circuit()
+        >>> with warnings.catch_warnings():
+        ...     warnings.filterwarnings("ignore", message="Open graph with non-inferred Pauli measurements.")
+        ...     og.to_circuit()
         Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         >>> # The default compilation passes do not exploit the lower depth of the Pauli flow
         >>> # compared the gflow.
         >>> og.infer_pauli_measurements().to_circuit()
         Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         """
-        return self.to_pauliflow(stacklevel=stacklevel + 1).extract_circuit().to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
+        return self.to_pauliflow(stacklevel=stacklevel + 1).extract_circuit(stacklevel=stacklevel + 1).to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
 
     def compose(self, other: OpenGraph[_AM_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_AM_co], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from ``self`` and ``other``, and relabeling the nodes of ``other`` that were not merged.
