@@ -119,7 +119,7 @@ def test_random_branch_selector_without_pr_calc(fx_rng: Generator, backend: _Bac
         "tensornetwork",
     ],
 )
-@pytest.mark.parametrize("outcome", itertools.product([0, 1], repeat=3))
+@pytest.mark.parametrize("outcome", tuple(itertools.product([0, 1], repeat=3)))
 def test_fixed_branch_selector(backend: _BackendLiteral, outcome: list[Outcome]) -> None:
     results1: dict[int, Outcome] = dict(enumerate(outcome[:-1]))
     results2: dict[int, Outcome] = {2: outcome[2]}

@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 class TestCliffordDB:
-    @pytest.mark.parametrize(("i", "j"), itertools.product(range(24), range(3)))
+    @pytest.mark.parametrize(("i", "j"), tuple(itertools.product(range(24), range(3))))
     def test_measure(self, i: int, j: int) -> None:
         pauli = CLIFFORD[j + 1]
         arr = CLIFFORD[i].conjugate().T @ pauli @ CLIFFORD[i]
@@ -41,7 +41,7 @@ class TestCliffordDB:
         arr_ = complex(sgn) * Ops.from_ixyz(sym)
         assert np.allclose(arr, arr_)
 
-    @pytest.mark.parametrize(("i", "j"), itertools.product(range(24), range(24)))
+    @pytest.mark.parametrize(("i", "j"), tuple(itertools.product(range(24), range(24))))
     def test_multiplication(self, i: int, j: int) -> None:
         op = CLIFFORD[i] @ CLIFFORD[j]
         assert Clifford.try_from_matrix(op) == Clifford(CLIFFORD_MUL[i][j])

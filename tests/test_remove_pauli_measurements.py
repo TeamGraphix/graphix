@@ -181,6 +181,7 @@ def all_bloch_measurement_or_input_node(input_nodes: Iterable[Node], measurement
 
 
 def check_pattern(pattern: Pattern, rng: Generator) -> None:
+    pattern.infer_pauli_measurements()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
     cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     standardized_pattern2 = remove_pauli_measurements(cut)

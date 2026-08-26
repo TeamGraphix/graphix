@@ -212,6 +212,7 @@ def test_non_determinist() -> None:
         pattern.draw()
 
 
+@pytest.mark.usefixtures("mock_plot")
 @pytest.mark.parametrize("annotations", [None, DrawPatternAnnotations.Flow, DrawPatternAnnotations.XZCorrections])
 def test_empty(annotations: DrawPatternAnnotations | None) -> None:
     pattern = Pattern()
@@ -320,6 +321,7 @@ def test_legend_x_corrections_only() -> Figure:
 
 @pytest.mark.parametrize("flow_from_pattern", [False, True])
 @pytest.mark.mpl_image_compare
+@pytest.mark.usefixtures("mock_plot")
 def test_draw_graph_reference_pauli_flow(flow_from_pattern: bool) -> Figure:
     circuit = Circuit(2)
     circuit.rzz(0, 1, 0.3)

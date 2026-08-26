@@ -260,7 +260,7 @@ class TestPattern:
             if cmd.kind == CommandKind.M and cmd.node not in input_node_set
         )
 
-    @pytest.mark.parametrize("pm", PauliMeasurement)
+    @pytest.mark.parametrize("pm", tuple(PauliMeasurement))
     def test_pauli_measurement_single(self, pm: PauliMeasurement) -> None:
         pattern = Pattern(input_nodes=[0, 1])
         pattern.add(E(nodes=(0, 1)))
@@ -272,7 +272,7 @@ class TestPattern:
         state_ref = pattern_ref.simulate(branch_selector=branch_selector)
         assert state.isclose(state_ref)
 
-    def test_pauli_measurement(self) -> None:
+    def test_pauli_measurement(self, fx_rng: Generator) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -296,8 +296,8 @@ class TestPattern:
         assert isolated_nodes == set()
         pattern.minimize_space()
         pattern_opt.minimize_space()
-        state = pattern.simulate()
-        state_opt = pattern.simulate()
+        state = pattern.simulate(rng=fx_rng)
+        state_opt = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_opt)
 
     @pytest.mark.parametrize("jumps", range(1, 6))
@@ -675,6 +675,7 @@ class TestPattern:
         assert s.isclose(s_compose)
 
     # Test warning composition after standardization
+    @pytest.mark.filterwarnings("ignore:Non-Pauli measurement on an isolated node was removed.")
     def test_compose_7(self, fx_rng: Generator) -> None:
         alpha = 2 * ANGLE_PI * fx_rng.random()
 

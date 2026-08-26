@@ -60,18 +60,20 @@ class TestClifford:
 
     @pytest.mark.parametrize(
         ("c", "p"),
-        itertools.product(
-            Clifford,
-            (
-                Pauli(sym, u)
-                for sym in IXYZ_VALUES
-                for u in (
-                    ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=False),
-                    ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=False),
-                    ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=True),
-                    ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=True),
-                )
-            ),
+        tuple(
+            itertools.product(
+                Clifford,
+                (
+                    Pauli(sym, u)
+                    for sym in IXYZ_VALUES
+                    for u in (
+                        ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=False),
+                        ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=False),
+                        ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=True),
+                        ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=True),
+                    )
+                ),
+            )
         ),
     )
     def test_measure(self, c: Clifford, p: Pauli) -> None:

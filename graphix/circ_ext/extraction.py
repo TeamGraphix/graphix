@@ -444,7 +444,7 @@ class CliffordMap:
     output_nodes: Sequence[int]
 
     @staticmethod
-    def from_focused_flow(flow: PauliFlow[Measurement]) -> CliffordMap:
+    def from_focused_flow(flow: PauliFlow[Measurement], *, stacklevel: int = 1) -> CliffordMap:
         """Extract a Clifford map from a focused Pauli flow.
 
         This routine associates two Pauli strings (one per generator of the Pauli group, X and Z) to each input node in ``flow.og``.
@@ -453,6 +453,9 @@ class CliffordMap:
         ----------
         flow : PauliFlow[Measurement]
             A focused Pauli flow.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -467,7 +470,7 @@ class CliffordMap:
         [1] Simmons, 2021 (arXiv:2109.05654).
         """
         z_map = clifford_z_map_from_focused_flow(flow)
-        x_map = clifford_x_map_from_focused_flow(flow)
+        x_map = clifford_x_map_from_focused_flow(flow, stacklevel=stacklevel + 1)
         return CliffordMap(x_map, z_map, flow.og.input_nodes, flow.og.output_nodes)
 
     def to_tableau(self) -> MatGF2:
@@ -648,7 +651,7 @@ def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[Paul
     )
 
 
-def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[PauliString, ...]:
+def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement], *, stacklevel: int = 1) -> tuple[PauliString, ...]:
     r"""Extract the images of the X generators of a Clifford map from a focused Pauli flow.
 
     The resulting Pauli string is given by the correction set of a focused flow of the extended open graph.
@@ -657,6 +660,9 @@ def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[Paul
     ----------
     flow : PauliFlow[Measurement]
         A focused Pauli flow.
+    stacklevel : int, optional
+        Stack level to use for warnings. Defaults to 1, meaning that warnings
+        are reported at this function's call site.
 
     Returns
     -------
@@ -676,7 +682,7 @@ def clifford_x_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[Paul
     og_extended, ancillary_inputs_map = extend_input(og)
 
     # Here it's crucial to not infer Pauli measurements to avoid converting measurements inadvertently.
-    flow_extended = og_extended.to_pauliflow()
+    flow_extended = og_extended.to_pauliflow(stacklevel=stacklevel + 1)
 
     # `flow_extended` is guaranteed to be focused if `flow` is focused.
     # This function assumes that `flow` is focused and does not check it.

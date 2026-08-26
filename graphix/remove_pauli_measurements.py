@@ -497,7 +497,7 @@ class _RemovePauliMeasurements:
         # modified while enumerating isolated nodes.
         for node in list(nx.isolates(self.graph)):
             if node not in self.input_node_set and node not in self.output_node_set:
-                if node not in self.pauli_measurements:
+                if self.node_specs[node].pauli_measurement is None:
                     warn("Non-Pauli measurement on an isolated node was removed.", stacklevel=stacklevel + 1)
                 self._remove_node(node)
 
