@@ -654,7 +654,11 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         >>> og.infer_pauli_measurements().to_circuit()
         Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         """
-        return self.to_pauliflow(stacklevel=stacklevel + 1).extract_circuit(stacklevel=stacklevel + 1).to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
+        return (
+            self.to_pauliflow(stacklevel=stacklevel + 1)
+            .extract_circuit(stacklevel=stacklevel + 1)
+            .to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
+        )
 
     def compose(self, other: OpenGraph[_AM_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_AM_co], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from ``self`` and ``other``, and relabeling the nodes of ``other`` that were not merged.
