@@ -134,7 +134,7 @@ class FixedBranchSelector(BranchSelector, Generic[_T]):
         if result is None:
             if self.default is None:
                 raise ValueError(f"Unexpected measurement of qubit {qubit}.")
-            return self.default.measure(qubit, f_expectation0, rng)
+            return self.default.measure(qubit, f_expectation0, rng, stacklevel=stacklevel + 1)
         return result
 
 
