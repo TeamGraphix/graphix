@@ -51,7 +51,7 @@ def tests_all(session: Session) -> None:
     """Run the test suite with all dependencies."""
     session.install(".[dev]")
     # This dependency is added here to avoid circular dependencies
-    session.install("graphix-qasm-parser>=0.1.1")
+    session.install("-r", ".github/qasm-parser-requirements.txt")
     run_pytest(session, doctest_modules=True, mpl=True)
 
 

@@ -137,11 +137,6 @@ def instruction_to_qasm3(instruction: InstructionType) -> Iterable[str]:
             yield qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
         case InstructionKind.CZ:
             yield qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
-        case InstructionKind.RZZ:
-            angle = angle_to_qasm3(instruction.angle)
-            yield qasm3_gate_call(
-                "crz", args=[angle], operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)]
-            )
         case InstructionKind.CCX:
             yield qasm3_gate_call(
                 "ccx",
