@@ -43,6 +43,7 @@ except ImportError:
 def check_qasm3(pattern: Pattern) -> None:
     """Check that we obtain equivalent statevectors whether we simulate the pattern with Graphix or we use Qiskit AER simulator."""
     qasm3 = pattern_to_qasm3(pattern)
+    print(qasm3)
     qc = qiskit_qasm3_import.parse(qasm3)
     qc.save_statevector()  # type:ignore[attr-defined]
     aer_backend = AerSimulator(method="statevector")

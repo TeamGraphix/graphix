@@ -15,7 +15,7 @@ from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
 
     from graphix import Circuit, Pattern
     from graphix.command import CommandType
@@ -69,7 +69,7 @@ def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True) -> Itera
     if any(instr.kind == InstructionKind.M for instr in circuit.instruction):
         yield f"bit[{circuit.width}] b;"
     for instr in circuit.instruction:
-        yield f"{instruction_to_qasm3(instr)};"
+        yield from instruction_to_qasm3(instr)
 
 
 def qasm3_qubit(index: int) -> str:
@@ -81,9 +81,9 @@ def qasm3_gate_call(gate: str, operands: Iterable[str], args: Iterable[str] | No
     """Return the OpenQASM3 gate call."""
     operands_str = ", ".join(operands)
     if args is None:
-        return f"{gate} {operands_str}"
+        return f"{gate} {operands_str};"
     args_str = ", ".join(args)
-    return f"{gate}({args_str}) {operands_str}"
+    return f"{gate}({args_str}) {operands_str};"
 
 
 def angle_to_qasm3(angle: ParameterizedAngle) -> str:
@@ -93,7 +93,7 @@ def angle_to_qasm3(angle: ParameterizedAngle) -> str:
     return angle_to_str(angle, output=OutputFormat.ASCII, multiplication_sign=True)
 
 
-def instruction_to_qasm3(instruction: InstructionType) -> str:
+def instruction_to_qasm3(instruction: InstructionType) -> Iterable[str]:
     """Get the OpenQASM3 representation of a single circuit instruction.
 
     Parameters
@@ -117,10 +117,10 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
                 raise ValueError(
                     "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes, or setting `transpile=True`."
                 )
-            return f"b[{instruction.target}] = measure q[{instruction.target}]"
+            yield f"b[{instruction.target}] = measure q[{instruction.target}];"
         case InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
             angle = angle_to_qasm3(instruction.angle)
-            return qasm3_gate_call(
+            yield qasm3_gate_call(
                 instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
             )
         case InstructionKind.J:
@@ -128,22 +128,22 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
                 "J gates must be decomposed before QASM3 export using `Circuit.transpile_j_to_rzh`, or setting `transpile=True`."
             )
         case InstructionKind.H | InstructionKind.S | InstructionKind.X | InstructionKind.Y | InstructionKind.Z:
-            return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
+            yield qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
         case InstructionKind.I:
-            return qasm3_gate_call("id", [qasm3_qubit(instruction.target)])
+            yield qasm3_gate_call("id", [qasm3_qubit(instruction.target)])
         case InstructionKind.CNOT:
-            return qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+            yield qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
         case InstructionKind.SWAP:
-            return qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+            yield qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
         case InstructionKind.CZ:
-            return qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+            yield qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
         case InstructionKind.RZZ:
             angle = angle_to_qasm3(instruction.angle)
-            return qasm3_gate_call(
+            yield qasm3_gate_call(
                 "crz", args=[angle], operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)]
             )
         case InstructionKind.CCX:
-            return qasm3_gate_call(
+            yield qasm3_gate_call(
                 "ccx",
                 [
                     qasm3_qubit(instruction.controls[0]),
@@ -175,7 +175,7 @@ def pattern_to_qasm3(pattern: Pattern, input_state: dict[int, State] | State = B
     input_state : dict[int, State] | State, default BasicStates.PLUS
         The initial state for each input node. Only |0⟩ or |+⟩ states are supported.
     """
-    return "".join(pattern_to_qasm3_lines(pattern, input_state=input_state))
+    return "\n".join(pattern_to_qasm3_lines(pattern, input_state=input_state))
 
 
 def pattern_to_qasm3_lines(pattern: Pattern, input_state: dict[int, State] | State = BasicStates.PLUS) -> Iterator[str]:
@@ -183,15 +183,15 @@ def pattern_to_qasm3_lines(pattern: Pattern, input_state: dict[int, State] | Sta
 
     See :func:`pattern_to_qasm3`.
     """
-    yield f"// generated by graphix {version}\n"
-    yield "OPENQASM 3;\n"
-    yield 'include "stdgates.inc";\n'
-    yield "\n"
+    yield f"// generated by graphix {version}"
+    yield "OPENQASM 3;"
+    yield 'include "stdgates.inc";'
+    yield ""
     for node in pattern.input_nodes:
-        yield f"qubit q{node};\n"
+        yield f"qubit q{node};"
         state = input_state if isinstance(input_state, State) else input_state[node]
         yield from state_to_qasm3_lines(node, state)
-        yield "\n"
+        yield ""
     for cmd in pattern:
         yield from command_to_qasm3_lines(cmd)
 
@@ -210,20 +210,20 @@ def command_to_qasm3_lines(cmd: CommandType) -> Iterator[str]:
         translated pattern commands in OpenQASM 3.0 language
 
     """
-    yield f"// {cmd}\n"
+    yield f"// {cmd}"
     match cmd.kind:
         case CommandKind.N:
-            yield f"qubit q{cmd.node};\n"
+            yield f"qubit q{cmd.node};"
             yield from state_to_qasm3_lines(cmd.node, cmd.state)
         case CommandKind.E:
             n0, n1 = cmd.nodes
-            yield f"cz q{n0}, q{n1};\n"
+            yield f"cz q{n0}, q{n1};"
         case CommandKind.M:
-            yield from domain_to_qasm3_lines(cmd.s_domain, f"x q{cmd.node}")
-            yield from domain_to_qasm3_lines(cmd.t_domain, f"z q{cmd.node}")
+            yield from domain_to_qasm3_lines(cmd.s_domain, (f"x q{cmd.node};",), _pattern_node_to_qasm3)
+            yield from domain_to_qasm3_lines(cmd.t_domain, (f"z q{cmd.node};",), _pattern_node_to_qasm3)
             bloch = cmd.measurement.to_bloch()
             if bloch.plane == Plane.XY:
-                yield f"h q{cmd.node};\n"
+                yield f"h q{cmd.node};"
             if bloch.angle != 0:
                 match bloch.plane:
                     case Plane.XY:
@@ -238,35 +238,38 @@ def command_to_qasm3_lines(cmd: CommandType) -> Iterator[str]:
                     case _:
                         assert_never(bloch.plane)
                 rad_angle = angle_to_qasm3(angle)
-                yield f"{gate}({rad_angle}) q{cmd.node};\n"
-            yield f"bit c{cmd.node};\n"
-            yield f"c{cmd.node} = measure q{cmd.node};\n"
+                yield f"{gate}({rad_angle}) q{cmd.node};"
+            target_register = _pattern_node_to_qasm3(cmd.node)
+            yield f"bit {target_register};"
+            yield f"{target_register} = measure q{cmd.node};"
         case CommandKind.X:
-            yield from domain_to_qasm3_lines(cmd.domain, f"x q{cmd.node}")
+            yield from domain_to_qasm3_lines(cmd.domain, (f"x q{cmd.node};",), _pattern_node_to_qasm3)
         case CommandKind.Z:
-            yield from domain_to_qasm3_lines(cmd.domain, f"z q{cmd.node}")
+            yield from domain_to_qasm3_lines(cmd.domain, (f"z q{cmd.node};",), _pattern_node_to_qasm3)
         case CommandKind.C:
             for op in cmd.clifford.qasm3:
-                yield str(op) + " q" + str(cmd.node) + ";\n"
+                yield str(op) + " q" + str(cmd.node) + ";"
         case _:
             raise ValueError(f"invalid command {cmd}")
 
-    yield "\n"
+    yield ""
 
 
 def state_to_qasm3_lines(node: int, state: State) -> Iterator[str]:
     """Convert initial state into OpenQASM 3.0 statement."""
     match state:
         case BasicStates.ZERO:
-            yield f"// qubit {node} prepared in |0⟩: do nothing\n"
+            yield f"// qubit {node} prepared in |0⟩: do nothing"
         case BasicStates.PLUS:
-            yield f"// qubit {node} prepared in |+⟩\n"
-            yield f"h q{node};\n"
+            yield f"// qubit {node} prepared in |+⟩"
+            yield f"h q{node};"
         case _:
             raise ValueError("QASM3 conversion only supports |0⟩ or |+⟩ initial states.")
 
 
-def domain_to_qasm3_lines(domain: Iterable[int], cmd: str) -> Iterator[str]:
+def domain_to_qasm3_lines(
+    domain: Iterable[int], lines: Iterable[str], node_to_qasm3: Callable[[int], str]
+) -> Iterator[str]:
     """Convert domain controlled-command into OpenQASM 3.0 statement.
 
     Parameter
@@ -281,9 +284,14 @@ def domain_to_qasm3_lines(domain: Iterable[int], cmd: str) -> Iterator[str]:
     string
         translated controlled command in OpenQASM 3.0 language
     """
-    condition = " ^ ".join(f"c{node}" for node in domain)
+    condition = " ^ ".join(map(node_to_qasm3, domain))
     if not condition:
         return
-    yield f"if ({condition}) {{\n"
-    yield f"  {cmd};\n"
-    yield "}\n"
+    yield f"if ({condition}) {{"
+    for line in lines:
+        yield f"  {line}"
+    yield "}"
+
+
+def _pattern_node_to_qasm3(node: int) -> str:
+    return f"c{node}"
