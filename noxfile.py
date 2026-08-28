@@ -131,7 +131,7 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
             if package.branch is not None:
                 # Use `git fetch` instead of `-b` to support special
                 # refs such as `refs/pull/N/head`
-                session.run("git", "fetch", "origin", package.branch)
+                session.run("git", "fetch", "origin", package.branch, external=True)
             with session.cd(dirname):
                 # graphix installation fails without constraint on numba
                 session.install(package.install_target, "numba>=0.65.1")
