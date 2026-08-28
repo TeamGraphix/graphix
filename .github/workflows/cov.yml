@@ -26,8 +26,10 @@ jobs:
 
       - name: Run pytest
         run: |
-          pip install -r .github/qasm-parser-requirements.txt
-          uv run --extra dev pytest --cov=./graphix --cov-report=xml --cov-report=term --doctest-modules
+          uv run --with-requirements .github/qasm-parser-requirements.txt \
+              --extra dev \
+            pytest --cov=./graphix --cov-report=xml --cov-report=term \
+              --doctest-modules
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
