@@ -127,10 +127,11 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         session.install("nox")
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
-            if package.branch is None:
-                session.run("git", "clone", package.repository, external=True)
-            else:
-                session.run("git", "clone", "-b", package.branch, package.repository, external=True)
+            session.run("git", "clone", package.repository, external=True)
+            if package.branch is not None:
+                # Use `git fetch` instead of `-b` to support special
+                # refs such as `refs/pull/N/head`
+                session.run("git", "fetch", "origin", package.branch)
             with session.cd(dirname):
                 # graphix installation fails without constraint on numba
                 session.install(package.install_target, "numba>=0.65.1")
