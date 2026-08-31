@@ -1370,7 +1370,7 @@ def insert_control(
     instrs: Iterable[
         Instruction.GPHASE | Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ
     ],
-) -> Iterable[InstructionType]:
+) -> Iterator[Instruction.CNOT | Instruction.CZ | Instruction.CJ | Instruction.CCX | Instruction.CRZ | Instruction.P]:
     """Yield a controlled gate sequence from a gate sequence.
 
     Parameters
