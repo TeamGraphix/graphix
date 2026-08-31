@@ -276,19 +276,8 @@ class Ops:
         -------
         operator : 4*4 np.asarray
         """
-        cos, sin = cos_sin(angle_to_rad(theta) / 2)
-        phi_rad = angle_to_rad(phi)
-        lambda_rad = angle_to_rad(lambda_)
         gamma_rad = angle_to_rad(gamma)
-        return Ops._cast_array(
-            [
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, exp(1j * gamma_rad) * cos, -exp(1j * (gamma_rad + lambda_rad)) * sin],
-                [0, 0, exp(1j * (gamma_rad + phi_rad)) * sin, exp(1j * (gamma_rad + phi_rad + lambda_rad)) * cos],
-            ],
-            theta,
-        )
+        return controlled(exp(1j * gamma_rad) * Ops.u(theta, phi, lambda_))
 
     CH: ClassVar[npt.NDArray[np.complex128]] = controlled(H)
 
