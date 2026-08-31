@@ -1326,7 +1326,8 @@ def decompose_rz(instr: instruction.RZ) -> Iterator[instruction.J | Instruction.
 def decompose_u(instr: instruction.U) -> Iterator[instruction.J | Instruction.GPHASE]:
     """Yield a J decomposition of the U gate.
 
-    The U(θ, φ, λ) gate is decomposed into H·J(φ + 𝜋/2)·J(θ)·J(λ - 𝜋/2) (that is to say, J(0)·J(φ + 𝜋/2)·J(θ)·J(λ - 𝜋/2)).
+    The :math:`U(\theta, \phi, \lambda)` gate is decomposed as :math:`e^{-i \theta/2} \cdot H \cdot J(\phi + \pi/2) \cdot J(\theta) \cdot J(\lambda - \pi/2)`, or equivalently, :math:`J(0) \cdot J(\phi + \pi/2) \cdot J(\theta) \cdot J(\lambda - \pi/2)`.
+
 
     Parameters
     ----------
