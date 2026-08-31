@@ -35,7 +35,7 @@ except ImportError:
 
 def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
-    check_circuit = circuit.transpile_j_to_rzh()
+    check_circuit = circuit.transpile_to_qasm_gates()
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
     for parsed_instr, instr in zip(parsed_circuit.instruction, check_circuit.instruction, strict=True):
@@ -69,7 +69,7 @@ def test_j_to_qasm3() -> None:
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.transpile_j_to_rzh().instruction
+    assert parsed_circuit.instruction == circuit.transpile_to_qasm_gates().instruction
 
 
 def test_cj_to_qasm3() -> None:
@@ -77,7 +77,7 @@ def test_cj_to_qasm3() -> None:
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.transpile_cj().instruction
+    assert parsed_circuit.instruction == circuit.transpile_to_qasm_gates().instruction
 
 
 def test_rzz_to_qasm3() -> None:
@@ -85,7 +85,7 @@ def test_rzz_to_qasm3() -> None:
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.transpile_rzz().instruction
+    assert parsed_circuit.instruction == circuit.transpile_to_qasm_gates().instruction
 
 
 def test_gphase_to_qasm3() -> None:

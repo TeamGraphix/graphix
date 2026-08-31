@@ -62,7 +62,7 @@ def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True) -> Itera
         An iterator over the OpenQASM 3.0 lines that represent the circuit.
     """
     if transpile:
-        circuit = circuit.transpile_cj().transpile_rzz().transpile_j_to_rzh().transpile_measurements_to_z_axis()
+        circuit = circuit.transpile_to_qasm_gates()
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
     yield f"qubit[{circuit.width}] q;"

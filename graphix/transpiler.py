@@ -929,8 +929,6 @@ class Circuit(InplaceParameterizable):
 
         classical_measures: list[Outcome] = []
 
-        gphase: ParameterizedAngle = 0
-
         for i in range(len(self.instruction)):
             instr = self.instruction[i]
 
@@ -1009,10 +1007,10 @@ class Circuit(InplaceParameterizable):
                     )
                     classical_measures.append(result)
                 case InstructionKind.GPHASE:
-                    gphase += instr.angle
+                    # Global phase is currently ignored
+                    pass
                 case _:
                     assert_never(instr.kind)
-        # Global phase is currently ignored
         return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Circuit:
@@ -1091,56 +1089,30 @@ class Circuit(InplaceParameterizable):
     ) -> Circuit:
         return self.apply_angle(lambda angle: parameter.with_parameters(angle, assignment), copy=copy)
 
-    def transpile_measurements_to_z_axis(self) -> Circuit:
-        """Return an equivalent circuit where all measurements are on Z axis."""
-        circuit = Circuit(width=self.width)
-        for instr in self.instruction:
-            if instr.kind == InstructionKind.M:
-                match instr.axis:
-                    case Axis.X:
-                        circuit.h(instr.target)
-                        circuit.m(instr.target, Axis.Z)
-                    case Axis.Y:
-                        circuit.rx(instr.target, ANGLE_PI / 2)
-                        circuit.m(instr.target, Axis.Z)
-                    case Axis.Z:
-                        circuit.add(instr)
-                    case _:
-                        assert_never(instr.axis)
-            else:
-                circuit.add(instr)
-        return circuit
-
-    def transpile_j_to_rzh(self) -> Circuit:
-        """Return an equivalent circuit where all J gates have been replaced with RZ and H gates."""
+    def transpile_to_qasm_gates(self) -> Circuit:
+        """Return an equivalent circuit using only the standard OpenQASM gate set."""
         new_circuit = Circuit(self.width)
         for instr in self.instruction:
             match instr.kind:
                 case InstructionKind.J:
                     new_circuit.add(instruction.RZ(target=instr.target, angle=instr.angle))
                     new_circuit.add(instruction.H(target=instr.target))
-                case _:
-                    new_circuit.add(instr)
-        return new_circuit
-
-    def transpile_cj(self) -> Circuit:
-        """Return an equivalent circuit where all CJ gates have been replaced with OpenQASM gates."""
-        new_circuit = Circuit(self.width)
-        for instr in self.instruction:
-            match instr.kind:
                 case InstructionKind.CJ:
                     new_circuit.extend(decompose_cj(instr))
-                case _:
-                    new_circuit.add(instr)
-        return new_circuit
-
-    def transpile_rzz(self) -> Circuit:
-        """Return an equivalent circuit where all RZZ gates have been replaced with OpenQASM gates."""
-        new_circuit = Circuit(self.width)
-        for instr in self.instruction:
-            match instr.kind:
                 case InstructionKind.RZZ:
                     new_circuit.extend(decompose_rzz(instr))
+                case InstructionKind.M:
+                    match instr.axis:
+                        case Axis.X:
+                            new_circuit.h(instr.target)
+                            new_circuit.m(instr.target, Axis.Z)
+                        case Axis.Y:
+                            new_circuit.rx(instr.target, ANGLE_PI / 2)
+                            new_circuit.m(instr.target, Axis.Z)
+                        case Axis.Z:
+                            new_circuit.add(instr)
+                        case _:
+                            assert_never(instr.axis)
                 case _:
                     new_circuit.add(instr)
         return new_circuit
@@ -1386,24 +1358,22 @@ def insert_control(
     InstructionType
         The controlled gate sequence.
     """
-    gphase: ParameterizedAngle = 0
     for instr in instrs:
         match instr.kind:
             case InstructionKind.X:
-                yield instruction.CNOT(control=control, target=instr.target)
+                yield Instruction.CNOT(control=control, target=instr.target)
             case InstructionKind.Z:
-                yield instruction.CZ((control, instr.target))
+                yield Instruction.CZ((control, instr.target))
             case InstructionKind.J:
-                yield instruction.CJ(control=control, target=instr.target, angle=instr.angle)
+                yield Instruction.CJ(control=control, target=instr.target, angle=instr.angle)
             case InstructionKind.CNOT:
-                yield instruction.CCX(target=instr.target, controls=(control, instr.control))
+                yield Instruction.CCX(target=instr.target, controls=(control, instr.control))
             case InstructionKind.RZ:
-                yield instruction.CRZ(control=control, target=instr.target, angle=instr.angle)
+                yield Instruction.CRZ(control=control, target=instr.target, angle=instr.angle)
             case InstructionKind.GPHASE:
-                gphase += instr.angle
+                yield Instruction.P(target=control, angle=instr.angle)
             case _:
                 assert_never(instr.kind)
-    yield Instruction.P(target=control, angle=gphase)
 
 
 def decompose_cj(instr: Instruction.CJ) -> Iterator[Instruction.RZ | Instruction.CNOT | Instruction.RY | Instruction.P]:
@@ -1412,13 +1382,13 @@ def decompose_cj(instr: Instruction.CJ) -> Iterator[Instruction.RZ | Instruction
     See :class:`~graphix.instruction.CJ` for more information.
     """
     delta = (instr.angle + ANGLE_PI) / 2
-    yield instruction.RZ(target=instr.target, angle=delta)
-    yield instruction.CNOT(control=instr.control, target=instr.target)
-    yield instruction.RZ(target=instr.target, angle=-delta)
-    yield instruction.RY(target=instr.target, angle=-ANGLE_PI / 4)
-    yield instruction.CNOT(control=instr.control, target=instr.target)
-    yield instruction.RY(target=instr.target, angle=ANGLE_PI / 4)
-    yield instruction.P(target=instr.control, angle=delta)
+    yield Instruction.RZ(target=instr.target, angle=delta)
+    yield Instruction.CNOT(control=instr.control, target=instr.target)
+    yield Instruction.RZ(target=instr.target, angle=-delta)
+    yield Instruction.RY(target=instr.target, angle=-ANGLE_PI / 4)
+    yield Instruction.CNOT(control=instr.control, target=instr.target)
+    yield Instruction.RY(target=instr.target, angle=ANGLE_PI / 4)
+    yield Instruction.P(target=instr.control, angle=delta)
 
 
 def decompose_p(instr: Instruction.P) -> Iterator[Instruction.RZ | Instruction.GPHASE]:
@@ -1515,8 +1485,7 @@ def instructions_to_jcz(
                     insert_control(instr.control, decompose_swap(Instruction.SWAP(instr.targets)))
                 )
             case InstructionKind.GPHASE:
-                # Global phase is currently ignored
-                pass
+                yield instr
             case _:
                 assert_never(instr.kind)
 

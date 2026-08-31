@@ -114,6 +114,10 @@ class Ops:
         )
     )
 
+    CH: ClassVar[npt.NDArray[np.complex128]] = controlled(H)
+
+    CSWAP: ClassVar[npt.NDArray[np.complex128]] = controlled(SWAP)
+
     @overload
     @staticmethod
     def _cast_array(array: Iterable[Iterable[complex]], theta: Angle) -> npt.NDArray[np.complex128]: ...
@@ -278,10 +282,6 @@ class Ops:
         """
         gamma_rad = angle_to_rad(gamma)
         return controlled(exp(1j * gamma_rad) * Ops.u(theta, phi, lambda_))
-
-    CH: ClassVar[npt.NDArray[np.complex128]] = controlled(H)
-
-    CSWAP: ClassVar[npt.NDArray[np.complex128]] = controlled(SWAP)
 
     @overload
     @staticmethod

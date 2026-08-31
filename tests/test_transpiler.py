@@ -147,7 +147,7 @@ class TestTranspilerUnitGates:
         input_state = rand_state_vector(2, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
-        circuit_z = circuit.transpile_measurements_to_z_axis()
+        circuit_z = circuit.transpile_to_qasm_gates()
         assert all(instr.axis == Axis.Z for instr in circuit_z.instruction if instr.kind == InstructionKind.M)
         state_z = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
         assert state_z.isclose(state)
@@ -160,7 +160,7 @@ class TestTranspilerUnitGates:
         circuit = rand_circuit(nqubits, depth, rng, use_j=True, use_ccx=True, use_rzz=True)
         circuit.j(0, 0.5)  # Ensure that there is at least one J instruction
         assert any(instr.kind == InstructionKind.J for instr in circuit.instruction)
-        circuit2 = circuit.transpile_j_to_rzh()
+        circuit2 = circuit.transpile_to_qasm_gates()
         assert not any(instr.kind == InstructionKind.J for instr in circuit2.instruction)
         state = circuit.simulate(rng=rng).state
         state2 = circuit2.simulate(rng=rng).state
@@ -419,7 +419,7 @@ def test_transpile_cj(fx_rng: Generator) -> None:
     alpha = fx_rng.random()
     circuit = Circuit(2)
     circuit.cj(0, 1, alpha)
-    decomposed_circuit = circuit.transpile_cj()
+    decomposed_circuit = circuit.transpile_to_qasm_gates()
     assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 

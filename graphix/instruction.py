@@ -251,15 +251,6 @@ class CSWAP(_KindChecker, BaseInstruction):
     .. math::
 
       \left[\begin{matrix}
-        1 & 0 & 0 & 0\\
-        0 & 1 & 0 & 0\\
-        0 & 0 & \cos \frac \theta 2 & -\mathrm i \sin \frac \theta 2\\
-        0 & 0 & -\mathrm i \sin \frac \theta 2 & \cos \frac \theta 2
-      \end{matrix}\right]
-
-    .. math::
-
-      \left[\begin{matrix}
         1 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
         0 & 1 & 0 & 0 & 0 & 0 & 0 & 0\\
         0 & 0 & 1 & 0 & 0 & 0 & 0 & 0\\
