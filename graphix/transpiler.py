@@ -1377,7 +1377,7 @@ def insert_control(
     ----------
     control: int
         The control qubit.
-    instrs: Iterable[Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ]
+    instrs: Iterable[Instruction.GPHASE | Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ]
         The gate sequence.
 
     Yields
