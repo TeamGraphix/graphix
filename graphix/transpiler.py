@@ -1405,7 +1405,7 @@ def insert_control(
     yield Instruction.P(target=control, angle=gphase)
 
 
-def decompose_cj(instr: Instruction.CJ) -> Iterator[InstructionType]:
+def decompose_cj(instr: Instruction.CJ) -> Iterator[Instruction.RZ | Instruction.CNOT | Instruction.RY | Instruction.P]:
     """Yield a decomposed gate sequence of the CJ gate.
 
     See :class:`~graphix.instruction.CJ` for more information.
