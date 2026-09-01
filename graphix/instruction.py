@@ -260,6 +260,17 @@ class CSWAP(_KindChecker, BaseInstruction):
         0 & 0 & 0 & 0 & 0 & 1 & 0 & 0\
         0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``targets[0]``, ``targets[1]``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    targets : tuple[int, int]
+        Indices of the two target qubits.
     """
 
     control: int
@@ -550,14 +561,32 @@ class CU(_KindChecker, BaseInstruction):
           \cos\left(\frac{\theta}{2}\right)
       \end{matrix}\right]
 
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
     It can be decomposed as
 
     .. math::
-
       CU(\theta, \phi, \lambda, \gamma) =
-        \left(P\left(\frac{\gamma - \theta} 2\right) \otimes I)
+        \left(P\left(\frac{\gamma - \theta} 2\right) \otimes I\right)
         CJ(0) CJ\left(\phi + \frac \pi 2\right)
         CJ(\theta) CJ\left(\lambda - \frac \pi 2\right)
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    theta : ParameterizedAngle
+        Rotation angle around the Y axis.
+    phi : ParameterizedAngle
+        Rotation angle around the Z axis after the Y rotation.
+    lambda_ : ParameterizedAngle
+        Rotation angle around the Z axis before the Y rotation.
+    gamma : ParameterizedAngle
+        Global phase angle.
     """
 
     control: int
@@ -610,7 +639,7 @@ class ControlledRotationInstruction(BaseInstruction):
 
 @dataclass(repr=False)
 class CP(_KindChecker, ControlledRotationInstruction):
-    r"""Controlled-P rotation circuit instruction.
+    r"""Controlled-P circuit instruction.
 
     The :math:`CP(\theta)` gate applies the matrix
 
@@ -622,6 +651,19 @@ class CP(_KindChecker, ControlledRotationInstruction):
         0 & 0 & 1 & 0\\
         0 & 0 & 0 & \mathrm e^{\mathrm i \theta}
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    angle : ParameterizedAngle
+        Phase angle.
     """
 
     kind: ClassVar[Literal[InstructionKind.CP]] = field(default=InstructionKind.CP, init=False)
@@ -641,6 +683,19 @@ class CRX(_KindChecker, ControlledRotationInstruction):
         0 & 0 & \cos \frac \theta 2 & -\mathrm i \sin \frac \theta 2\\
         0 & 0 & -\mathrm i \sin \frac \theta 2 & \cos \frac \theta 2
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    angle : ParameterizedAngle
+        Rotation angle.
     """
 
     kind: ClassVar[Literal[InstructionKind.CRX]] = field(default=InstructionKind.CRX, init=False)
@@ -658,6 +713,19 @@ class CRY(_KindChecker, ControlledRotationInstruction):
         0 & 0 & \cos \frac \theta 2 & - \sin \frac \theta 2\\
         0 & 0 & \sin \frac \theta 2 & \cos \frac \theta 2
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    angle : ParameterizedAngle
+        Rotation angle.
     """
 
     kind: ClassVar[Literal[InstructionKind.CRY]] = field(default=InstructionKind.CRY, init=False)
@@ -675,6 +743,19 @@ class CRZ(_KindChecker, ControlledRotationInstruction):
         0 & 0 & \mathrm e^{-\mathrm i \frac \theta 2} & 0\\
         0 & 0 & 0 & \mathrm e^{\mathrm i \frac \theta 2}
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    angle : ParameterizedAngle
+        Rotation angle.
     """
 
     kind: ClassVar[Literal[InstructionKind.CRZ]] = field(default=InstructionKind.CRZ, init=False)
@@ -694,6 +775,10 @@ class CJ(_KindChecker, ControlledRotationInstruction):
         0 & 0 & \frac 1 {\sqrt 2} & \frac 1 {\sqrt 2} \mathrm e^{\mathrm i \alpha}\\
         0 & 0 & \frac 1 {\sqrt 2} & - \frac 1 {\sqrt 2} \mathrm e^{\mathrm i \alpha}
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
 
     Following Lemmas 4.3 and 5.1 of Barenco et al. (1995), we define:
 
@@ -716,6 +801,15 @@ class CJ(_KindChecker, ControlledRotationInstruction):
 
       CJ(\alpha) = (P(\delta) \otimes I) \, (I \otimes A) \, CX \, (I \otimes B) \, CX \, (I \otimes C)
 
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    angle : ParameterizedAngle
+        Rotation angle.
+
     References
     ----------
     Barenco, A., Bennett, C. H., Cleve, R., DiVincenzo, D. P., Margolus, N., Shor, P., Sleator, T., Smolin, J. A., & Weinfurter, H. (1995).
@@ -728,7 +822,13 @@ class CJ(_KindChecker, ControlledRotationInstruction):
 
 @dataclass(repr=False)
 class GPHASE(_KindChecker, BaseInstruction):
-    """GPHASE circuit instruction."""
+    """GPHASE circuit instruction.
+
+    Attributes
+    ----------
+    angle : ParameterizedAngle
+        Phase angle.
+    """
 
     angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.GPHASE]] = field(default=InstructionKind.GPHASE, init=False)

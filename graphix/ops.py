@@ -120,19 +120,21 @@ class Ops:
 
     @overload
     @staticmethod
-    def _cast_array(array: Iterable[Iterable[complex]], theta: Angle) -> npt.NDArray[np.complex128]: ...
+    def _cast_array(
+        array: Iterable[Iterable[complex]], parameters: tuple[Angle, ...]
+    ) -> npt.NDArray[np.complex128]: ...
 
     @overload
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
+        array: Iterable[Iterable[ExpressionOrComplex]], parameters: tuple[ParameterizedAngle, ...]
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]: ...
 
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
+        array: Iterable[Iterable[ExpressionOrComplex]], parameters: tuple[ParameterizedAngle, ...]
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
-        if isinstance(theta, Expression):
+        if all(isinstance(parameter, Expression) for parameter in parameters):
             return np.asarray(array, dtype=np.object_)
         return np.asarray(array, dtype=np.complex128)
 
@@ -159,7 +161,7 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        return Ops._cast_array([[1, 0], [0, exp(1j * angle_to_rad(theta))]], theta)
+        return Ops._cast_array([[1, 0], [0, exp(1j * angle_to_rad(theta))]], (theta,))
 
     @overload
     @staticmethod
@@ -183,7 +185,7 @@ class Ops:
         operator : 2*2 np.asarray
         """
         cos, sin = cos_sin(angle_to_rad(theta) / 2)
-        return Ops._cast_array([[cos, -1j * sin], [-1j * sin, cos]], theta)
+        return Ops._cast_array([[cos, -1j * sin], [-1j * sin, cos]], (theta,))
 
     @overload
     @staticmethod
@@ -207,7 +209,7 @@ class Ops:
         operator : 2*2 np.asarray
         """
         cos, sin = cos_sin(angle_to_rad(theta) / 2)
-        return Ops._cast_array([[cos, -sin], [sin, cos]], theta)
+        return Ops._cast_array([[cos, -sin], [sin, cos]], (theta,))
 
     @overload
     @staticmethod
@@ -230,7 +232,9 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        return Ops._cast_array([[exp(-1j * angle_to_rad(theta) / 2), 0], [0, exp(1j * angle_to_rad(theta) / 2)]], theta)
+        return Ops._cast_array(
+            [[exp(-1j * angle_to_rad(theta) / 2), 0], [0, exp(1j * angle_to_rad(theta) / 2)]], (theta,)
+        )
 
     @staticmethod
     def u(
@@ -256,7 +260,7 @@ class Ops:
         lambda_rad = angle_to_rad(lambda_)
         return Ops._cast_array(
             [[cos, -exp(1j * lambda_rad) * sin], [exp(1j * phi_rad) * sin, exp(1j * (phi_rad + lambda_rad)) * cos]],
-            theta,
+            (theta, phi, lambda_),
         )
 
     @staticmethod
@@ -424,7 +428,7 @@ class Ops:
                 [1 / np.sqrt(2), (1 / np.sqrt(2)) * exp(1j * angle_to_rad(theta))],
                 [1 / np.sqrt(2), (-1 / np.sqrt(2)) * exp(1j * angle_to_rad(theta))],
             ],
-            theta,
+            (theta,),
         )
 
     @overload
@@ -453,7 +457,7 @@ class Ops:
         -------
         operator : 4*4 np.asarray
         """
-        return Ops._cast_array(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, theta)
+        return Ops._cast_array(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, (theta,))
 
     @staticmethod
     def build_tensor_pauli_ops(n_qubits: int) -> npt.NDArray[np.complex128]:
