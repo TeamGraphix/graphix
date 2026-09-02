@@ -269,19 +269,21 @@ def state_to_qasm3_lines(node: int, state: State) -> Iterator[str]:
 def domain_to_qasm3_lines(
     domain: Iterable[int], lines: Iterable[str], node_to_qasm3: Callable[[int], str]
 ) -> Iterator[str]:
-    """Convert domain controlled-command into OpenQASM 3.0 statement.
+    """Convert a sequence of domain controlled-commands into OpenQASM 3.0 statement.
 
     Parameter
     ---------
     domain : Iterable[int]
         measured nodes
-    cmd : str
-        controlled command
+    lines : Iterable[str]
+        controlled commands, i.e., the body of the conditional, line by line
+    node_to_qasm3 : Callable[[int], str]
+        mapping from node indices to OpenQASM classical registers
 
     Yields
     ------
     string
-        translated controlled command in OpenQASM 3.0 language
+        translated controlled command in OpenQASM 3.0 language, line by line
     """
     condition = " ^ ".join(map(node_to_qasm3, domain))
     if not condition:
