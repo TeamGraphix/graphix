@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #591: `FixedBranchSelector` now passes its RNG parameter to its `default` branch selector.
 
-- #595: Fixed the export of circuit measurements and `RZZ` gates to OpenQASM. `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
+- #595: `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
 
 - #596, #597: Pattern's `n_node` property updated after Pauli removal.
 
