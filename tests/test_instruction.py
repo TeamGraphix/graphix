@@ -105,6 +105,9 @@ def test_visit_qubit(fx_rng: Generator, test_case: InstructionTestCase) -> None:
     visitor = VisitQubit()
     instr_visited = instr.visit(visitor, copy=True)
     assert instr == instr_copy
+    # instr_visited differs from the original instr_copy iff a qubit
+    # attribute has been modified by the visitor, and GPHASE gate has
+    # no qubit attribute.
     if test_case.name != "GPHASE":
         assert instr_visited != instr_copy
     instr.visit(visitor, copy=False)
