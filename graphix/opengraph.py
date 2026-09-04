@@ -642,11 +642,11 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         ...     measurements=dict.fromkeys((0, 1, 3, 4, 6, 7), Measurement.XY(angle=0)),
         ... )
         >>> og.to_circuit()
-        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
+        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)], ancillas=0, ancilla_state=graphix.states.PlanarState(Plane.XY, 0))
         >>> # The default compilation passes do not exploit the lower depth of the Pauli flow
         >>> # compared the gflow.
         >>> og.infer_pauli_measurements().to_circuit()
-        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
+        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)], ancillas=0, ancilla_state=graphix.states.PlanarState(Plane.XY, 0))
         """
         return self.to_pauliflow(stacklevel=stacklevel + 1).extract_circuit().to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
 

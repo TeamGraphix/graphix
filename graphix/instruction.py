@@ -55,6 +55,7 @@ class InstructionKind(Enum):
     RX = enum.auto()
     RY = enum.auto()
     RZ = enum.auto()
+    CONDINSTR = enum.auto()
 
 
 class _KindChecker:
@@ -90,6 +91,10 @@ class InstructionVisitor:
     def visit_axis(self, axis: Axis) -> Axis:
         """Rewrite an axis."""
         return axis
+
+    def visit_domain(self, domain: set[int]) -> set[int]:
+        """Rewrite a domain of a conditional instruction."""
+        return domain
 
 
 class BaseInstruction(ABC, DataclassReprMixin):
@@ -129,6 +134,12 @@ class CCX(_KindChecker, BaseInstruction):
         u, v = self.controls
         target = visitor.visit_qubit(self.target)
         controls = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if controls[0] == controls[1]:
+            raise ValueError(f"Control qubits cannot be the same. Qubit index: {controls[0]}.")
+        for i, c in enumerate(controls):
+            if target == c:
+                raise ValueError(f"Target and control-{i} qubits cannot be the same. Qubit index: {target}.")
+
         if copy:
             return CCX(target, controls)
         self.target = target
@@ -149,6 +160,8 @@ class RZZ(_KindChecker, BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> RZZ:
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        if target == control:
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         angle = visitor.visit_angle(self.angle)
         if copy:
             return RZZ(target, control, angle)
@@ -170,6 +183,8 @@ class CNOT(_KindChecker, BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CNOT:
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        if target == control:
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         if copy:
             return CNOT(target, control)
         self.target = target
@@ -188,6 +203,8 @@ class CZ(_KindChecker, BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CZ:
         u, v = self.targets
         targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if targets[0] == targets[1]:
+            raise ValueError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
         if copy:
             return CZ(targets)
         self.targets = targets
@@ -205,6 +222,8 @@ class SWAP(_KindChecker, BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> SWAP:
         u, v = self.targets
         targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if targets[0] == targets[1]:
+            raise ValueError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
         if copy:
             return SWAP(targets)
         self.targets = targets
@@ -333,6 +352,30 @@ class J(_KindChecker, RotationInstruction):
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
 
 
+# Needed to specify dataclass attributes in CONDINSTR,
+# so it cannot be inside TYPE_CHECKING block.
+InstructionTypeWithoutCONDINSTR = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J | RZZ
+
+
+@dataclass(repr=False)
+class CONDINSTR(_KindChecker, BaseInstruction):
+    """Base class for conditional circuit instructions."""
+
+    instructions: tuple[InstructionTypeWithoutCONDINSTR | CONDINSTR, ...]
+    domain: set[int] = field(default_factory=set)
+    kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        instructions = tuple(instr.visit(visitor, copy=copy) for instr in self.instructions)
+        domain = visitor.visit_domain(self.domain)
+        if copy:
+            return type(self)(instructions, domain)
+        self.instructions = instructions
+        self.domain = domain
+        return self
+
+
 class InstructionWithoutRZZ:
     """Grouping of all instructions except RZZ for namespace exposure.
 
@@ -357,6 +400,7 @@ class InstructionWithoutRZZ:
     RY: TypeAlias = RY
     RZ: TypeAlias = RZ
     J: TypeAlias = J
+    CONDINSTR: TypeAlias = CONDINSTR
 
     def __init__(self) -> None:
         raise TypeError("InstructionWithoutRZZ is a namespace, not a class.")
@@ -378,5 +422,6 @@ class Instruction(InstructionWithoutRZZ):
 
 
 if TYPE_CHECKING:
-    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J
-    InstructionType = InstructionTypeWithoutRZZ | RZZ
+    InstructionTypeWithoutRZZ = CCX | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | J | CONDINSTR
+    # InstructionType = InstructionTypeWithoutRZZ | RZZ
+    InstructionType = InstructionTypeWithoutCONDINSTR | CONDINSTR
