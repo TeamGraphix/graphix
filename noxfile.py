@@ -51,7 +51,7 @@ def tests_all(session: Session) -> None:
     """Run the test suite with all dependencies."""
     session.install(".[dev]")
     # This dependency is added here to avoid circular dependencies
-    session.install("graphix-qasm-parser>=0.1.1")
+    session.install("-r", ".github/qasm-parser-requirements.txt")
     run_pytest(session, doctest_modules=True, mpl=True)
 
 
@@ -97,7 +97,7 @@ class ReverseDependency:
     [
         ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="in-place_methods"),
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="rename-simulate"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="refs/pull/16/head"),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="rename-simulate"
         ),
@@ -127,11 +127,13 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         session.install("nox")
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
-            if package.branch is None:
-                session.run("git", "clone", package.repository, external=True)
-            else:
-                session.run("git", "clone", "-b", package.branch, package.repository, external=True)
+            session.run("git", "clone", package.repository, external=True)
             with session.cd(dirname):
+                if package.branch is not None:
+                    # Use `git fetch` instead of `git clone -b` to support
+                    # special refs such as `refs/pull/N/head`
+                    session.run("git", "fetch", "origin", package.branch, external=True)
+                    session.run("git", "checkout", "--detach", "FETCH_HEAD", external=True)
                 # graphix installation fails without constraint on numba
                 session.install(package.install_target, "numba>=0.65.1")
         # Note that `session.cd` is used as a context manager above,
