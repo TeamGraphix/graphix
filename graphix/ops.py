@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import reduce
 from itertools import product
+from math import pi
 from typing import TYPE_CHECKING, ClassVar, overload
 
 import numpy as np
@@ -23,6 +24,27 @@ if TYPE_CHECKING:
     from graphix.parameter import ExpressionOrComplex
 
 
+@overload
+def controlled(gate: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]: ...
+
+
+@overload
+def controlled(gate: npt.NDArray[np.object_]) -> npt.NDArray[np.object_]: ...
+
+
+def controlled(
+    gate: npt.NDArray[np.complex128] | npt.NDArray[np.object_],
+) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+    """Return the controlled version of a gate."""
+    n = gate.shape[0]
+    return np.block(
+        [
+            [np.eye(n), np.zeros((n, n))],
+            [np.zeros((n, n)), gate],
+        ]
+    )
+
+
 class Ops:
     """Basic single- and two-qubits operators."""
 
@@ -32,7 +54,21 @@ class Ops:
     Z: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, -1]]))
     S: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, 1j]]))
     SDG: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, -1j]]))
+    T: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, exp(1j * pi / 4)]]))
+    TDG: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, exp(-1j * pi / 4)]]))
+    SX: ClassVar[npt.NDArray[np.complex128]] = utils.lock(1 / 2 * np.asarray([[1 + 1j, 1 - 1j], [1 - 1j, 1 + 1j]]))
+    SXDG: ClassVar[npt.NDArray[np.complex128]] = utils.lock(1 / 2 * np.asarray([[1 - 1j, 1 + 1j], [1 + 1j, 1 - 1j]]))
     H: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 1], [1, -1]]) / np.sqrt(2))
+    CY: ClassVar[npt.NDArray[np.complex128]] = utils.lock(
+        np.asarray(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 0, -1j],
+                [0, 0, 1j, 0],
+            ],
+        )
+    )
     CZ: ClassVar[npt.NDArray[np.complex128]] = utils.lock(
         np.asarray(
             [
@@ -78,23 +114,54 @@ class Ops:
         )
     )
 
-    @overload
-    @staticmethod
-    def _cast_array(array: Iterable[Iterable[complex]], theta: Angle) -> npt.NDArray[np.complex128]: ...
+    CH: ClassVar[npt.NDArray[np.complex128]] = controlled(H)
+
+    CSWAP: ClassVar[npt.NDArray[np.complex128]] = controlled(SWAP)
 
     @overload
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
+        array: Iterable[Iterable[complex]], parameters: tuple[Angle, ...]
+    ) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def _cast_array(
+        array: Iterable[Iterable[ExpressionOrComplex]], parameters: tuple[ParameterizedAngle, ...]
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]: ...
 
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
+        array: Iterable[Iterable[ExpressionOrComplex]], parameters: tuple[ParameterizedAngle, ...]
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
-        if isinstance(theta, Expression):
+        if all(isinstance(parameter, Expression) for parameter in parameters):
             return np.asarray(array, dtype=np.object_)
         return np.asarray(array, dtype=np.complex128)
+
+    @overload
+    @staticmethod
+    def p(theta: Angle) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def p(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def p(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        r"""Phase gate.
+
+        We have :math:`P(\theta) = \mathrm e^{\theta/2} R_Z(\theta)`.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 2*2 np.asarray
+        """
+        return Ops._cast_array([[1, 0], [0, exp(1j * angle_to_rad(theta))]], (theta,))
 
     @overload
     @staticmethod
@@ -118,7 +185,7 @@ class Ops:
         operator : 2*2 np.asarray
         """
         cos, sin = cos_sin(angle_to_rad(theta) / 2)
-        return Ops._cast_array([[cos, -1j * sin], [-1j * sin, cos]], theta)
+        return Ops._cast_array([[cos, -1j * sin], [-1j * sin, cos]], (theta,))
 
     @overload
     @staticmethod
@@ -142,7 +209,7 @@ class Ops:
         operator : 2*2 np.asarray
         """
         cos, sin = cos_sin(angle_to_rad(theta) / 2)
-        return Ops._cast_array([[cos, -sin], [sin, cos]], theta)
+        return Ops._cast_array([[cos, -sin], [sin, cos]], (theta,))
 
     @overload
     @staticmethod
@@ -165,7 +232,175 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        return Ops._cast_array([[exp(-1j * angle_to_rad(theta) / 2), 0], [0, exp(1j * angle_to_rad(theta) / 2)]], theta)
+        return Ops._cast_array(
+            [[exp(-1j * angle_to_rad(theta) / 2), 0], [0, exp(1j * angle_to_rad(theta) / 2)]], (theta,)
+        )
+
+    @staticmethod
+    def u(
+        theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle
+    ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """Universal single-qubit gate.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+        phi : Angle | Expression
+            rotation angle in units of π
+        lambda_ : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 2*2 np.asarray
+        """
+        cos, sin = cos_sin(angle_to_rad(theta) / 2)
+        phi_rad = angle_to_rad(phi)
+        lambda_rad = angle_to_rad(lambda_)
+        return Ops._cast_array(
+            [[cos, -exp(1j * lambda_rad) * sin], [exp(1j * phi_rad) * sin, exp(1j * (phi_rad + lambda_rad)) * cos]],
+            (theta, phi, lambda_),
+        )
+
+    @staticmethod
+    def cu(
+        theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle, gamma: ParameterizedAngle
+    ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """Universal controlled single-qubit gate.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+        phi : Angle | Expression
+            rotation angle in units of π
+        lambda_ : Angle | Expression
+            rotation angle in units of π
+        gamma : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 4*4 np.asarray
+        """
+        gamma_rad = angle_to_rad(gamma)
+        return controlled(exp(1j * gamma_rad) * Ops.u(theta, phi, lambda_))
+
+    @overload
+    @staticmethod
+    def cj(theta: Angle) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def cj(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def cj(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """Controlled-J gate.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 4*4 np.asarray
+        """
+        return controlled(Ops.j(theta))
+
+    @overload
+    @staticmethod
+    def cp(theta: Angle) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def cp(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def cp(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """Controlled-phase gate.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 4*4 np.asarray
+        """
+        return controlled(Ops.p(theta))
+
+    @overload
+    @staticmethod
+    def crx(theta: Angle) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def crx(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def crx(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """Controlled-RX gate.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 4*4 np.asarray
+        """
+        return controlled(Ops.rx(theta))
+
+    @overload
+    @staticmethod
+    def cry(theta: Angle) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def cry(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def cry(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """Controlled-RY gate.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 4*4 np.asarray
+        """
+        return controlled(Ops.ry(theta))
+
+    @overload
+    @staticmethod
+    def crz(theta: Angle) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def crz(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def crz(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        """Controlled-RZ gate.
+
+        Parameters
+        ----------
+        theta : Angle | Expression
+            rotation angle in units of π
+
+        Returns
+        -------
+        operator : 4*4 np.asarray
+        """
+        return controlled(Ops.rz(theta))
 
     @overload
     @staticmethod
@@ -193,7 +428,7 @@ class Ops:
                 [1 / np.sqrt(2), (1 / np.sqrt(2)) * exp(1j * angle_to_rad(theta))],
                 [1 / np.sqrt(2), (-1 / np.sqrt(2)) * exp(1j * angle_to_rad(theta))],
             ],
-            theta,
+            (theta,),
         )
 
     @overload
@@ -222,7 +457,7 @@ class Ops:
         -------
         operator : 4*4 np.asarray
         """
-        return Ops._cast_array(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, theta)
+        return Ops._cast_array(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, (theta,))
 
     @staticmethod
     def build_tensor_pauli_ops(n_qubits: int) -> npt.NDArray[np.complex128]:

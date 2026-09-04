@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix import instruction
+from graphix import Instruction, instruction
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import I, InstructionKind
@@ -16,54 +16,46 @@ from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevector, StatevectorBackend
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates
-from graphix.transpiler import Circuit, OutputIndex, OutputKind, decompose_ccx, transpile_swaps
+from graphix.transpiler import (
+    Circuit,
+    OutputIndex,
+    OutputKind,
+    decompose_ccx,
+    decompose_cu,
+    decompose_p,
+    decompose_rx,
+    decompose_rz,
+    decompose_y,
+    insert_control,
+    instructions_to_jcz,
+    transpile_swaps,
+)
 from tests.test_branch_selector import CheckedBranchSelector
-from tests.test_instruction import VisitAngle
+from tests.test_instruction import INSTRUCTION_TEST_CASES, VisitAngle
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Literal, TypeAlias
+    from typing import Literal
 
-    from graphix.instruction import InstructionType
     from graphix.measurements import Outcome
+    from tests.test_instruction import InstructionTestCase
 
-    InstructionTestCase: TypeAlias = Callable[[Generator], InstructionType]
     _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
 
 
-INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
-    lambda _rng: instruction.CCX(0, (1, 2)),
-    lambda rng: instruction.RZZ(0, 1, rng.random() * 2 * ANGLE_PI),
-    lambda _rng: instruction.CZ((0, 1)),
-    lambda _rng: instruction.CNOT(0, 1),
-    lambda _rng: instruction.SWAP((0, 1)),
-    lambda _rng: instruction.H(0),
-    lambda _rng: instruction.S(0),
-    lambda _rng: instruction.X(0),
-    lambda _rng: instruction.Y(0),
-    lambda _rng: instruction.Z(0),
-    lambda _rng: instruction.I(0),
-    lambda rng: instruction.RX(0, rng.random() * 2 * ANGLE_PI),
-    lambda rng: instruction.RY(0, rng.random() * 2 * ANGLE_PI),
-    lambda rng: instruction.RZ(0, rng.random() * 2 * ANGLE_PI),
-    lambda rng: instruction.J(0, rng.random() * 2 * ANGLE_PI),
-]
-
-
 class TestTranspilerUnitGates:
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
-        circuit = Circuit(3, instr=[instruction(fx_rng)])
+    @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+    def test_instruction_flow(self, fx_rng: Generator, test_case: InstructionTestCase) -> None:
+        circuit = Circuit(3, instr=[test_case.instruction(fx_rng)])
         pattern = circuit.transpile().pattern
         circuit.transpile_to_causalflow().flow.check_well_formed()
         flow = pattern.to_bloch().to_causalflow()
         flow.check_well_formed()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
+    @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+    def test_instructions(self, fx_bg: PCG64, jumps: int, test_case: InstructionTestCase) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = Circuit(3, instr=[instruction(rng)])
+        circuit = Circuit(3, instr=[test_case.instruction(rng)])
         pattern = circuit.transpile().pattern
         input_state = rand_state_vector(3, rng=rng)
         state = circuit.simulate(input_state=input_state).state
@@ -155,7 +147,7 @@ class TestTranspilerUnitGates:
         input_state = rand_state_vector(2, rng=rng)
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
-        circuit_z = circuit.transpile_measurements_to_z_axis()
+        circuit_z = circuit.transpile_to_qasm_gates()
         assert all(instr.axis == Axis.Z for instr in circuit_z.instruction if instr.kind == InstructionKind.M)
         state_z = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
         assert state_z.isclose(state)
@@ -168,7 +160,7 @@ class TestTranspilerUnitGates:
         circuit = rand_circuit(nqubits, depth, rng, use_j=True, use_ccx=True, use_rzz=True)
         circuit.j(0, 0.5)  # Ensure that there is at least one J instruction
         assert any(instr.kind == InstructionKind.J for instr in circuit.instruction)
-        circuit2 = circuit.transpile_j_to_rzh()
+        circuit2 = circuit.transpile_to_qasm_gates()
         assert not any(instr.kind == InstructionKind.J for instr in circuit2.instruction)
         state = circuit.simulate(rng=rng).state
         state2 = circuit2.simulate(rng=rng).state
@@ -414,3 +406,79 @@ def test_visit() -> None:
     assert circ.instruction != circ2.instruction
     assert circ.visit(visitor) is circ
     assert circ.instruction == circ2.instruction
+
+
+def check_circuit_equivalence(circuit1: Circuit, circuit2: Circuit, rng: Generator) -> bool:
+    input_state = rand_state_vector(circuit1.width, rng=rng)
+    state1 = circuit1.simulate(input_state=input_state, rng=rng).state
+    state2 = circuit2.simulate(input_state=input_state, rng=rng).state
+    return state1.isclose(state2, atol=1e-15)
+
+
+def test_transpile_cj(fx_rng: Generator) -> None:
+    alpha = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.cj(0, 1, alpha)
+    decomposed_circuit = circuit.transpile_to_qasm_gates()
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+def test_decompose_cy(fx_rng: Generator) -> None:
+    circuit = Circuit(2)
+    circuit.cy(0, 1)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_y(Instruction.Y(1))))
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+def test_decompose_cp(fx_rng: Generator) -> None:
+    angle = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.cp(0, 1, angle)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_p(Instruction.P(1, angle))))
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+def test_decompose_crx(fx_rng: Generator) -> None:
+    angle = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.crx(0, 1, angle)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_rx(Instruction.RX(1, angle))))
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+def test_decompose_crz(fx_rng: Generator) -> None:
+    angle = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.crz(0, 1, angle)
+    decomposed_circuit = Circuit(2, instr=insert_control(0, decompose_rz(Instruction.RZ(1, angle))))
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+def test_decompose_cu(fx_rng: Generator) -> None:
+    theta = fx_rng.random()
+    phi = fx_rng.random()
+    lambda_ = fx_rng.random()
+    gamma = fx_rng.random()
+    circuit = Circuit(2)
+    circuit.cu(0, 1, theta, phi, lambda_, gamma)
+    decomposed_circuit = Circuit(2, instr=decompose_cu(Instruction.CU(0, 1, theta, phi, lambda_, gamma)))
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+@pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+def test_instructions_to_jcz(fx_rng: Generator, test_case: InstructionTestCase) -> None:
+    circuit = Circuit(3, instr=[test_case.instruction(fx_rng)])
+    decomposed_circuit = Circuit(3, instr=instructions_to_jcz(circuit.instruction))
+    assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
+
+
+def test_cr() -> None:
+    circuit = Circuit(2)
+    circuit.cr(control=0, target=1, axis=Axis.X, angle=ANGLE_PI / 2)
+    circuit.cr(control=1, target=0, axis=Axis.Y, angle=ANGLE_PI / 4)
+    circuit.cr(control=0, target=1, axis=Axis.Z, angle=ANGLE_PI / 8)
+    assert circuit.instruction == [
+        Instruction.CRX(control=0, target=1, angle=ANGLE_PI / 2),
+        Instruction.CRY(control=1, target=0, angle=ANGLE_PI / 4),
+        Instruction.CRZ(control=0, target=1, angle=ANGLE_PI / 8),
+    ]
