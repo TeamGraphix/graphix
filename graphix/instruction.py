@@ -26,7 +26,7 @@ def repr_angle(angle: ParameterizedAngle) -> str:
     """
     Return the representation string of an angle in radians.
 
-    This is used for pretty-printing instructions with `angle` parameters.
+    This is used for pretty-printing instructions with ``angle`` parameters.
     Delegates to :func:`pretty_print.angle_to_str`.
     """
     # Non-float-supporting objects are returned as-is
@@ -991,7 +991,6 @@ class CJ(_KindChecker, ControlledRotationInstruction):
     Following Lemmas 4.3 and 5.1 of Barenco et al. (1995), we define:
 
     .. math::
-
       \begin{aligned}
         A &= R_Y\left(\frac \pi 4\right),\\
         B &= R_Y\left(- \frac \pi 4\right) R_Z(- \delta),\\
@@ -1000,8 +999,7 @@ class CJ(_KindChecker, ControlledRotationInstruction):
       \end{aligned}
 
     These operators satisfy :math:`ABC = I` and
-    :math:`AXBXC = \mathrm e^{-\mathrm i \delta} J(\alpha)` with
-    :math:``.
+    :math:`AXBXC = \mathrm e^{-\mathrm i \delta} J(\alpha)`.
 
     Consequently, :math:`CJ(\alpha)` can be decomposed as:
 
