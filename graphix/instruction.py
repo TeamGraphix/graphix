@@ -150,6 +150,17 @@ class CCX(_KindChecker, BaseInstruction):
       0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 \\
       0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``controls[0]``, ``controls[1]``, ``target``.
+
+    Attributes
+    ----------
+    controls : tuple[int, int]
+        Index of the control qubits.
+    target : int
+        Index of the target qubit.
     """
 
     target: int
@@ -183,7 +194,20 @@ class RZZ(_KindChecker, BaseInstruction):
         0 & 0 & 0 & \mathrm e^{-\mathrm i \frac \theta 2}
       \end{matrix}\right]
 
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
     We have :math:`\mathrm{RZZ}(\theta) = \mathrm{CNOT} (I \otimes \mathrm{RZ}(\theta)) \mathrm{CNOT}`.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    angle : ParameterizedAngle
+        Rotation angle.
     """
 
     target: int
@@ -224,7 +248,30 @@ class ControlledSingleTargetInstruction(BaseInstruction):
 
 @dataclass(repr=False)
 class CY(_KindChecker, ControlledSingleTargetInstruction):
-    """CY circuit instruction."""
+    r"""CY circuit instruction.
+
+    The CY gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & 0 & -\mathrm i\\
+        0 & 0 & \mathrm i & 0
+      \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    """
 
     kind: ClassVar[Literal[InstructionKind.CY]] = field(default=InstructionKind.CY, init=False)
 
@@ -243,6 +290,17 @@ class CNOT(_KindChecker, ControlledSingleTargetInstruction):
         0 & 0 & 0 & 1\\
         0 & 0 & 1 & 0
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
     """
 
     kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
@@ -264,6 +322,15 @@ class CZ(_KindChecker, BaseInstruction):
         0 & 0 & 1 & 0\\
         0 & 0 & 0 & -1
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``targets[0]``, ``targets[1]``.
+
+    Attributes
+    ----------
+    targets : tuple[int, int]
+        Index of the target qubits.
     """
 
     targets: tuple[int, int]
@@ -293,6 +360,15 @@ class SWAP(_KindChecker, BaseInstruction):
         0 & 1 & 0 & 0\\
         0 & 0 & 0 & 1
       \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``targets[0]``, ``targets[1]``.
+
+    Attributes
+    ----------
+    targets : tuple[int, int]
+        Index of the target qubits.
     """
 
     targets: tuple[int, int]
