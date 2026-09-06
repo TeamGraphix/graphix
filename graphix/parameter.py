@@ -21,12 +21,32 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from typing import Self
 
+    import numpy as np
+    from numpy.typing import NDArray
+
+    from graphix.fundamentals import Sign
+
 
 class Expression(ABC):
     """Expression with parameters."""
 
+    @overload
+    def __mul__(self, other: float) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: Sign) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.object_]) -> NDArray[np.object_]: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.complex128]) -> NDArray[np.complex128]: ...
+
+    @overload
+    def __mul__(self, other: Expression) -> ExpressionOrFloat: ...
+
     @abstractmethod
-    def __mul__(self, other: object) -> ExpressionOrFloat:
+    def __mul__(self, other: object) -> ExpressionOrFloat | NDArray[np.object_] | NDArray[np.complex128]:
         """
         Return the product of this expression with another object.
 
@@ -178,8 +198,23 @@ class AffineExpression(Expression):
             return 0
         return self.scale_non_null(k)
 
+    @overload
+    def __mul__(self, other: float) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: Sign) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.object_]) -> NDArray[np.object_]: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.complex128]) -> NDArray[np.complex128]: ...
+
+    @overload
+    def __mul__(self, other: Expression) -> ExpressionOrFloat: ...
+
     @override
-    def __mul__(self, other: object) -> ExpressionOrFloat:
+    def __mul__(self, other: object) -> ExpressionOrFloat | NDArray[np.object_] | NDArray[np.complex128]:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))

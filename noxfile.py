@@ -51,7 +51,9 @@ def tests_all(session: Session) -> None:
     """Run the test suite with all dependencies."""
     session.install(".[dev]")
     # This dependency is added here to avoid circular dependencies
-    session.install("graphix-qasm-parser>=0.1.1")
+    session.install(
+        "graphix-qasm-parser@git+https://github.com/thierry-martinez/graphix-qasm-parser@add_openqasm_gates"
+    )
     run_pytest(session, doctest_modules=True, mpl=True)
 
 
@@ -97,7 +99,7 @@ class ReverseDependency:
     [
         ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="in-place_methods"),
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="rename-simulate"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-qasm-parser", branch="add_openqasm_gates"),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="rename-simulate"
         ),
@@ -109,7 +111,7 @@ class ReverseDependency:
             install_target=".[dev]",
             branch="rename-simulate",
         ),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="rename-simulate"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
