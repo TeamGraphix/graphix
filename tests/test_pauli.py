@@ -24,19 +24,19 @@ class TestPauli:
 
     @pytest.mark.parametrize(
         ("u", "p"),
-        itertools.product(ComplexUnit, Pauli),
+        tuple(itertools.product(ComplexUnit, Pauli)),
     )
     def test_unit_mul(self, u: ComplexUnit, p: Pauli) -> None:
         assert np.allclose((u * p).matrix, complex(u) * p.matrix)
 
     @pytest.mark.parametrize(
         ("a", "b"),
-        itertools.product(Pauli, Pauli),
+        tuple(itertools.product(Pauli, Pauli)),
     )
     def test_matmul(self, a: Pauli, b: Pauli) -> None:
         assert np.allclose((a @ b).matrix, a.matrix @ b.matrix)
 
-    @pytest.mark.parametrize("p", Pauli.iterate(symbol_only=True))
+    @pytest.mark.parametrize("p", tuple(Pauli.iterate(symbol_only=True)))
     def test_repr(self, p: Pauli) -> None:
         pstr = f"Pauli.{p.symbol.name}"
         assert repr(p) == pstr
@@ -45,7 +45,7 @@ class TestPauli:
         assert repr(-1 * p) == f"-{pstr}"
         assert repr(-1j * p) == f"-1j * {pstr}"
 
-    @pytest.mark.parametrize("p", Pauli.iterate(symbol_only=True))
+    @pytest.mark.parametrize("p", tuple(Pauli.iterate(symbol_only=True)))
     def test_str(self, p: Pauli) -> None:
         pstr = p.symbol.name
         assert str(p) == pstr
@@ -54,7 +54,7 @@ class TestPauli:
         assert str(-1 * p) == f"-{pstr}"
         assert str(-1j * p) == f"-1j * {pstr}"
 
-    @pytest.mark.parametrize("p", Pauli)
+    @pytest.mark.parametrize("p", tuple(Pauli))
     def test_neg(self, p: Pauli) -> None:
         pneg = -p
         assert pneg == -p
@@ -95,7 +95,7 @@ class TestPauli:
         assert all(False for _ in it)
         assert all(False for _ in it_)
 
-    @pytest.mark.parametrize(("p", "b"), itertools.product(Pauli.iterate(symbol_only=True), [0, 1]))
+    @pytest.mark.parametrize(("p", "b"), tuple(itertools.product(Pauli.iterate(symbol_only=True), [0, 1])))
     def test_eigenstate(self, p: Pauli, b: int) -> None:
         ev = float(Sign.plus_if(b == 0)) if p != Pauli.I else 1
         evec = p.eigenstate(b).to_statevector_numpy()

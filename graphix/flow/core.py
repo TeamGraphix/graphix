@@ -967,10 +967,16 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
             raise ValueError("Flow is not focused.")
         return {node: extraction_ps_from_corrected_node(self, node) for node in self.correction_function}
 
-    def extract_circuit(self: PauliFlow[Measurement]) -> ExtractionResult:
+    def extract_circuit(self: PauliFlow[Measurement], *, stacklevel: int = 1) -> ExtractionResult:
         """Extract a circuit from a flow.
 
         This routine assumes that the flow ``self`` is focused (see Notes).
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -991,7 +997,7 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         if self.og.output_cliffords:
             raise NotImplementedError("Circuit extraction is not supported for open graphs with Clifford decorations.")
         pexp_dag = PauliExponentialDAG.from_focused_flow(self)
-        clifford_map = CliffordMap.from_focused_flow(self)
+        clifford_map = CliffordMap.from_focused_flow(self, stacklevel=stacklevel + 1)
 
         return ExtractionResult(pexp_dag=pexp_dag, clifford_map=clifford_map)
 
