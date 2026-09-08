@@ -1923,6 +1923,7 @@ class Pattern(InplaceParameterizable):
             return pattern
         self.__seq = pattern.__seq
         self.__output_nodes = pattern.__output_nodes
+        self.__n_node = pattern.n_node
         return self
 
     def remove_local_clifford_commands(self, *, copy: bool = False) -> Pattern:

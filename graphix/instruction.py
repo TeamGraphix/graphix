@@ -118,7 +118,23 @@ class BaseInstruction(ABC, DataclassReprMixin):
 
 @dataclass(repr=False)
 class CCX(_KindChecker, BaseInstruction):
-    """Toffoli circuit instruction."""
+    r"""Toffoli circuit instruction.
+
+    The CCX gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+      1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+      0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+      0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+      0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+      0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+      0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+      0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 \\
+      0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+      \end{matrix}\right]
+    """
 
     target: int
     controls: tuple[int, int]
@@ -138,7 +154,21 @@ class CCX(_KindChecker, BaseInstruction):
 
 @dataclass(repr=False)
 class RZZ(_KindChecker, BaseInstruction):
-    """RZZ circuit instruction."""
+    r"""RZZ circuit instruction.
+
+    The :math:`\mathrm{RZZ}(\theta)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        \mathrm e^{-\mathrm i \frac \theta 2} & 0 & 0 & 0\\
+        0 & \mathrm e^{\mathrm i \frac \theta 2} & 0 & 0\\
+        0 & 0 & \mathrm e^{\mathrm i \frac \theta 2} & 0\\
+        0 & 0 & 0 & \mathrm e^{-\mathrm i \frac \theta 2}
+      \end{matrix}\right]
+
+    We have :math:`\mathrm{RZZ}(\theta) = \mathrm{CNOT} (I \otimes \mathrm{RZ}(\theta)) \mathrm{CNOT}`.
+    """
 
     target: int
     control: int
@@ -160,7 +190,19 @@ class RZZ(_KindChecker, BaseInstruction):
 
 @dataclass(repr=False)
 class CNOT(_KindChecker, BaseInstruction):
-    """CNOT circuit instruction."""
+    r"""CNOT circuit instruction.
+
+    The CNOT gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & 0 & 1\\
+        0 & 0 & 1 & 0
+      \end{matrix}\right]
+    """
 
     target: int
     control: int
@@ -179,7 +221,19 @@ class CNOT(_KindChecker, BaseInstruction):
 
 @dataclass(repr=False)
 class CZ(_KindChecker, BaseInstruction):
-    """CZ circuit instruction."""
+    r"""CZ circuit instruction.
+
+    The CZ gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & 1 & 0\\
+        0 & 0 & 0 & -1
+      \end{matrix}\right]
+    """
 
     targets: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.CZ]] = field(default=InstructionKind.CZ, init=False)
@@ -196,7 +250,19 @@ class CZ(_KindChecker, BaseInstruction):
 
 @dataclass(repr=False)
 class SWAP(_KindChecker, BaseInstruction):
-    """SWAP circuit instruction."""
+    r"""SWAP circuit instruction.
+
+    The SWAP gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 0 & 1 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & 0 & 1
+      \end{matrix}\right]
+    """
 
     targets: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.SWAP]] = field(default=InstructionKind.SWAP, init=False)
@@ -228,42 +294,66 @@ class SingleTargetInstruction(BaseInstruction):
 
 @dataclass(repr=False)
 class H(_KindChecker, SingleTargetInstruction):
-    """H circuit instruction."""
+    r"""H circuit instruction.
+
+    The Hadamard gate applies the matrix
+    :math:`\frac 1 {\sqrt 2}\left[\begin{matrix}1 & 1\\1 & -1\end{matrix}\right]`.
+    """
 
     kind: ClassVar[Literal[InstructionKind.H]] = field(default=InstructionKind.H, init=False)
 
 
 @dataclass(repr=False)
 class S(_KindChecker, SingleTargetInstruction):
-    """S circuit instruction."""
+    r"""S circuit instruction.
+
+    The S gate applies the matrix
+    :math:`\left[\begin{matrix}1 & 0\\0 & \mathrm i\end{matrix}\right]`.
+    """
 
     kind: ClassVar[Literal[InstructionKind.S]] = field(default=InstructionKind.S, init=False)
 
 
 @dataclass(repr=False)
 class X(_KindChecker, SingleTargetInstruction):
-    """X circuit instruction."""
+    r"""X circuit instruction.
+
+    The X gate applies the matrix
+    :math:`\left[\begin{matrix}0 & 1\\1 & 0\end{matrix}\right]`.
+    """
 
     kind: ClassVar[Literal[InstructionKind.X]] = field(default=InstructionKind.X, init=False)
 
 
 @dataclass(repr=False)
 class Y(_KindChecker, SingleTargetInstruction):
-    """Y circuit instruction."""
+    r"""Y circuit instruction.
+
+    The Y gate applies the matrix
+    :math:`\left[\begin{matrix}0 & -\mathrm i\\\mathrm i & 0\end{matrix}\right]`.
+    """
 
     kind: ClassVar[Literal[InstructionKind.Y]] = field(default=InstructionKind.Y, init=False)
 
 
 @dataclass(repr=False)
 class Z(_KindChecker, SingleTargetInstruction):
-    """Z circuit instruction."""
+    r"""Z circuit instruction.
+
+    The Z gate applies the matrix
+    :math:`\left[\begin{matrix}1 & 0\\\mathrm 0 & -1\end{matrix}\right]`.
+    """
 
     kind: ClassVar[Literal[InstructionKind.Z]] = field(default=InstructionKind.Z, init=False)
 
 
 @dataclass(repr=False)
 class I(_KindChecker, SingleTargetInstruction):
-    """I circuit instruction."""
+    r"""I circuit instruction.
+
+    The identity gate applies the matrix
+    :math:`\left[\begin{matrix}1 & 0\\\mathrm 0 & 1\end{matrix}\right]`.
+    """
 
     kind: ClassVar[Literal[InstructionKind.I]] = field(default=InstructionKind.I, init=False)
 
@@ -307,28 +397,70 @@ class RotationInstruction(BaseInstruction):
 
 @dataclass(repr=False)
 class RX(_KindChecker, RotationInstruction):
-    """X rotation circuit instruction."""
+    r"""X rotation circuit instruction.
+
+    The :math:`RX(\theta)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        \cos \frac \theta 2 & -\mathrm i \sin \frac \theta 2\\
+        -\mathrm i \sin \frac \theta 2 & \cos \frac \theta 2
+      \end{matrix}\right]
+    """
 
     kind: ClassVar[Literal[InstructionKind.RX]] = field(default=InstructionKind.RX, init=False)
 
 
 @dataclass(repr=False)
 class RY(_KindChecker, RotationInstruction):
-    """Y rotation circuit instruction."""
+    r"""Y rotation circuit instruction.
+
+    The :math:`RY(\theta)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        \cos \frac \theta 2 & - \sin \frac \theta 2\\
+        \sin \frac \theta 2 & \cos \frac \theta 2
+      \end{matrix}\right]
+    """
 
     kind: ClassVar[Literal[InstructionKind.RY]] = field(default=InstructionKind.RY, init=False)
 
 
 @dataclass(repr=False)
 class RZ(_KindChecker, RotationInstruction):
-    """Z rotation circuit instruction."""
+    r"""Z rotation circuit instruction.
+
+    The :math:`RZ(\theta)` gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        \mathrm e^{-\mathrm i \frac \theta 2} & 0\\
+        0 & \mathrm e^{\mathrm i \frac \theta 2}
+      \end{matrix}\right]
+    """
 
     kind: ClassVar[Literal[InstructionKind.RZ]] = field(default=InstructionKind.RZ, init=False)
 
 
 @dataclass(repr=False)
 class J(_KindChecker, RotationInstruction):
-    """J circuit instruction."""
+    r"""J circuit instruction.
+
+    The :math:`J(\theta)` gate applies the matrix
+
+    .. math::
+
+      \frac 1 {\sqrt 2} \left[\begin{matrix}
+        1 & \mathrm e^{\mathrm i \theta}\\
+        1 & - \mathrm e^{\mathrm i \theta}
+      \end{matrix}\right]
+
+    We have :math:`J(\theta) = \mathrm e^{\mathrm i \theta/2} H \mathrm{RZ}(\theta)`.
+    """
 
     kind: ClassVar[Literal[InstructionKind.J]] = field(default=InstructionKind.J, init=False)
 
