@@ -62,7 +62,7 @@ def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True) -> Itera
         An iterator over the OpenQASM 3.0 lines that represent the circuit.
     """
     if transpile:
-        circuit = circuit.transpile_j_to_rzh().transpile_measurements_to_z_axis()
+        circuit = circuit.transpile_rzz().transpile_j_to_rzh().transpile_measurements_to_z_axis()
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
     yield f"qubit[{circuit.width}] q;"
@@ -138,9 +138,8 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
         case InstructionKind.CZ:
             return qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
         case InstructionKind.RZZ:
-            angle = angle_to_qasm3(instruction.angle)
-            return qasm3_gate_call(
-                "crz", args=[angle], operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)]
+            raise ValueError(
+                "RZZ gates must be decomposed before QASM3 export using `Circuit.transpile_rzz`, or setting `transpile=True`."
             )
         case InstructionKind.CCX:
             return qasm3_gate_call(
