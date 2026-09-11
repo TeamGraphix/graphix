@@ -27,7 +27,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
-    "sphinx_gallery.gen_gallery",
+    # "sphinx_gallery.gen_gallery",
 ]
 
 templates_path = ["_templates"]
@@ -85,15 +85,15 @@ html_theme_options = {
 
 default_role = "any"
 
-sphinx_gallery_conf = {
-    # path to your example scripts
-    "examples_dirs": ["../../examples"],
-    # path to where to save gallery generated output
-    "gallery_dirs": ["gallery"],
-    "filename_pattern": "/",
-    "thumbnail_size": (800, 550),
-    "parallel": True,
-}
+# sphinx_gallery_conf = {
+#     # path to your example scripts
+#     "examples_dirs": ["../../examples"],
+#     # path to where to save gallery generated output
+#     "gallery_dirs": ["gallery"],
+#     "filename_pattern": "/",
+#     "thumbnail_size": (800, 550),
+#     "parallel": True,
+# }
 
 suppress_warnings = ["config.cache"]
 
