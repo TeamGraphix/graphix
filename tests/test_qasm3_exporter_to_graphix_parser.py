@@ -10,14 +10,11 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import Circuit, Instruction
-from graphix.fundamentals import ANGLE_PI
+from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import InstructionKind
 from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
 from tests.test_instruction import INSTRUCTION_TEST_CASES
-
-if TYPE_CHECKING:
-    from tests.test_instruction import InstructionTestCase
 
 try:
     from graphix_qasm_parser import OpenQASMParser  # type: ignore[import-not-found, unused-ignore]
@@ -31,6 +28,9 @@ except ImportError:
         # graphix-qasm-parser, since pyright cannot figure out that
         # tests are skipped in this case.
         sys.exit(1)
+
+if TYPE_CHECKING:
+    from tests.test_instruction import InstructionTestCase
 
 
 def check_round_trip(circuit: Circuit) -> None:
@@ -58,10 +58,10 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
 
 @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
 def test_instruction_to_qasm3(fx_rng: Generator, test_case: InstructionTestCase) -> None:
-    instr = test_case.instruction(fx_rng)
-    if instr.kind in {InstructionKind.CJ, InstructionKind.RZZ, InstructionKind.M}:
+    instruction = test_case.instruction(fx_rng)
+    if instruction.kind in {InstructionKind.CJ, InstructionKind.RZZ, InstructionKind.M}:
         pytest.skip()
-    check_round_trip(Circuit(3, instr=[instr]))
+    check_round_trip(Circuit(3, instr=[instruction]))
 
 
 def test_j_to_qasm3() -> None:
@@ -70,6 +70,12 @@ def test_j_to_qasm3() -> None:
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
     assert parsed_circuit.instruction == circuit.transpile_to_qasm_gates().instruction
+
+
+def test_j_to_qasm3_failure() -> None:
+    circuit = Circuit(3, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
+    with pytest.raises(ValueError):
+        circuit_to_qasm3(circuit, transpile=False)
 
 
 def test_cj_to_qasm3() -> None:
@@ -95,3 +101,8 @@ def test_gphase_to_qasm3() -> None:
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
     assert parsed_circuit.instruction == [instr]
+
+
+def test_measurement() -> None:
+    circuit = Circuit(1, instr=[Instruction.M(target=0, axis=Axis.Z)])
+    check_round_trip(circuit)

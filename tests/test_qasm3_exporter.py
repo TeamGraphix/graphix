@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix import Circuit, instruction
+from graphix import Circuit
 from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.qasm3_exporter import angle_to_qasm3, circuit_to_qasm3, pattern_to_qasm3
 from graphix.random_objects import rand_circuit
@@ -21,23 +21,6 @@ from graphix.random_objects import rand_circuit
 def test_angle_to_qasm3(check: tuple[float, str]) -> None:
     angle, expected = check
     assert angle_to_qasm3(angle) == expected
-
-
-def test_measurement() -> None:
-    # Measurements are not supported yet by the parser.
-    # https://github.com/TeamGraphix/graphix-qasm-parser/issues/3
-    # The best we can do is to check if the measurement instruction
-    # is exported as expected.
-    circuit = Circuit(1, instr=[instruction.M(target=0, axis=Axis.Z)])
-    qasm = circuit_to_qasm3(circuit)
-    assert (
-        qasm
-        == """OPENQASM 3;
-include "stdgates.inc";
-qubit[1] q;
-bit[1] b;
-b[0] = measure q[0];"""
-    )
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
