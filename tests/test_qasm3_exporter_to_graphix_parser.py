@@ -16,6 +16,16 @@ from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
 from tests.test_instruction import INSTRUCTION_TEST_CASES
 
+# `graphix-qasm-parser` depends on the `graphix` package, so we cannot have
+# `graphix-qasm-parser` as a dependency of `graphix`, as this would create
+# a dependency loop, which is disallowed by PyPI.
+# Instead, `graphix-qasm-parser` is made optional and installed separately
+# in `noxfile.py` (for `tests_all` and as a reverse dependency) and in the
+# `cov` pipeline.
+# The version of `graphix-qasm-parser` to use is defined in two places:
+# - `nox`'s `tests_all` session and `cov` pipeline rely on the requirement
+#   defined in `.github/qasm-parser-requirements.txt`;
+# - `nox`'s reverse dependency check is declared in `noxfile.py` itself.
 try:
     from graphix_qasm_parser import OpenQASMParser  # type: ignore[import-not-found, unused-ignore]
 except ImportError:
