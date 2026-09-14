@@ -1,5 +1,5 @@
 API Reference
-===========
+=============
 *Coming soon...*
 
 Old API Ref (to be updated):
