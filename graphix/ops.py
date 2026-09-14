@@ -46,7 +46,7 @@ def controlled(
 
 
 class Ops:
-    """Basic single- and two-qubits operators."""
+    """Elementary quantum gates acting on 1, 2, or 3 qubits."""
 
     I: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, 1]]))
     X: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[0, 1], [1, 0]]))
