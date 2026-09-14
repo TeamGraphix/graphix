@@ -1,0 +1,1 @@
+graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser@refs/pull/16/head
