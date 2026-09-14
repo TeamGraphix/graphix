@@ -562,7 +562,7 @@ class Circuit(InplaceParameterizable):
             target qubit
         """
         assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SDG(target=qubit))
+        self.instruction.append(Instruction.SDG(target=qubit).visit(self._visitor))
 
     def t(self, qubit: int) -> None:
         """Apply a T gate.
@@ -574,8 +574,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.T(target=qubit))
+        self.instruction.append(Instruction.T(target=qubit).visit(self._visitor))
 
     def tdg(self, qubit: int) -> None:
         """Apply a TDG gate.
@@ -587,8 +586,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.TDG(target=qubit))
+        self.instruction.append(Instruction.TDG(target=qubit).visit(self._visitor))
 
     def sx(self, qubit: int) -> None:
         """Apply an SX gate.
@@ -600,8 +598,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SX(target=qubit))
+        self.instruction.append(Instruction.SX(target=qubit).visit(self._visitor))
 
     def sxdg(self, qubit: int) -> None:
         """Apply an SXDG gate.
@@ -613,8 +610,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SXDG(target=qubit))
+        self.instruction.append(Instruction.SXDG(target=qubit).visit(self._visitor))
 
     def cy(self, control: int, target: int) -> None:
         """Apply a Controlled-Y gate.
@@ -628,10 +624,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CY(control=control, target=target))
+        self.instruction.append(Instruction.CY(control=control, target=target).visit(self._visitor))
 
     def p(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Phase rotation gate.
@@ -645,8 +638,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.P(target=qubit, angle=angle))
+        self.instruction.append(Instruction.P(target=qubit, angle=angle).visit(self._visitor))
 
     def u(self, qubit: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> None:
         """Apply a universal single-qubit gate.
@@ -664,8 +656,7 @@ class Circuit(InplaceParameterizable):
         lambda_ : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_))
+        self.instruction.append(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_).visit(self._visitor))
 
     def cj(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-J rotation gate.
@@ -681,10 +672,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CJ(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CJ(control=control, target=target, angle=angle).visit(self._visitor))
 
     def cp(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-P rotation gate.
@@ -700,10 +688,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CP(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CP(control=control, target=target, angle=angle).visit(self._visitor))
 
     def crx(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply an controlled-X rotation gate.
@@ -719,10 +704,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CRX(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CRX(control=control, target=target, angle=angle).visit(self._visitor))
 
     def cry(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-Y rotation gate.
@@ -738,10 +720,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CRY(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CRY(control=control, target=target, angle=angle).visit(self._visitor))
 
     def crz(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-Z rotation gate.
@@ -757,10 +736,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CRZ(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CRZ(control=control, target=target, angle=angle).visit(self._visitor))
 
     def cr(self, control: int, target: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a controlled-rotation gate on the given axis.
@@ -814,11 +790,10 @@ class Circuit(InplaceParameterizable):
         gamma : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
         self.instruction.append(
-            Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma)
+            Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma).visit(
+                self._visitor
+            )
         )
 
     def cswap(self, control: int, qubit1: int, qubit2: int) -> None:
@@ -835,13 +810,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             second qubit to be swapped
         """
-        assert control in self.active_qubits
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert control != qubit1
-        assert control != qubit2
-        assert qubit1 != qubit2
-        self.instruction.append(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)))
+        self.instruction.append(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)).visit(self._visitor))
 
     def gphase(self, angle: ParameterizedAngle) -> None:
         r"""Apply a global phase.
@@ -853,7 +822,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.GPHASE(angle))
+        self.instruction.append(Instruction.GPHASE(angle).visit(self._visitor))
 
     def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
@@ -1135,17 +1104,6 @@ class Circuit(InplaceParameterizable):
                             new_circuit.add(instr)
                         case _:
                             assert_never(instr.axis)
-                case _:
-                    new_circuit.add(instr)
-        return new_circuit
-
-    def transpile_rzz(self) -> Circuit:
-        """Return an equivalent circuit where all RZZ gates have been replaced with OpenQASM gates."""
-        new_circuit = Circuit(self.width, ancillas=self.ancillas)
-        for instr in self.instruction:
-            match instr.kind:
-                case InstructionKind.RZZ:
-                    new_circuit.extend(decompose_rzz(instr))
                 case _:
                     new_circuit.add(instr)
         return new_circuit
