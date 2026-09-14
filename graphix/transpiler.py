@@ -589,7 +589,7 @@ class Circuit(InplaceParameterizable):
         self.instruction.append(Instruction.P(target=qubit, angle=angle))
 
     def u(self, qubit: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> None:
-        """Apply an U gate.
+        """Apply a universal single-qubit gate.
 
         See :class:`~graphix.instruction.U` for more information.
 
