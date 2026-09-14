@@ -4,7 +4,7 @@ Tutorial
 Graphix provides a high-level interface to generate, optimize and classically simulate the measurement-based quantum computing (MBQC).
 
 In this tutorial, we look at how to program MBQC using graphix library.
-We will explain the basics here along with the code, and you can go to :doc:`intro` to learn more about the theoretical background of MBQC and :doc:`references` for module references.
+We will explain the basics here along with the code, and you can go to :doc:`intro` to learn more about the theoretical background of MBQC and references for module references.
 
 Generating measurement patterns
 -------------------------------
@@ -229,7 +229,7 @@ With this, we only need the memory space for three qubits.
 
 This procedure is more effective when the resource state size is large compared to the logical input qubit count;
 for example, the three-qubit `quantum Fourier transform (QFT)
-<https://en.wikipedia.org/wiki/Quantum_Fourier_transform>`_ circuit requires 12 qubits in the resource state after :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` (see the code in :ref:`QFT example <sphx_glr_gallery_qft_with_tn.py>`); with the proper reordering of the commands, the max_space reduces to 4.
+<https://en.wikipedia.org/wiki/Quantum_Fourier_transform>`_ circuit requires 12 qubits in the resource state after :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` (see the code in sphx_glr_gallery_qft_with_tn.py); with the proper reordering of the commands, the max_space reduces to 4.
 In fact, for patterns transpiled from gate network, the minimum *space* we can realize is typically :math:`n_w+1` where :math:`n_w` is the width of the circuit.
 
 
