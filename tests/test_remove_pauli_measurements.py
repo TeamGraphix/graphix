@@ -20,6 +20,7 @@ from graphix import (
     Sign,
     StandardizedPattern,
 )
+from graphix.command import M, N
 from graphix.random_objects import rand_circuit, rand_state_vector
 from graphix.remove_pauli_measurements import PauliPushingCut, _RemovePauliMeasurements, remove_pauli_measurements
 
@@ -330,3 +331,12 @@ def test_isolated_nodes_non_pauli() -> None:
     with pytest.warns(UserWarning, match="Non-Pauli measurement on an isolated node was removed."):
         pattern.remove_pauli_measurements()
     assert list(pattern) == []
+
+
+@pytest.mark.parametrize("copy", [True, False])
+def test_n_nodes(copy: bool) -> None:
+    pattern = Pattern(cmds=[N(0), M(0)])
+
+    p = pattern.remove_pauli_measurements(copy=copy)
+
+    assert len(p.to_opengraph().graph) == p.n_node
