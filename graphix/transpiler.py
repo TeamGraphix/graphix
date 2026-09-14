@@ -802,6 +802,17 @@ class Circuit(InplaceParameterizable):
         new_circuit.instruction += self.instruction
         return new_circuit
 
+    def transpile_rzz(self) -> Circuit:
+        """Return an equivalent circuit where all RZZ gates have been replaced with OpenQASM gates."""
+        new_circuit = Circuit(self.width)
+        for instr in self.instruction:
+            match instr.kind:
+                case InstructionKind.RZZ:
+                    new_circuit.extend(decompose_rzz(instr))
+                case _:
+                    new_circuit.add(instr)
+        return new_circuit
+
 
 def decompose_rzz(instr: instruction.RZZ) -> Iterator[instruction.CNOT | instruction.RZ]:
     """Yield a decomposition of RZZ(α) gate as CNOT(control, target)·Rz(target, α)·CNOT(control, target).

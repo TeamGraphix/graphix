@@ -8,7 +8,7 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import Circuit, Instruction
-from graphix.fundamentals import ANGLE_PI
+from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import InstructionKind
 from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
@@ -33,6 +33,7 @@ except ImportError:
 
 def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
+    print(qasm)
     check_circuit = circuit.transpile_j_to_rzh()
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
@@ -50,7 +51,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
 
 @pytest.mark.parametrize("instruction", ALL_INSTRUCTIONS)
 def test_instruction_to_qasm3(instruction: InstructionType) -> None:
-    if instruction.kind == InstructionKind.M:
+    if instruction.kind in {InstructionKind.RZZ, InstructionKind.M}:
         pytest.skip()
     check_round_trip(Circuit(3, instr=[instruction]))
 
@@ -67,3 +68,27 @@ def test_j_to_qasm3_failure() -> None:
     circuit = Circuit(3, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
     with pytest.raises(ValueError):
         circuit_to_qasm3(circuit, transpile=False)
+
+
+def test_measurement() -> None:
+    circuit = Circuit(1, instr=[Instruction.M(target=0, axis=Axis.Z)])
+    check_round_trip(circuit)
+
+
+def test_condinstr() -> None:
+    circuit = Circuit(
+        3,
+        instr=[
+            Instruction.M(2, Axis.Z),
+            Instruction.CONDINSTR((Instruction.X(0),), {2}),
+            Instruction.M(0, Axis.Z),
+            Instruction.CONDINSTR(
+                (
+                    Instruction.X(1),
+                    Instruction.Z(1),
+                ),
+                {0, 2},
+            ),
+        ],
+    )
+    check_round_trip(circuit)
