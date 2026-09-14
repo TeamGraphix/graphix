@@ -17,7 +17,7 @@ from graphix.flow.exceptions import (
     FlowError,
 )
 from graphix.fundamentals import ANGLE_PI, Angle, Axis, Plane, Sign
-from graphix.instruction import Instruction, InstructionKind
+from graphix.instruction import Instruction
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.optimization import StandardizedPattern
@@ -1284,21 +1284,19 @@ class TestPattern:
 
     # This test requires swapping qubits at the end contrary to
     # test_to_circuit_single_qubit_instructions
-
-    @pytest.mark.skip(reason="BUG: memory leak")
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
     def test_to_circuit_basic_instructions(self, fx_bg: PCG64, jumps: int, test_case: InstructionTestCase) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         instr = [test_case.instruction(rng)]
         circuit_ref = Circuit(3, instr=instr)
-        if any(instr.kind == InstructionKind.CCX for instr in circuit_ref.instruction):
-            # We skip this test because it returns a Circuit with too many qubits.
-            return
         pattern = (
             circuit_ref.transpile().pattern
         )  # Tested in test_transpile.TestTranspilerUnitGates.test_instructions()
         circuit_test = pattern.to_circuit()
+
+        if circuit_test.nqubit > 20:
+            pytest.skip("Circuit with classical control has too many ancilla qubits to be simulated.")
 
         input_state = rand_state_vector(3, rng=rng)
         state_ref = circuit_ref.simulate(input_state=input_state, rng=rng).state

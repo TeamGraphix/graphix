@@ -526,7 +526,7 @@ class TestCircuits:
             ({0, 1}, 1, BasicStates.ZERO),
         ],
     )
-    def test_cond_instr(self, fx_rng: Generator, domain: set[int], outcome: Outcome, output: State) -> None:
+    def test_condinstr(self, fx_rng: Generator, domain: set[int], outcome: Outcome, output: State) -> None:
         circuit = Circuit(3)
         circuit.m(0, Axis.Z)
         circuit.m(1, Axis.Z)

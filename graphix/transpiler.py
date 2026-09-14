@@ -1357,6 +1357,30 @@ def decompose_cu(instr: Instruction.CU) -> Iterator[Instruction.CJ | Instruction
     yield Instruction.P(target=instr.control, angle=instr.gamma - instr.theta / 2)
 
 
+def decompose_cj(instr: Instruction.CJ) -> Iterator[Instruction.RZ | Instruction.CNOT | Instruction.RY | Instruction.P]:
+    """Yield a decomposed gate sequence of the CJ gate.
+
+    See :class:`~graphix.instruction.CJ` for more information.
+    """
+    delta = (instr.angle + ANGLE_PI) / 2
+    yield Instruction.RZ(target=instr.target, angle=delta)
+    yield Instruction.CNOT(control=instr.control, target=instr.target)
+    yield Instruction.RZ(target=instr.target, angle=-delta)
+    yield Instruction.RY(target=instr.target, angle=-ANGLE_PI / 4)
+    yield Instruction.CNOT(control=instr.control, target=instr.target)
+    yield Instruction.RY(target=instr.target, angle=ANGLE_PI / 4)
+    yield Instruction.P(target=instr.control, angle=delta)
+
+
+def decompose_p(instr: Instruction.P) -> Iterator[Instruction.RZ | Instruction.GPHASE]:
+    """Yield a decomposed gate sequence of the P gate.
+
+    See :class:`~graphix.instruction.P` for more information.
+    """
+    yield Instruction.RZ(instr.target, instr.angle)
+    yield Instruction.GPHASE(instr.angle / 2)
+
+
 def insert_control(
     control: int,
     instrs: Iterable[
@@ -1393,30 +1417,6 @@ def insert_control(
                 yield Instruction.P(target=control, angle=instr.angle)
             case _:
                 assert_never(instr.kind)
-
-
-def decompose_cj(instr: Instruction.CJ) -> Iterator[Instruction.RZ | Instruction.CNOT | Instruction.RY | Instruction.P]:
-    """Yield a decomposed gate sequence of the CJ gate.
-
-    See :class:`~graphix.instruction.CJ` for more information.
-    """
-    delta = (instr.angle + ANGLE_PI) / 2
-    yield Instruction.RZ(target=instr.target, angle=delta)
-    yield Instruction.CNOT(control=instr.control, target=instr.target)
-    yield Instruction.RZ(target=instr.target, angle=-delta)
-    yield Instruction.RY(target=instr.target, angle=-ANGLE_PI / 4)
-    yield Instruction.CNOT(control=instr.control, target=instr.target)
-    yield Instruction.RY(target=instr.target, angle=ANGLE_PI / 4)
-    yield Instruction.P(target=instr.control, angle=delta)
-
-
-def decompose_p(instr: Instruction.P) -> Iterator[Instruction.RZ | Instruction.GPHASE]:
-    """Yield a decomposed gate sequence of the P gate.
-
-    See :class:`~graphix.instruction.P` for more information.
-    """
-    yield Instruction.RZ(instr.target, instr.angle)
-    yield Instruction.GPHASE(instr.angle / 2)
 
 
 def instructions_to_jcz(
@@ -1836,4 +1836,3 @@ def simulate_instructions(
                     )
             case _:
                 assert_never(instr.kind)
-                # raise ValueError(f"Unknown instruction: {instr}")
