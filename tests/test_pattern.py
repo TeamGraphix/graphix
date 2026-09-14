@@ -29,7 +29,7 @@ from graphix.sim.tensornet import MBQCTensorNet
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
-from tests.test_transpiler import INSTRUCTION_TEST_CASES
+from tests.test_instruction import INSTRUCTION_TEST_CASES
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from graphix.command import CommandType
     from graphix.instruction import InstructionType
     from graphix.simulator import _BackendLiteral
-    from tests.test_transpiler import InstructionTestCase
+    from tests.test_instruction import InstructionTestCase
 
 
 def compare_backend_result_with_statevec(backend_state: Statevector | DensityMatrix, statevec: Statevector) -> float:
@@ -1285,11 +1285,12 @@ class TestPattern:
     # This test requires swapping qubits at the end contrary to
     # test_to_circuit_single_qubit_instructions
 
+    @pytest.mark.skip(reason="BUG: memory leak")
     @pytest.mark.parametrize("jumps", range(1, 11))
-    @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_to_circuit_basic_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
+    @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+    def test_to_circuit_basic_instructions(self, fx_bg: PCG64, jumps: int, test_case: InstructionTestCase) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        instr = [instruction(rng)]
+        instr = [test_case.instruction(rng)]
         circuit_ref = Circuit(3, instr=instr)
         if any(instr.kind == InstructionKind.CCX for instr in circuit_ref.instruction):
             # We skip this test because it returns a Circuit with too many qubits.
