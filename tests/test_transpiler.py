@@ -569,6 +569,72 @@ class TestCircuits:
         state_mbqc = pattern.simulate(input_state=input_state, backend="densitymatrix", rng=fx_rng)
         assert np.allclose(state_mbqc.rho, state.rho)
 
+    @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+    @pytest.mark.parametrize("outcome", [0, 1])
+    @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+    def test_transpile_condinstr(
+        self, fx_rng: Generator, test_case: InstructionTestCase, axis: Axis, outcome: Outcome
+    ) -> None:
+
+        instr: list[InstructionType] = [
+            Instruction.M(3, axis),
+            Instruction.CONDINSTR((test_case.instruction(fx_rng),), domain={3}),
+        ]
+
+        circuit_ref = Circuit(4, instr)
+        circuit_test = circuit_ref.transpile_condinstr()
+
+        assert not any(instr.kind == InstructionKind.CONDINSTR for instr in circuit_test.instruction)
+
+        input_state = rand_state_vector(4, rng=fx_rng)
+        branch_selector = ConstBranchSelector(outcome)
+        state_ref = circuit_ref.simulate(
+            rng=fx_rng,
+            input_state=input_state,
+            branch_selector=branch_selector,
+        ).state
+        state_test = circuit_test.simulate(
+            rng=fx_rng,
+            input_state=input_state,
+            branch_selector=branch_selector,
+        ).state
+
+        assert state_ref.isclose(state_test)
+
+    @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_transpile_condinstr_rnd(self, fx_rng: Generator, axis: Axis, outcome: Outcome) -> None:
+
+        rnd_c1 = rand_circuit(3, 2, fx_rng)
+        rnd_c2 = rand_circuit(3, 2, fx_rng)
+
+        instr: list[InstructionType] = [
+            Instruction.M(3, axis),
+            Instruction.CONDINSTR(tuple(rnd_c1.instruction), domain={3}),
+            Instruction.M(4, axis),
+            Instruction.CONDINSTR(tuple(rnd_c2.instruction), domain={3, 4}),
+        ]
+
+        circuit_ref = Circuit(5, instr)
+        circuit_test = circuit_ref.transpile_condinstr()
+
+        assert not any(instr.kind == InstructionKind.CONDINSTR for instr in circuit_test.instruction)
+
+        input_state = rand_state_vector(5, rng=fx_rng)
+        branch_selector = ConstBranchSelector(outcome)
+        state_ref = circuit_ref.simulate(
+            rng=fx_rng,
+            input_state=input_state,
+            branch_selector=branch_selector,
+        ).state
+        state_test = circuit_test.simulate(
+            rng=fx_rng,
+            input_state=input_state,
+            branch_selector=branch_selector,
+        ).state
+
+        assert state_ref.isclose(state_test)
+
 
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:

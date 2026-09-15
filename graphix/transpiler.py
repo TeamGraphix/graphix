@@ -7,6 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import enum
+import itertools
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, overload
@@ -1138,6 +1139,52 @@ class Circuit(InplaceParameterizable):
         new_circuit.instruction += self.instruction
         return new_circuit
 
+    def transpile_condinstr(self) -> Circuit:
+        circuit = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
+        measurements: dict[int, Instruction.M] = {}
+        for instr in self.instruction:
+            match instr.kind:
+                case InstructionKind.M:
+                    measurements[instr.target] = instr
+                case InstructionKind.CONDINSTR:
+                    n_bits = len(instr.domain)
+                    if n_bits == 0:
+                        continue
+
+                    domain_list = list(instr.domain)
+                    cbit = domain_list.pop()
+
+                    meas_instr = measurements[cbit]
+                    assert cbit == meas_instr.target
+
+                    if meas_instr.axis == Axis.X:
+                        circuit.h(cbit)
+                    elif meas_instr.axis == Axis.Y:
+                        circuit.rx(cbit, ANGLE_PI / 2)
+
+                    measurements[cbit] = Instruction.M(cbit, Axis.Z)  # Record new instruction
+
+                    if n_bits > 1:
+                        # TODO this doesn't work when domain list has one element
+                        for control, target in itertools.pairwise(domain_list):
+                            circuit.cnot(control, target)
+                        circuit.cnot(target, cbit)
+
+                    # Add control
+                    circuit.extend(insert_control(cbit, instr.instructions))
+
+                    if n_bits > 1:
+                        circuit.cnot(target, cbit)
+                        for target, control in itertools.pairwise(domain_list):
+                            circuit.cnot(control, target)
+                case _:
+                    circuit.add(instr)
+
+        for instr in measurements.values():
+            circuit.add(instr)
+
+        return circuit
+
 
 def decompose_rzz(instr: Instruction.RZZ) -> Iterator[Instruction.CNOT | Instruction.RZ]:
     """Yield a decomposition of RZZ(α) gate as CNOT(control, target)·Rz(target, α)·CNOT(control, target).
@@ -1385,7 +1432,7 @@ def decompose_p(instr: Instruction.P) -> Iterator[Instruction.RZ | Instruction.G
 
 def insert_control(
     control: int,
-    instrs: Iterable[InstructionTypeWithoutM],
+    instrs: Iterable[InstructionTypeWithoutM | Instruction.CONDINSTR],
 ) -> Iterator[InstructionTypeWithControl | Instruction.CONDINSTR]:
     """Yield a controlled gate sequence from a gate sequence.
 
