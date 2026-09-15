@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
     from graphix.command import Node
     from graphix.fundamentals import ParameterizedAngle
-    from graphix.instruction import InstructionType
+    from graphix.instruction import InstructionType, InstructionTypeWithControl, InstructionTypeWithoutM
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
     from graphix.sim import Data
@@ -532,25 +532,6 @@ class Circuit(InplaceParameterizable):
         self.active_qubits.remove(qubit)
         self._visitor.output_kind[qubit] = OutputKind.Bit
 
-    def cond_instr(self, instrs: Iterable[InstructionType], domain: AbstractSet[int] | None) -> None:
-        """Apply a conditional sequence of gates.
-
-        Parameters
-        ----------
-        instrs : Iterable[InstructionType]
-            Sequence of instructions to apply conditionally.
-        domain : AbstractSet[int] or None, optional
-            Indices of measured qubits whose outcomes determine the condition. Defaults to ``None``.
-
-        Notes
-        -----
-        The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
-        """
-        domain_set = set(domain) if domain is not None else set()
-        self.instruction.append(
-            Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set).visit(self._visitor)
-        )
-
     def sdg(self, qubit: int) -> None:
         """Apply an SDG gate.
 
@@ -922,6 +903,27 @@ class Circuit(InplaceParameterizable):
         result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
         classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
         return TranspiledPattern(result.pattern, classical_outputs)
+
+    def cond_instr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None) -> None:
+        """Apply a conditional sequence of gates.
+
+        Parameters
+        ----------
+        instrs : Iterable[InstructionType]
+            Sequence of instructions to apply conditionally.
+        domain : AbstractSet[int] or None, optional
+            Indices of measured qubits whose outcomes determine the condition. Defaults to ``None``.
+
+        Notes
+        -----
+        .. The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
+
+        .. Condional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
+        """
+        domain_set = set(domain) if domain is not None else set()
+        self.instruction.append(
+            Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set).visit(self._visitor)
+        )
 
     @overload
     def simulate(
@@ -1383,22 +1385,20 @@ def decompose_p(instr: Instruction.P) -> Iterator[Instruction.RZ | Instruction.G
 
 def insert_control(
     control: int,
-    instrs: Iterable[
-        Instruction.GPHASE | Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ
-    ],
-) -> Iterator[Instruction.CNOT | Instruction.CZ | Instruction.CJ | Instruction.CCX | Instruction.CRZ | Instruction.P]:
+    instrs: Iterable[InstructionTypeWithoutM],
+) -> Iterator[InstructionTypeWithControl | Instruction.CONDINSTR]:
     """Yield a controlled gate sequence from a gate sequence.
 
     Parameters
     ----------
     control: int
         The control qubit.
-    instrs: Iterable[Instruction.GPHASE | Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ]
+    instrs: Iterable[InstructionTypeWithoutM]
         The gate sequence.
 
     Yields
     ------
-    InstructionType
+    InstructionTypeWithControl | Instruction.CONDINSTR
         The controlled gate sequence.
     """
     for instr in instrs:
@@ -1464,13 +1464,16 @@ def insert_control(
                 | InstructionKind.CY
                 | InstructionKind.CSWAP
             ):
-                yield from insert_control(control, instructions_to_jcz([instr]))
-            case InstructionKind.M:
-                pass
+                yield from insert_control(control, _without_m(instructions_to_jcz([instr])))
             case InstructionKind.GPHASE:
                 yield Instruction.P(target=control, angle=instr.angle)
             case InstructionKind.CONDINSTR:
-                pass
+                # If we wanted to keep the function fully lazy
+                # we could yield a sequence of conditional instructions
+                # with a single controlled-instruction each.
+                # Not sure what is best.
+                controlled_instr = insert_control(control, instr.instructions)
+                yield Instruction.CONDINSTR(tuple(controlled_instr), instr.domain)
             case _:
                 assert_never(instr.kind)
 
@@ -1584,6 +1587,12 @@ def normalize_angle(angle: ParameterizedAngle) -> ParameterizedAngle:
     if isinstance(angle, float):
         return angle % (2 * ANGLE_PI)
     return angle
+
+
+def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWithoutM]:
+    for instr in instrs:
+        assert instr.kind != InstructionKind.M
+        yield instr
 
 
 @dataclass(frozen=True)

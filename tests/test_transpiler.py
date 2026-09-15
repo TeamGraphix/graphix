@@ -36,7 +36,7 @@ from tests.test_instruction import INSTRUCTION_TEST_CASES, VisitAngle
 if TYPE_CHECKING:
     from typing import Literal
 
-    from graphix.instruction import InstructionType
+    from graphix.instruction import InstructionType, InstructionTypeWithoutMandCONDINSTR
     from graphix.measurements import Outcome
     from graphix.states import State
     from tests.test_instruction import InstructionTestCase
@@ -719,15 +719,50 @@ def test_decompose_cu(fx_rng: Generator) -> None:
 
 @pytest.mark.parametrize("ancilla_state", [BasicStates.ZERO, BasicStates.ONE])
 @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
-def test_insert_control(fx_rng: Generator, test_case: InstructionTestCase, ancilla_state: PlanarState):
+def test_insert_control(fx_rng: Generator, test_case: InstructionTestCase, ancilla_state: PlanarState) -> None:
     instr = [test_case.instruction(fx_rng)]
-    instr_ref: list[InstructionType] = instr if ancilla_state == BasicStates.ONE else []
+    instr_ref: list[InstructionTypeWithoutMandCONDINSTR] = instr if ancilla_state == BasicStates.ONE else []
     instr_test = list(insert_control(3, instr))
 
     circuit_ref = Circuit(3, instr_ref, ancillas=1, ancilla_state=ancilla_state)
     circuit_test = Circuit(3, instr_test, ancillas=1, ancilla_state=ancilla_state)
 
     assert check_circuit_equivalence(circuit_ref, circuit_test, fx_rng)
+
+
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+@pytest.mark.parametrize("outcome", [0, 1])
+@pytest.mark.parametrize("ancilla_state", [BasicStates.ZERO, BasicStates.ONE])
+@pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+def test_insert_control_condinstr(
+    fx_rng: Generator, test_case: InstructionTestCase, ancilla_state: PlanarState, axis: Axis, outcome: Outcome
+) -> None:
+
+    meas = Instruction.M(3, axis)
+    instr = [Instruction.CONDINSTR((test_case.instruction(fx_rng),), domain={3})]
+
+    instr_ref: list[Instruction.M | Instruction.CONDINSTR] = (
+        [meas, *instr] if ancilla_state == BasicStates.ONE else [meas]
+    )
+    instr_test = [meas, *insert_control(4, instr)]
+
+    circuit_ref = Circuit(4, instr_ref, ancillas=1, ancilla_state=ancilla_state)
+    circuit_test = Circuit(4, instr_test, ancillas=1, ancilla_state=ancilla_state)
+
+    input_state = rand_state_vector(4, rng=fx_rng)
+    branch_selector = ConstBranchSelector(outcome)
+    state_ref = circuit_ref.simulate(
+        rng=fx_rng,
+        input_state=input_state,
+        branch_selector=branch_selector,
+    ).state
+    state_test = circuit_test.simulate(
+        rng=fx_rng,
+        input_state=input_state,
+        branch_selector=branch_selector,
+    ).state
+
+    assert state_ref.isclose(state_test)
 
 
 @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)

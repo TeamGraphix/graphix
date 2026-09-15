@@ -1079,7 +1079,7 @@ class GPHASE(_KindChecker, BaseInstruction):
 
 # Needed to specify dataclass attributes in CONDINSTR,
 # so it cannot be inside TYPE_CHECKING block.
-InstructionTypeWithoutCONDINSTR = (
+InstructionTypeWithoutMandCONDINSTR = (
     I
     | X
     | Y
@@ -1110,16 +1110,18 @@ InstructionTypeWithoutCONDINSTR = (
     | RZZ
     | SWAP
     | CSWAP
-    | M
     | GPHASE
 )
 
 
 @dataclass(repr=False)
 class CONDINSTR(_KindChecker, BaseInstruction):
-    """Base class for conditional circuit instructions."""
+    """Base class for conditional circuit instructions.
 
-    instructions: tuple[InstructionTypeWithoutCONDINSTR | CONDINSTR, ...]
+    Condional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the attribute ``instructions`` cannot contain instances of `Instruction.M`.
+    """
+
+    instructions: tuple[InstructionTypeWithoutMandCONDINSTR | CONDINSTR, ...]
     domain: set[int] = field(default_factory=set)
     kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
 
@@ -1182,4 +1184,19 @@ class Instruction:
 
 
 if TYPE_CHECKING:
-    InstructionType = InstructionTypeWithoutCONDINSTR | CONDINSTR
+    InstructionTypeWithoutM = InstructionTypeWithoutMandCONDINSTR | CONDINSTR
+    InstructionTypeWithControl = (
+        Instruction.CNOT
+        | Instruction.CY
+        | Instruction.CZ
+        | Instruction.CJ
+        | Instruction.CCX
+        | Instruction.CRX
+        | Instruction.CRY
+        | Instruction.CRZ
+        | Instruction.CU
+        | Instruction.P
+        | Instruction.CP
+        | Instruction.CSWAP
+    )
+    InstructionType = InstructionTypeWithoutM | M
