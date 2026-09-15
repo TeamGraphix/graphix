@@ -717,6 +717,19 @@ def test_decompose_cu(fx_rng: Generator) -> None:
     assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
+@pytest.mark.parametrize("ancilla_state", [BasicStates.ZERO, BasicStates.ONE])
+@pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
+def test_insert_control(fx_rng: Generator, test_case: InstructionTestCase, ancilla_state: PlanarState):
+    instr = [test_case.instruction(fx_rng)]
+    instr_ref: list[InstructionType] = instr if ancilla_state == BasicStates.ONE else []
+    instr_test = list(insert_control(3, instr))
+
+    circuit_ref = Circuit(3, instr_ref, ancillas=1, ancilla_state=ancilla_state)
+    circuit_test = Circuit(3, instr_test, ancillas=1, ancilla_state=ancilla_state)
+
+    assert check_circuit_equivalence(circuit_ref, circuit_test, fx_rng)
+
+
 @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
 def test_instructions_to_jcz(fx_rng: Generator, test_case: InstructionTestCase) -> None:
     circuit = Circuit(3, instr=[test_case.instruction(fx_rng)])

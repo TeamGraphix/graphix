@@ -1403,18 +1403,74 @@ def insert_control(
     """
     for instr in instrs:
         match instr.kind:
+            case InstructionKind.I:
+                pass
             case InstructionKind.X:
                 yield Instruction.CNOT(control=control, target=instr.target)
+            case InstructionKind.Y:
+                yield Instruction.CY(control=control, target=instr.target)
             case InstructionKind.Z:
                 yield Instruction.CZ((control, instr.target))
+            case InstructionKind.H:
+                yield Instruction.CJ(control=control, target=instr.target, angle=0)
             case InstructionKind.J:
                 yield Instruction.CJ(control=control, target=instr.target, angle=instr.angle)
-            case InstructionKind.CNOT:
-                yield Instruction.CCX(target=instr.target, controls=(control, instr.control))
+            case InstructionKind.P:
+                yield Instruction.CP(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.RX:
+                yield Instruction.CRX(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.RY:
+                yield Instruction.CRY(control=control, target=instr.target, angle=instr.angle)
             case InstructionKind.RZ:
                 yield Instruction.CRZ(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.U:
+                yield Instruction.CU(
+                    control=control,
+                    target=instr.target,
+                    theta=instr.theta,
+                    phi=instr.phi,
+                    lambda_=instr.lambda_,
+                    gamma=0,
+                )
+            case InstructionKind.CZ:
+                # Controlled-(H(1), CNOT(control=0, target=1), H(1))
+                q0, q1 = instr.targets
+                yield Instruction.CJ(control=control, target=q1, angle=0)
+                yield Instruction.CCX(target=q1, controls=(control, q0))
+                yield Instruction.CJ(control=control, target=q1, angle=0)
+            case InstructionKind.CU:
+                yield from insert_control(control, decompose_cu(instr))
+            case InstructionKind.CNOT:
+                yield Instruction.CCX(target=instr.target, controls=(control, instr.control))
+            case InstructionKind.CJ:
+                yield from insert_control(control, decompose_cj(instr))
+            case InstructionKind.CCX:
+                yield from insert_control(control, decompose_ccx(instr))
+            case InstructionKind.RZZ:
+                yield from insert_control(control, decompose_rzz(instr))
+            case InstructionKind.SWAP:
+                yield Instruction.CSWAP(control=control, targets=instr.targets)
+            case (
+                InstructionKind.S
+                | InstructionKind.SDG
+                | InstructionKind.T
+                | InstructionKind.TDG
+                | InstructionKind.SX
+                | InstructionKind.SXDG
+                | InstructionKind.CP
+                | InstructionKind.CRX
+                | InstructionKind.CRY
+                | InstructionKind.CRZ
+                | InstructionKind.CY
+                | InstructionKind.CSWAP
+            ):
+                yield from insert_control(control, instructions_to_jcz([instr]))
+            case InstructionKind.M:
+                pass
             case InstructionKind.GPHASE:
                 yield Instruction.P(target=control, angle=instr.angle)
+            case InstructionKind.CONDINSTR:
+                pass
             case _:
                 assert_never(instr.kind)
 
