@@ -1084,7 +1084,12 @@ class Circuit(InplaceParameterizable):
         return self.apply_angle(lambda angle: parameter.with_parameters(angle, assignment), copy=copy)
 
     def transpile_to_qasm_gates(self) -> Circuit:
-        """Return an equivalent circuit using only the standard OpenQASM gate set."""
+        """Return an equivalent circuit using only the standard OpenQASM gate set.
+
+        Returns
+        -------
+        Circuit
+        """
         new_circuit = Circuit(self.width, ancillas=self.ancillas)
         for instr in self.instruction:
             match instr.kind:
@@ -1112,7 +1117,12 @@ class Circuit(InplaceParameterizable):
         return new_circuit
 
     def transpile_ancilla_to_plus(self) -> Circuit:
-        r"""Return an equivalent circuit where ancilla states are replaced with :math:`|+\rangle`."""
+        r"""Return an equivalent circuit where ancilla states are replaced with :math:`|+\rangle`.
+
+        Returns
+        -------
+        Circuit
+        """
         new_circuit = Circuit(self.width, ancillas=self.ancillas)
         instructions_prepend: list[Callable[[int], InstructionType]] = []
         match self.ancilla_state:
@@ -1140,6 +1150,24 @@ class Circuit(InplaceParameterizable):
         return new_circuit
 
     def transpile_condinstr(self) -> Circuit:
+        r"""Return an equivalent circuit without conditional instructions.
+
+        Conditional instructions are replaced by controlled instructions, using measurements of their domain qubits in the :math:`Z` basis as control
+        conditions. Measurements are moved to the end of the circuit.
+
+        Returns
+        -------
+        Circuit
+
+        Notes
+        -----
+        For each qubit that appears in the domain of a conditional instruction, its measurement is transpiled to a :math:`Z`-axis measurement. If the original measurement is in the :math:`X` or :math:`Y` basis, the corresponding basis rotation is inserted before the controlled instruction:
+            .. :math:`X`-axis measurements are preceded by a Hadamard gate.
+            .. :math:`Y`-axis measurements are preceded by an :math:`R_X(\pi/2)` gate.
+        The domain qubits are chained using CNOT gates to implement the conditional instruction. The CNOT chain is then reversed to restore the state of the domain qubits.
+
+        Non-conditional instructions are preserved unchanged.
+        """
         circuit = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
         measurements: dict[int, Instruction.M] = {}
         for instr in self.instruction:
@@ -1147,36 +1175,23 @@ class Circuit(InplaceParameterizable):
                 case InstructionKind.M:
                     measurements[instr.target] = instr
                 case InstructionKind.CONDINSTR:
-                    n_bits = len(instr.domain)
-                    if n_bits == 0:
-                        continue
-
-                    domain_list = list(instr.domain)
-                    cbit = domain_list.pop()
-
-                    meas_instr = measurements[cbit]
-                    assert cbit == meas_instr.target
-
-                    if meas_instr.axis == Axis.X:
-                        circuit.h(cbit)
-                    elif meas_instr.axis == Axis.Y:
-                        circuit.rx(cbit, ANGLE_PI / 2)
-
-                    measurements[cbit] = Instruction.M(cbit, Axis.Z)  # Record new instruction
-
-                    if n_bits > 1:
-                        # TODO this doesn't work when domain list has one element
-                        for control, target in itertools.pairwise(domain_list):
-                            circuit.cnot(control, target)
-                        circuit.cnot(target, cbit)
-
-                    # Add control
-                    circuit.extend(insert_control(cbit, instr.instructions))
-
-                    if n_bits > 1:
-                        circuit.cnot(target, cbit)
-                        for target, control in itertools.pairwise(domain_list):
-                            circuit.cnot(control, target)
+                    if instr.domain:
+                        domain_list = list(instr.domain)
+                        for cbit in domain_list:
+                            meas_instr = measurements[cbit]
+                            assert cbit == meas_instr.target
+                            if meas_instr.axis == Axis.X:
+                                circuit.h(cbit)
+                            elif meas_instr.axis == Axis.Y:
+                                circuit.rx(cbit, ANGLE_PI / 2)
+                            measurements[cbit] = Instruction.M(cbit, Axis.Z)  # Record updated measurement
+                        cnot_instr = [
+                            Instruction.CNOT(control=control, target=target)
+                            for control, target in itertools.pairwise(domain_list)
+                        ]
+                        circuit.extend(cnot_instr)
+                        circuit.extend(insert_control(domain_list[-1], instr.instructions))
+                        circuit.extend(cnot_instr[::-1])
                 case _:
                     circuit.add(instr)
 

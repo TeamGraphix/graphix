@@ -20,6 +20,7 @@ from graphix.transpiler import (
     Circuit,
     OutputIndex,
     OutputKind,
+    _without_m,
     decompose_ccx,
     decompose_cu,
     decompose_p,
@@ -608,11 +609,14 @@ class TestCircuits:
         rnd_c1 = rand_circuit(3, 2, fx_rng)
         rnd_c2 = rand_circuit(3, 2, fx_rng)
 
+        instr_1 = tuple(_without_m(rnd_c1.instruction))
+        instr_2 = tuple(_without_m(rnd_c2.instruction))
+
         instr: list[InstructionType] = [
             Instruction.M(3, axis),
-            Instruction.CONDINSTR(tuple(rnd_c1.instruction), domain={3}),
+            Instruction.CONDINSTR(instr_1, domain={3}),
             Instruction.M(4, axis),
-            Instruction.CONDINSTR(tuple(rnd_c2.instruction), domain={3, 4}),
+            Instruction.CONDINSTR(instr_2, domain={3, 4}),
         ]
 
         circuit_ref = Circuit(5, instr)
