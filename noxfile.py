@@ -109,7 +109,7 @@ class ReverseDependency:
             install_target=".[dev]",
             branch="rename-simulate",
         ),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/4/head"),
     ],
 )
 def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:

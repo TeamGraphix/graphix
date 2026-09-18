@@ -2,6 +2,11 @@
 
 Graphix does not guarantee backwards compatibility between 0.x version releases. Here we list API changes which may break existing code using Graphix. 
 
+## Unreleased
+
+- #592:
+  - `Circuit.transpile_measurements_to_z_axis`, `Circuit.transpile_j_to_rzh` and `Circuit.transpile_rzz` are subsumed by `Circuit.transpile_to_qasm_gates`
+
 ## [0.4] - 2026-08-18
 
 - #484: J & CZ transpilation.

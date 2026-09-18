@@ -88,6 +88,11 @@ def test_j_to_qasm3_failure() -> None:
         circuit_to_qasm3(circuit, transpile=False)
 
 
+def test_measurement() -> None:
+    circuit = Circuit(1, instr=[Instruction.M(target=0, axis=Axis.Z)])
+    check_round_trip(circuit)
+
+
 def test_cj_to_qasm3() -> None:
     circuit = Circuit(2, instr=[Instruction.CJ(control=0, target=1, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
@@ -113,6 +118,20 @@ def test_gphase_to_qasm3() -> None:
     assert parsed_circuit.instruction == [instr]
 
 
-def test_measurement() -> None:
-    circuit = Circuit(1, instr=[Instruction.M(target=0, axis=Axis.Z)])
+def test_condinstr_to_qasm3() -> None:
+    circuit = Circuit(
+        3,
+        instr=[
+            Instruction.M(2, Axis.Z),
+            Instruction.CONDINSTR((Instruction.X(0),), {2}),
+            Instruction.M(0, Axis.Z),
+            Instruction.CONDINSTR(
+                (
+                    Instruction.X(1),
+                    Instruction.Z(1),
+                ),
+                {0, 2},
+            ),
+        ],
+    )
     check_round_trip(circuit)
