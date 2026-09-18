@@ -27,7 +27,7 @@ def install_pytest(session: Session) -> None:
 
 def run_pytest(session: Session, doctest_modules: bool = False, mpl: bool = False) -> None:
     """Run pytest."""
-    args = ["pytest"]
+    args = ["pytest", "-W", "error"]
     if doctest_modules:
         args.append("--doctest-modules")
     if mpl:
