@@ -1,0 +1,7 @@
+*__pycache__*
+env/
+html/
+results/
+graphix/
+benchmarks/cache/
+*.txt
