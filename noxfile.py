@@ -102,7 +102,13 @@ class ReverseDependency:
             "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="suppress_warnings"
         ),
         ReverseDependency("https://github.com/thierry-martinez/graphix-stim-compiler", branch="suppress_warnings"),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="suppress_warnings"),
+        ReverseDependency(
+            "https://github.com/thierry-martinez/graphix-pyzx",
+            branch="suppress_warnings",
+            # Precompile pyzx before running pytest with warnings-as-errors.
+            # See zxcalc/pyzx#518.
+            initialization=lambda session: session.run("python", "-c", "import pyzx"),
+        ),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
             doctest_modules=False,
