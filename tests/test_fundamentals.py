@@ -97,7 +97,7 @@ class TestComplexUnit:
         assert ComplexUnit.from_properties(sign=Sign.MINUS) == ComplexUnit.MINUS_ONE
         assert ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=True) == ComplexUnit.MINUS_J
 
-    @pytest.mark.parametrize(("sign", "is_imag"), itertools.product([Sign.PLUS, Sign.MINUS], [True, False]))
+    @pytest.mark.parametrize(("sign", "is_imag"), tuple(itertools.product([Sign.PLUS, Sign.MINUS], [True, False])))
     def test_properties(self, sign: Sign, is_imag: bool) -> None:
         assert ComplexUnit.from_properties(sign=sign, is_imag=is_imag).sign == sign
         assert ComplexUnit.from_properties(sign=sign, is_imag=is_imag).is_imag == is_imag
@@ -114,7 +114,7 @@ class TestComplexUnit:
         assert str(ComplexUnit.MINUS_ONE) == "-1"
         assert str(ComplexUnit.MINUS_J) == "-1j"
 
-    @pytest.mark.parametrize(("lhs", "rhs"), itertools.product(ComplexUnit, ComplexUnit))
+    @pytest.mark.parametrize(("lhs", "rhs"), tuple(itertools.product(ComplexUnit, ComplexUnit)))
     def test_mul_self(self, lhs: ComplexUnit, rhs: ComplexUnit) -> None:
         assert complex(lhs * rhs) == complex(lhs) * complex(rhs)
 

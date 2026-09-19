@@ -27,7 +27,7 @@ def install_pytest(session: Session) -> None:
 
 def run_pytest(session: Session, doctest_modules: bool = False, mpl: bool = False) -> None:
     """Run pytest."""
-    args = ["pytest"]
+    args = ["pytest", "-W", "error"]
     if doctest_modules:
         args.append("--doctest-modules")
     if mpl:
@@ -95,19 +95,25 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="in-place_methods"),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="rename-simulate"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="refs/pull/15/head"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="suppress_warnings"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="suppress_warnings"),
+        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
         ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="rename-simulate"
+            "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="suppress_warnings"
         ),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-compiler", branch="rename-simulate"),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="rename-simulate"),
+        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-compiler", branch="suppress_warnings"),
+        ReverseDependency(
+            "https://github.com/thierry-martinez/graphix-pyzx",
+            branch="suppress_warnings",
+            # Precompile pyzx before running pytest with warnings-as-errors.
+            # See zxcalc/pyzx#518.
+            initialization=lambda session: session.run("python", "-c", "import pyzx"),
+        ),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
             doctest_modules=False,
             install_target=".[dev]",
-            branch="rename-simulate",
+            branch="suppress_warnings",
         ),
         ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"),
     ],
