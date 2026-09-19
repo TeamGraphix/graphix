@@ -25,14 +25,14 @@ def install_pytest(session: Session) -> None:
     session.install("pytest", "pytest-mock", "pytest-benchmark", "pytest-mpl", "psutil")
 
 
-def run_pytest(session: Session, doctest_modules: bool = False, mpl: bool = False) -> None:
+def run_pytest(session: Session, *args: str, doctest_modules: bool = False, mpl: bool = False) -> None:
     """Run pytest."""
-    args = ["pytest"]
+    cmdline = ["pytest", "-W", "error", *args]
     if doctest_modules:
-        args.append("--doctest-modules")
+        cmdline.append("--doctest-modules")
     if mpl:
-        args.append("--mpl")
-    session.run(*args)
+        cmdline.append("--mpl")
+    session.run(*cmdline)
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -89,31 +89,52 @@ class ReverseDependency:
     doctest_modules: bool = True
     initialization: Callable[[Session], bool | None] | None = None
     install_target: str = "."
+    pytest_args: tuple[str, ...] = ()
+
+
+REVERSE_DEPENDENCIES = {
+    "graphix-symbolic": ReverseDependency(
+        "https://github.com/thierry-martinez/graphix-symbolic", branch="suppress_warnings"
+    ),
+    "graphix-stim-backend": ReverseDependency(
+        "https://github.com/thierry-martinez/graphix-stim-backend", branch="suppress_warnings"
+    ),
+    "graphix-qasm-parser": ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+    "graphix-ibmq": ReverseDependency(
+        "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="suppress_warnings"
+    ),
+    "graphix-stim-compiler": ReverseDependency(
+        "https://github.com/thierry-martinez/graphix-stim-compiler", branch="suppress_warnings"
+    ),
+    "graphix-pyzx": ReverseDependency(
+        "https://github.com/thierry-martinez/graphix-pyzx",
+        branch="suppress_warnings",
+        # Precompile pyzx before running pytest with warnings-as-errors.
+        # See zxcalc/pyzx#518.
+        initialization=lambda session: session.run("python", "-c", "import pyzx"),
+        # Filter warnings raised by pyzx (zxcalc/pyzx#509)
+        pytest_args=(
+            "-W",
+            "ignore:In 3.13 classes created inside an enum will not become a member.:DeprecationWarning",
+        ),
+    ),
+    "veriphix": ReverseDependency(
+        "https://github.com/thierry-martinez/veriphix",
+        doctest_modules=False,
+        install_target=".[dev]",
+        branch="suppress_warnings",
+    ),
+    "graphix-mqtbench": ReverseDependency(
+        "https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"
+    ),
+}
 
 
 @nox.session(python=PYTHON_VERSIONS)
-@nox.parametrize(
-    "package",
-    [
-        ReverseDependency("https://github.com/thierry-martinez/graphix-symbolic", branch="in-place_methods"),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend", branch="rename-simulate"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="refs/pull/15/head"),
-        ReverseDependency(
-            "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="rename-simulate"
-        ),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-compiler", branch="rename-simulate"),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-pyzx", branch="rename-simulate"),
-        ReverseDependency(
-            "https://github.com/thierry-martinez/veriphix",
-            doctest_modules=False,
-            install_target=".[dev]",
-            branch="rename-simulate",
-        ),
-        ReverseDependency("https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"),
-    ],
-)
-def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
+@nox.parametrize("package_name", list(REVERSE_DEPENDENCIES))
+def tests_reverse_dependencies(session: Session, package_name: str) -> None:
     """Run the test suite of reverse dependencies."""
+    package = REVERSE_DEPENDENCIES[package_name]
     url = urlparse(package.repository)
     dirname = Path(url.path).name
     assert isinstance(session.python, str)
@@ -151,4 +172,4 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         with session.cd(tmpdir), session.cd(dirname):
             if package.initialization is not None:
                 package.initialization(session)
-            run_pytest(session, doctest_modules=package.doctest_modules)
+            run_pytest(session, *package.pytest_args, doctest_modules=package.doctest_modules)

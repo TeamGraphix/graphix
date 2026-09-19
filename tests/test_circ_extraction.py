@@ -446,6 +446,7 @@ class TestExtraction:
         circuit_ref = rand_circuit(nqubits, depth, rng, use_ccx=False)
         pattern = circuit_ref.transpile().pattern
 
+        pattern.infer_pauli_measurements()
         circuit = pattern.to_opengraph().to_circuit()
 
         s_ref = circuit.simulate(rng=rng).state
@@ -531,6 +532,7 @@ class TestExtraction:
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("infer_pauli", [True, False])
+    @pytest.mark.filterwarnings("ignore:Open graph with non-inferred Pauli measurements.")
     def test_extract_og_infer_pauli(self, infer_pauli: bool, fx_rng: Generator) -> None:
         og: OpenGraph[Measurement] = OpenGraph(
             graph=nx.Graph([(0, 2), (1, 3), (2, 3), (2, 4), (3, 5), (4, 5), (4, 6), (5, 7)]),

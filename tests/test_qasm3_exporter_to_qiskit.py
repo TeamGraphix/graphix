@@ -140,7 +140,7 @@ def check_qasm3_circuit(circuit: Circuit) -> None:
     aer_backend = AerSimulator(method="statevector")
     transpiled = qiskit.transpile(qc, aer_backend)
     result = aer_backend.run(transpiled, shots=1, memory=True).result()
-    state_qiskit = result.get_statevector()
+    state_qiskit = np.asarray(result.get_statevector())
     n = int(np.log2(len(state_qiskit)))
     state_qiskit = state_qiskit.reshape((2,) * n).transpose(*reversed(range(n))).reshape(-1)
     state_graphix = circuit.simulate(input_state=BasicStates.ZERO).state
