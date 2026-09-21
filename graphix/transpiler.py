@@ -825,11 +825,17 @@ class Circuit(InplaceParameterizable):
         graph: nx.Graph[int] = nx.empty_graph(n_nodes)
         x_corrections: dict[int, set[int]] = {}
 
-        if self.ancillas and self.ancilla_state is not BasicStates.PLUS:
-            new_circuit = self.transpile_ancilla_to_plus()
-            instructions = new_circuit.instruction
-        else:
-            instructions = self.instruction
+        circuit = (
+            self.transpile_ancilla_to_plus() if self.ancillas and self.ancilla_state is not BasicStates.PLUS else self
+        )
+
+        circuit = (
+            circuit.transpile_condinstr()
+            if any(instr.kind == InstructionKind.CONDINSTR for instr in circuit.instruction)
+            else circuit
+        )
+
+        instructions = circuit.instruction
 
         for instr in instructions_to_jcz(instructions):
             match instr.kind:
@@ -1163,7 +1169,9 @@ class Circuit(InplaceParameterizable):
         -----
         For each qubit that appears in the domain of a conditional instruction, its measurement is transpiled to a :math:`Z`-axis measurement. If the original measurement is in the :math:`X` or :math:`Y` basis, the corresponding basis rotation is inserted before the controlled instruction:
             .. :math:`X`-axis measurements are preceded by a Hadamard gate.
+
             .. :math:`Y`-axis measurements are preceded by an :math:`R_X(\pi/2)` gate.
+
         The domain qubits are chained using CNOT gates to implement the conditional instruction. The CNOT chain is then reversed to restore the state of the domain qubits.
 
         Non-conditional instructions are preserved unchanged.
@@ -1627,7 +1635,9 @@ def instructions_to_jcz(
             case InstructionKind.GPHASE:
                 yield instr
             case InstructionKind.CONDINSTR:
-                raise NotImplementedError("Transpilation of conditional instructions is not supported.")
+                raise NotImplementedError(
+                    "Direct transpilation of conditional instructions is not supported. First remove conditional instructions with the `Circuit.transpile_condinstr()` method."
+                )
             case _:
                 assert_never(instr.kind)
 

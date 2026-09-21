@@ -69,12 +69,40 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
 
-    def test_cond_instr(self) -> None:
-        circuit = Circuit(2)
-        circuit.m(0, Axis.Z)
-        circuit.cond_instr([instruction.H(1)], {0})
-        with pytest.raises(NotImplementedError):
-            circuit.transpile()
+    @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_condinstr_rnd(self, fx_rng: Generator, axis: Axis, outcome: Outcome) -> None:
+
+        rnd_c1 = rand_circuit(3, 3, fx_rng)
+        rnd_c2 = rand_circuit(3, 3, fx_rng)
+
+        instr_1 = tuple(_without_m(rnd_c1.instruction))
+        instr_2 = tuple(_without_m(rnd_c2.instruction))
+
+        instr: list[InstructionType] = [
+            Instruction.M(3, axis),
+            Instruction.CONDINSTR(instr_1, domain={3}),
+            Instruction.M(4, axis),
+            Instruction.CONDINSTR(instr_2, domain={3, 4}),
+        ]
+
+        circuit_ref = Circuit(5, instr)
+        pattern_test = circuit_ref.transpile().pattern
+
+        input_state = rand_state_vector(5, rng=fx_rng)
+        branch_selector = ConstBranchSelector(outcome)
+        state_ref = circuit_ref.simulate(
+            rng=fx_rng,
+            input_state=input_state,
+            branch_selector=branch_selector,
+        ).state
+        state_test = pattern_test.simulate(
+            rng=fx_rng,
+            input_state=input_state,
+            branch_selector=branch_selector,
+        )
+
+        assert state_ref.isclose(state_test)
 
     @pytest.mark.parametrize(
         "ancilla_state",
