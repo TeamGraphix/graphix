@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- #592: Add all standard OpenQASM gates
+
+- #493, #607: New base class `Simulable`, implemented by `Pattern`, `StandardizedPattern`, `OpenGraph`, `PauliFlow`, and `XZCorrections`. The `simulate` method runs the simulation on a pattern derived from the object, applying usual optimization passes by default. Optimizations can be disabled by passing `optimized=False`.
+
 ### Fixed
 
 - #591: `FixedBranchSelector` now passes its RNG parameter to its `default` branch selector.

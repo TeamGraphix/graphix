@@ -11,7 +11,9 @@ from warnings import warn
 
 import networkx as nx
 
-# assert_never added in Python 3.11
+# override added in Python 3.12
+from typing_extensions import override
+
 from graphix import command
 from graphix.clifford import Clifford, Domains
 from graphix.command import CommandKind, Node
@@ -20,6 +22,7 @@ from graphix.flow.core import XZCorrections
 from graphix.fundamentals import Axis, Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph
+from graphix.simulator import Simulable
 from graphix.space_minimization import (
     minimize_space,
     standardized_pattern_max_space,
@@ -87,7 +90,7 @@ class _StandardizedPattern:
     c_dict: Mapping[Node, Clifford]
 
 
-class StandardizedPattern(_StandardizedPattern):
+class StandardizedPattern(_StandardizedPattern, Simulable[Measurement]):
     """Pattern in standardized form.
 
     Use the method :meth:`to_pattern()` to get the standardized pattern.
@@ -305,6 +308,7 @@ class StandardizedPattern(_StandardizedPattern):
         """
         return minimize_space(self, heuristics)
 
+    @override
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""
         from graphix.pattern import Pattern  # noqa: PLC0415
@@ -320,6 +324,11 @@ class StandardizedPattern(_StandardizedPattern):
         )
         pattern.reorder_output_nodes(self.output_nodes)
         return pattern
+
+    @override
+    def to_standardizedpattern(self) -> StandardizedPattern:
+        "Return self."
+        return self
 
     def to_space_optimal_pattern(self) -> Pattern:
         """Return a pattern that is space-optimal for the given measurement order.
@@ -483,6 +492,49 @@ class StandardizedPattern(_StandardizedPattern):
             if isinstance(m.measurement, BlochMeasurement) and m.measurement.to_pauli_or_none() is not None:
                 warn("Pattern with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
                 return
+
+    def infer_pauli_measurements(self, *, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> StandardizedPattern:
+        """Return a pattern where Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+
+        Parameters
+        ----------
+        rel_tol : float, optional
+            Relative tolerance for comparing angles, passed to :func:`math.isclose`.
+            Default is ``1e-9``.
+        abs_tol : float, optional
+            Absolute tolerance for comparing angles, passed to :func:`math.isclose`.
+            Default is ``0.0``.
+
+        Returns
+        -------
+        Pattern
+            A pattern in which Bloch measurements close to a Pauli
+            measurement are replaced by Pauli measurements. If
+            ``copy`` is ``False``, the result is ``self``.
+        """
+        return self.map(lambda m: m.to_pauli_or_bloch(rel_tol, abs_tol))
+
+    def remove_pauli_measurements(self, *, stacklevel: int = 1) -> StandardizedPattern:
+        """Remove non-input Pauli measurements from the given pattern.
+
+        See :func:`~remove_pauli_measurements.remove_pauli_measurements` for more information.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        StandardizedPattern
+                The pattern in which Pauli measurements have been moved
+                before the other measurements.
+        """
+        from graphix.remove_pauli_measurements import PauliPushingCut, remove_pauli_measurements  # noqa: PLC0415
+
+        cut = PauliPushingCut.from_standardizedpattern(self, stacklevel=stacklevel + 1)
+        return remove_pauli_measurements(cut, stacklevel=stacklevel + 1)
 
 
 def _add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:

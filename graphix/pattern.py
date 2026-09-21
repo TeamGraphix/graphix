@@ -15,7 +15,7 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
+from typing import TYPE_CHECKING, SupportsFloat
 from warnings import warn
 
 import networkx as nx
@@ -32,7 +32,7 @@ from graphix.parameter import InplaceParameterizable
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevector
-from graphix.simulator import PatternSimulator
+from graphix.simulator import Simulable
 from graphix.space_minimization import pattern_max_space
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
@@ -41,8 +41,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Container, Iterator
     from typing import TypeVar
 
-    from numpy.random import Generator
-
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
@@ -50,11 +48,7 @@ if TYPE_CHECKING:
     from graphix.command import CommandType
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
     from graphix.opengraph import OpenGraph
-    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
-    from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
-    from graphix.sim.base_backend import _StateT_co
-    from graphix.sim.tensornet import TensorNetworkBackend
-    from graphix.simulator import SimulatorKwargs, _BackendLiteral
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.space_minimization import SpaceMinimizationHeuristic
     from graphix.states import State
     from graphix.visualization import DrawKwargs
@@ -72,7 +66,7 @@ class DrawPatternAnnotations(Enum):
     XZCorrections = enum.auto()
 
 
-class Pattern(InplaceParameterizable):
+class Pattern(InplaceParameterizable, Simulable[Measurement]):
     """
     MBQC pattern class.
 
@@ -1045,7 +1039,7 @@ class Pattern(InplaceParameterizable):
         -----
         - This function wraps :func:`optimization.StandardizedPattern.partial_order_layers`, and the returned object is described in the notes of this method.
         """
-        return optimization.StandardizedPattern.from_pattern(self).partial_order_layers()
+        return self.to_standardizedpattern().partial_order_layers()
 
     def to_causalflow(self) -> CausalFlow[BlochMeasurement]:
         r"""Extract the causal flow structure from the current measurement pattern.
@@ -1148,7 +1142,7 @@ class Pattern(InplaceParameterizable):
         This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
         See docstring in :func:`optimization.StandardizedPattern.to_gflow` for additional information.
         """
-        return optimization.StandardizedPattern.from_pattern(self).to_xzcorrections()
+        return self.to_standardizedpattern().to_xzcorrections()
 
     def _measurement_order_depth(self) -> list[int]:
         """Obtain a measurement order which reduces the depth of a pattern.
@@ -1234,7 +1228,7 @@ class Pattern(InplaceParameterizable):
         -------
         OpenGraph[Measurement]
         """
-        return optimization.StandardizedPattern.from_pattern(self).to_opengraph()
+        return self.to_standardizedpattern().to_opengraph()
 
     def clifford_commands(self) -> dict[int, Clifford]:
         """Extract Clifford commands.
@@ -1334,7 +1328,7 @@ class Pattern(InplaceParameterizable):
             The optimized pattern. Equal to ``self`` if ``copy`` is ``False``.
 
         """
-        new = optimization.StandardizedPattern.from_pattern(self).minimize_space(heuristics).to_space_optimal_pattern()
+        new = self.to_standardizedpattern().minimize_space(heuristics).to_space_optimal_pattern()
         if copy:
             return new
         self.__seq = new.__seq
@@ -1348,9 +1342,7 @@ class Pattern(InplaceParameterizable):
         meas_commands : list of command
             list of measurement ('M') commands
         """
-        new = dataclasses.replace(
-            optimization.StandardizedPattern.from_pattern(self), m_list=tuple(meas_commands)
-        ).to_space_optimal_pattern()
+        new = dataclasses.replace(self.to_standardizedpattern(), m_list=tuple(meas_commands)).to_space_optimal_pattern()
         self.__seq = new.__seq
 
     def max_space(self) -> int:
@@ -1386,96 +1378,10 @@ class Pattern(InplaceParameterizable):
                     n_list.append(nodes)
         return n_list
 
-    @overload
-    def simulate(
-        self,
-        backend: StatevectorBackend | Literal["statevector"] = "statevector",
-        input_state: State
-        | Statevector
-        | Iterable[State]
-        | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]]
-        | None = ...,
-        rng: Generator | None = ...,
-        **kwargs: Unpack[SimulatorKwargs],
-    ) -> Statevector: ...
-
-    @overload
-    def simulate(
-        self,
-        backend: DensityMatrixBackend | Literal["densitymatrix"],
-        input_state: State
-        | DensityMatrix
-        | Iterable[State]
-        | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]]
-        | None = ...,
-        rng: Generator | None = ...,
-        **kwargs: Unpack[SimulatorKwargs],
-    ) -> DensityMatrix: ...
-
-    @overload
-    def simulate(
-        self,
-        backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
-        input_state: State
-        | Iterable[State]
-        | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]]
-        | None = ...,
-        rng: Generator | None = ...,
-        **kwargs: Unpack[SimulatorKwargs],
-    ) -> MBQCTensorNet: ...
-
-    @overload
-    def simulate(
-        self,
-        backend: Backend[_StateT_co],
-        input_state: Data | None = ...,
-        rng: Generator | None = ...,
-        **kwargs: Unpack[SimulatorKwargs],
-    ) -> _StateT_co: ...
-
-    def simulate(
-        self,
-        backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
-        input_state: Data | None = BasicStates.PLUS,
-        rng: Generator | None = None,
-        *,
-        stacklevel: int = 1,
-        **kwargs: Unpack[SimulatorKwargs],
-    ) -> _StateT_co | _BuiltinBackendState:
-        """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
-
-        Parameters
-        ----------
-        backend : :class:`Backend` or {'statevector', 'densitymatrix', 'tensornetwork'}, optional
-            The simulator backend to use: either an instantiated backend or the
-            name of a built-in backend. Default: ``'statevector'``.
-        input_state: Data or None, optional
-            the output quantum state, in a representation compatible with the selected backend.
-            Default: the ``|+>`` state (``BasicStates.PLUS``).
-            If ``None``, no input nodes are added by the simulator; input nodes must have been prepared in the backend before running the simulation.
-        rng: Generator, optional
-            Random-number generator for measurements.
-            This generator is used only in case of random branch selection
-            (see :class:`RandomBranchSelector`).
-        stacklevel : int, optional
-            Stack level to use for warnings. Defaults to 1, meaning that warnings
-            are reported at this function's call site.
-        kwargs: Unpack[SimulatorKwargs]
-            Options controlling simulator. See :class:`SimulatorOptions`.
-
-        Returns
-        -------
-        state :
-            quantum state representation for the selected backend.
-
-        .. seealso:: :class:`graphix.simulator.PatternSimulator`
-        """
-        sim = PatternSimulator(self, backend=backend, stacklevel=stacklevel + 1, **kwargs)
-        sim.run(input_state, rng=rng, stacklevel=stacklevel + 1)
-        return sim.backend.state
+    @override
+    def to_pattern(self) -> Pattern:
+        "Return self."
+        return self
 
     def remove_input_nodes(self) -> None:
         """Remove the input nodes from the pattern and replace them with N commands.
@@ -1876,7 +1782,7 @@ class Pattern(InplaceParameterizable):
         -----
         This function relies on :func:`StandardizedPattern.perform_pauli_pushing`.
         """
-        standardized_pattern = optimization.StandardizedPattern.from_pattern(self).perform_pauli_pushing(
+        standardized_pattern = self.to_standardizedpattern().perform_pauli_pushing(
             leave_nodes, stacklevel=stacklevel + 1
         )
         pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
@@ -1913,11 +1819,8 @@ class Pattern(InplaceParameterizable):
                 before the other measurements. If ``copy`` is ``False``,
                 the result is ``self``.
         """
-        from graphix.remove_pauli_measurements import PauliPushingCut, remove_pauli_measurements  # noqa: PLC0415
-
-        standardized_pattern = optimization.StandardizedPattern.from_pattern(self)
-        cut = PauliPushingCut.from_standardizedpattern(standardized_pattern, stacklevel=stacklevel + 1)
-        standardized_pattern = remove_pauli_measurements(cut, stacklevel=stacklevel + 1)
+        standardized_pattern = self.to_standardizedpattern()
+        standardized_pattern = standardized_pattern.remove_pauli_measurements(stacklevel=stacklevel + 1)
         pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
         if copy:
             return pattern

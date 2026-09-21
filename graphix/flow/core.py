@@ -49,6 +49,7 @@ from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement,
 from graphix.measurements import Measurement
 from graphix.parameter import Parameterizable
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
+from graphix.simulator import Simulable
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -75,7 +76,7 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class XZCorrections(Parameterizable, Generic[_AM_co]):
+class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
     Attributes
@@ -146,6 +147,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
         return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
+    @override
     def to_pattern(
         self: XZCorrections[Measurement],
         total_measurement_order: TotalOrder | None = None,
@@ -569,7 +571,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
 
 @dataclass(frozen=True)
-class PauliFlow(Parameterizable, Generic[_AM_co]):
+class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
     Attributes
@@ -660,6 +662,10 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
             future |= layer
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
+
+    @override
+    def to_pattern(self: PauliFlow[Measurement]) -> Pattern:
+        return self.to_xzcorrections().to_pattern()
 
     def is_well_formed(self) -> bool:
         """Verify if flow is well formed.

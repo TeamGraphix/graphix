@@ -18,7 +18,6 @@ from graphix.command import C, E
 from graphix.fundamentals import ANGLE_PI, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
-from graphix.optimization import StandardizedPattern
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
@@ -1051,14 +1050,14 @@ def _compose_10() -> OpenGraphComposeTestCase:
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
-def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
+def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3, *, stacklevel: int = 1) -> bool:
     """Verify if the input pattern is deterministic."""
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
         alpha = 2 * ANGLE_PI * fx_rng.random()
-        state_ref = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
+        state_ref = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng, stacklevel=stacklevel + 1)
 
         for _ in range(n_shots):
-            state = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
+            state = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng, stacklevel=stacklevel + 1)
             if not state.isclose(state_ref):
                 return False
 
@@ -1100,6 +1099,7 @@ class TestOpenGraph:
                 og.to_causalflow()
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
+    @pytest.mark.filterwarnings("ignore:Non-Pauli measurement on an isolated node was removed.")
     def test_gflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og.to_bloch()
 
@@ -1115,6 +1115,7 @@ class TestOpenGraph:
                 og.to_gflow()
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
+    @pytest.mark.filterwarnings("ignore:Non-Pauli measurement on an isolated node was removed.")
     def test_pflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
@@ -1170,9 +1171,9 @@ class TestOpenGraph:
 
     def test_double_entanglement(self) -> None:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
-        pattern2 = pattern.to_opengraph().to_pattern()
+        og = pattern.to_opengraph()
         state = pattern.simulate()
-        state2 = pattern2.simulate()
+        state2 = og.simulate()
         assert state.isclose(state2)
 
     def test_from_to_pattern(self, fx_rng: Generator) -> None:
@@ -1180,7 +1181,7 @@ class TestOpenGraph:
         depth = 2
         circuit = rand_circuit(n_qubits, depth, fx_rng)
         pattern_ref = circuit.transpile().pattern
-        pattern = StandardizedPattern.from_pattern(pattern_ref.to_opengraph().to_pattern()).to_space_optimal_pattern()
+        pattern = pattern_ref.to_opengraph().to_standardizedpattern().to_space_optimal_pattern()
 
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
             alpha = 2 * ANGLE_PI * fx_rng.random()
@@ -1333,10 +1334,9 @@ class TestOpenGraph:
         og1 = p1.to_opengraph()
         og2 = p2.to_opengraph()
         og_c, _ = og1.compose(og2, mapping)
-        pc_test = og_c.to_pattern()
 
         sv = pc.simulate(rng=fx_rng)
-        sv_test = pc_test.simulate(rng=fx_rng)
+        sv_test = og_c.simulate(rng=fx_rng)
 
         assert sv.isclose(sv_test)
 
