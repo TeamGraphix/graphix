@@ -86,7 +86,7 @@ def test_simulable_not_instantiable() -> None:
 
 
 def test_simulable_subclass_implement_conversion() -> None:
-    class SubSimulable(Simulable):
+    class SubSimulable(Simulable[Measurement]):
         pass
 
     with pytest.raises(
@@ -101,7 +101,7 @@ def test_simulable_to_standardizedpattern_only() -> None:
         pattern: StandardizedPattern
 
         @override
-        def to_standardizedpattern(self: Simulable[Measurement]) -> StandardizedPattern:
+        def to_standardizedpattern(self: SubSimulable) -> StandardizedPattern:
             return self.pattern
 
     og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.X})
