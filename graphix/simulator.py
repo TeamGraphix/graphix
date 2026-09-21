@@ -591,7 +591,7 @@ def _initialize_backend(
             raise ValueError(f"Unknown backend {backend}.")
 
 
-class Simulable(ABC, Generic[_AM_co]):
+class Simulable(Generic[_AM_co]):
     """Base class for simulable objects.
 
     This class is generic in the type of measurements (``_AM_co``),
@@ -599,15 +599,25 @@ class Simulable(ABC, Generic[_AM_co]):
     instances to concrete measurement types, i.e., when the type
     parameter is a subtype of :class:`Measurement`.
 
-    Subclasses should implement at least one of the two methods
-    ``to_pattern` or ``to_standardizedpattern``.
+    This class should not be instantiated directly, and subclasses
+    should implement at least one of the two methods, ``to_pattern` or
+    ``to_standardizedpattern``. This class is not declared as an
+    :class:`ABC`, and ``to_pattern`` and ``to_standardizedpattern``
+    are not abstract methods, since each has a default
+    implementation that calls the other.
     """
 
-    def __init_subclass__(cls) -> None:
-        """Check for every subclass that at least one of `to_pattern` or `to_standardizedpattern` is implemented."""
-        super().__init_subclass__()
-        if cls.to_pattern is Simulable.to_pattern and cls.to_standardizedpattern is Simulable.to_standardizedpattern:
-            raise TypeError(f"{cls.__name__} must implement at least one of `to_pattern` or `to_standardizedpattern`")
+    def __init__(self) -> None:
+        """Check that the instance is a valid ``Simulable``."""
+        if type(self) is Simulable:
+            raise TypeError("Simulable cannot be instantiated directly")
+        if (
+            type(self).to_pattern is Simulable.to_pattern
+            and type(self).to_standardizedpattern is Simulable.to_standardizedpattern
+        ):
+            raise TypeError(
+                f"{type(self).__name__} must implement at least one of `to_pattern` or `to_standardizedpattern`"
+            )
 
     def to_pattern(self: Simulable[_AM_co]) -> Pattern:
         "Return a representation as a pattern."

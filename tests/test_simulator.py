@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
+import networkx as nx
 import pytest
+from typing_extensions import override
 
-from graphix import BasicStates, Pattern, Statevector, StatevectorBackend
+from graphix import BasicStates, Measurement, OpenGraph, Pattern, Statevector, StatevectorBackend
 from graphix.command import BaseN
+from graphix.simulator import Simulable
 
 if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.command import CommandType
+    from graphix.optimization import StandardizedPattern
 
 
 def test_no_explicit_input_state(hadamardpattern: Pattern, fx_rng: Generator) -> None:
@@ -73,3 +78,32 @@ def test_default_prepare_method_requires_n() -> None:
         TypeError, match=r"The default prepare method requires all preparation commands to be of type `N`."
     ):
         pattern.simulate(optimized=False)
+
+
+def test_simulable_not_instantiable() -> None:
+    with pytest.raises(TypeError, match="Simulable cannot be instantiated directly"):
+        Simulable()
+
+
+def test_simulable_subclass_implement_conversion() -> None:
+    class SubSimulable(Simulable):
+        pass
+
+    with pytest.raises(
+        TypeError, match=r"SubSimulable must implement at least one of `to_pattern` or `to_standardizedpattern`"
+    ):
+        SubSimulable()
+
+
+def test_simulable_to_standardizedpattern_only() -> None:
+    @dataclass
+    class SubSimulable(Simulable[Measurement]):
+        pattern: StandardizedPattern
+
+        @override
+        def to_standardizedpattern(self: Simulable[Measurement]) -> StandardizedPattern:
+            return self.pattern
+
+    og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.X})
+    s = SubSimulable(og.to_standardizedpattern())
+    s.simulate()
