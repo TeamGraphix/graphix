@@ -93,17 +93,11 @@ class ReverseDependency:
 
 
 REVERSE_DEPENDENCIES = {
-    "graphix-symbolic": ReverseDependency(
-        "https://github.com/TeamGraphix/graphix-symbolic"),
-    "graphix-stim-backend": ReverseDependency(
-        "https://github.com/TeamGraphix/graphix-stim-backend"),
-    "graphix-qasm-parser": ReverseDependency(
-        "https://github.com/TeamGraphix/graphix-qasm-parser"),
-    "graphix-ibmq": ReverseDependency(
-        "https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False
-    ),
-    "graphix-stim-compiler": ReverseDependency(
-        "https://github.com/TeamGraphix/graphix-stim-compiler"),
+    "graphix-symbolic": ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
+    "graphix-stim-backend": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
+    "graphix-qasm-parser": ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+    "graphix-ibmq": ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
+    "graphix-stim-compiler": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
     "graphix-pyzx": ReverseDependency(
         "https://github.com/TeamGraphix/graphix-pyzx",
         # Precompile pyzx before running pytest with warnings-as-errors.

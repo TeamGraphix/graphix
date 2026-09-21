@@ -181,6 +181,7 @@ class TestTranspilerUnitGates:
         elif isinstance(state_mbqc, DensityMatrix) and isinstance(state, DensityMatrix):
             assert np.allclose(state_mbqc.rho, state.rho)
 
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     @pytest.mark.parametrize(
         "ancilla_state",
         [
@@ -589,6 +590,7 @@ class TestCircuits:
         state_mbqc = pattern.simulate(input_state=input_state, backend="densitymatrix", rng=rng)
         assert np.allclose(state_mbqc.rho, state.rho)
 
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_dm_backend_with_ancillas(self, fx_rng: Generator) -> None:
         circuit = Circuit(1, ancillas=1)
         circuit.x(0)
