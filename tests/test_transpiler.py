@@ -145,6 +145,7 @@ class TestTranspilerUnitGates:
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("outcome", [0, 1])
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_measure(
         self,
         fx_bg: PCG64,
@@ -576,6 +577,7 @@ class TestCircuits:
             circuit.transpile()
 
     @pytest.mark.parametrize("jumps", range(1, 3))
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_dm_backend(self, fx_bg: PCG64, jumps: int) -> None:
         nqubits = 2
         rng = Generator(fx_bg.jumped(jumps))

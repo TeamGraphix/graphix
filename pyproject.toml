@@ -47,8 +47,8 @@ dev = [
     "mypy==2.3.1",
     "pre-commit",
     "pyright",
-    "ruff==0.16.6",
-    "types-networkx==3.6.1.20260903",
+    "ruff==0.16.7",
+    "types-networkx==3.6.1.20260911",
     "types-psutil",
     "types-setuptools",
     "scipy-stubs",
@@ -168,7 +168,7 @@ ban-relative-imports = "all"
 required-imports = ["from __future__ import annotations"]
 
 [tool.pytest.ini_options]
-addopts = ["--ignore=examples", "--ignore=docs", "--ignore=benchmarks", "--benchmark-autosave"]
+addopts = ["--ignore=examples", "--ignore=docs", "--ignore=benchmarks"]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
 

@@ -549,7 +549,7 @@ class Statevector(DenseState):
         len_psi = len(self.psi)
         self._psi[:len_psi] = psi_tensor_perm.reshape(len_psi)
 
-    def fidelity(self, other: Statevector) -> float:
+    def fidelity(self, other: Statevector | Matrix) -> float:
         r"""Calculate the fidelity against another statevector.
 
         The fidelity is defined as :math:`|\langle\psi_1|\psi_2\rangle|^2`.
@@ -567,7 +567,7 @@ class Statevector(DenseState):
         inner = np.dot(self.flatten().conjugate(), other.flatten())
         return float(np.abs(inner) ** 2)
 
-    def isclose(self, other: Statevector, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
+    def isclose(self, other: Statevector | Matrix, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
         """Check if two quantum states are equal up to global phase.
 
         Two states are considered close if their fidelity is close to 1.
