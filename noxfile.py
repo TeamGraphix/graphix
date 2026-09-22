@@ -93,8 +93,12 @@ class ReverseDependency:
 
 
 REVERSE_DEPENDENCIES = {
-    "graphix-symbolic": ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
-    "graphix-stim-backend": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
+    "graphix-symbolic": ReverseDependency(
+        "https://github.com/TeamGraphix/graphix-symbolic", branch="refs/pull/12/head"
+    ),
+    "graphix-stim-backend": ReverseDependency(
+        "https://github.com/TeamGraphix/graphix-stim-backend", branch="refs/pull/4/head"
+    ),
     "graphix-qasm-parser": ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
     "graphix-ibmq": ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
     "graphix-stim-compiler": ReverseDependency(
