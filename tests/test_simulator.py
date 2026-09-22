@@ -95,7 +95,7 @@ def test_simulable_subclass_implement_conversion() -> None:
         SubSimulable()
 
 
-def test_simulable_to_standardizedpattern_only() -> None:
+def test_simulable_to_standardizedpattern_only(fx_rng: Generator) -> None:
     @dataclass
     class SubSimulable(Simulable[Measurement]):
         pattern: StandardizedPattern
@@ -106,4 +106,4 @@ def test_simulable_to_standardizedpattern_only() -> None:
 
     og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.X})
     s = SubSimulable(og.to_standardizedpattern())
-    s.simulate()
+    s.simulate(rng=fx_rng)

@@ -656,10 +656,11 @@ class Simulable(Generic[_AM_co]):
         """
         standardized_pattern = self.to_standardizedpattern()
         standardized_pattern = standardized_pattern.minimize_space()
-        standardized_pattern2 = standardized_pattern.infer_pauli_measurements().remove_pauli_measurements(
-            stacklevel=stacklevel + 1
+        standardized_pattern2 = (
+            standardized_pattern.infer_pauli_measurements()
+            .remove_pauli_measurements(stacklevel=stacklevel + 1)
+            .minimize_space()
         )
-        standardized_pattern2 = standardized_pattern.minimize_space()
         if standardized_pattern2.max_space() <= standardized_pattern.max_space():
             standardized_pattern = standardized_pattern2
         return standardized_pattern.to_space_optimal_pattern()
