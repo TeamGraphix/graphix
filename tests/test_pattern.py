@@ -19,7 +19,6 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
-from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
@@ -216,7 +215,6 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         assert pattern.is_standard()
-        pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
         state = circuit.simulate().state
         state_mbqc = pattern.simulate(rng=rng)
         assert state_mbqc.isclose(state)
@@ -644,7 +642,7 @@ class TestPattern:
         p2 = circuit_2.transpile().pattern  # inputs: [0]
 
         p, _ = p1.compose(p2, mapping={0: 1, 1: 2, 2: 3})
-        p = StandardizedPattern.from_pattern(p).to_space_optimal_pattern()
+        p = p.to_standardizedpattern().to_space_optimal_pattern()
 
         circuit_12 = Circuit(1)
         circuit_12.h(0)

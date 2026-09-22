@@ -25,7 +25,6 @@ from graphix.instruction import InstructionKind, InstructionVisitor
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.ops import Ops
-from graphix.optimization import StandardizedPattern
 from graphix.parameter import InplaceParameterizable
 from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
@@ -74,7 +73,7 @@ class TranspiledFlow:
 
     def to_pattern(self) -> TranspiledPattern:
         """Return the transpiled pattern."""
-        pattern = StandardizedPattern.from_pattern(self.flow.to_xzcorrections().to_pattern()).to_space_optimal_pattern()
+        pattern = self.flow.to_xzcorrections().to_standardizedpattern().to_space_optimal_pattern()
         pattern.extend(self.classical_outputs.values())
         return TranspiledPattern(pattern, tuple(self.classical_outputs.keys()))
 

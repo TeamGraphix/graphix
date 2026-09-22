@@ -66,7 +66,7 @@ def standardize(pattern: Pattern) -> Pattern:
         The standardized pattern, if it exists.
 
     """
-    return StandardizedPattern.from_pattern(pattern).to_pattern()
+    return pattern.to_standardizedpattern().to_pattern()
 
 
 @dataclass(frozen=True, slots=True)
