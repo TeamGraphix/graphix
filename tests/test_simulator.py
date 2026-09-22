@@ -106,4 +106,4 @@ def test_simulable_to_standardizedpattern_only(fx_rng: Generator) -> None:
 
     og = OpenGraph(graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement.X})
     s = SubSimulable(og.to_standardizedpattern())
-    s.simulate(rng=fx_rng)
+    s.simulate(rng=fx_rng, optimized=False)

@@ -87,7 +87,7 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern.remove_pauli_measurements()
     pattern2 = remove_useless_domains(pattern)
     state = pattern.simulate(rng=rng)
-    state2 = pattern2.to_standardizedpattern().simulate(rng=rng, optimized=False)
+    state2 = pattern2.to_standardizedpattern().simulate(rng=rng)
     assert state.isclose(state2)
 
 
