@@ -210,20 +210,20 @@ class RZZ(_KindChecker, BaseInstruction):
         Rotation angle.
     """
 
-    target: int
     control: int
+    target: int
     angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RZZ]] = field(default=InstructionKind.RZZ, init=False)
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> RZZ:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         angle = visitor.visit_angle(self.angle)
         if copy:
-            return RZZ(target, control, angle)
-        self.target = target
+            return RZZ(control, target, angle)
         self.control = control
+        self.target = target
         self.angle = angle
         return self
 
