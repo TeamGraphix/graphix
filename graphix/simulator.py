@@ -6,9 +6,9 @@ Simulates MBQC by executing the pattern.
 
 from __future__ import annotations
 
-import abc
 import logging
 import warnings
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, Literal, TypedDict, TypeVar, overload
 
@@ -20,6 +20,7 @@ from graphix import command
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, N
+from graphix.fundamentals import AbstractMeasurement
 from graphix.sim import (
     Backend,
     DensityMatrixBackend,
@@ -39,8 +40,11 @@ if TYPE_CHECKING:
     from graphix.command import BaseN
     from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
+    from graphix.optimization import StandardizedPattern
+    from graphix.parameter import ExpressionOrSupportsComplex
     from graphix.pattern import Pattern
     from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevector
+    from graphix.states import State
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +56,14 @@ if TYPE_CHECKING:
 
     _StateT = TypeVar("_StateT")
 
+_AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
+
 # This type variable should be defined outside TYPE_CHECKING block
 # because it appears in the parameters of `PatternSimulator`.
 _StateT_co = TypeVar("_StateT_co", covariant=True)
 
 
-class PrepareMethod(abc.ABC):
+class PrepareMethod(ABC):
     """Prepare method used by the simulator.
 
     See :class:`DefaultPrepareMethod` for the default prepare method that implements MBQC.
@@ -67,7 +73,7 @@ class PrepareMethod(abc.ABC):
     Example: class ``ClientPrepareMethod`` in https://github.com/qat-inria/veriphix
     """
 
-    @abc.abstractmethod
+    @abstractmethod
     def prepare(self, backend: Backend[_StateT_co], cmd: BaseN, rng: Generator | None = None) -> None:
         """Prepare a node."""
 
@@ -83,7 +89,7 @@ class DefaultPrepareMethod(PrepareMethod):
         backend.add_nodes(nodes=[cmd.node], data=cmd.state)
 
 
-class MeasureMethod(abc.ABC):
+class MeasureMethod(ABC):
     """Measure method used by the simulator, with default measurement method that implements MBQC.
 
     To be overwritten by custom measurement methods in the case of delegated QC protocols.
@@ -123,7 +129,7 @@ class MeasureMethod(abc.ABC):
             result = noise_model.confuse_result(cmd, result, rng=rng, stacklevel=stacklevel + 1)
         self.store_measurement_outcome(cmd.node, result)
 
-    @abc.abstractmethod
+    @abstractmethod
     def describe_measurement(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by a command.
 
@@ -139,7 +145,7 @@ class MeasureMethod(abc.ABC):
         """
         ...
 
-    @abc.abstractmethod
+    @abstractmethod
     def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
@@ -155,7 +161,7 @@ class MeasureMethod(abc.ABC):
         """
         ...
 
-    @abc.abstractmethod
+    @abstractmethod
     def store_measurement_outcome(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
@@ -583,3 +589,185 @@ def _initialize_backend(
             return DensityMatrixBackend(branch_selector=branch_selector, symbolic=options.symbolic)
         case _:
             raise ValueError(f"Unknown backend {backend}.")
+
+
+class Simulable(Generic[_AM_co]):
+    """Base class for simulable objects.
+
+    This class is generic in the type of measurements (``_AM_co``),
+    allowing generic classes to extend it while restricting simulable
+    instances to concrete measurement types, i.e., when the type
+    parameter is a subtype of :class:`Measurement`.
+
+    This class should not be instantiated directly, and subclasses
+    should implement at least one of the two methods, ``to_pattern` or
+    ``to_standardizedpattern``. This class is not declared as an
+    :class:`ABC`, and ``to_pattern`` and ``to_standardizedpattern``
+    are not abstract methods, since each has a default
+    implementation that calls the other.
+    """
+
+    def __init__(self) -> None:
+        """Check that the instance is a valid ``Simulable``."""
+        if type(self) is Simulable:
+            raise TypeError("Simulable cannot be instantiated directly")
+        if (
+            type(self).to_pattern is Simulable.to_pattern
+            and type(self).to_standardizedpattern is Simulable.to_standardizedpattern
+        ):
+            raise TypeError(
+                f"{type(self).__name__} must implement at least one of `to_pattern` or `to_standardizedpattern`"
+            )
+
+    def to_pattern(self: Simulable[_AM_co]) -> Pattern:
+        "Return a representation as a pattern."
+        return self.to_standardizedpattern().to_pattern()
+
+    def to_standardizedpattern(self: Simulable[_AM_co]) -> StandardizedPattern:
+        "Return a representation as a standardized pattern."
+        # Circumvent import loop
+        from graphix.optimization import StandardizedPattern  # noqa: PLC0415
+
+        return StandardizedPattern.from_pattern(self.to_pattern())
+
+    def to_optimized_pattern(self: Simulable[Measurement], *, stacklevel: int = 1) -> Pattern:
+        """Return a representation as an optimized pattern.
+
+        Optimized pattern is the form that is simulated when
+        :meth:`simulate` is called with ``optimized=True`` (the
+        default).
+
+        Optimization passes are:
+        - remove Pauli measurements,
+        - minimize space.
+
+        Note that Pauli measurements are not implicitly inferred.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
+        Returns
+        -------
+        Pattern
+            Optimized pattern.
+        """
+        standardized_pattern = self.to_standardizedpattern()
+        standardized_pattern = standardized_pattern.minimize_space()
+        standardized_pattern2 = (
+            standardized_pattern.infer_pauli_measurements()
+            .remove_pauli_measurements(stacklevel=stacklevel + 1)
+            .minimize_space()
+        )
+        if standardized_pattern2.max_space() <= standardized_pattern.max_space():
+            standardized_pattern = standardized_pattern2
+        return standardized_pattern.to_space_optimal_pattern()
+
+    @overload
+    def simulate(
+        self: Simulable[Measurement],
+        backend: StatevectorBackend | Literal["statevector"] = "statevector",
+        input_state: State
+        | Statevector
+        | Iterable[State]
+        | Iterable[ExpressionOrSupportsComplex]
+        | Iterable[Iterable[ExpressionOrSupportsComplex]]
+        | None = ...,
+        rng: Generator | None = ...,
+        *,
+        optimized: bool = True,
+        stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
+    ) -> Statevector: ...
+
+    @overload
+    def simulate(
+        self: Simulable[Measurement],
+        backend: DensityMatrixBackend | Literal["densitymatrix"],
+        input_state: State
+        | DensityMatrix
+        | Iterable[State]
+        | Iterable[ExpressionOrSupportsComplex]
+        | Iterable[Iterable[ExpressionOrSupportsComplex]]
+        | None = ...,
+        rng: Generator | None = ...,
+        *,
+        optimized: bool = True,
+        stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
+    ) -> DensityMatrix: ...
+
+    @overload
+    def simulate(
+        self: Simulable[Measurement],
+        backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
+        input_state: State
+        | Iterable[State]
+        | Iterable[ExpressionOrSupportsComplex]
+        | Iterable[Iterable[ExpressionOrSupportsComplex]]
+        | None = ...,
+        rng: Generator | None = ...,
+        *,
+        optimized: bool = True,
+        stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
+    ) -> MBQCTensorNet: ...
+
+    @overload
+    def simulate(
+        self: Simulable[Measurement],
+        backend: Backend[_StateT_co],
+        input_state: Data | None = ...,
+        rng: Generator | None = ...,
+        *,
+        optimized: bool = True,
+        stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
+    ) -> _StateT_co: ...
+
+    def simulate(
+        self: Simulable[Measurement],
+        backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
+        input_state: Data | None = BasicStates.PLUS,
+        rng: Generator | None = None,
+        *,
+        optimized: bool = True,
+        stacklevel: int = 1,
+        **kwargs: Unpack[SimulatorKwargs],
+    ) -> _StateT_co | _BuiltinBackendState:
+        """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
+
+        Parameters
+        ----------
+        backend : :class:`Backend` or {'statevector', 'densitymatrix', 'tensornetwork'}, optional
+            The simulator backend to use: either an instantiated backend or the
+            name of a built-in backend. Default: ``'statevector'``.
+        input_state: Data or None, optional
+            the output quantum state, in a representation compatible with the selected backend.
+            Default: the ``|+>`` state (``BasicStates.PLUS``).
+            If ``None``, no input nodes are added by the simulator; input nodes must have been prepared in the backend before running the simulation.
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
+        optimized : bool, optional
+            Optimize the pattern before simulation. Defaults to ``True``.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+        kwargs: Unpack[SimulatorKwargs]
+            Options controlling simulator. See :class:`SimulatorOptions`.
+
+        Returns
+        -------
+        state :
+            quantum state representation for the selected backend.
+
+        .. seealso:: :class:`graphix.simulator.PatternSimulator`
+        """
+        pattern = self.to_optimized_pattern(stacklevel=stacklevel + 1) if optimized else self.to_pattern()
+        sim = PatternSimulator(pattern, backend=backend, stacklevel=stacklevel + 1, **kwargs)
+        sim.run(input_state, rng=rng, stacklevel=stacklevel + 1)
+        return sim.backend.state

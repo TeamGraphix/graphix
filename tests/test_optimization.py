@@ -9,7 +9,7 @@ from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
-from graphix.optimization import StandardizedPattern, remove_useless_domains
+from graphix.optimization import remove_useless_domains
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit, rand_state_vector
 from graphix.states import PlanarState
@@ -86,9 +86,8 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements()
     pattern2 = remove_useless_domains(pattern)
-    pattern2 = StandardizedPattern.from_pattern(pattern2).to_space_optimal_pattern()
     state = pattern.simulate(rng=rng)
-    state2 = pattern2.simulate(rng=rng)
+    state2 = pattern2.to_standardizedpattern().simulate(rng=rng)
     assert state.isclose(state2)
 
 
@@ -108,7 +107,7 @@ def test_to_space_optimal_pattern(fx_rng: Generator) -> None:
         ],
         output_nodes=[17, 18],
     )
-    pattern2 = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
+    pattern2 = pattern.to_standardizedpattern().to_space_optimal_pattern()
     state = pattern.simulate(rng=fx_rng)
     state2 = pattern2.simulate(rng=fx_rng)
     assert state.isclose(state2)
@@ -132,7 +131,7 @@ def test_bug_482() -> None:
         ],
         output_nodes=[4, 1, 2],
     )
-    output_pattern = StandardizedPattern.from_pattern(input_pattern).to_space_optimal_pattern()
+    output_pattern = input_pattern.to_standardizedpattern().to_space_optimal_pattern()
     assert input_pattern.output_nodes == output_pattern.output_nodes
 
 

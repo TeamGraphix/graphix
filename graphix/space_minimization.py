@@ -193,7 +193,7 @@ class SpaceMinimizationHeuristics:
         """
         try:
             cf = pattern.to_xzcorrections().downcast_bloch().to_causalflow()
-        except (TypeError, FlowError):
+        except (TypeError, FlowError, ValueError):
             return None
         else:
             meas_order = tuple(chain(*reversed(cf.partial_order_layers[1:])))

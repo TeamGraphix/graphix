@@ -19,6 +19,7 @@ from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.measurements import BlochMeasurement, Measurement
 from graphix.parameter import Parameterizable
+from graphix.simulator import Simulable
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -41,7 +42,7 @@ _B = TypeVar("_B", bound=AbstractMeasurement)
 
 
 @dataclass(frozen=True)
-class OpenGraph(Parameterizable, Generic[_AM_co]):
+class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of open graph states.
 
     Attributes
