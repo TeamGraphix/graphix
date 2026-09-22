@@ -163,19 +163,19 @@ class CCX(_KindChecker, BaseInstruction):
         Index of the target qubit.
     """
 
-    target: int
     controls: tuple[int, int]
+    target: int
     kind: ClassVar[Literal[InstructionKind.CCX]] = field(default=InstructionKind.CCX, init=False)
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CCX:
         u, v = self.controls
-        target = visitor.visit_qubit(self.target)
         controls = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        target = visitor.visit_qubit(self.target)
         if copy:
-            return CCX(target, controls)
-        self.target = target
+            return CCX(controls, target)
         self.controls = controls
+        self.target = target
         return self
 
 

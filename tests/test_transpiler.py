@@ -302,7 +302,7 @@ class TestCircuits:
 
     def test_simple(self) -> None:
         rng = np.random.default_rng(420)
-        circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
+        circuit = Circuit(3, instr=[instruction.CCX((0, 1), 2)])
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
         input_state = rand_state_vector(3, rng=rng)
