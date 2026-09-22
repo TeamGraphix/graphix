@@ -110,12 +110,12 @@ REVERSE_DEPENDENCIES = {
         ),
     ),
     "veriphix": ReverseDependency(
-        "https://github.com/TeamGraphix/veriphix",
+        "https://github.com/qatphix/veriphix",
         doctest_modules=False,
         install_target=".[dev]",
     ),
     "graphix-mqtbench": ReverseDependency(
-        "https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"
+        "https://github.com/thierry-martinez/graphix-mqtbench", branch="new-circuit-api"
     ),
 }
 
