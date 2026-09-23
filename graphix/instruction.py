@@ -232,17 +232,17 @@ class RZZ(_KindChecker, BaseInstruction):
 class ControlledSingleTargetInstruction(BaseInstruction):
     """Base class for controlled single-target circuit instructions."""
 
-    target: int
     control: int
+    target: int
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         if copy:
-            return type(self)(target, control)
-        self.target = target
+            return type(self)(control, target)
         self.control = control
+        self.target = target
         return self
 
 
