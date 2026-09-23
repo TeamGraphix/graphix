@@ -163,19 +163,19 @@ class CCX(_KindChecker, BaseInstruction):
         Index of the target qubit.
     """
 
-    target: int
     controls: tuple[int, int]
+    target: int
     kind: ClassVar[Literal[InstructionKind.CCX]] = field(default=InstructionKind.CCX, init=False)
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CCX:
         u, v = self.controls
-        target = visitor.visit_qubit(self.target)
         controls = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        target = visitor.visit_qubit(self.target)
         if copy:
-            return CCX(target, controls)
-        self.target = target
+            return CCX(controls, target)
         self.controls = controls
+        self.target = target
         return self
 
 
@@ -210,20 +210,20 @@ class RZZ(_KindChecker, BaseInstruction):
         Rotation angle.
     """
 
-    target: int
     control: int
+    target: int
     angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RZZ]] = field(default=InstructionKind.RZZ, init=False)
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> RZZ:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         angle = visitor.visit_angle(self.angle)
         if copy:
-            return RZZ(target, control, angle)
-        self.target = target
+            return RZZ(control, target, angle)
         self.control = control
+        self.target = target
         self.angle = angle
         return self
 
@@ -232,17 +232,17 @@ class RZZ(_KindChecker, BaseInstruction):
 class ControlledSingleTargetInstruction(BaseInstruction):
     """Base class for controlled single-target circuit instructions."""
 
-    target: int
     control: int
+    target: int
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         if copy:
-            return type(self)(target, control)
-        self.target = target
+            return type(self)(control, target)
         self.control = control
+        self.target = target
         return self
 
 
@@ -306,10 +306,8 @@ class CNOT(_KindChecker, ControlledSingleTargetInstruction):
     kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
 
 
-# CZ is not defined as a ControlledSingleTargetInstruction because of
-# the symmetry between the control and the target.
 @dataclass(repr=False)
-class CZ(_KindChecker, BaseInstruction):
+class CZ(_KindChecker, ControlledSingleTargetInstruction):
     r"""CZ circuit instruction.
 
     The CZ gate applies the matrix
@@ -325,25 +323,17 @@ class CZ(_KindChecker, BaseInstruction):
 
     in the computational basis. The basis states use big-endian
     ordering, with the most significant qubit first. The qubits are
-    numbered in the order ``targets[0]``, ``targets[1]``.
+    numbered in the order ``control``, ``target``.
 
     Attributes
     ----------
-    targets : tuple[int, int]
-        Index of the target qubits.
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
     """
 
-    targets: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.CZ]] = field(default=InstructionKind.CZ, init=False)
-
-    @override
-    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CZ:
-        u, v = self.targets
-        targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
-        if copy:
-            return CZ(targets)
-        self.targets = targets
-        return self
 
 
 @dataclass(repr=False)
@@ -828,19 +818,19 @@ class CU(_KindChecker, BaseInstruction):
 class ControlledRotationInstruction(BaseInstruction):
     """Base class for rotation instructions."""
 
-    target: int
     control: int
+    target: int
     angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         angle = visitor.visit_angle(self.angle)
         if copy:
-            return type(self)(target, control, angle)
-        self.target = target
+            return type(self)(control, target, angle)
         self.control = control
+        self.target = target
         self.angle = angle
         return self
 

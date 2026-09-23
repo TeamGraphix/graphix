@@ -165,7 +165,7 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
                 [qasm3_qubit(qubit) for qubit in [instruction.control, *[instruction.targets[i] for i in (0, 1)]]],
             )
         case InstructionKind.CZ:
-            return qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+            return qasm3_gate_call("cz", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
         case InstructionKind.RZZ:
             raise ValueError(
                 "RZZ gates must be decomposed before QASM3 export using `Circuit.transpile_rzz`, or setting `transpile=True`."
