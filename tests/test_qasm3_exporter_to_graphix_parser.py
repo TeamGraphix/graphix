@@ -14,6 +14,7 @@ from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import InstructionKind
 from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
+from graphix.states import BasicStates
 from tests.test_instruction import INSTRUCTION_TEST_CASES
 
 # `graphix-qasm-parser` depends on the `graphix` package, so we cannot have
@@ -40,6 +41,7 @@ except ImportError:
         sys.exit(1)
 
 if TYPE_CHECKING:
+    from graphix.states import PlanarState
     from tests.test_instruction import InstructionTestCase
 
 
@@ -133,5 +135,26 @@ def test_condinstr_to_qasm3() -> None:
                 {0, 2},
             ),
         ],
+    )
+    check_round_trip(circuit)
+
+
+@pytest.mark.parametrize(
+    "ancilla_state",
+    [
+        BasicStates.PLUS,
+        BasicStates.MINUS,
+        BasicStates.ZERO,
+        BasicStates.ONE,
+        BasicStates.PLUS_I,
+        BasicStates.MINUS_I,
+    ],
+)
+def test_to_qasm3_ancillas(ancilla_state: PlanarState) -> None:
+    circuit = Circuit(
+        1,
+        instr=[Instruction.RX(0, 0.3), Instruction.RY(1, 0.4), Instruction.RZ(2, 0.35)],
+        ancillas=2,
+        ancilla_state=ancilla_state,
     )
     check_round_trip(circuit)

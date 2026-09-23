@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 # assert_never added in Python 3.11
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from graphix.instruction import InstructionType
 
 
-def circuit_to_qasm3(circuit: Circuit, *, transpile: bool = True) -> str:
+def circuit_to_qasm3(circuit: Circuit, *, transpile: bool = True, stacklevel: int = 1) -> str:
     """Export circuit instructions to an OpenQASM 3.0 string.
 
     Parameters
@@ -35,15 +36,19 @@ def circuit_to_qasm3(circuit: Circuit, *, transpile: bool = True) -> str:
         are replaced by equivalent RZ and H gates.
         If ``False``, a ``ValueError`` is raised when the circuit contains a J gate.
 
+    stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
     Returns
     -------
     str
         The OpenQASM 3.0 representation of the supplied circuit.
     """
-    return "\n".join(circuit_to_qasm3_lines(circuit, transpile=transpile))
+    return "\n".join(circuit_to_qasm3_lines(circuit, transpile=transpile, stacklevel=stacklevel + 1))
 
 
-def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True) -> Iterator[str]:
+def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True, stacklevel: int = 1) -> Iterator[str]:
     """Export circuit instructions to line-by-line OpenQASM 3.0 representation.
 
     Parameters
@@ -56,6 +61,10 @@ def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True) -> Itera
         are replaced by equivalent RZ and H gates.
         If ``False``, a ``ValueError`` is raised when the circuit contains a J gate.
 
+    stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
     Returns
     -------
     Iterator[str]
@@ -63,11 +72,20 @@ def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True) -> Itera
     """
     if transpile:
         circuit = circuit.transpile_to_qasm_gates()
+        if circuit.ancillas and circuit.ancilla_state != BasicStates.ZERO:
+            circuit = circuit.transpile_ancilla_state(BasicStates.ZERO)
+
+    if circuit.ancillas and circuit.ancilla_state != BasicStates.ZERO:
+        warnings.warn(
+            "Converting to QASM a circuit with ancilla qubits not initialized to |0>. Consider setting ``transpile=True`` to transpile the ancillas to |0>.",
+            stacklevel=stacklevel + 1,
+        )
+
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
-    yield f"qubit[{circuit.width}] q;"
-    if any(instr.kind == InstructionKind.M for instr in circuit.instruction):
-        yield f"bit[{circuit.width}] b;"
+    yield f"qubit[{circuit.nqubit}] q;"
+    if n_bits := len(tuple(filter(lambda instr: instr.kind == InstructionKind.M, circuit.instruction))):
+        yield f"bit[{n_bits}] b;"
     for instr in circuit.instruction:
         yield from instruction_to_qasm3(instr)
 

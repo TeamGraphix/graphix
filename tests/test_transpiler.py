@@ -547,6 +547,43 @@ class TestCircuits:
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize(
+        "target_ancilla",
+        [
+            BasicStates.PLUS,
+            BasicStates.ZERO,
+        ],
+    )
+    @pytest.mark.parametrize(
+        "ancilla_state",
+        [
+            BasicStates.PLUS,
+            BasicStates.MINUS,
+            BasicStates.ZERO,
+            BasicStates.ONE,
+            BasicStates.PLUS_I,
+            BasicStates.MINUS_I,
+        ],
+    )
+    def test_transpile_ancilla_state(
+        self, fx_rng: Generator, ancilla_state: State, target_ancilla: PlanarState
+    ) -> None:
+        circuit = Circuit(
+            1,
+            instr=[Instruction.RX(0, 0.3), Instruction.RY(1, 0.4), Instruction.RZ(2, 0.35)],
+            ancillas=2,
+            ancilla_state=ancilla_state,
+        )
+        circuit_test = circuit.transpile_ancilla_state(target_ancilla)
+
+        assert circuit_test.ancilla_state == target_ancilla
+        input_state = rand_state_vector(1, rng=fx_rng)
+
+        state = circuit.simulate(rng=fx_rng, input_state=input_state).state
+        state_test = circuit_test.simulate(rng=fx_rng, input_state=input_state).state
+
+        assert state.isclose(state_test)
+
+    @pytest.mark.parametrize(
         ("domain", "outcome", "output"),
         [
             (set(), 0, BasicStates.ZERO),

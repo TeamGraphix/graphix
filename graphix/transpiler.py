@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from graphix.sim import Data
     from graphix.sim.base_backend import DenseState, Matrix
     from graphix.sim.density_matrix import DensityMatrix
-    from graphix.states import State
+    from graphix.states import PlanarState, State
 
     _BuiltinDenseStateBackend = DensityMatrixBackend | StatevectorBackend
     _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
@@ -847,7 +847,9 @@ class Circuit(InplaceParameterizable):
         x_corrections: dict[int, set[int]] = {}
 
         circuit = (
-            self.transpile_ancilla_to_plus() if self.ancillas and self.ancilla_state is not BasicStates.PLUS else self
+            self.transpile_ancilla_state(BasicStates.PLUS)
+            if self.ancillas and self.ancilla_state is not BasicStates.PLUS
+            else self
         )
 
         circuit = (
@@ -1096,7 +1098,7 @@ class Circuit(InplaceParameterizable):
         -------
         Circuit
         """
-        new_circuit = Circuit(self.width, ancillas=self.ancillas)
+        new_circuit = Circuit(self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
         for instr in self.instruction:
             match instr.kind:
                 case InstructionKind.J:
@@ -1122,35 +1124,37 @@ class Circuit(InplaceParameterizable):
                     new_circuit.add(instr)
         return new_circuit
 
-    def transpile_ancilla_to_plus(self) -> Circuit:
-        r"""Return an equivalent circuit where ancilla states are replaced with :math:`|+\rangle`.
+    def transpile_ancilla_state(self, target_state: PlanarState = BasicStates.PLUS) -> Circuit:
+        """Return an equivalent circuit with ancillas initialized to ``target_state``.
+
+        Parameters
+        ----------
+        target_state : BasicStates, default=BasicStates.PLUS
+            State to which the ancillas should be transpiled. Supported states are ``BasicStates.ZERO`` and ``BasicStates.PLUS``.
 
         Returns
         -------
         Circuit
+            Equivalent circuit with the required initialization gates prepended.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``target_state`` is not supported.
         """
-        new_circuit = Circuit(self.width, ancillas=self.ancillas)
-        instructions_prepend: list[Callable[[int], InstructionType]] = []
-        match self.ancilla_state:
+        new_circuit = Circuit(self.width, ancillas=self.ancillas, ancilla_state=target_state)
+        match target_state:
             case BasicStates.PLUS:
-                pass
-            case BasicStates.MINUS:
-                instructions_prepend.append(Instruction.Z)
+                initialization = transpile_to_plus(self.ancilla_state)
             case BasicStates.ZERO:
-                instructions_prepend.append(Instruction.H)
-            case BasicStates.ONE:
-                instructions_prepend.extend((Instruction.H, Instruction.X))
-            case BasicStates.PLUS_I:
-                instructions_prepend.append(Instruction.S)
-            case BasicStates.MINUS_I:
-                instructions_prepend.extend((Instruction.S, Instruction.Z))
+                initialization = transpile_to_zero(self.ancilla_state)
             case _:
                 raise NotImplementedError(
-                    f"Transpilation only supports `BasicStates` ancillas. Ancilla state is {self.ancilla_state}"
+                    f"Ancilla transpilation is only possible to |0> or |+> states. Attempted to transpile to {target_state}"
                 )
 
         for qubit in range(self.width, self.nqubit):
-            for instr in instructions_prepend:
+            for instr in initialization:
                 new_circuit.add(instr(qubit))
         new_circuit.instruction += self.instruction
         return new_circuit
@@ -1669,6 +1673,80 @@ def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWit
     for instr in instrs:
         assert instr.kind != InstructionKind.M
         yield instr
+
+
+def transpile_to_plus(ancilla_state: State) -> tuple[Callable[[int], InstructionType], ...]:
+    r"""Return instructions that transform an ancilla state to :math:`|+\rangle`.
+
+    Parameters
+    ----------
+    ancilla_state : State
+        Initial state of the ancilla.
+
+    Returns
+    -------
+    tuple[Callable[[int], InstructionType], ...]
+        Instructions that transform ``ancilla_state`` to :math:`|+\rangle`.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``ancilla_state`` is not a supported basic state.
+    """
+    match ancilla_state:
+        case BasicStates.PLUS:
+            return ()
+        case BasicStates.MINUS:
+            return (Instruction.Z,)
+        case BasicStates.ZERO:
+            return (Instruction.H,)
+        case BasicStates.ONE:
+            return (Instruction.H, Instruction.X)
+        case BasicStates.PLUS_I:
+            return (Instruction.S,)
+        case BasicStates.MINUS_I:
+            return (Instruction.S, Instruction.Z)
+        case _:
+            raise _unsupported_ancilla_state(ancilla_state)
+
+
+def transpile_to_zero(ancilla_state: State) -> tuple[Callable[[int], InstructionType], ...]:
+    r"""Return instructions that transform an ancilla state to :math:`|0\rangle`.
+
+    Parameters
+    ----------
+    ancilla_state : State
+        Initial state of the ancilla.
+
+    Returns
+    -------
+    tuple[Callable[[int], InstructionType], ...]
+        Instructions that transform ``ancilla_state`` to :math:`|0\rangle`.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``ancilla_state`` is not a supported basic state.
+    """
+    match ancilla_state:
+        case BasicStates.PLUS:
+            return (Instruction.H,)
+        case BasicStates.MINUS:
+            return (Instruction.H, Instruction.Z)
+        case BasicStates.ZERO:
+            return ()
+        case BasicStates.ONE:
+            return (Instruction.X,)
+        case BasicStates.PLUS_I:
+            return (Instruction.H, Instruction.S)
+        case BasicStates.MINUS_I:
+            return (Instruction.H, Instruction.S, Instruction.Z)
+        case _:
+            raise _unsupported_ancilla_state(ancilla_state)
+
+
+def _unsupported_ancilla_state(ancilla_state: State) -> NotImplementedError:
+    return NotImplementedError(f"Transpilation only supports `BasicStates` ancillas. Ancilla state is {ancilla_state}")
 
 
 @dataclass(frozen=True)
