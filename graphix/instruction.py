@@ -828,19 +828,19 @@ class CU(_KindChecker, BaseInstruction):
 class ControlledRotationInstruction(BaseInstruction):
     """Base class for rotation instructions."""
 
-    target: int
     control: int
+    target: int
     angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         angle = visitor.visit_angle(self.angle)
         if copy:
-            return type(self)(target, control, angle)
-        self.target = target
+            return type(self)(control, target, angle)
         self.control = control
+        self.target = target
         self.angle = angle
         return self
 
