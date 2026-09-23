@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 
 def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
-    check_circuit = circuit.transpile_to_qasm_gates()
+    check_circuit = circuit.transpile_to_qasm_gates().transpile_ancilla_state(BasicStates.ZERO)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
     for parsed_instr, instr in zip(parsed_circuit.instruction, check_circuit.instruction, strict=True):
@@ -127,14 +127,16 @@ def test_condinstr_to_qasm3() -> None:
             Instruction.M(2, Axis.Z),
             Instruction.CONDINSTR((Instruction.X(0),), {2}),
             Instruction.M(0, Axis.Z),
+            Instruction.M(3, Axis.X),
             Instruction.CONDINSTR(
                 (
                     Instruction.X(1),
                     Instruction.Z(1),
                 ),
-                {0, 2},
+                {0, 2, 3},
             ),
         ],
+        ancillas=1,
     )
     check_round_trip(circuit)
 

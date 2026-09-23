@@ -1034,7 +1034,7 @@ class Circuit(InplaceParameterizable):
             The rewritten circuit. Equal to ``self`` if ``copy`` is ``False``.
         """
         if copy:
-            result = Circuit(self.width)
+            result = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
             for instr in self.instruction:
                 result.instruction.append(instr.visit(visitor, copy=True))
             return result

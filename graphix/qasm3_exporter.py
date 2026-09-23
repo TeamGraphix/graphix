@@ -84,8 +84,8 @@ def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True, stacklev
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
     yield f"qubit[{circuit.nqubit}] q;"
-    if n_bits := len(tuple(filter(lambda instr: instr.kind == InstructionKind.M, circuit.instruction))):
-        yield f"bit[{n_bits}] b;"
+    if any(instr.kind == InstructionKind.M for instr in circuit.instruction):
+        yield f"bit[{circuit.nqubit}] b;"
     for instr in circuit.instruction:
         yield from instruction_to_qasm3(instr)
 
