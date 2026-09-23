@@ -1606,7 +1606,9 @@ class Pattern(InplaceParameterizable):
 
         Notes
         -----
-        This method returns a circuit with classical control flow, where Pauli corrections are represented as conditional instructions :class:`graphix.instruction.CONDINSTR` and :math:`N` commands as ancilla qubits.
+        This method returns a circuit with classical control flow, where Pauli corrections are represented
+        as conditional instructions :class:`graphix.instruction.CONDINSTR` and :math:`N` commands as ancilla
+        qubits.
 
         To extract a unitary circuit from a pattern, see :meth:`OpenGraph.to_circuit`.
         """
@@ -1636,9 +1638,9 @@ class Pattern(InplaceParameterizable):
                 case CommandKind.M:
                     qubit = node_idx.index(cmd.node)
                     if cmd.s_domain:
-                        circuit.cond_instr((Instruction.X(qubit),), {node_idx.index(node) for node in cmd.s_domain})
+                        circuit.condinstr((Instruction.X(qubit),), {node_idx.index(node) for node in cmd.s_domain})
                     if cmd.t_domain:
-                        circuit.cond_instr((Instruction.Z(qubit),), {node_idx.index(node) for node in cmd.t_domain})
+                        circuit.condinstr((Instruction.Z(qubit),), {node_idx.index(node) for node in cmd.t_domain})
 
                     meas = cmd.measurement.to_pauli_or_none()
                     if meas is not None and meas.sign == Sign.PLUS:
@@ -1662,18 +1664,18 @@ class Pattern(InplaceParameterizable):
                     qubit = node_idx.index(cmd.node)
                     domain = {node_idx.index(node) for node in cmd.domain}
                     if cmd.kind == CommandKind.X:
-                        circuit.cond_instr((Instruction.X(qubit),), domain)
+                        circuit.condinstr((Instruction.X(qubit),), domain)
                     else:
-                        circuit.cond_instr((Instruction.Z(qubit),), domain)
+                        circuit.condinstr((Instruction.Z(qubit),), domain)
                 case CommandKind.C:
-                    # TODO: May be worth to encapsulate
-                    # as a method of Clifford (.to_instruction)
                     qubit = node_idx.index(cmd.node)
                     match cmd.clifford:
                         case Clifford.X:
                             circuit.x(qubit)
                         case Clifford.Y:
                             circuit.y(qubit)
+                        case Clifford.SDG:
+                            circuit.sdg(qubit)
                         case _:
                             for clifford in cmd.clifford.hsz:
                                 match clifford:

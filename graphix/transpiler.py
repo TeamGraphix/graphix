@@ -272,7 +272,7 @@ class Circuit(InplaceParameterizable):
             case InstructionKind.GPHASE:
                 self.gphase(instr.angle)
             case InstructionKind.CONDINSTR:
-                self.cond_instr(instr.instructions, instr.domain)
+                self.condinstr(instr.instructions, instr.domain)
             case _:
                 assert_never(instr.kind)
 
@@ -806,6 +806,27 @@ class Circuit(InplaceParameterizable):
         """
         self.instruction.append(Instruction.GPHASE(angle).visit(self._visitor))
 
+    def condinstr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None) -> None:
+        """Apply a conditional sequence of gates.
+
+        Parameters
+        ----------
+        instrs : Iterable[InstructionTypeWithoutM]
+            Sequence of instructions to apply conditionally.
+        domain : AbstractSet[int] or None, optional
+            Indices of measured qubits whose outcomes determine the condition. Defaults to ``None``.
+
+        Notes
+        -----
+        .. The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
+
+        .. Condional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
+        """
+        domain_set = set(domain) if domain is not None else set()
+        self.instruction.append(
+            Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set).visit(self._visitor)
+        )
+
     def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
 
@@ -910,27 +931,6 @@ class Circuit(InplaceParameterizable):
         result.pattern.reorder_output_nodes(swap.swap_output_nodes(result.pattern.output_nodes))
         classical_outputs = swap.swap_classical_outputs(result.classical_outputs)
         return TranspiledPattern(result.pattern, classical_outputs)
-
-    def cond_instr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None) -> None:
-        """Apply a conditional sequence of gates.
-
-        Parameters
-        ----------
-        instrs : Iterable[InstructionType]
-            Sequence of instructions to apply conditionally.
-        domain : AbstractSet[int] or None, optional
-            Indices of measured qubits whose outcomes determine the condition. Defaults to ``None``.
-
-        Notes
-        -----
-        .. The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
-
-        .. Condional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
-        """
-        domain_set = set(domain) if domain is not None else set()
-        self.instruction.append(
-            Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set).visit(self._visitor)
-        )
 
     @overload
     def simulate(
@@ -1158,7 +1158,8 @@ class Circuit(InplaceParameterizable):
     def transpile_condinstr(self) -> Circuit:
         r"""Return an equivalent circuit without conditional instructions.
 
-        Conditional instructions are replaced by controlled instructions, using measurements of their domain qubits in the :math:`Z` basis as control
+        Conditional instructions are replaced by controlled instructions,
+        using measurements of their domain qubits in the :math:`Z` basis as control
         conditions. Measurements are moved to the end of the circuit.
 
         Returns
@@ -1167,7 +1168,10 @@ class Circuit(InplaceParameterizable):
 
         Notes
         -----
-        For each qubit that appears in the domain of a conditional instruction, its measurement is transpiled to a :math:`Z`-axis measurement. If the original measurement is in the :math:`X` or :math:`Y` basis, the corresponding basis rotation is inserted before the controlled instruction:
+        For each qubit that appears in the domain of a conditional instruction,
+        its measurement is transpiled to a :math:`Z`-axis measurement. If the original
+        measurement is in the :math:`X` or :math:`Y` basis, the corresponding basis rotation
+        is inserted before the controlled instruction:
             .. :math:`X`-axis measurements are preceded by a Hadamard gate.
 
             .. :math:`Y`-axis measurements are preceded by an :math:`R_X(\pi/2)` gate.
@@ -1175,6 +1179,9 @@ class Circuit(InplaceParameterizable):
         The domain qubits are chained using CNOT gates to implement the conditional instruction. The CNOT chain is then reversed to restore the state of the domain qubits.
 
         Non-conditional instructions are preserved unchanged.
+
+        All measurements are deferred to the end of the circuit, even if they do not appear in any
+        conditional instruction.
         """
         circuit = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
         measurements: dict[int, Instruction.M] = {}
@@ -1455,7 +1462,7 @@ def decompose_p(instr: Instruction.P) -> Iterator[Instruction.RZ | Instruction.G
 
 def insert_control(
     control: int,
-    instrs: Iterable[InstructionTypeWithoutM | Instruction.CONDINSTR],
+    instrs: Iterable[InstructionTypeWithoutM],
 ) -> Iterator[InstructionTypeWithControl | Instruction.CONDINSTR]:
     """Yield a controlled gate sequence from a gate sequence.
 
@@ -1538,10 +1545,6 @@ def insert_control(
             case InstructionKind.GPHASE:
                 yield Instruction.P(target=control, angle=instr.angle)
             case InstructionKind.CONDINSTR:
-                # If we wanted to keep the function fully lazy
-                # we could yield a sequence of conditional instructions
-                # with a single controlled-instruction each.
-                # Not sure what is best.
                 controlled_instr = insert_control(control, instr.instructions)
                 yield Instruction.CONDINSTR(tuple(controlled_instr), instr.domain)
             case _:
@@ -1662,6 +1665,7 @@ def normalize_angle(angle: ParameterizedAngle) -> ParameterizedAngle:
 
 
 def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWithoutM]:
+    """Narrow ``InstructionType`` to ``InstructionTypeWithoutM``."""
     for instr in instrs:
         assert instr.kind != InstructionKind.M
         yield instr
@@ -1960,7 +1964,7 @@ def simulate_instructions(
                 evolve(Ops.CSWAP, [instr.control, instr.targets[0], instr.targets[1]])
             case InstructionKind.M:
                 result = backend.measure(instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1)
-                # We keep `classical_outputs` for backwards compatibility
+                # We keep `classical_outputs` for backwards compatibility but ``results`` contains the same information
                 classical_outputs.append(result)
                 results[instr.target] = result
             case InstructionKind.GPHASE:

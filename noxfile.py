@@ -114,9 +114,7 @@ REVERSE_DEPENDENCIES = {
         doctest_modules=False,
         install_target=".[dev]",
     ),
-    "graphix-mqtbench": ReverseDependency(
-        "https://github.com/matulni/graphix-mqtbench", branch="new-circuit-api"
-    ),
+    "graphix-mqtbench": ReverseDependency("https://github.com/matulni/graphix-mqtbench", branch="new-circuit-api"),
 }
 
 

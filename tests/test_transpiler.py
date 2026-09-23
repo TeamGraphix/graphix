@@ -561,7 +561,7 @@ class TestCircuits:
         circuit = Circuit(3)
         circuit.m(0, Axis.Z)
         circuit.m(1, Axis.Z)
-        circuit.cond_instr((instruction.H(2), instruction.Z(2)), domain)
+        circuit.condinstr((instruction.H(2), instruction.Z(2)), domain)
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(
             rng=fx_rng,

@@ -1312,9 +1312,10 @@ class TestPattern:
         circuit_ref = rand_circuit(nqubits, depth, rng)
         pattern = circuit_ref.transpile().pattern
         circuit_test = pattern.to_circuit()
-        if circuit_test.nqubit > 12:
-            # Avoid too long tests
-            return
+
+        if circuit_test.nqubit > 20:
+            pytest.skip("Circuit has too many qubits to be simulated.")
+
         input_state = rand_state_vector(nqubits, rng=rng)
         state_ref = circuit_ref.simulate(input_state=input_state, rng=rng).state
         state_test = circuit_test.simulate(input_state=input_state, rng=rng).state
