@@ -1176,9 +1176,9 @@ class Circuit(InplaceParameterizable):
         its measurement is transpiled to a :math:`Z`-axis measurement. If the original
         measurement is in the :math:`X` or :math:`Y` basis, the corresponding basis rotation
         is inserted before the controlled instruction:
-            .. :math:`X`-axis measurements are preceded by a Hadamard gate.
+        .. :math:`X`-axis measurements are preceded by a Hadamard gate.
 
-            .. :math:`Y`-axis measurements are preceded by an :math:`R_X(\pi/2)` gate.
+        .. :math:`Y`-axis measurements are preceded by an :math:`R_X(\pi/2)` gate.
 
         The domain qubits are chained using CNOT gates to implement the conditional instruction. The CNOT chain is then reversed to restore the state of the domain qubits.
 
