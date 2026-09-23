@@ -225,7 +225,7 @@ class TestTranspilerUnitGates:
 
     def test_cnot_cz(self, fx_rng: Generator) -> None:
         """Test regression about output node reordering."""
-        circuit = Circuit(width=3, instr=[instruction.CNOT(0, 1), instruction.CZ((0, 1))])
+        circuit = Circuit(width=3, instr=[instruction.CNOT(0, 1), instruction.CZ(0, 1)])
         state = circuit.simulate(rng=fx_rng).state
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate(rng=fx_rng)

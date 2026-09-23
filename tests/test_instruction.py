@@ -33,7 +33,7 @@ class InstructionTestCase:
 INSTRUCTION_TEST_CASES: tuple[InstructionTestCase, ...] = (
     InstructionTestCase("CCX", lambda _rng: Instruction.CCX((0, 1), 2)),
     InstructionTestCase("RZZ", lambda rng: Instruction.RZZ(0, 1, rng.random() * 2 * ANGLE_PI)),
-    InstructionTestCase("CZ", lambda _rng: Instruction.CZ((0, 1))),
+    InstructionTestCase("CZ", lambda _rng: Instruction.CZ(0, 1)),
     InstructionTestCase("CNOT", lambda _rng: Instruction.CNOT(0, 1)),
     InstructionTestCase("SWAP", lambda _rng: Instruction.SWAP((0, 1))),
     InstructionTestCase("H", lambda _rng: Instruction.H(0)),

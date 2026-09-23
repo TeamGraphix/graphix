@@ -306,10 +306,8 @@ class CNOT(_KindChecker, ControlledSingleTargetInstruction):
     kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
 
 
-# CZ is not defined as a ControlledSingleTargetInstruction because of
-# the symmetry between the control and the target.
 @dataclass(repr=False)
-class CZ(_KindChecker, BaseInstruction):
+class CZ(_KindChecker, ControlledSingleTargetInstruction):
     r"""CZ circuit instruction.
 
     The CZ gate applies the matrix
@@ -325,25 +323,17 @@ class CZ(_KindChecker, BaseInstruction):
 
     in the computational basis. The basis states use big-endian
     ordering, with the most significant qubit first. The qubits are
-    numbered in the order ``targets[0]``, ``targets[1]``.
+    numbered in the order ``control``, ``target``.
 
     Attributes
     ----------
-    targets : tuple[int, int]
-        Index of the target qubits.
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
     """
 
-    targets: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.CZ]] = field(default=InstructionKind.CZ, init=False)
-
-    @override
-    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CZ:
-        u, v = self.targets
-        targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
-        if copy:
-            return CZ(targets)
-        self.targets = targets
-        return self
 
 
 @dataclass(repr=False)
