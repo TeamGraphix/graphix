@@ -19,3 +19,4 @@ Old API Ref (to be updated):
     source/random_objects
     source/open_graph
     source/optimization
+    source/flow_module

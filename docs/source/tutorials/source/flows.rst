@@ -1,3 +1,5 @@
+.. _flows-tutorial:
+
 Flows and determinism
 =====================
 

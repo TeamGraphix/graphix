@@ -27,6 +27,9 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
+    "jupyter_sphinx",
+    "sphinxcontrib.bibtex",
+    "matplotlib.sphinxext.plot_directive",
     # "sphinx_gallery.gen_gallery",
 ]
 
@@ -105,3 +108,9 @@ mathjax3_config = {
 latex_elements = {
     "preamble": r"\usepackage{braket}",
 }
+bibtex_bibfiles = ["references.bib"]   # path relative to conf.py
+bibtex_default_style = "alpha"
+
+plot_formats = ["svg"]               # HTML only: one sharp vector output
+plot_html_show_source_link = False   # hides the "Source code" link
+plot_html_show_formats = False       # hides the "png", "hires.png", "pdf" links

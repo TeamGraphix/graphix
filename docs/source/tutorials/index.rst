@@ -4,6 +4,9 @@ Tutorials
 *Overview of MBQC, we can borrow beginning of Sec. 2*
 
 .. toctree::
+    :maxdepth: 1
+
+    source/introduction
     source/graph_mbqc
     source/measurement_calculus
     source/transpilation
@@ -18,4 +21,4 @@ Tutorials
     :caption: Advanced Tutorials
 
     source/symbolic
-    source/type_safety
+    source/measurement_types
