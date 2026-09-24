@@ -31,6 +31,17 @@ jobs:
           enable-cache: true
           python-version: ${{ env.python-version }}
 
+      # Needed by the builder-inited hook in docs/source/conf.py,
+      # which compiles docs/source/tutorials/plots/circuits/*.tex to SVG.
+      - name: Install LaTeX tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-extra \
+            texlive-pictures \
+            texlive-science \
+            pdf2svg
+
       - name: Make docs
         run: uv run --extra dev --extra doc sphinx-build -W docs/source docs/build -j auto
 
