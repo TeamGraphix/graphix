@@ -173,9 +173,8 @@ class TestPauliExponentialDAG:
         )
 
         flow.check_well_formed()
-        assert flow.is_focused()
 
-        pexp_dag = PauliExponentialDAG.from_focused_flow(flow)
+        pexp_dag = PauliExponentialDAG.from_focusedflow(flow.to_focused())
 
         pexp_dag_ref = PauliExponentialDAG(
             pauli_exponentials={

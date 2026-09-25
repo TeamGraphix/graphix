@@ -599,35 +599,6 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
 
     _CF_PREFIX: str = "p"  # Correction function prefix for printing
 
-    @classmethod
-    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_AM_co]) -> Self | None:
-        """Initialize a ``PauliFlow`` object from a matrix encoding a correction function.
-
-        Parameters
-        ----------
-        correction_matrix : CorrectionMatrix[_AM_co]
-            Algebraic representation of the correction function.
-
-        Returns
-        -------
-        Self | None
-            A Pauli flow if it exists, ``None`` otherwise.
-
-        Notes
-        -----
-        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a Pauli flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
-
-        References
-        ----------
-        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
-        """
-        correction_function = correction_matrix.to_correction_function()
-        partial_order_layers = compute_partial_order_layers(correction_matrix)
-        if partial_order_layers is None:
-            return None
-
-        return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
-
     def to_xzcorrections(self) -> XZCorrections[_AM_co]:
         """Compute the X and Z corrections induced by the Pauli flow encoded in ``self``.
 
@@ -942,6 +913,96 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
                     return False
         return True
 
+    def to_focused(self) -> FocusedPauliFlow[_AM_co]:
+        """Return this Pauli flow as a focused Pauli flow, after verifying that it is focused.
+
+        Notes
+        -----
+        This method is overridden in subclasses:
+
+        - In :class:`FocusedPauliFlow`, the check is bypassed and
+          ``self`` is returned directly.
+
+        - In :class:`GFlow`: the return type is narrowed to
+          ``FocusedGFlow[_PM_co]``.
+
+        - In :class:`FocusedGFlow`, the check is bypassed and
+          ``self`` is returned directly.
+
+        Raises
+        ------
+        FlowGenericError
+            If the Pauli flow is not focused, with the reason ``NotFocused``.
+
+        Returns
+        -------
+        FocusedPauliFlow[_AM_co]
+            The Pauli flow, verified to be focused.
+        """
+        if not self.is_focused():
+            raise FlowGenericError(FlowGenericErrorReason.NotFocused)
+        return FocusedPauliFlow(self.og, self.correction_function, self.partial_order_layers)
+
+
+class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
+    """An immutable dataclass representing a focused Pauli flow.
+
+    A ``FocusedPauliFlow`` instance is a :class:`PauliFlow` that
+    satisfies the :meth:`PauliFlow.is_focused` predicate. Once a
+    ``FocusedPauliFlow`` instance has been obtained, this property
+    does not need to be checked again.
+
+    Instances of ``FocusedPauliFlow`` are obtained from instances of
+    :class:`PauliFlow` with the method ``to_focused``, which verifies
+    that the flow satisfies the :meth:`PauliFlow.is_focused`
+    predicate.  Direct construction of a ``FocusedPauliFlow`` instance
+    should be reserved for cases where the flow is known to be focused
+    by construction (typically, with the class method
+    ``from_correctionmatrix_or_none``).
+    """
+
+    @classmethod
+    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_AM_co]) -> Self | None:
+        """Initialize a ``PauliFlow`` object from a matrix encoding a correction function.
+
+        Parameters
+        ----------
+        correction_matrix : CorrectionMatrix[_AM_co]
+            Algebraic representation of the correction function.
+
+        Returns
+        -------
+        Self | None
+            A Pauli flow if it exists, ``None`` otherwise.
+
+        Notes
+        -----
+        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a Pauli flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
+
+        References
+        ----------
+        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        correction_function = correction_matrix.to_correction_function()
+        partial_order_layers = compute_partial_order_layers(correction_matrix)
+        if partial_order_layers is None:
+            return None
+
+        return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
+
+    def check_well_formed(self) -> None:
+        """Verify if the Pauli flow is well formed and focused.
+
+        See :meth:`PauliFlow.check_well_formed` and :meth:`PauliFlow.is_focused` for details.
+        """
+        super().check_well_formed()
+        if not self.is_focused():
+            raise FlowGenericError(FlowGenericErrorReason.NotFocused)
+
+    @override
+    def to_focused(self) -> FocusedPauliFlow[_AM_co]:
+        return self
+
     @cached_property
     def extraction_pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
         """Compute the extraction Pauli strings associated with each node in the correction function.
@@ -963,11 +1024,9 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         This property is cached; the dictionary is computed only once upon the first access and stored for subsequent calls.
         See notes in ``PauliString.from_measured_node`` for additional information.
         """
-        if not self.is_focused():
-            raise ValueError("Flow is not focused.")
         return {node: extraction_ps_from_corrected_node(self, node) for node in self.correction_function}
 
-    def extract_circuit(self: PauliFlow[Measurement], *, stacklevel: int = 1) -> ExtractionResult:
+    def extract_circuit(self: FocusedPauliFlow[Measurement], *, stacklevel: int = 1) -> ExtractionResult:
         """Extract a circuit from a flow.
 
         This routine assumes that the flow ``self`` is focused (see Notes).
@@ -996,8 +1055,8 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         """
         if self.og.output_cliffords:
             raise NotImplementedError("Circuit extraction is not supported for open graphs with Clifford decorations.")
-        pexp_dag = PauliExponentialDAG.from_focused_flow(self)
-        clifford_map = CliffordMap.from_focused_flow(self, stacklevel=stacklevel + 1)
+        pexp_dag = PauliExponentialDAG.from_focusedflow(self)
+        clifford_map = CliffordMap.from_focusedflow(self, stacklevel=stacklevel + 1)
 
         return ExtractionResult(pexp_dag=pexp_dag, clifford_map=clifford_map)
 
@@ -1018,31 +1077,6 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
     """
 
     _CF_PREFIX: str = "g"  # Correction function prefix for printing
-
-    @override
-    @classmethod
-    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> Self | None:
-        """Initialize a ``GFlow`` object from a matrix encoding a correction function.
-
-        Parameters
-        ----------
-        correction_matrix : CorrectionMatrix[_PM_co]
-            Algebraic representation of the correction function.
-
-        Returns
-        -------
-        Self | None
-            A gflow if it exists, ``None`` otherwise.
-
-        Notes
-        -----
-        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a generalised flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
-
-        References
-        ----------
-        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
-        """
-        return super().from_correctionmatrix_or_none(correction_matrix)
 
     @override
     def to_xzcorrections(self) -> XZCorrections[_PM_co]:
@@ -1181,6 +1215,52 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         """
         return self.og.measurements[node].to_plane()
 
+    @override
+    def to_focused(self) -> FocusedGFlow[_PM_co]:
+        """Return this gflow as a focused gflow, after verifying that it is focused.
+
+        Notes
+        -----
+        This method is overridden in the subclass
+        :class:`FocusedGFlow`: the check is bypassed and ``self`` is
+        returned directly.
+
+        Raises
+        ------
+        FlowGenericError
+            Raised if the gflow is not focused, with the reason ``NotFocused``.
+
+        Returns
+        -------
+        FocusedGFlow[_PM_co]
+            The gflow, verified to be focused.
+        """
+        if not self.is_focused():
+            raise FlowGenericError(FlowGenericErrorReason.NotFocused)
+        return FocusedGFlow(self.og, self.correction_function, self.partial_order_layers)
+
+
+class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
+    """An immutable dataclass representing a focused gflow.
+
+    A ``FocusedGFlow`` instance is a :class:`GFlow` that satisfies
+    the :meth:`PauliFlow.is_focused` predicate. Once a
+    ``FocusedGFlow`` instance has been obtained, this property does
+    not need to be checked again.
+
+    Instances of ``FocusedGFlow`` are obtained from instances of
+    :class:`GFlow` with the method ``to_focused``, which verifies that
+    the flow satisfies the :meth:`PauliFlow.is_focused` predicate.
+    Direct construction of a ``FocusedGFlow`` instance should be
+    reserved for cases where the flow is known to be focused by
+    construction (typically, with the class method
+    ``from_correctionmatrix_or_none``).
+    """
+
+    @override
+    def to_focused(self) -> FocusedGFlow[_PM_co]:
+        return self
+
 
 @dataclass(frozen=True)
 class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
@@ -1197,11 +1277,6 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     """
 
     _CF_PREFIX: str = "c"  # Correction function prefix for printing
-
-    @override
-    @classmethod
-    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> None:
-        raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
     def to_xzcorrections(self) -> XZCorrections[_PM_co]:
