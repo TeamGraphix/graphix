@@ -914,22 +914,30 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         return True
 
     def to_focused(self) -> FocusedPauliFlow[_AM_co]:
-        """Return the Pauli flow as a focused Pauli flow after verifying that it is focused.
+        """Return this Pauli flow as a focused Pauli flow, after verifying that it is focused.
 
         Notes
         -----
-        If ``self`` is already an instance of :class:`FocusedPauliFlow`,
-        the check is bypassed and ``self`` is returned.
+        This method is overridden in subclasses:
+
+        - In :class:`FocusedPauliFlow`, the check is bypassed and
+          ``self`` is returned directly.
+
+        - In :class:`GFlow`: the return type is narrowed to
+          ``FocusedGFlow[_PM_co]``.
+
+        - In :class:`FocusedGFlow`, the check is bypassed and
+          ``self`` is returned directly.
 
         Raises
         ------
         FlowGenericError
-            Raised if the Pauli flow is not focused, with the reason ``NotFocused``.
+            If the Pauli flow is not focused, with the reason ``NotFocused``.
 
         Returns
         -------
         FocusedPauliFlow[_AM_co]
-            The Pauli flow, checked to be focused.
+            The Pauli flow, verified to be focused.
         """
         if not self.is_focused():
             raise FlowGenericError(FlowGenericErrorReason.NotFocused)
@@ -1201,12 +1209,13 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
     @override
     def to_focused(self) -> FocusedGFlow[_PM_co]:
-        """Return the gflow as a focused gflow after verifying that it is focused.
+        """Return this gflow as a focused gflow, after verifying that it is focused.
 
         Notes
         -----
-        If ``self`` is already an instance of :class:`FocusedGFlow`,
-        the check is bypassed and ``self`` is returned.
+        This method is overridden in the subclass
+        :class:`FocusedGFlow`: the check is bypassed and ``self`` is
+        returned directly.
 
         Raises
         ------
@@ -1216,7 +1225,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         Returns
         -------
         FocusedGFlow[_PM_co]
-            The gflow, checked to be focused.
+            The gflow, verified to be focused.
         """
         if not self.is_focused():
             raise FlowGenericError(FlowGenericErrorReason.NotFocused)
