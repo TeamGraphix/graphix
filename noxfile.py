@@ -112,7 +112,7 @@ REVERSE_DEPENDENCIES = {
     "veriphix": ReverseDependency(
         "https://github.com/qat-inria/veriphix", doctest_modules=False, install_target=".[dev]"
     ),
-    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench"),
+    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/5/head"),
 }
 
 
