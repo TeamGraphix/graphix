@@ -947,10 +947,18 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
 class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
     """An immutable dataclass representing a focused Pauli flow.
 
-    An instance of ``FocusedPauliFlow`` is a :class:`PauliFlow` that
+    A ``FocusedPauliFlow`` instance is a :class:`PauliFlow` that
     satisfies the :meth:`PauliFlow.is_focused` predicate. Once a
     ``FocusedPauliFlow`` instance has been obtained, this property
     does not need to be checked again.
+
+    Instances of ``FocusedPauliFlow`` are obtained from instances of
+    :class:`PauliFlow` with the method ``to_focused``, which verifies
+    that the flow satisfies the :meth:`PauliFlow.is_focused`
+    predicate.  Direct construction of a ``FocusedPauliFlow`` instance
+    should be reserved for cases where the flow is known to be focused
+    by construction (typically, with the class method
+    ``from_correctionmatrix_or_none``).
     """
 
     @classmethod
@@ -1235,10 +1243,18 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
     """An immutable dataclass representing a focused gflow.
 
-    An instance of ``FocusedGFlow`` is a :class:`GFlow` that satisfies
+    A ``FocusedGFlow`` instance is a :class:`GFlow` that satisfies
     the :meth:`PauliFlow.is_focused` predicate. Once a
     ``FocusedGFlow`` instance has been obtained, this property does
     not need to be checked again.
+
+    Instances of ``FocusedGFlow`` are obtained from instances of
+    :class:`GFlow` with the method ``to_focused``, which verifies that
+    the flow satisfies the :meth:`PauliFlow.is_focused` predicate.
+    Direct construction of a ``FocusedGFlow`` instance should be
+    reserved for cases where the flow is known to be focused by
+    construction (typically, with the class method
+    ``from_correctionmatrix_or_none``).
     """
 
     @override
