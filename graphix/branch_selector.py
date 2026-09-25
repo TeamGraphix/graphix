@@ -87,8 +87,11 @@ class RandomBranchSelector(BranchSelector):
         if self.pr_calc:
             prob_0 = f_expectation0()
             return outcome(rng.random() > prob_0)
-        result: Outcome = rng.choice([0, 1])
-        return result
+
+        # Circumvent circular import
+        from graphix.random_objects import rand_outcome  # noqa: PLC0415
+
+        return rand_outcome(rng)
 
 
 _T = TypeVar("_T", bound=Mapping[int, Outcome])
@@ -131,7 +134,7 @@ class FixedBranchSelector(BranchSelector, Generic[_T]):
         if result is None:
             if self.default is None:
                 raise ValueError(f"Unexpected measurement of qubit {qubit}.")
-            return self.default.measure(qubit, f_expectation0)
+            return self.default.measure(qubit, f_expectation0, rng, stacklevel=stacklevel + 1)
         return result
 
 

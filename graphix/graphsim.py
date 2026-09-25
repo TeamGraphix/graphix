@@ -11,7 +11,7 @@ from graphix import utils
 from graphix.clifford import Clifford
 from graphix.measurements import outcome
 from graphix.ops import Ops
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevector
 
 if TYPE_CHECKING:
     import functools
@@ -491,11 +491,11 @@ class GraphState(Graph):
         g.add_edges_from(edges)
         nx.draw(g, labels=labels, node_color=colors, edgecolors="k")
 
-    def to_statevector(self) -> Statevec:
+    def to_statevector(self) -> Statevector:
         """Convert the graph state into a state vector."""
         node_list = list(self.nodes)
         nqubit = len(self.nodes)
-        gstate = Statevec(nqubit=nqubit)
+        gstate = Statevector(nqubit=nqubit)
         # map graph node indices into 0 - (nqubit-1) for qubit indexing in statevec
         imapping = {node_list[i]: i for i in range(nqubit)}
         mapping = [node_list[i] for i in range(nqubit)]

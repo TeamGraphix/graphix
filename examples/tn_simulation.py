@@ -78,14 +78,14 @@ pattern.shift_signals()
 # %%
 # Print some properties of the graph.
 
-graph = pattern.extract_graph()
+graph = pattern.to_opengraph().graph
 print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 
 # %%
 # Optimizing by removing Pauli measurements in the pattern.
 pattern.remove_input_nodes()
-pattern = pattern.infer_pauli_measurements()
+pattern.infer_pauli_measurements()
 pattern.remove_pauli_measurements(standardize=True)
 
 # %%
@@ -93,7 +93,7 @@ pattern.remove_pauli_measurements(standardize=True)
 # The graph_prep argument is optional,
 # but with 'parallel' the TensorNetworkBackend will prepeare the graph state faster.
 
-mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
+mbqc_tn = pattern.simulate(backend="tensornetwork", graph_prep="parallel")
 sv = mbqc_tn.to_statevector().flatten()
 print("Statevector after the simulation:", sv)
 
@@ -204,9 +204,9 @@ def cost(
     pattern.standardize()
     pattern.shift_signals()
     pattern.remove_input_nodes()
-    pattern = pattern.infer_pauli_measurements()
+    pattern.infer_pauli_measurements()
     pattern.remove_pauli_measurements(standardize=True)
-    mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
+    mbqc_tn = pattern.simulate(backend="tensornetwork", graph_prep="parallel")
     exp_val: float = 0
     for op in ham:
         exp_val += np.real(mbqc_tn.expectation_value(op, range(n), optimize=opt))
@@ -248,7 +248,7 @@ ansatz(circuit, n, res.x[: len(gamma)], res.x[len(gamma) :], iterations)
 pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
-mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
+mbqc_tn = pattern.simulate(backend="tensornetwork", graph_prep="parallel")
 
 # %%
 # Let's use the defined optimizer and find the most probable basis states.

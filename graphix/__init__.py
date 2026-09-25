@@ -20,7 +20,7 @@ from graphix.parameter import Placeholder
 from graphix.pattern import DrawPatternAnnotations, Pattern
 from graphix.pauli import Pauli
 from graphix.pretty_print import OutputFormat
-from graphix.sim import DensityMatrix, DensityMatrixBackend, Statevec, StatevectorBackend
+from graphix.sim import DensityMatrix, DensityMatrixBackend, Statevector, StatevectorBackend
 from graphix.space_minimization import SpaceMinimizationHeuristics
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
@@ -64,7 +64,7 @@ __all__ = [
     "Sign",
     "SpaceMinimizationHeuristics",
     "StandardizedPattern",
-    "Statevec",
+    "Statevector",
     "StatevectorBackend",
     "XZCorrections",
     "__version__",

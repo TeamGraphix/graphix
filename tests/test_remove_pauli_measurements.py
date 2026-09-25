@@ -20,6 +20,7 @@ from graphix import (
     Sign,
     StandardizedPattern,
 )
+from graphix.command import M, N
 from graphix.random_objects import rand_circuit, rand_state_vector
 from graphix.remove_pauli_measurements import PauliPushingCut, _RemovePauliMeasurements, remove_pauli_measurements
 
@@ -76,11 +77,11 @@ def test_local_complement(fx_rng: Generator, measured_set: AbstractSet[int]) -> 
     og = opengraph_lemma_2_31({node: Measurement.XY(0.25) for node in measured_set})
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     remove_pauli_measurements = _RemovePauliMeasurements(cut)
     remove_pauli_measurements.local_complement(0)
-    standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
-    og2 = standardized_pattern2.extract_opengraph()
+    standardized_pattern2 = remove_pauli_measurements.to_standardizedpattern()
+    og2 = standardized_pattern2.to_opengraph()
     expected_graph: Graph = nx.Graph(
         [
             (0, 1),
@@ -91,7 +92,7 @@ def test_local_complement(fx_rng: Generator, measured_set: AbstractSet[int]) -> 
     )
     assert nx.utils.graphs_equal(og2.graph, expected_graph)
     pattern2 = standardized_pattern2.to_pattern()
-    assert pattern2.extract_gflow()
+    assert pattern2.to_gflow()
     check_pattern_equivalence(pattern, pattern2, rng=fx_rng)
 
 
@@ -100,11 +101,11 @@ def test_pivot_edge(fx_rng: Generator, measured_set: AbstractSet[int]) -> None:
     og = opengraph_lemma_2_32({node: Measurement.XY(0.25) for node in measured_set})
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     remove_pauli_measurements = _RemovePauliMeasurements(cut)
     remove_pauli_measurements.pivot_edge(0, 1)
-    standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
-    og2 = standardized_pattern2.extract_opengraph()
+    standardized_pattern2 = remove_pauli_measurements.to_standardizedpattern()
+    og2 = standardized_pattern2.to_opengraph()
     expected_graph: Graph = nx.Graph(
         [
             (0, 1),
@@ -127,7 +128,7 @@ def test_pivot_edge(fx_rng: Generator, measured_set: AbstractSet[int]) -> None:
     assert nx.utils.graphs_equal(og2.graph, expected_graph)
     assert og2.output_nodes == tuple(0 if node == 1 else 1 if node == 0 else node for node in og.output_nodes)
     pattern2 = standardized_pattern2.to_pattern()
-    assert pattern2.extract_gflow()
+    assert pattern2.to_gflow()
     check_pattern_equivalence(pattern, pattern2, rng=fx_rng)
 
 
@@ -137,10 +138,10 @@ def test_remove_z(fx_rng: Generator, node: Node, sign: Sign) -> None:
     og = opengraph_lemma_2_32({node: PauliMeasurement(Axis.Z, sign)})
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     remove_pauli_measurements = _RemovePauliMeasurements(cut)
     remove_pauli_measurements.remove_z(node, sign)
-    standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
+    standardized_pattern2 = remove_pauli_measurements.to_standardizedpattern()
     pattern2 = standardized_pattern2.to_pattern()
     check_pattern_equivalence(pattern, pattern2, rng=fx_rng)
 
@@ -151,10 +152,10 @@ def test_remove_y(fx_rng: Generator, node: Node, sign: Sign) -> None:
     og = opengraph_lemma_2_32({node: PauliMeasurement(Axis.Y, sign)})
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     remove_pauli_measurements = _RemovePauliMeasurements(cut)
     remove_pauli_measurements.remove_y(node, sign)
-    standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
+    standardized_pattern2 = remove_pauli_measurements.to_standardizedpattern()
     pattern2 = standardized_pattern2.to_pattern()
     check_pattern_equivalence(pattern, pattern2, rng=fx_rng)
 
@@ -164,10 +165,10 @@ def test_remove_x_with_internal_neighbor(fx_rng: Generator, sign: Sign) -> None:
     og = opengraph_lemma_2_32({0: PauliMeasurement(Axis.X, sign)})
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     remove_pauli_measurements = _RemovePauliMeasurements(cut)
     remove_pauli_measurements.remove_x_with_internal_neighbor(0, 1, sign)
-    standardized_pattern2 = remove_pauli_measurements.to_standardized_pattern()
+    standardized_pattern2 = remove_pauli_measurements.to_standardizedpattern()
     pattern2 = standardized_pattern2.to_pattern()
     check_pattern_equivalence(pattern, pattern2, rng=fx_rng)
 
@@ -181,14 +182,15 @@ def all_bloch_measurement_or_input_node(input_nodes: Iterable[Node], measurement
 
 
 def check_pattern(pattern: Pattern, rng: Generator) -> None:
+    pattern.infer_pauli_measurements()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     standardized_pattern2 = remove_pauli_measurements(cut)
 
     assert all_bloch_measurement_or_input_node(standardized_pattern2.input_nodes, standardized_pattern2.m_list)
 
     # Check that the pattern has a gflow
-    standardized_pattern2.extract_xzcorrections().to_bloch().to_gflow()
+    standardized_pattern2.to_xzcorrections().to_bloch().to_gflow()
 
     pattern2 = standardized_pattern2.to_pattern()
     check_pattern_equivalence(pattern, pattern2, rng=rng)
@@ -199,8 +201,8 @@ def check_pattern_equivalence(pattern: Pattern, pattern2: Pattern, rng: Generato
     pattern2.minimize_space()
     for _ in range(4):
         input_state = rand_state_vector(len(pattern.input_nodes), rng=rng)
-        state = pattern.simulate_pattern(input_state=input_state, rng=rng)
-        state2 = pattern2.simulate_pattern(input_state=input_state, rng=rng)
+        state = pattern.simulate(input_state=input_state, rng=rng)
+        state2 = pattern2.simulate(input_state=input_state, rng=rng)
         assert state.isclose(state2)
 
 
@@ -225,7 +227,7 @@ def test_step_4() -> None:
     og = OpenGraph(graph, input_nodes=(0,), output_nodes=(2,), measurements=measurements)
     pattern = og.to_pattern()
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     standardized_pattern2 = remove_pauli_measurements(cut)
     assert len(standardized_pattern2.m_list) == 1
 
@@ -238,7 +240,7 @@ def test_step_4_no_flow() -> None:
     # in the `try_pivot_x_with_output_node` method.
     pattern = Pattern(input_nodes=(0,), output_nodes=(0,), cmds=[Command.N(1), Command.E((0, 1)), Command.M(1)])
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     standardized_pattern2 = remove_pauli_measurements(cut)
     assert len(standardized_pattern2.m_list) == 1
 
@@ -257,7 +259,7 @@ def test_pattern_remove_pauli_measurements() -> None:
     circuit = Circuit(2)
     circuit.cnot(0, 1)
     pattern = circuit.transpile().pattern
-    pattern = pattern.infer_pauli_measurements()
+    pattern.infer_pauli_measurements()
     pattern2 = pattern.remove_pauli_measurements(copy=True)
     assert all_bloch_measurement_or_input_node(
         pattern2.input_nodes, (cmd for cmd in pattern2 if isinstance(cmd, Command.M))
@@ -288,7 +290,7 @@ def test_pattern_remove_pauli_measurements_output_nodes() -> None:
     )
     pattern = og.to_pattern()
     pattern.remove_pauli_measurements()
-    pattern.simulate_pattern()
+    pattern.simulate()
 
 
 def test_try_pivot_x_with_output_node_after_pivot() -> None:
@@ -318,7 +320,7 @@ def test_try_pivot_x_with_output_node_after_pivot() -> None:
         ]
     )
     standardized_pattern = StandardizedPattern.from_pattern(pattern)
-    cut = PauliPushingCut.from_standardized_pattern(standardized_pattern)
+    cut = PauliPushingCut.from_standardizedpattern(standardized_pattern)
     process = _RemovePauliMeasurements(cut)
     process.remove_x_with_internal_neighbor(0, 1, Sign.PLUS)
     # Fail if pivot is applied to the original node
@@ -330,3 +332,12 @@ def test_isolated_nodes_non_pauli() -> None:
     with pytest.warns(UserWarning, match="Non-Pauli measurement on an isolated node was removed."):
         pattern.remove_pauli_measurements()
     assert list(pattern) == []
+
+
+@pytest.mark.parametrize("copy", [True, False])
+def test_n_nodes(copy: bool) -> None:
+    pattern = Pattern(cmds=[N(0), M(0)])
+
+    p = pattern.remove_pauli_measurements(copy=copy)
+
+    assert len(p.to_opengraph().graph) == p.n_node

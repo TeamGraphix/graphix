@@ -9,38 +9,7 @@ Pattern Generation
 .. currentmodule:: graphix.transpiler
 
 .. autoclass:: Circuit
-
-    .. automethod:: __init__
-
-    .. automethod:: transpile
-
-    .. automethod:: simulate_statevector
-
-    .. automethod:: cz
-
-    .. automethod:: cnot
-
-    .. automethod:: h
-
-    .. automethod:: s
-
-    .. automethod:: x
-
-    .. automethod:: y
-
-    .. automethod:: z
-
-    .. automethod:: rx
-
-    .. automethod:: ry
-
-    .. automethod:: rz
-
-    .. automethod:: j
-
-    .. automethod:: ccx
-
-    .. automethod:: m
+    :members:
 
 .. autoclass:: TranspiledPattern
 

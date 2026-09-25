@@ -6,7 +6,7 @@ import dataclasses
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypedDict, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -338,14 +338,14 @@ class DenseState(ABC):
     This includes both state vectors (for pure states) and density matrices (for
     mixed states).
 
-    This class serves as a common parent for :class:`Statevec` and :class:`DensityMatrix`, which
+    This class serves as a common parent for :class:`Statevector` and :class:`DensityMatrix`, which
     implement the concrete representations of dense quantum states. It is used in
     simulation backends that operate using standard linear algebra on the full
-    state, such as :class:`StatevecBackend` and :class:`DensityMatrixBackend`.
+    state, such as :class:`StatevectorBackend` and :class:`DensityMatrixBackend`.
 
     See Also
     --------
-    :class:`Statevec`, :class:`DensityMatrix`
+    :class:`Statevector`, :class:`DensityMatrix`
 
     Notes
     -----
@@ -368,15 +368,14 @@ class DenseState(ABC):
 
     @abstractmethod
     def add_nodes(self, nqubit: int, data: Data) -> None:
-        """
-        Add nodes (qubits) to the state and initialize them in a specified state.
+        """Add nodes (qubits) to the state and initialize them in a specified state.
 
         Parameters
         ----------
         nqubit : int
             The number of qubits to add to the state.
 
-        data : Data, optional
+        data : Data
             The state in which to initialize the newly added nodes. The supported forms
             of state specification depend on the backend implementation.
 
@@ -384,67 +383,94 @@ class DenseState(ABC):
         """
 
     @abstractmethod
-    def entangle(self, edge: tuple[int, int]) -> None:
-        """Connect graph nodes.
+    def entangle(self, qubits: tuple[int, int]) -> None:
+        """Apply a CZ gate on two qubits.
 
         Parameters
         ----------
-        edge : tuple of int
-            (control, target) qubit indices
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
 
     @abstractmethod
-    def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
-        """Apply a multi-qubit operation.
+    def evolve(self, op: Matrix, qubits: Sequence[int]) -> None:
+        """Apply a multi-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2^n*2^n matrix
-        qargs : list of int
-            target qubits' indices
+        op : Matrix
+            Matrix of shape :math:`(2^n, 2^n)` representing
+            the operator to apply.
+        qubits : Sequence[int]
+            Target qubit indices.
         """
 
     @abstractmethod
-    def evolve_single(self, op: Matrix, i: int) -> None:
+    def evolve_single(self, op: Matrix, qubit: int) -> None:
         """Apply a single-qubit operation.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 matrix
-        i : int
-            qubit index
+        op : Matrix
+            Matrix of shape :math:`(2, 2)` representing
+            the operator to apply.
+        qubit : int
+            Target qubit index.
         """
 
     @abstractmethod
-    def expectation_single(self, op: Matrix, loc: int) -> complex:
-        """Return the expectation value of single-qubit operator.
+    def expectation_single(self, op: Matrix, qubit: int) -> complex:
+        """Return the expectation value of a single-qubit operator.
 
         Parameters
         ----------
-        op : numpy.ndarray
-            2*2 operator
-        loc : int
-            target qubit index
+        op : Matrix
+            Matrix of shape :math:`(2, 2)` representing
+            the operator to measure.
+        qubit : int
+            Target qubit index.
 
         Returns
         -------
-        complex : expectation value.
+        complex
+            Expectation value.
+
         """
 
     @abstractmethod
-    def remove_qubit(self, qarg: int) -> None:
-        """Remove a separable qubit from the system."""
-
-    @abstractmethod
-    def swap(self, qubits: tuple[int, int]) -> None:
-        """Swap qubits.
+    def remove_qubit(self, qubit: int) -> None:
+        """Remove a separable qubit from the system.
 
         Parameters
         ----------
-        qubits : tuple of int
-            (control, target) qubit indices
+        qubit : int
+            Target qubit index.
+        """
+
+    def project_qubit(self, op: Matrix, qubit: int) -> None:
+        r"""Project out a qubit from the system and assemble the statevector of the remaining qubits.
+
+        This method combines :meth:`evolve_single` and :meth:`remove_qubit`. It evolves the statevector with ``op`` and removes ``qubit``. It assumes that after the application of ``op``, ``qubit`` is a separable qubit.
+
+        Parameters
+        ----------
+        op : npt.NDArray[np.complex128]
+            Complex-valued matrix of shape :math:`(2, 2)` representing
+            the projector to apply.
+        qubit : int
+            Target qubit index.
+        """
+        self.evolve_single(op, qubit)
+        self.remove_qubit(qubit)
+
+    @abstractmethod
+    def swap(self, qubits: tuple[int, int]) -> None:
+        """Apply SWAP gate between two qubits.
+
+        Parameters
+        ----------
+        qubits : tuple[int, int]
+            (control, target) qubit indices.
         """
 
     @abstractmethod
@@ -536,18 +562,18 @@ class Backend(Generic[_StateT_co]):
     - Tracking and exposing the underlying quantum state
 
     Examples of concrete subclasses include:
-    - `StatevecBackend` (pure states via state vectors)
+    - `StatevectorBackend` (pure states via state vectors)
     - `DensityMatrixBackend` (mixed states via density matrices)
     - `TensorNetworkBackend` (compressed states via tensor networks)
 
     Parameters
     ----------
     state : BackendState
-        internal state of the backend: instance of :class:`Statevec`, :class:`DensityMatrix`, or :class:`MBQCTensorNet`.
+        internal state of the backend: instance of :class:`Statevector`, :class:`DensityMatrix`, or :class:`MBQCTensorNet`.
 
     See Also
     --------
-    :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
+    :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevectorBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
 
     Notes
     -----
@@ -556,18 +582,18 @@ class Backend(Generic[_StateT_co]):
     The class hierarchy of states mirrors the class hierarchy of backends:
     - `DenseStateBackend` and `TensorNetworkBackend` are subclasses of `Backend`,
       and `DenseState` and `MBQCTensorNet` are subclasses of `BackendState`.
-    - `StatevecBackend` and `DensityMatrixBackend` are subclasses of `DenseStateBackend`,
-      and `Statevec` and `DensityMatrix` are subclasses of `DenseState`.
+    - `StatevectorBackend` and `DensityMatrixBackend` are subclasses of `DenseStateBackend`,
+      and `Statevector` and `DensityMatrix` are subclasses of `DenseState`.
 
     The type variable `_StateT_co` specifies the type of the ``state`` field, so that subclasses
     provide a precise type for this field:
-    - `StatevecBackend` is a subtype of ``Backend[Statevec]``.
+    - `StatevectorBackend` is a subtype of ``Backend[Statevector]``.
     - `DensityMatrixBackend` is a subtype of ``Backend[DensityMatrix]``.
     - `TensorNetworkBackend` is a subtype of ``Backend[MBQCTensorNet]``.
 
     The type variables `_StateT_co` and `_DenseStateT_co` are declared as covariant.
     That is, ``Backend[T1]`` is a subtype of ``Backend[T2]`` if ``T1`` is a subtype of ``T2``.
-    This means that `StatevecBackend`, `DensityMatrixBackend`, and `TensorNetworkBackend` are
+    This means that `StatevectorBackend`, `DensityMatrixBackend`, and `TensorNetworkBackend` are
     all subtypes of ``Backend[BackendState]``.
     This covariance is sound because backends are frozen dataclasses; thus, the type of
     ``state`` cannot be changed after instantiation.
@@ -621,13 +647,13 @@ class Backend(Generic[_StateT_co]):
 
             Some backends support other forms of state specification.
 
-            - ``StatevecBackend`` supports arbitrary state vectors:
+            - ``StatevectorBackend`` supports arbitrary state vectors:
                 - A single-qubit state vector will be broadcast to all nodes.
                 - A multi-qubit state vector of dimension :math:`2^n`, where :math:`n = \mathrm{len}(nodes)`,
                   initializes the new nodes jointly.
 
             - ``DensityMatrixBackend`` supports both state vectors and density matrices:
-                - State vectors are handled as in ``StatevecBackend``, and converted to
+                - State vectors are handled as in ``StatevectorBackend``, and converted to
                   density matrices.
                 - A density matrix must have shape :math:`2^n \times 2^n`, where :math:`n = \mathrm{len}(nodes)`,
                   and is used to jointly initialize the new nodes.
@@ -702,6 +728,14 @@ class Backend(Generic[_StateT_co]):
 _DenseStateT_co = TypeVar("_DenseStateT_co", bound="DenseState", covariant=True)
 
 
+class DenseStateBackendKwargs(TypedDict, total=False):
+    """Keyword arguments for initializing a `DenseStateBackend`."""
+
+    node_index: NodeIndex
+    branch_selector: BranchSelector
+    symbolic: bool
+
+
 @dataclass(frozen=True)
 class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     """
@@ -710,7 +744,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     This class defines common functionality for backends that store the entire quantum
     state as a dense array—either as a state vector (pure state) or a density matrix
     (mixed state)—and perform quantum operations using standard linear algebra. It is
-    designed to be the shared base class of `StatevecBackend` and `DensityMatrixBackend`.
+    designed to be the shared base class of `StatevectorBackend` and `DensityMatrixBackend`.
 
     In contrast to :class:`TensorNetworkBackend`, which uses structured and compressed
     representations (e.g., matrix product states) to scale to larger systems,
@@ -729,11 +763,14 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     symbolic : bool, optional
         If True, support arbitrary objects (typically, symbolic expressions) in matrices.
 
+    All parameters are key-word only.
+
     See Also
     --------
-    :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
+    :class:`StatevectorBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
     """
 
+    _: dataclasses.KW_ONLY
     node_index: NodeIndex = dataclasses.field(default_factory=NodeIndex)
     branch_selector: BranchSelector = dataclasses.field(default_factory=RandomBranchSelector)
     symbolic: bool = False
@@ -776,13 +813,23 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     def measure(
         self, node: int, measurement: Measurement, rng: Generator | None = None, *, stacklevel: int = 1
     ) -> Outcome:
-        """Perform measurement of a node and trace out the qubit.
+        """Measure a node and trace out the corresponding qubit.
 
         Parameters
         ----------
-        node: int
-        measurement: Measurement
-        rng: Generator, optional
+        node : int
+            Index of the node to measure.
+        measurement : Measurement
+            Measurement specification defining the measurement plane and angle.
+        rng : Generator, optional
+            Random number generator used for probabilistic outcome sampling.
+        stacklevel : int, default=1
+            Stack level passed to the branch selector for warning reporting.
+
+        Returns
+        -------
+        Outcome
+            Measurement outcome.
         """
         loc = self.node_index.index(node)
         bloch = measurement.to_bloch()
@@ -804,9 +851,8 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
 
         outcome = self.branch_selector.measure(node, f_expectation0, rng, stacklevel=stacklevel + 1)
         op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=self.symbolic) if outcome else compute_op_mat0()
-        self.state.evolve_single(op_mat, loc)
+        self.state.project_qubit(op_mat, loc)
         self.node_index.remove(node)
-        self.state.remove_qubit(loc)
         return outcome
 
     @override
@@ -830,7 +876,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     def apply_single(self, node: int, op: Matrix) -> None:
         """Apply a single gate to the state."""
         index = self.node_index.index(node)
-        self.state.evolve_single(op=op, i=index)
+        self.state.evolve_single(op=op, qubit=index)
 
     @override
     def apply_clifford(self, node: int, clifford: Clifford) -> None:

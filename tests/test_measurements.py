@@ -17,10 +17,10 @@ class TestMeasurement:
         assert m1.isclose(m2, abs_tol=0.1)
 
 
-@pytest.mark.parametrize("pauli", PauliMeasurement)
+@pytest.mark.parametrize("pauli", tuple(PauliMeasurement))
 def test_pauli_to_bloch(pauli: PauliMeasurement) -> None:
     bloch = pauli.to_bloch()
-    pauli_back = bloch.try_to_pauli()
+    pauli_back = bloch.to_pauli_or_none()
     assert pauli == pauli_back
 
 

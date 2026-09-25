@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import fields
+from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -239,12 +239,17 @@ def generate_pauli_flow_1() -> PauliFlow[Measurement]:
     )
 
 
-class XZCorrectionsTestCase(NamedTuple):
+@dataclass(frozen=True)
+class XZCorrectionsTestCase:
     flow: CausalFlow[AbstractPlanarMeasurement] | GFlow[AbstractPlanarMeasurement] | PauliFlow[AbstractMeasurement]
     x_corr: Mapping[int, set[int]]
     z_corr: Mapping[int, set[int]]
-    pattern: Pattern | None
-    # Patterns can only be extracted from `Measurement`-type objects. If `flow` is of parametric type, we set `pattern = None`.
+
+
+@dataclass(frozen=True)
+class PatternTestCase(XZCorrectionsTestCase):
+    flow: CausalFlow[BlochMeasurement] | GFlow[BlochMeasurement] | PauliFlow[Measurement]
+    pattern: Pattern
 
 
 def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
@@ -253,9 +258,9 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
     test_cases.extend(
         (
             XZCorrectionsTestCase(
-                flow=generate_causal_flow_0(), x_corr={0: {1}, 1: {2}, 2: {3}}, z_corr={0: {2}, 1: {3}}, pattern=None
+                flow=generate_causal_flow_0(), x_corr={0: {1}, 1: {2}, 2: {3}}, z_corr={0: {2}, 1: {3}}
             ),
-            XZCorrectionsTestCase(
+            PatternTestCase(
                 flow=generate_causal_flow_1(),
                 x_corr={0: {2}, 1: {3}, 2: {4}, 3: {5}},
                 z_corr={0: {3, 4}, 1: {2, 5}},
@@ -287,7 +292,7 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                     output_nodes=[4, 5],
                 ),
             ),
-            XZCorrectionsTestCase(
+            PatternTestCase(
                 flow=generate_gflow_0(),
                 x_corr={0: {2, 5}, 1: {3, 4}, 2: {4}, 3: {5}},
                 z_corr={0: {4}, 1: {5}},
@@ -323,18 +328,14 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                 flow=generate_gflow_1(),
                 x_corr={0: {3}, 2: {3, 4}},
                 z_corr={1: {4}, 2: {1, 4}},
-                pattern=None,
             ),
-            XZCorrectionsTestCase(
-                flow=generate_gflow_2(), x_corr={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}}, z_corr={}, pattern=None
-            ),
+            XZCorrectionsTestCase(flow=generate_gflow_2(), x_corr={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}}, z_corr={}),
             XZCorrectionsTestCase(
                 flow=generate_pauli_flow_0(),
                 x_corr={0: {3}, 2: {3}},
                 z_corr={1: {3}},
-                pattern=None,
             ),
-            XZCorrectionsTestCase(
+            PatternTestCase(
                 flow=generate_pauli_flow_1(),
                 x_corr={0: {7}, 1: {3}, 2: {7}, 3: {6, 7}, 4: {6}, 5: {7}},
                 z_corr={0: {7}, 1: {6}, 2: {6}, 3: {7}},
@@ -392,26 +393,26 @@ class TestFlowPatternConversion:
     """
 
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
-    def test_flow_to_corrections(self, test_case: XZCorrectionsTestCase) -> None:
+    def test_flow_to_xzcorrections(self, test_case: XZCorrectionsTestCase) -> None:
         flow = test_case.flow
         flow.check_well_formed()
-        corrections = flow.to_corrections()
+        corrections = flow.to_xzcorrections()
         corrections.check_well_formed()
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
 
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
-        if test_case.pattern is not None:
-            pattern = test_case.flow.to_corrections().to_pattern()  # type: ignore[misc]
+        if isinstance(test_case, PatternTestCase):
+            pattern = test_case.flow.to_xzcorrections().to_pattern()
             n_shots = 2
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
                 alpha = 2 * ANGLE_PI * fx_rng.random()
-                state_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
+                state_ref = test_case.pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
 
                 for _ in range(n_shots):
-                    state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha), rng=fx_rng)
+                    state = pattern.simulate(input_state=PlanarState(plane, alpha), rng=fx_rng)
                     assert state.isclose(state_ref)
 
 
@@ -428,7 +429,7 @@ class TestFlow:
             output_nodes=[1],
             measurements={0: Measurement.XY(alpha)},
         )
-        flow = og.extract_pauli_flow()
+        flow = og.to_pauliflow()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1)]),
@@ -436,9 +437,9 @@ class TestFlow:
             output_nodes=[1],
             measurements={0: Measurement.XY(value)},
         )
-        flow_ref = og_ref.extract_pauli_flow()
+        flow_ref = og_ref.to_pauliflow()
 
-        flow_test = flow.subs(alpha, value)
+        flow_test = flow.with_parameter(alpha, value)
 
         assert not flow.og.isclose(flow_test.og)
         assert flow_ref.og.isclose(flow_test.og)
@@ -456,7 +457,7 @@ class TestFlow:
             output_nodes=[2],
             measurements={node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)},
         )
-        flow = og.extract_pauli_flow()
+        flow = og.to_pauliflow()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2)]),
@@ -464,7 +465,7 @@ class TestFlow:
             output_nodes=[2],
             measurements={node: Measurement.XY(value) for node in range(2)},
         )
-        flow_ref = og_ref.extract_pauli_flow()
+        flow_ref = og_ref.to_pauliflow()
 
         flow_test = flow.xreplace(dict.fromkeys(parametric_angles, value))
 
@@ -523,7 +524,7 @@ class TestXZCorrections:
 
     # See `:func: generate_causal_flow_0`
     def test_order_0(self) -> None:
-        corrections = generate_causal_flow_0().to_corrections()
+        corrections = generate_causal_flow_0().to_xzcorrections()
 
         assert corrections.generate_total_measurement_order() == [0, 1, 2]
         assert corrections.is_compatible([0, 1, 2])  # Correct order
@@ -531,7 +532,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([1, 2])  # Incomplete order
         assert not corrections.is_compatible([0, 1, 2, 3])  # Contains outputs
 
-        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2), (1, 2), (2, 3), (1, 3)]))
+        assert nx.utils.graphs_equal(corrections.to_dag(), nx.DiGraph([(0, 1), (0, 2), (1, 2), (2, 3), (1, 3)]))
 
     # See `:func: generate_causal_flow_1`
     def test_order_1(self) -> None:
@@ -557,7 +558,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([0, 1, 2, 3, 4, 5])  # Contains outputs
 
         assert nx.utils.graphs_equal(
-            corrections.extract_dag(), nx.DiGraph([(0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 5), (2, 4), (3, 5)])
+            corrections.to_dag(), nx.DiGraph([(0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 5), (2, 4), (3, 5)])
         )
 
     # Incomplete corrections
@@ -580,7 +581,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([0, 0, 1])  # Duplicates
         assert not corrections.is_compatible([1, 0, 2, 3])  # Contains outputs
 
-        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(1, 0)]))
+        assert nx.utils.graphs_equal(corrections.to_dag(), nx.DiGraph([(1, 0)]))
 
     # OG without outputs
     def test_order_3(self) -> None:
@@ -601,7 +602,7 @@ class TestXZCorrections:
         assert not corrections.is_compatible([2, 0, 1])  # Wrong order
         assert not corrections.is_compatible([0, 1])  # Incomplete order
         assert corrections.generate_total_measurement_order() in ([0, 1, 2], [0, 2, 1])
-        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2)]))
+        assert nx.utils.graphs_equal(corrections.to_dag(), nx.DiGraph([(0, 1), (0, 2)]))
 
     # Only output nodes
     def test_from_measured_nodes_mapping_0(self) -> None:
@@ -743,7 +744,7 @@ class TestXZCorrections:
             output_nodes=[1],
             measurements={0: Measurement.XY(alpha)},
         )
-        xzcorr = og.extract_causal_flow().to_corrections()
+        xzcorr = og.to_causalflow().to_xzcorrections()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1)]),
@@ -751,9 +752,9 @@ class TestXZCorrections:
             output_nodes=[1],
             measurements={0: Measurement.XY(value)},
         )
-        xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
+        xzcorr_ref = og_ref.to_causalflow().to_xzcorrections()
 
-        xzcorr_test = xzcorr.subs(alpha, value)
+        xzcorr_test = xzcorr.with_parameter(alpha, value)
 
         assert not xzcorr.og.isclose(xzcorr_test.og)
         assert xzcorr_ref.og.isclose(xzcorr_test.og)
@@ -772,7 +773,7 @@ class TestXZCorrections:
             output_nodes=[2],
             measurements={node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)},
         )
-        xzcorr = og.extract_causal_flow().to_corrections()
+        xzcorr = og.to_causalflow().to_xzcorrections()
 
         og_ref = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2)]),
@@ -780,7 +781,7 @@ class TestXZCorrections:
             output_nodes=[2],
             measurements={node: Measurement.XY(value) for node in range(2)},
         )
-        xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
+        xzcorr_ref = og_ref.to_causalflow().to_xzcorrections()
 
         xzcorr_test = xzcorr.xreplace(dict.fromkeys(parametric_angles, value))
 

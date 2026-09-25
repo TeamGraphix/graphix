@@ -25,14 +25,14 @@ def install_pytest(session: Session) -> None:
     session.install("pytest", "pytest-mock", "pytest-benchmark", "pytest-mpl", "psutil")
 
 
-def run_pytest(session: Session, doctest_modules: bool = False, mpl: bool = False) -> None:
+def run_pytest(session: Session, *args: str, doctest_modules: bool = False, mpl: bool = False) -> None:
     """Run pytest."""
-    args = ["pytest"]
+    cmdline = ["pytest", "-W", "error", *args]
     if doctest_modules:
-        args.append("--doctest-modules")
+        cmdline.append("--doctest-modules")
     if mpl:
-        args.append("--mpl")
-    session.run(*args)
+        cmdline.append("--mpl")
+    session.run(*cmdline)
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -51,7 +51,7 @@ def tests_all(session: Session) -> None:
     """Run the test suite with all dependencies."""
     session.install(".[dev]")
     # This dependency is added here to avoid circular dependencies
-    session.install("graphix-qasm-parser>=0.1.1")
+    session.install("-r", ".github/qasm-parser-requirements.txt")
     run_pytest(session, doctest_modules=True, mpl=True)
 
 
@@ -89,28 +89,38 @@ class ReverseDependency:
     doctest_modules: bool = True
     initialization: Callable[[Session], bool | None] | None = None
     install_target: str = "."
+    pytest_args: tuple[str, ...] = ()
+
+
+REVERSE_DEPENDENCIES = {
+    "graphix-symbolic": ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
+    "graphix-stim-backend": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
+    "graphix-qasm-parser": ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+    "graphix-ibmq": ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
+    "graphix-stim-compiler": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
+    "graphix-pyzx": ReverseDependency(
+        "https://github.com/TeamGraphix/graphix-pyzx",
+        # Precompile pyzx before running pytest with warnings-as-errors.
+        # See zxcalc/pyzx#518.
+        initialization=lambda session: session.run("python", "-c", "import pyzx"),
+        # Filter warnings raised by pyzx (zxcalc/pyzx#509)
+        pytest_args=(
+            "-W",
+            "ignore:In 3.13 classes created inside an enum will not become a member.:DeprecationWarning",
+        ),
+    ),
+    "veriphix": ReverseDependency(
+        "https://github.com/qat-inria/veriphix", doctest_modules=False, install_target=".[dev]"
+    ),
+    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench"),
+}
 
 
 @nox.session(python=PYTHON_VERSIONS)
-@nox.parametrize(
-    "package",
-    [
-        ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-pyzx"),
-        ReverseDependency(
-            "https://github.com/qat-inria/veriphix",
-            doctest_modules=False,
-            install_target=".[dev]",
-        ),
-        ReverseDependency("https://github.com/matulni/graphix-mqtbench", branch="minimal"),
-    ],
-)
-def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> None:
+@nox.parametrize("package_name", list(REVERSE_DEPENDENCIES))
+def tests_reverse_dependencies(session: Session, package_name: str) -> None:
     """Run the test suite of reverse dependencies."""
+    package = REVERSE_DEPENDENCIES[package_name]
     url = urlparse(package.repository)
     dirname = Path(url.path).name
     assert isinstance(session.python, str)
@@ -124,11 +134,13 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         session.install("nox")
     with TemporaryDirectory() as tmpdir:
         with session.cd(tmpdir):
-            if package.branch is None:
-                session.run("git", "clone", package.repository, external=True)
-            else:
-                session.run("git", "clone", "-b", package.branch, package.repository, external=True)
+            session.run("git", "clone", package.repository, external=True)
             with session.cd(dirname):
+                if package.branch is not None:
+                    # Use `git fetch` instead of `git clone -b` to support
+                    # special refs such as `refs/pull/N/head`
+                    session.run("git", "fetch", "origin", package.branch, external=True)
+                    session.run("git", "checkout", "--detach", "FETCH_HEAD", external=True)
                 # graphix installation fails without constraint on numba
                 session.install(package.install_target, "numba>=0.65.1")
         # Note that `session.cd` is used as a context manager above,
@@ -146,4 +158,4 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
         with session.cd(tmpdir), session.cd(dirname):
             if package.initialization is not None:
                 package.initialization(session)
-            run_pytest(session, doctest_modules=package.doctest_modules)
+            run_pytest(session, *package.pytest_args, doctest_modules=package.doctest_modules)

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- #591: `FixedBranchSelector` now passes its RNG parameter to its `default` branch selector.
+
+- #595: `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
+
+- #596, #597: Pattern's `n_node` property updated after Pauli removal.
+
+## [0.4] - 2026-08-18
+
 ### Added
 
 - #476: Introduced new methods `OpenGraph.extract_circuit`, `CliffordMap.to_tableau` and new function `graphix.circ_ext.compilation.cm_berg_pass`. Circuit extraction can be done natively in Graphix.
@@ -43,7 +53,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #526: Added new method `XZCorrections.to_pauli_flow`, which reconstructs a Pauli flow directly from XZ-corrections by solving the per-node correction sets over GF(2). Added `FlowGenericErrorReason.NoPauliFlow`, raised when the XZ-corrections admit no compatible Pauli flow.
 
-- #545: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
+- #497, #540: Added an amplitude damping noise model. Introduces `amplitude_damping_channel` / `two_qubit_amplitude_damping_channel`, the `AmplitudeDampingNoise` / `TwoQubitAmplitudeDampingNoise` noise elements, and `AmplitudeDampingNoiseModel`.
+
+- #556, #563: Added a context variable `default_output_format` to unify the default output format for displaying `PauliFlow`, `XZCorrections`, `Pattern`, and `StateVec`.
+
+- #568:
+  - Added the following methods to `Pattern`. By default, they modify the pattern in place, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
+    - `apply`, an in-place variant of `map`,
+    - `blochify`, an in-place variant of `to_bloch`.
+  - All classes that have `subs` and `xreplace` methods (`Pattern`, `Circuit`, `OpenGraph`, `Measurement`, `PauliFlow`, `XZCorrections`, `DensityMatrix`) now derive from the `Parameterizable` class, which exposes the method `with_parameter` and `with_parameters`, with `subs` and `xreplace` as their respective aliases.
+  - `Pattern` and `Circuit` now derive from the `InplaceParameterizable` subclass, which additionally provides the following methods:
+    - `replace_parameter`, an in-place variant of `with_parameter` (or `subs`),
+    - `replace_parameters`, an in-place variant of `with_parameters` (or `xreplace`).
+
+- #585: Added `rand_outcome`.
 
 - #474, #564: Added `FocusedPauliFlow` and `FocusedGFlow` classes to encapsulate operations specific to focused flows. Flow-finding algorithms return focused flows by construction. Having dedicated classes removes the need to dynamically recheck that a flow is focused during circuit extraction.
 
@@ -51,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #454, #481: Ensure `Pattern.minimize_space` only reduces max-space and does not increase it.
 
-- #235, #489: Correct sign for `YZ` measurements in `from_pyzx_graph`. ZX diagrams are now correctly converted into open graphs, even if they are reduced.
+- #482, #483: Ensure that `to_space_optimal_pattern` reorders output nodes
 
 - #510
   - `Pattern.extract_opengraph` returns the same open graph before and after standardization.
@@ -60,6 +83,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #549: Fixed #531.
   - Empty outputs layer removed from flow's partial order.
   - Flow well-formedness check does not trigger false negative for flows on open graphs without outputs.
+
+- #554, #560: Legends accompanying open graph visualizations only include elements present in the graph.
+
+- #562: Fixed #553. Handle visualization of empty graphs.
+
+- #561: Fixed #555. Method `Pattern.draw` computes Pauli flow from pattern.
+
+- #569: Keyword arguments for `simulate_pattern` are now type-checked.
+
+- #576: Clifford gates are now properly printed, and their QASM3 decompositions are now optimal.
+
+- #583, #585: Compatibility with numpy 2.5.
+
+- #586: Fixed #584 Swap transpilation of measured qubits.
 
 ### Changed
 
@@ -100,7 +137,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #468, #511: The `pyzx` module has been moved to a separate plugin: https://github.com/thierry-martinez/graphix-pyzx/
   Consequently, the `pyproject.toml` no longer defines an `extra` dependency group for the `pyzx` package.
 
-- #512: Method `Circuit.simulate_statevector` accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
+- #512: Method `Circuit.simulate` (formerly `Circuit.simulate_statevector`, see #567)  accepts a `backend: DenseStateBackend[_DenseStateT] | Literal["statevector", "densitymatrix"]` parameter.
+
+- #567:
+  - Method `Circuit.simulate_statevector` has been renamed `Circuit.simulate`.
+  - Method `Pattern.simulate_pattern` has been renamed `Pattern.simulate`.
+
+  - Field `SimulateResult.statevec` has been renamed `SimulateResult.state`.
+
+- #557: Homogeneize namespace. See commit text or COMPATIBILITY.md for a detailed renaming list. Fixed the following convention:
+  - `.to_<object>` for transformations that can only return `object` or raise an exception. Equivalently, we use `.from_<object>` for constructors.
+  - `.to_<object>_or_none` for transformations that can return `object` or `None`. Equivalently, we use `.from_<object>_or_none` for constructors.
+  - accessor methods use nouns instead of verb + noun. Example: `Pattern.max_degree` instead of `Pattern.compute_max_degree`.
+
+- #518: Numba-jit statevector backend.
+  - Changed statevector representation from a tensor to a flat array.
+  - Added `.with_capacity` method to `StatevectorBackend` to preallocate a given space in memory.
+  - Added module constant `NUM_QUBIT_PARALLEL` to determine at which qubit count jit-compiled functions are parallelized.
+  - Dropped support for symbolic simulation and removed `Statevector.xreplace` and `Statevector.subs` methods.
+  - Added method `DenseState.project_qubit` which defaults to calling `evolve_single` and `remove_qubit`. Added specialized code for this method in `Statevector` class.
+  - Unified `test_statevec.py` and `test_statevec_backend.py` into a single file.
+  
+- #568: Method `Pattern.infer_pauli_measurements` and function `transpile_swaps` now operate in place by default, with an optional `copy` parameter. If `copy=True`, a modified copy is returned instead.
+
+- #571: Removed method `Pattern.graph`
 
 ## [0.3.5] - 2026-03-26
 

@@ -84,32 +84,7 @@ This module defines data structures for single-qubit measurements in MBQC.
 This module defines standard data structure for gate seqence (circuit model) used for :class:`graphix.transpiler.Circuit`.
 
 .. automodule:: graphix.instruction
-
-.. currentmodule:: graphix.instruction
-
-.. autoclass:: InstructionKind
-
-.. autoclass:: RX
-
-.. autoclass:: RZ
-
-.. autoclass:: RY
-
-.. autoclass:: M
-
-.. autoclass:: X
-
-.. autoclass:: Y
-
-.. autoclass:: Z
-
-.. autoclass:: S
-
-.. autoclass:: H
-
-.. autoclass:: SWAP
-
-.. autoclass:: CNOT
+    :members:
 
 :mod:`graphix.parameter` module
 +++++++++++++++++++++++++++++++

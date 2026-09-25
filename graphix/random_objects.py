@@ -13,6 +13,7 @@ from scipy.stats import unitary_group
 
 from graphix.channels import KrausChannel, KrausData
 from graphix.fundamentals import ANGLE_PI
+from graphix.measurements import Outcome, outcome
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 from graphix.transpiler import Circuit
@@ -26,6 +27,12 @@ if TYPE_CHECKING:
     from graphix.parameter import Parameter
 
     IntLike: TypeAlias = int | np.integer
+
+
+def rand_outcome(rng: Generator | None = None, *, stacklevel: int = 1) -> Outcome:
+    """Generate random measurement outcome (0 or 1)."""
+    rng = ensure_rng(rng, stacklevel=stacklevel + 1)
+    return outcome(rng.choice([0, 1]) == 1)
 
 
 def rand_herm(sz: IntLike, rng: Generator | None = None, *, stacklevel: int = 1) -> npt.NDArray[np.complex128]:
@@ -43,7 +50,10 @@ def rand_unit(sz: IntLike, rng: Generator | None = None, *, stacklevel: int = 1)
     return unitary_group.rvs(int(sz), random_state=rng)
 
 
-UNITS = np.array([1, 1j])
+# Without this type annotation, `UNITS` is typed `npt.NDArray[Any]` and
+# pyright types the value assigned to `result` in `rand_gauss_cpx_mat`
+# as npt.NDArray[np.float64], which is clearly wrong.
+UNITS: npt.NDArray[np.complex128] = np.array([1, 1j])
 
 
 def rand_dm(

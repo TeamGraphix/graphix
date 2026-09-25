@@ -74,7 +74,7 @@ pattern.draw_graph()
 ### simulating the pattern
 
 ```python
-state_out = pattern.simulate_pattern(backend="statevector")
+state_out = pattern.simulate(backend="statevector")
 ```
 
 ### and more..

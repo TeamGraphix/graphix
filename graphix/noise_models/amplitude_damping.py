@@ -48,7 +48,7 @@ class AmplitudeDampingNoise(Noise):
         return 1
 
     @typing_extensions.override
-    def to_kraus_channel(self) -> KrausChannel:
+    def to_krauschannel(self) -> KrausChannel:
         """Return the Kraus channel describing the noise element."""
         return amplitude_damping_channel(self.prob)
 
@@ -75,7 +75,7 @@ class TwoQubitAmplitudeDampingNoise(Noise):
         return 2
 
     @typing_extensions.override
-    def to_kraus_channel(self) -> KrausChannel:
+    def to_krauschannel(self) -> KrausChannel:
         """Return the Kraus channel describing the noise element."""
         return two_qubit_amplitude_damping_channel(self.prob)
 

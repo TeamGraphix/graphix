@@ -66,7 +66,7 @@ def standardized_pattern_max_space(pattern: StandardizedPattern) -> int:
         pattern execution.
     """
     initialized = set(pattern.input_nodes)
-    graph = pattern.extract_graph()
+    graph = pattern.graph()
     num_active = len(pattern.input_nodes)
     max_active = num_active
 
@@ -113,7 +113,7 @@ def standardized_to_space_optimal_pattern(pattern: StandardizedPattern) -> Patte
     initialized = set(pattern.input_nodes)
     done: set[Node] = set()
     n_dict = {n.node: n for n in pattern.n_list}
-    graph = pattern.extract_graph()
+    graph = pattern.graph()
 
     def ensure_active(node: Node) -> None:
         """Initialize node in pattern if it has not been initialized before."""
@@ -192,7 +192,7 @@ class SpaceMinimizationHeuristics:
         This minimization heuristic is optimal but requires the pattern to have a causal flow.
         """
         try:
-            cf = pattern.extract_xzcorrections().downcast_bloch().to_causal_flow()
+            cf = pattern.to_xzcorrections().downcast_bloch().to_causalflow()
         except (TypeError, FlowError):
             return None
         else:
@@ -224,7 +224,7 @@ class SpaceMinimizationHeuristics:
         max space in some situations.
 
         """
-        graph = pattern.extract_graph()
+        graph = pattern.graph()
         nodes = set(graph.nodes)
         not_measured = nodes - set(pattern.output_nodes)
         dependency = _extract_dependency(pattern)

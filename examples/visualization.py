@@ -37,7 +37,7 @@ pattern.draw(flow_from_pattern=False, measurement_labels=True)
 
 # %%
 # next, show the gflow:
-pattern = pattern.infer_pauli_measurements()
+pattern.infer_pauli_measurements()
 pattern.remove_pauli_measurements()
 pattern.draw(flow_from_pattern=False, measurement_labels=True)
 
@@ -88,7 +88,7 @@ measurements = {
     3: Measurement.YZ(0),
 }
 og = OpenGraph(graph, inputs, outputs, measurements)
-cf = og.extract_gflow()
+cf = og.to_gflow()
 cf.draw(measurement_labels=True)
 
 # %%

@@ -59,7 +59,7 @@ qft(circuit, n)
 pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
-graph = pattern.extract_graph()
+graph = pattern.to_opengraph().graph
 print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 
@@ -67,7 +67,7 @@ print(f"Number of edges: {len(graph.edges)}")
 # Using graph rewriting rules, we can classically preprocess Pauli measurements.
 # We are currently improving the speed of this process by using rust-based graph manipulation backend.
 pattern.remove_input_nodes()
-pattern = pattern.infer_pauli_measurements()
+pattern.infer_pauli_measurements()
 pattern.remove_pauli_measurements(standardize=True)
 
 
@@ -78,7 +78,7 @@ pattern.remove_pauli_measurements(standardize=True)
 import time
 
 t1 = time.time()
-tn = pattern.simulate_pattern(backend="tensornetwork")
+tn = pattern.simulate(backend="tensornetwork")
 value = tn.basis_amplitude(0)
 t2 = time.time()
 print("amplitude of |00...0> is ", value)

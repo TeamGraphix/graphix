@@ -17,16 +17,5 @@ If flow or gflow exist, the tool take them into account and show the information
 
 This modules provides functions to format patterns and flows.
 
-.. currentmodule:: graphix.pretty_print
-
-.. autoclass:: OutputFormat
-
-.. autofunction:: angle_to_str
-
-.. autofunction:: command_to_str
-
-.. autofunction:: pattern_to_str
-
-.. autofunction:: flow_to_str
-
-.. autofunction:: xzcorr_to_str
+.. automodule:: graphix.pretty_print
+    :members:

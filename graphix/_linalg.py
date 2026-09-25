@@ -2,7 +2,7 @@ r"""Performant module for linear algebra on :math:`\mathbb F_2` field."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numba as nb
 import numpy as np
@@ -12,7 +12,16 @@ if TYPE_CHECKING:
     from typing import Self
 
 
-class MatGF2(npt.NDArray[np.uint8]):
+# Before numpy 2.5, we used to define
+#   class MatGF2(npt.NDArray[np.uint8]): ...
+# where npt.NDArray was defined in numpy as
+#   NDArray: TypeAlias = np.ndarray[_AnyShape, dtype[_ScalarT]]
+#   _AnyShape: TypeAlias = tuple[Any, ...]
+# numpy 2.5 uses the type alias syntax introduced in Python 3.12 (PEP 695):
+#   type NDArray[ScalarT: np.generic] = np.ndarray[_AnyShape, np.dtype[ScalarT]]
+#   type _AnyShape = tuple[Any, ...]
+# We can no longer use NDArray as a base type.
+class MatGF2(np.ndarray[tuple[Any, ...], np.dtype[np.uint8]]):
     r"""Custom implementation of :math:`\mathbb F_2` matrices. This class specializes `:class:np.ndarray` to the :math:`\mathbb F_2` field with increased efficiency."""
 
     def __new__(cls, data: npt.ArrayLike, copy: bool = True) -> Self:
@@ -64,7 +73,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         return MatGF2(_mat_mul_jit(np.ascontiguousarray(self), np.ascontiguousarray(other)), copy=False)
 
-    def compute_rank(self) -> np.intp:
+    def rank(self) -> np.intp:
         """Get the rank of the matrix.
 
         Returns
@@ -100,7 +109,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         red = aug.row_reduction(ncols=n, copy=False)  # Reduced row echelon form
 
         # Check that rank of right block is equal to the number of rows.
-        # We don't use `MatGF2.compute_rank()` to avoid row-reducing twice.
+        # We don't use `MatGF2.rank()` to avoid row-reducing twice.
         if m != np.count_nonzero(red[:, :n].any(axis=1)):
             return None
         rinv = np.zeros((n, m), dtype=np.uint8).view(MatGF2)

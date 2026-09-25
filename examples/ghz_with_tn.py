@@ -35,7 +35,7 @@ for i in range(1, n):
 pattern = circuit.transpile().pattern
 pattern.standardize()
 
-graph = pattern.extract_graph()
+graph = pattern.to_opengraph().graph
 print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 pos = nx.spring_layout(graph)
@@ -45,7 +45,7 @@ plt.show()
 # %%
 # Calculate the amplitudes of ``|00...0>`` and ``|11...1>`` states.
 
-tn = pattern.simulate_pattern(backend="tensornetwork")
+tn = pattern.simulate(backend="tensornetwork")
 print(f"The amplitude of |00...0>: {tn.basis_amplitude(0)}")
 print(f"The amplitude of |11...1>: {tn.basis_amplitude(2**n - 1)}")
 

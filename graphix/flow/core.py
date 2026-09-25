@@ -47,6 +47,7 @@ from graphix.flow.exceptions import (
 )
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
+from graphix.parameter import Parameterizable
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
 
 if TYPE_CHECKING:
@@ -74,7 +75,7 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class XZCorrections(Generic[_AM_co]):
+class XZCorrections(Parameterizable, Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
     Attributes
@@ -207,7 +208,7 @@ class XZCorrections(Generic[_AM_co]):
         pattern.reorder_output_nodes(self.og.output_nodes)
         return pattern
 
-    def to_causal_flow(self: XZCorrections[_PM_co]) -> CausalFlow[_PM_co]:
+    def to_causalflow(self: XZCorrections[_PM_co]) -> CausalFlow[_PM_co]:
         r"""Extract a causal flow from XZ-corrections.
 
         This method does not invoke the flow-extraction routine on the underlying open graph.
@@ -267,7 +268,7 @@ class XZCorrections(Generic[_AM_co]):
         gf.check_well_formed()  # Raises a ``FlowError`` if the partial order and the correction function are not compatible.
         return gf
 
-    def to_pauli_flow(self) -> PauliFlow[_AM_co]:
+    def to_pauliflow(self) -> PauliFlow[_AM_co]:
         r"""Extract a Pauli flow from XZ-corrections.
 
         This method does not invoke the flow-extraction routine on the underlying open graph.
@@ -278,7 +279,7 @@ class XZCorrections(Generic[_AM_co]):
         The difficulty, compared with :meth:`to_gflow`, is that the Pauli-flow correction
         sets may contain *anachronical corrections*: corrections targeting nodes measured in
         the X or Y Pauli bases that lie in the present or the past of the corrected node.
-        Such corrections do not appear in the pattern, because :meth:`PauliFlow.to_corrections`
+        Such corrections do not appear in the pattern, because :meth:`PauliFlow.to_xzcorrections`
         only keeps the part of each correction set lying in the future (the ``& future`` filter).
         They must therefore be reconstructed rather than read off the corrections.
 
@@ -350,7 +351,7 @@ class XZCorrections(Generic[_AM_co]):
         assert set(total_order) == set(self.og.graph.nodes) - set(self.og.output_nodes)
         return total_order
 
-    def extract_dag(self) -> nx.DiGraph[int]:
+    def to_dag(self) -> nx.DiGraph[int]:
         """Extract the directed graph induced by the XZ-corrections.
 
         Returns
@@ -475,7 +476,7 @@ class XZCorrections(Generic[_AM_co]):
 
     def __str__(self) -> str:
         """Return a human-readable string representing the XZCorrections' mappings and partial order layers."""
-        return self.to_ascii()
+        return xzcorr_to_str(self)
 
     def to_ascii(self, multiline: bool = False) -> str:
         """Return an ASCII string representing the XZCorrections' mappings and partial order layers.
@@ -518,7 +519,10 @@ class XZCorrections(Generic[_AM_co]):
         gv = GraphVisualizer.from_xzcorrections(xz_corr=self, **options)
         gv.visualize()
 
-    def subs(self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> XZCorrections[_M]:
+    @override
+    def with_parameter(
+        self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> XZCorrections[_M]:
         """Substitute a parameter with a value or expression in all measurement angles of the open graph.
 
         Parameters
@@ -535,12 +539,13 @@ class XZCorrections(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.subs`.
+        See notes and examples in :meth:`OpenGraph.with_parameter`.
         """
-        new_og = self.og.subs(variable, substitute)
+        new_og = self.og.with_parameter(variable, substitute)
         return dataclasses.replace(self, og=new_og)
 
-    def xreplace(
+    @override
+    def with_parameters(
         self: XZCorrections[_M], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     ) -> XZCorrections[_M]:
         """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
@@ -557,14 +562,14 @@ class XZCorrections(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.xreplace`.
+        See notes and examples in :meth:`OpenGraph.with_parameters`.
         """
-        new_og = self.og.xreplace(assignment)
+        new_og = self.og.with_parameters(assignment)
         return dataclasses.replace(self, og=new_og)
 
 
 @dataclass(frozen=True)
-class PauliFlow(Generic[_AM_co]):
+class PauliFlow(Parameterizable, Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
     Attributes
@@ -580,7 +585,7 @@ class PauliFlow(Generic[_AM_co]):
     -----
     - See Definition 5 in Ref. [1] for a definition of Pauli flow.
 
-    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only ``og`` and ``correction_function`` are necessary to initialize an ``PauliFlow`` instance (see :func:`PauliFlow.try_from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
+    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only ``og`` and ``correction_function`` are necessary to initialize an ``PauliFlow`` instance (see :func:`PauliFlow.from_correctionmatrix_or_none`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
 
     References
     ----------
@@ -594,7 +599,7 @@ class PauliFlow(Generic[_AM_co]):
 
     _CF_PREFIX: str = "p"  # Correction function prefix for printing
 
-    def to_corrections(self) -> XZCorrections[_AM_co]:
+    def to_xzcorrections(self) -> XZCorrections[_AM_co]:
         """Compute the X and Z corrections induced by the Pauli flow encoded in ``self``.
 
         Returns
@@ -786,7 +791,7 @@ class PauliFlow(Generic[_AM_co]):
 
     def __str__(self) -> str:
         """Return a human-readable string representing the flow's correction function and partial order layers."""
-        return self.to_ascii()
+        return flow_to_str(self)
 
     def to_ascii(self, multiline: bool = False) -> str:
         """Return an ASCII string representing the flow's correction function and partial order layers.
@@ -829,7 +834,8 @@ class PauliFlow(Generic[_AM_co]):
         gv = GraphVisualizer.from_flow(flow=self, **options)
         gv.visualize()
 
-    def subs(  # noqa: PYI019 Annotating with ``Self`` is not possible since ``self`` must be of parametric type ``Measurement``.
+    @override
+    def with_parameter(  # noqa: PYI019 Annotating with ``Self`` is not possible since ``self`` must be of parametric type ``Measurement``.
         self: _T_PauliFlowMeasurement, variable: Parameter, substitute: ExpressionOrSupportsFloat
     ) -> _T_PauliFlowMeasurement:
         """Substitute a parameter with a value or expression in all measurement angles of the open graph.
@@ -848,12 +854,13 @@ class PauliFlow(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.subs`.
+        See notes and examples in :meth:`OpenGraph.with_parameter`.
         """
-        new_og = self.og.subs(variable, substitute)
+        new_og = self.og.with_parameter(variable, substitute)
         return dataclasses.replace(self, og=new_og)
 
-    def xreplace(  # noqa: PYI019
+    @override
+    def with_parameters(  # noqa: PYI019
         self: _T_PauliFlowMeasurement, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     ) -> _T_PauliFlowMeasurement:
         """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
@@ -870,9 +877,9 @@ class PauliFlow(Generic[_AM_co]):
 
         Notes
         -----
-        See notes and examples in :func:`OpenGraph.xreplace`.
+        See notes and examples in :meth:`OpenGraph.with_parameters`.
         """
-        new_og = self.og.xreplace(assignment)
+        new_og = self.og.with_parameters(assignment)
         return dataclasses.replace(self, og=new_og)
 
     def is_focused(self) -> bool:
@@ -939,7 +946,7 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
     """
 
     @classmethod
-    def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_AM_co]) -> Self | None:
+    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_AM_co]) -> Self | None:
         """Initialize a ``PauliFlow`` object from a matrix encoding a correction function.
 
         Parameters
@@ -1003,10 +1010,16 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
         """
         return {node: extraction_ps_from_corrected_node(self, node) for node in self.correction_function}
 
-    def extract_circuit(self: FocusedPauliFlow[Measurement]) -> ExtractionResult:
+    def extract_circuit(self: FocusedPauliFlow[Measurement], *, stacklevel: int = 1) -> ExtractionResult:
         """Extract a circuit from a flow.
 
         This routine assumes that the flow ``self`` is focused (see Notes).
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -1017,7 +1030,7 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
         -----
         - This method implements the algorithm in [1].
 
-        - Flows are guaranteed to be focused if obtained from :func:`OpenGraph.extract_pauli_flow` or :func:`OpenGraph.extract_gflow` (see [2]).
+        - Flows are guaranteed to be focused if obtained from :func:`OpenGraph.to_pauliflow` or :func:`OpenGraph.to_gflow` (see [2]).
 
         References
         ----------
@@ -1027,7 +1040,7 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
         if self.og.output_cliffords:
             raise NotImplementedError("Circuit extraction is not supported for open graphs with Clifford decorations.")
         pexp_dag = PauliExponentialDAG.from_focusedflow(self)
-        clifford_map = CliffordMap.from_focusedflow(self)
+        clifford_map = CliffordMap.from_focusedflow(self, stacklevel=stacklevel + 1)
 
         return ExtractionResult(pexp_dag=pexp_dag, clifford_map=clifford_map)
 
@@ -1050,7 +1063,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
     _CF_PREFIX: str = "g"  # Correction function prefix for printing
 
     @override
-    def to_corrections(self) -> XZCorrections[_PM_co]:
+    def to_xzcorrections(self) -> XZCorrections[_PM_co]:
         r"""Compute the XZ-corrections induced by the generalised flow encoded in ``self``.
 
         Returns
@@ -1220,31 +1233,6 @@ class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
     """
 
     @override
-    @classmethod
-    def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> Self | None:
-        """Initialize a ``GFlow`` object from a matrix encoding a correction function.
-
-        Parameters
-        ----------
-        correction_matrix : CorrectionMatrix[_PM_co]
-            Algebraic representation of the correction function.
-
-        Returns
-        -------
-        Self | None
-            A gflow if it exists, ``None`` otherwise.
-
-        Notes
-        -----
-        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a generalised flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
-
-        References
-        ----------
-        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
-        """
-        return super().try_from_correction_matrix(correction_matrix)
-
-    @override
     def to_focused(self) -> FocusedGFlow[_PM_co]:
         return self
 
@@ -1266,7 +1254,7 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     _CF_PREFIX: str = "c"  # Correction function prefix for printing
 
     @override
-    def to_corrections(self) -> XZCorrections[_PM_co]:
+    def to_xzcorrections(self) -> XZCorrections[_PM_co]:
         r"""Compute the XZ-corrections induced by the causal flow encoded in ``self``.
 
         Returns
@@ -1395,7 +1383,7 @@ def _corrections_to_dag(
 
     Notes
     -----
-    See :func:`XZCorrections.extract_dag`.
+    See :func:`XZCorrections.to_dag`.
     """
     relations = (
         (measured_node, corrected_node)
@@ -1536,7 +1524,7 @@ def _solve_pauli_correction_set(
 ) -> set[int] | None:
     """Reconstruct the Pauli-flow correction set of a single ``node``.
 
-    See :meth:`XZCorrections.to_pauli_flow` for the description of the GF(2) system solved here.
+    See :meth:`XZCorrections.to_pauliflow` for the description of the GF(2) system solved here.
     """
     og = xz.og
     nodes = set(og.graph.nodes)
@@ -1645,7 +1633,7 @@ def _solve_pauli_correction_set(
 def _reconstruct_pauli_correction_function(xz: XZCorrections[AbstractMeasurement]) -> dict[int, set[int]]:
     """Reconstruct a Pauli-flow correction function from XZ-corrections.
 
-    See :meth:`XZCorrections.to_pauli_flow`.
+    See :meth:`XZCorrections.to_pauliflow`.
     """
     og = xz.og
     adjacency: dict[int, set[int]] = {n: og.neighbors({n}) for n in og.graph.nodes}

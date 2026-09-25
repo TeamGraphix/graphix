@@ -35,7 +35,9 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autosectionlabel_prefix_document = True
 
 intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
     "networkx": ("https://networkx.github.io/documentation/stable/", None),
+    "sympy": ("https://docs.sympy.org/latest/", None),
 }
 
 sys.path.insert(0, os.path.abspath("../../"))

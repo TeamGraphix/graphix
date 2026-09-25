@@ -12,17 +12,41 @@ import cmath
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeVar, overload
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeAlias, TypeVar, overload
+
+# override introduced in Python 3.12
+from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from typing import Self
+
+    import numpy as np
+    from numpy.typing import NDArray
+
+    from graphix.fundamentals import Sign
 
 
 class Expression(ABC):
     """Expression with parameters."""
 
+    @overload
+    def __mul__(self, other: float) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: Sign) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.object_]) -> NDArray[np.object_]: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.complex128]) -> NDArray[np.complex128]: ...
+
+    @overload
+    def __mul__(self, other: Expression) -> ExpressionOrFloat: ...
+
     @abstractmethod
-    def __mul__(self, other: object) -> ExpressionOrFloat:
+    def __mul__(self, other: object) -> ExpressionOrFloat | NDArray[np.object_] | NDArray[np.complex128]:
         """
         Return the product of this expression with another object.
 
@@ -92,19 +116,20 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def subs(self, variable: Parameter, value: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
-        """Return the expression where every occurrence of `variable` is replaced with `value`."""
+    def with_parameter(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
+        """Substitute a parameter with a value or expression."""
 
     @abstractmethod
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
-        """
-        Return the expression where every occurrence of any keys from `assignment` is replaced with the corresponding value.
+    def with_parameters(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
+        """Perform parallel substitution of multiple parameters."""
 
-        The substitutions are performed in parallel, i.e., once an
-        occurrence has been replaced by a value, this value is not
-        subject to any further replacement, even if another occurrence
-        of a key appears in this value.
-        """
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
+        """Alias for :meth:`with_parameter`, following the ``sympy`` convention."""
+        return self.with_parameter(variable, substitute)
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
+        """Alias for :meth:`with_parameters`, following the ``sympy`` convention."""
+        return self.with_parameters(assignment)
 
 
 class ExpressionWithTrigonometry(Expression, ABC):
@@ -173,18 +198,36 @@ class AffineExpression(Expression):
             return 0
         return self.scale_non_null(k)
 
-    def __mul__(self, other: object) -> ExpressionOrFloat:
+    @overload
+    def __mul__(self, other: float) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: Sign) -> ExpressionOrFloat: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.object_]) -> NDArray[np.object_]: ...
+
+    @overload
+    def __mul__(self, other: NDArray[np.complex128]) -> NDArray[np.complex128]: ...
+
+    @overload
+    def __mul__(self, other: Expression) -> ExpressionOrFloat: ...
+
+    @override
+    def __mul__(self, other: object) -> ExpressionOrFloat | NDArray[np.object_] | NDArray[np.complex128]:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
+    @override
     def __rmul__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
+    @override
     def __add__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
@@ -198,12 +241,14 @@ class AffineExpression(Expression):
             return AffineExpression(a=a, x=self.x, b=self.b + other.b)
         return NotImplemented
 
+    @override
     def __radd__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.offset(float(other))
         return NotImplemented
 
+    @override
     def __sub__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, AffineExpression):
@@ -212,26 +257,31 @@ class AffineExpression(Expression):
             return self + -float(other)
         return NotImplemented
 
+    @override
     def __rsub__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale_non_null(-1).offset(float(other))
         return NotImplemented
 
+    @override
     def __neg__(self) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         return self.scale_non_null(-1)
 
+    @override
     def __truediv__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(1 / float(other))
         return NotImplemented
 
+    @override
     def __str__(self) -> str:
         """Return a textual representation of the expression."""
         return f"{self.a} * {self.x} + {self.b}"
 
+    @override
     def __eq__(self, other: object) -> bool:
         """Check if two expressions are equal."""
         if isinstance(other, AffineExpression):
@@ -244,13 +294,17 @@ class AffineExpression(Expression):
             return self.a * float(value) + self.b
         return self.a * value + self.b
 
-    def subs(self, variable: Parameter, value: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
+    @override
+    def with_parameter(
+        self, variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> AffineExpression | ExpressionOrComplex:
         """Look to the documentation in the parent class."""
         if variable == self.x:
-            return self.evaluate(value)
+            return self.evaluate(substitute)
         return self
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
+    @override
+    def with_parameters(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
         """Look to the documentation in the parent class."""
         value = assignment.get(self.x)
         # `value` can be 0, so checking with `is not None` is mandatory here.
@@ -292,39 +346,43 @@ class Placeholder(AffineExpression, Parameter):
         """Return the name of the placeholder."""
         return self.__name
 
+    @override
     def __repr__(self) -> str:
         """Return a representation of the placeholder."""
         return f"Placeholder({self.__name!r})"
 
+    @override
     def __str__(self) -> str:
         """Return the name of the placeholder."""
         return self.__name
 
+    @override
     def __eq__(self, other: object) -> bool:
         """Check if two placeholders are identical."""
         if isinstance(other, Parameter):
             return self is other
         return super().__eq__(other)
 
+    @override
     def __hash__(self) -> int:
         """Return an hash value for the placeholder."""
         return id(self)
 
 
-ExpressionOrFloat = Expression | float
+ExpressionOrFloat: TypeAlias = Expression | float
 
-ExpressionOrComplex = Expression | complex
+ExpressionOrComplex: TypeAlias = Expression | complex
 
-ExpressionOrSupportsFloat = Expression | SupportsFloat
+ExpressionOrSupportsFloat: TypeAlias = Expression | SupportsFloat
 
 # `ExpressionOrSupportsComplex` is based on
 # `ExpressionOrSupportsFloat` rather than `Expression`, because `int`
 # and `float` implement `SupportsFloat` but not `SupportsComplex`,
 # even though `complex(int)` and `complex(float)` are valid.
-ExpressionOrSupportsComplex = ExpressionOrSupportsFloat | SupportsComplex
+ExpressionOrSupportsComplex: TypeAlias = ExpressionOrSupportsFloat | SupportsComplex
 
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
 def check_expression_or_complex(value: object) -> ExpressionOrComplex:
@@ -348,24 +406,26 @@ def check_expression_or_float(value: object) -> ExpressionOrFloat:
 
 
 @overload
-def subs(value: ExpressionOrFloat, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrFloat: ...
+def with_parameter(
+    value: ExpressionOrFloat, variable: Parameter, substitute: ExpressionOrSupportsFloat
+) -> ExpressionOrFloat: ...
 
 
 @overload
-def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | complex: ...
+def with_parameter(value: _T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> _T | complex: ...
 
 
-# The return type could be `T | complex` since `subs` returns `Expression` only
-# if `T == Expression`, but `mypy` does not handle this yet: https://github.com/python/mypy/issues/12989
-def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | Expression | complex:
+# The return type could be `_T | complex` since `with_parameter` returns `Expression` only
+# if `_T == Expression`, but `mypy` does not handle this yet: https://github.com/python/mypy/issues/12989
+def with_parameter(value: _T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> _T | Expression | complex:
     """
     Substitute in `value`.
 
-    If `value` is in instance of :class:`Expression`, then return
-    `value.subs(variable, substitute)` (coerced into a complex or a
+    If `value` is an instance of :class:`Expression`, then return
+    `value.with_parameter(variable, substitute)` (coerced into a complex or a
     float if the result is a number).
 
-    If `value` does not implement `subs`, `value` is returned
+    If ``value`` does not implement ``with_parameter``, ``value`` is returned
     unchanged.
 
     This function is used to apply substitution to collections where
@@ -375,7 +435,7 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     """
     if not isinstance(value, Expression):
         return value
-    new_value = value.subs(variable, substitute)
+    new_value = value.with_parameter(variable, substitute)
     if isinstance(new_value, complex) and math.isclose(new_value.imag, 0.0):
         # Conversion to float, to enable the simulator to call
         # real trigonometric functions to the result.
@@ -384,26 +444,28 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
 
 
 @overload
-def xreplace(
+def with_parameters(
     value: ExpressionOrFloat, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
 ) -> ExpressionOrFloat: ...
 
 
 @overload
-def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | Expression | complex: ...
+def with_parameters(
+    value: _T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+) -> _T | Expression | complex: ...
 
 
-# The return type could be `T | Expression | complex` since `subs` returns `Expression` only
-# if `T == Expression`, but `mypy` does not handle this yet: https://github.com/python/mypy/issues/12989
-def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | Expression | complex:
+# The return type could be `_T | Expression | complex` since `subs` returns `Expression` only
+# if `_T == Expression`, but `mypy` does not handle this yet: https://github.com/python/mypy/issues/12989
+def with_parameters(value: _T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> _T | Expression | complex:
     """
     Substitute in parallel in `value`.
 
-    If `value` is an an instance of :class:`Expression`, then return
-    `value.xreplace(assignment)` (coerced into a complex if the result
+    If `value` is an instance of :class:`Expression`, then return
+    `value.with_parameters(assignment)` (coerced into a complex if the result
     is a number).
 
-    If `value` does not implement `xreplace`, `value` is returned
+    If ``value``` does not implement ``with_parameters``, ``value`` is returned
     unchanged.
 
     This function is used to apply parallel substitutions to
@@ -413,7 +475,7 @@ def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     """
     if not isinstance(value, Expression):
         return value
-    new_value = value.xreplace(assignment)
+    new_value = value.with_parameters(assignment)
     if isinstance(new_value, complex) and math.isclose(new_value.imag, 0.0):
         # Conversion to float, to enable the simulator to call
         # real trigonometric functions to the result.
@@ -442,3 +504,103 @@ def exp(z: ExpressionOrComplex) -> ExpressionOrComplex:
             return z.exp()
         raise PlaceholderOperationError
     return cmath.exp(z)
+
+
+class Parameterizable(ABC):
+    """Abstract base class for objects that hold parameters.
+
+    This class defines the abstract methods :meth:`with_parameter` for
+    single-parameter substitution and :meth:`with_parameters` for parallel
+    substitution of multiple parameters.
+
+    It also exposes :meth:`subs` and :meth:`xreplace` as aliases for
+    :meth:`with_parameter` and :meth:`with_parameters`, respectively,
+    following the ``sympy`` convention.
+    """
+
+    @abstractmethod
+    def with_parameter(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Self:
+        """Substitute a parameter with a value or expression."""
+
+    @abstractmethod
+    def with_parameters(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Self:
+        """Perform parallel substitution of multiple parameters."""
+
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Self:
+        """Alias for :meth:`with_parameter`, following the ``sympy`` convention."""
+        return self.with_parameter(variable, substitute)
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Self:
+        """Alias for :meth:`with_parameters`, following the ``sympy`` convention."""
+        return self.with_parameters(assignment)
+
+
+class InplaceParameterizable(Parameterizable, ABC):
+    """Abstract base class for objects that hold parameters and can be modified in place.
+
+    This class defines the abstract methods :meth:`replace_parameter`
+    for single-parameter substitution and :meth:`replace_parameters`
+    for parallel substitution of multiple parameters. By default, these
+    methods modify the object in place, with an optional ``copy``
+    parameter. If ``copy=True``, a modified copy is returned instead.
+
+    The methods :meth:`with_parameter` and :meth:`with_parameters` are
+    equivalent to calling :meth:`replace_parameter` and
+    :meth:`replace_parameters`, respectively, with ``copy=True``.
+    """
+
+    @abstractmethod
+    def replace_parameter(
+        self, variable: Parameter, substitute: ExpressionOrSupportsFloat, *, copy: bool = False
+    ) -> Self:
+        """Substitute all occurrences of the given variable in measurement angles by the given value.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of ``variable``.
+
+        copy : bool, optional
+            If ``True``, the current object remains unchanged and a
+            new object is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Self
+            The object with the updated measurement parameters.
+            Equal to ``self`` if ``copy`` is ``False``.
+        """
+
+    @abstractmethod
+    def replace_parameters(
+        self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat], *, copy: bool = False
+    ) -> Self:
+        """Substitute all occurrences of the given keys in measurement angles by the given values in parallel.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        copy : bool, optional
+            If ``True``, the current object remains unchanged and a
+            new object is returned. The default is ``False``, meaning
+            that changes are performed in place.
+
+        Returns
+        -------
+        Self
+            The object with the updated measurement parameters.
+            Equal to ``self`` if ``copy`` is ``False``.
+        """
+
+    @override
+    def with_parameter(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Self:
+        return self.replace_parameter(variable, substitute, copy=True)
+
+    @override
+    def with_parameters(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Self:
+        return self.replace_parameters(assignment, copy=True)

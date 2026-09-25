@@ -84,12 +84,12 @@ class TestSign:
 
 
 class TestComplexUnit:
-    def test_try_from(self) -> None:
-        assert ComplexUnit.try_from(ComplexUnit.ONE) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(1) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(1.0) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(1.0 + 0.0j) == ComplexUnit.ONE
-        assert ComplexUnit.try_from(3) is None
+    def test_from_or_none(self) -> None:
+        assert ComplexUnit.from_or_none(ComplexUnit.ONE) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(1) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(1.0) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(1.0 + 0.0j) == ComplexUnit.ONE
+        assert ComplexUnit.from_or_none(3) is None
 
     def test_from_properties(self) -> None:
         assert ComplexUnit.from_properties() == ComplexUnit.ONE
@@ -97,7 +97,7 @@ class TestComplexUnit:
         assert ComplexUnit.from_properties(sign=Sign.MINUS) == ComplexUnit.MINUS_ONE
         assert ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=True) == ComplexUnit.MINUS_J
 
-    @pytest.mark.parametrize(("sign", "is_imag"), itertools.product([Sign.PLUS, Sign.MINUS], [True, False]))
+    @pytest.mark.parametrize(("sign", "is_imag"), tuple(itertools.product([Sign.PLUS, Sign.MINUS], [True, False])))
     def test_properties(self, sign: Sign, is_imag: bool) -> None:
         assert ComplexUnit.from_properties(sign=sign, is_imag=is_imag).sign == sign
         assert ComplexUnit.from_properties(sign=sign, is_imag=is_imag).is_imag == is_imag
@@ -114,7 +114,7 @@ class TestComplexUnit:
         assert str(ComplexUnit.MINUS_ONE) == "-1"
         assert str(ComplexUnit.MINUS_J) == "-1j"
 
-    @pytest.mark.parametrize(("lhs", "rhs"), itertools.product(ComplexUnit, ComplexUnit))
+    @pytest.mark.parametrize(("lhs", "rhs"), tuple(itertools.product(ComplexUnit, ComplexUnit)))
     def test_mul_self(self, lhs: ComplexUnit, rhs: ComplexUnit) -> None:
         assert complex(lhs * rhs) == complex(lhs) * complex(rhs)
 

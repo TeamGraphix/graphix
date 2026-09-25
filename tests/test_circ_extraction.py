@@ -107,8 +107,8 @@ class TestPauliExponentialDAG:
     def test_to_circuit(self, test_case: PauliExpTestCase, fx_rng: Generator) -> None:
         qc = Circuit(len(test_case.pexp_dag.output_nodes))
         pexp_ladder_pass(test_case.pexp_dag, qc)
-        state = qc.simulate_statevector(rng=fx_rng).statevec
-        state_ref = test_case.qc.simulate_statevector(rng=fx_rng).statevec
+        state = qc.simulate(rng=fx_rng).state
+        state_ref = test_case.qc.simulate(rng=fx_rng).state
         assert state.isclose(state_ref)
 
     def test_to_circuit_outputs_order(self, fx_rng: Generator) -> None:
@@ -131,17 +131,17 @@ class TestPauliExponentialDAG:
 
         qc_1 = Circuit(2)
         pexp_ladder_pass(pexp_dag_1, qc_1)
-        s_1 = qc_1.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
+        s_1 = qc_1.simulate(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).state
 
         qc_2 = Circuit(2)
         qc_2.swap(0, 1)  # We must swap before and after the Pauli exponential!
         pexp_ladder_pass(pexp_dag_2, qc_2)
 
-        s_2 = qc_2.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
+        s_2 = qc_2.simulate(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).state
         assert not s_1.isclose(s_2)
 
         qc_2.swap(0, 1)
-        s_2 = qc_2.simulate_statevector(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).statevec
+        s_2 = qc_2.simulate(rng=fx_rng, input_state=[BasicStates.PLUS, BasicStates.MINUS]).state
 
         assert s_1.isclose(s_2)
 
@@ -430,8 +430,8 @@ class TestCliffordMap:
         qc = Circuit(qc_ref.width)
         cm_berg_pass(cm, qc)
 
-        s_test = qc.simulate_statevector(rng=fx_rng).statevec
-        s_ref = qc_ref.simulate_statevector(rng=fx_rng).statevec
+        s_test = qc.simulate(rng=fx_rng).state
+        s_ref = qc_ref.simulate(rng=fx_rng).state
 
         assert s_test.isclose(s_ref)
 
@@ -445,10 +445,11 @@ class TestExtraction:
         circuit_ref = rand_circuit(nqubits, depth, rng, use_ccx=False)
         pattern = circuit_ref.transpile().pattern
 
-        circuit = pattern.extract_opengraph().extract_circuit()
+        pattern.infer_pauli_measurements()
+        circuit = pattern.to_opengraph().to_circuit()
 
-        s_ref = circuit.simulate_statevector(rng=rng).statevec
-        s_test = circuit_ref.simulate_statevector(rng=rng).statevec
+        s_ref = circuit.simulate(rng=rng).state
+        s_test = circuit_ref.simulate(rng=rng).state
         assert s_ref.isclose(s_test)
 
     @pytest.mark.parametrize(
@@ -523,13 +524,14 @@ class TestExtraction:
     )
     def test_extract_og(self, test_case: OpenGraph[Measurement], fx_rng: Generator) -> None:
         pattern = test_case.to_pattern()
-        circuit = test_case.extract_circuit()
+        circuit = test_case.to_circuit()
 
-        state = circuit.simulate_statevector(rng=fx_rng).statevec
-        state_ref = pattern.simulate_pattern(rng=fx_rng)
+        state = circuit.simulate(rng=fx_rng).state
+        state_ref = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("infer_pauli", [True, False])
+    @pytest.mark.filterwarnings("ignore:Open graph with non-inferred Pauli measurements.")
     def test_extract_og_infer_pauli(self, infer_pauli: bool, fx_rng: Generator) -> None:
         og: OpenGraph[Measurement] = OpenGraph(
             graph=nx.Graph([(0, 2), (1, 3), (2, 3), (2, 4), (3, 5), (4, 5), (4, 6), (5, 7)]),
@@ -548,10 +550,10 @@ class TestExtraction:
         if infer_pauli:
             og = og.infer_pauli_measurements()
 
-        circuit = og.extract_circuit()
+        circuit = og.to_circuit()
 
-        state = circuit.simulate_statevector(rng=fx_rng).statevec
-        state_ref = pattern.simulate_pattern(rng=fx_rng)
+        state = circuit.simulate(rng=fx_rng).state
+        state_ref = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     def test_extract_og_gflow(self, fx_rng: Generator) -> None:
@@ -567,10 +569,10 @@ class TestExtraction:
             },
         )
         pattern = og.to_pattern()
-        circuit = og.extract_gflow().extract_circuit().to_circuit()
+        circuit = og.to_gflow().extract_circuit().to_circuit()
 
-        state = circuit.simulate_statevector(rng=fx_rng).statevec
-        state_ref = pattern.simulate_pattern(rng=fx_rng)
+        state = circuit.simulate(rng=fx_rng).state
+        state_ref = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("test_case", [0.2, 0.5, 1.0])
@@ -590,14 +592,15 @@ class TestExtraction:
         )
 
         # Substitute parameter at the level of the extracted circuit
-        qc1 = og.extract_circuit()
-        s1 = qc1.subs(alpha, alpha_val).simulate_statevector(rng=fx_rng).statevec
+        qc1 = og.to_circuit()
+        qc1.replace_parameter(alpha, alpha_val)
+        s1 = qc1.simulate(rng=fx_rng).state
 
         # Substitute parameter at the level of the open graph object
         # Calling `infer_pauli_measurements` is not necessary for the test to pass
         # (and it should not be), but it suppresses the warnings.
-        qc2 = og.subs(alpha, alpha_val).infer_pauli_measurements().extract_circuit()
-        s2 = qc2.simulate_statevector(rng=fx_rng).statevec
+        qc2 = og.with_parameter(alpha, alpha_val).infer_pauli_measurements().to_circuit()
+        s2 = qc2.simulate(rng=fx_rng).state
 
         assert s1.isclose(s2)
 
@@ -648,5 +651,5 @@ def test_extend_input() -> None:
     assert og_ext.isclose(og_ref)
     assert ancillary_inputs_map == {1: 8, 2: 7}
 
-    flow = og_ext.infer_pauli_measurements().extract_pauli_flow()
+    flow = og_ext.infer_pauli_measurements().to_pauliflow()
     assert flow.is_focused()

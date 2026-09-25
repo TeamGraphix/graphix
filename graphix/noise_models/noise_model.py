@@ -38,7 +38,7 @@ class Noise(ABC):
         """Return the number of qubits targetted by the noise."""
 
     @abstractmethod
-    def to_kraus_channel(self) -> KrausChannel:
+    def to_krauschannel(self) -> KrausChannel:
         """Return the Kraus channel describing the noise."""
 
 
