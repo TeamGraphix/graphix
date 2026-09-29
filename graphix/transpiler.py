@@ -73,7 +73,7 @@ class TranspiledFlow:
 
     def to_pattern(self) -> TranspiledPattern:
         """Return the transpiled pattern."""
-        pattern = self.flow.to_xzcorrections().to_standardizedpattern().to_space_optimal_pattern()
+        pattern = self.flow.to_standardizedpattern().to_space_optimal_pattern()
         pattern.extend(self.classical_outputs.values())
         return TranspiledPattern(pattern, tuple(self.classical_outputs.keys()))
 
