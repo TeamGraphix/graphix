@@ -231,7 +231,7 @@ class FlowGenericError(FlowError):
             case FlowGenericErrorReason.NoPauliFlow:
                 return "No Pauli flow is compatible with the XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."
             case FlowGenericErrorReason.NotFocused:
-                return "The Pauli flow is not focused."
+                return "Flow is not focused."
             case _:
                 assert_never(self.reason)
 
