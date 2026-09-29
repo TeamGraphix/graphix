@@ -496,7 +496,7 @@ class TestFlow:
         with pytest.raises(FlowGenericError) as exc_info:
             flow.to_focused()
         assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
-        assert str(exc_info.value) == "The Pauli flow is not focused."
+        assert str(exc_info.value) == "Flow is not focused."
 
         assert flow_focused.is_focused()
 
