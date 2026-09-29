@@ -507,7 +507,7 @@ class StandardizedPattern(_StandardizedPattern, Simulable[Measurement]):
 
         Returns
         -------
-        Pattern
+        StandardizedPattern
             A pattern in which Bloch measurements close to a Pauli
             measurement are replaced by Pauli measurements. If
             ``copy`` is ``False``, the result is ``self``.
