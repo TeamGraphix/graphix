@@ -143,7 +143,19 @@ suppress_warnings = ["config.cache"]
 
 mathjax3_config = {
     "loader": {"load": ["[tex]/braket"]},
-    "tex": {"packages": {"[+]": ["braket"]}},
+    "tex": {
+        "packages": {"[+]": ["braket"]},
+        "macros": {
+            "Xaxis": r"\mathrm{X}",
+            "Yaxis": r"\mathrm{Y}",
+            "Zaxis": r"\mathrm{Z}",
+            "XYplane": r"\mathrm{XY}",
+            "XZplane": r"\mathrm{XZ}",
+            "YZplane": r"\mathrm{YZ}",
+            "ketplus": r"|+\rangle",
+            "ketminus": r"|-\rangle",
+        },
+    },
 }
 # For LaTeX/PDF output:
 latex_elements = {
@@ -155,4 +167,3 @@ bibtex_default_style = "alpha"
 plot_formats = ["svg"]  # HTML only: one sharp vector output
 plot_html_show_source_link = False  # hides the "Source code" link
 plot_html_show_formats = False  # hides the "png", "hires.png", "pdf" links
-

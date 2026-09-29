@@ -11,16 +11,16 @@ Open graphs
 
 * an undirected graph :math:`G = (V, E)`. Its nodes :math:`V` are qubits, and its edges :math:`E` describe how they are entangled;
 * two sequences :math:`I, O` of distinct nodes, denoting the input and output qubits of the computation. Their ordering fixes the order of the qubit registers in the input and output Hilbert spaces;
-* a map :math:`\lambda: O^c \to \{\mathrm{XY}, \mathrm{XZ}, \mathrm{YZ}\}` that assigns a measurement plane to each non-output qubit, where :math:`O^c := V \setminus O`.
+* a map :math:`\lambda: O^c \to \{\XYplane, \XZplane, \YZplane\}` that assigns a measurement plane to each non-output qubit, where :math:`O^c := V \setminus O`.
 
-If you are familiar with graph states, an open graph is one whose input nodes are left free. Instead of starting in :math:`|+\rangle`, they hold an arbitrary input state :math:`|\psi\rangle_I`. This gives the *partial graph state*
+If you are familiar with graph states, an open graph is one whose input nodes are left free. Instead of starting in :math:`\ketplus`, they hold an arbitrary input state :math:`\ket{\psi}_I`. This gives the *partial graph state*
 
 .. math::
    :label: og-state
 
    |\Gamma, \psi\rangle :=
    \prod_{(i,j) \in E} CZ_{ij}
-   \left( |+\rangle^{\otimes |I^c|} \otimes |\psi\rangle_I \right),
+   \left( \ketplus^{\otimes |I^c|} \otimes \ket{\psi}_I \right),
 
 where :math:`CZ_{ij}` is the controlled-:math:`Z` gate acting on qubits :math:`i` and :math:`j`, and :math:`I^c := V \setminus I`. Because of this construction, we use the terms *qubit* and *node* interchangeably.
 
@@ -34,7 +34,7 @@ Partial graph states are also *partial stabilizer states*:
    \qquad
    K_j := X_j \prod_{i \in N_G(j)} Z_i,
 
-where :math:`N_G(j)` is the neighbourhood of node :math:`j` in :math:`G`. This holds for any input state :math:`|\psi\rangle_I` :cite:`BKMP07:gflow`.
+where :math:`N_G(j)` is the neighbourhood of node :math:`j` in :math:`G`. This holds for any input state :math:`\ket{\psi}_I` :cite:`BKMP07:gflow`.
 
 In Graphix, open graphs are represented by the :class:`.OpenGraph` class. The example below builds and draws the smallest non-trivial one, with two nodes joined by a single edge:
 
@@ -71,22 +71,25 @@ The pair :math:`(\lambda(i), \alpha(i))` defines a single-qubit measurement on q
    :label: meas-states
 
    \begin{aligned}
-   |\pm_{\mathrm{XY},\alpha}\rangle &= \tfrac{1}{\sqrt{2}}\left(|0\rangle \pm e^{i\alpha}|1\rangle\right), \\
-   |\pm_{\mathrm{XZ},\alpha}\rangle &= t^{\alpha}_{\pm}|0\rangle \pm t^{\alpha}_{\mp}|1\rangle, \\
-   |\pm_{\mathrm{YZ},\alpha}\rangle &= t^{\alpha}_{\pm}|0\rangle \pm i\, t^{\alpha}_{\mp}|1\rangle,
+   |\pm_{\XYplane,\alpha}\rangle &= \tfrac{1}{\sqrt{2}}\left(|0\rangle \pm e^{i\alpha}|1\rangle\right), \\
+   |\pm_{\XZplane,\alpha}\rangle &= t^{\alpha}_{\pm}|0\rangle \pm t^{\alpha}_{\mp}|1\rangle, \\
+   |\pm_{\YZplane,\alpha}\rangle &= t^{\alpha}_{\pm}|0\rangle \pm i\, t^{\alpha}_{\mp}|1\rangle,
    \end{aligned}
 
 with :math:`t^{\alpha}_{+} = \cos(\alpha/2)` and :math:`t^{\alpha}_{-} = \sin(\alpha/2)`. The classical bit :math:`s_i` from the correction strategy is precisely this measurement outcome: :math:`s_i = 0` means the qubit was projected onto :math:`|+_{\lambda(i),\alpha(i)}\rangle`, and :math:`s_i = 1` onto :math:`|-_{\lambda(i),\alpha(i)}\rangle`.
 
-When :math:`\alpha(i) \in \{0, \pi/2, \pi, 3\pi/2\}`, the measurement is along a Pauli axis, and the pair :math:`(\lambda(i), \alpha(i))` can be replaced by a signed axis. For instance, :math:`(\mathrm{XY}, 0) := +X`. These are called *Pauli measurements*, as opposed to the more general *Bloch* (or *planar*) *measurements*.
+When :math:`\alpha(i) \in \{0, \pi/2, \pi, 3\pi/2\}`, the measurement is along a Pauli axis, and the pair :math:`(\lambda(i), \alpha(i))` can be replaced by a signed axis. For instance, :math:`(\XYplane, 0) := +\Xaxis`. These are called *Pauli measurements*, as opposed to the more general *Bloch* (or *planar*) *measurements*.
 
 .. plot:: tutorials/plots/measurement_bases.py
      :include-source: false
 
+.. note::
+  :math:`\XYplane` measurements with an arbitrary angle :math:`\alpha` are enough for universal quantum computation, but allowing measurements on the :math:`\XZplane` and :math:`\YZplane` planes is very practical.
+
 Example: the Hadamard gate
 --------------------------
 
-Let us revisit the Hadamard gate from the :ref:`introduction tutorial <introduction-tutorial>`. Its open graph has two entangled qubits: node 0 is the input and node 1 is the output. Node 0 is measured in the :math:`\mathrm{XY}` plane with angle :math:`\alpha(0) = 0`, and the correction strategy is simply :math:`\boldsymbol{x}(0) = \{1\}`, :math:`\boldsymbol{z}(0) = \emptyset`. If the measurement returns :math:`s_0 = 1`, an :math:`X` gate on node 1 fixes the output.
+Let us revisit the Hadamard gate from the :ref:`introduction tutorial <introduction-tutorial>`. Its open graph has two entangled qubits: node 0 is the input and node 1 is the output. Node 0 is measured in the :math:`\XYplane` plane with angle :math:`\alpha(0) = 0`, and the correction strategy is simply :math:`\boldsymbol{x}(0) = \{1\}`, :math:`\boldsymbol{z}(0) = \emptyset`. If the measurement returns :math:`s_0 = 1`, an :math:`X` gate on node 1 fixes the output.
 
 In Graphix, an MBQC computation can be represented with the :class:`.XZCorrections` class. You instantiate it from an :class:`.OpenGraph` and the two correction maps. The constructor checks that the correction strategy is runnable.
 
