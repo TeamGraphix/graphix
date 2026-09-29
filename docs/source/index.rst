@@ -7,6 +7,7 @@ An open-source framework for Measurement-Based Quantum Computation
 
 .. toctree::
    :caption: Documentation
+   :maxdepth: 2
 
    installation
    getting_started

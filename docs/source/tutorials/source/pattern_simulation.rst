@@ -1,3 +1,5 @@
+.. _simulation-tutorial:
+
 Pattern simulation
 ===================
 

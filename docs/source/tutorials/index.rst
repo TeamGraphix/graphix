@@ -9,9 +9,9 @@ Tutorials
     source/introduction
     source/graph_mbqc
     source/measurement_calculus
-    source/transpilation
+    source/pattern_xzcorrections
     source/flows
-    source/pattern_standardization
+    source/transpilation
     source/space_minimization
     source/pauli_removal
     source/pattern_simulation

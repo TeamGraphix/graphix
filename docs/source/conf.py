@@ -154,6 +154,11 @@ mathjax3_config = {
             "YZplane": r"\mathrm{YZ}",
             "ketplus": r"|+\rangle",
             "ketminus": r"|-\rangle",
+            "N": r"\mathsf{N}",
+            "E": r"\mathsf{E}",
+            "M": r"\mathsf{M}",
+            "X": r"\mathsf{X}",
+            "Z": r"\mathsf{Z}",
         },
     },
 }

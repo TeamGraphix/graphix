@@ -7,6 +7,7 @@ XZCorrections and flows
 .. currentmodule:: graphix.flow.core
 
 .. autoclass:: XZCorrections
+    :members:
 
 .. autoclass:: PauliFlow
 

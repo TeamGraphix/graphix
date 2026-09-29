@@ -1,3 +1,5 @@
+.. _graphmbqc-tutorial:
+
 Open graphs and correction functions
 ====================================
 
@@ -54,6 +56,8 @@ In Graphix, open graphs are represented by the :class:`.OpenGraph` class. The ex
 From open graphs to computations
 --------------------------------
 
+.. _og-corrections:
+
 A labelled open graph says which qubits are measured and in which plane, but does not have information about the classical feed-forward. A complete description of an MBQC computation is the tuple :math:`(\Gamma, \alpha, \boldsymbol{x}, \boldsymbol{z})`, made of:
 
 * a labelled open graph :math:`\Gamma = (G, I, O, \lambda)`;
@@ -61,6 +65,8 @@ A labelled open graph says which qubits are measured and in which plane, but doe
 * a *correction strategy*, given by two functions :math:`\boldsymbol{x}, \boldsymbol{z}: O^c \to \mathcal{P}(I^c)`, where :math:`\mathcal{P}(I^c)` is the power set of the non-input nodes. The set :math:`\boldsymbol{x}(i)` contains the nodes that receive a Pauli :math:`X^{s_i}` correction, and :math:`\boldsymbol{z}(i)` those that receive a :math:`Z^{s_i}` correction. Here :math:`s_i \in \{0, 1\}` is the outcome of the measurement on qubit :math:`i`, so the correction is applied only if that outcome is :math:`1`.
 
 For the computation to be *runnable*, corrections may only depend on qubits that have already been measured. In other words, the dependencies must contain no cycles.
+
+.. _measurement-bases:
 
 Measurement bases
 ^^^^^^^^^^^^^^^^^
@@ -116,7 +122,9 @@ The red arrow from node 0 to node 1 represents the correction :math:`X_1^{s_0}`.
 
 .. note::
 
-   **Planes or measurements?** You may have noticed that the two examples above describe the measurements in the :class:`.OpenGraph` differently. Graphix bundles planes and angles into a single object :class:`.Measurement` instead of keeping two separate maps :math:`\lambda` and :math:`\alpha` as in the formal definitions presented above, but it lets you build open graphs either *with or without* information about the measurement direction. Additionally, there are specific classes to represent axes and Pauli measurements.
+   **Planes or measurements?**
+   
+   You may have noticed that the two examples above describe the measurements in the :class:`.OpenGraph` differently. Graphix bundles planes and angles into a single object :class:`.Measurement` instead of keeping two separate maps :math:`\lambda` and :math:`\alpha` as in the formal definitions presented above, but it lets you build open graphs either *with or without* information about the measurement direction. Additionally, there are specific classes to represent axes and Pauli measurements.
 
    .. list-table::
       :header-rows: 1
