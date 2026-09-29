@@ -654,8 +654,7 @@ class Simulable(Generic[_AM_co]):
         Pattern
             Optimized pattern.
         """
-        standardized_pattern = self.to_standardizedpattern()
-        standardized_pattern = standardized_pattern.minimize_space()
+        standardized_pattern = self.to_standardizedpattern().minimize_space()
         standardized_pattern2 = (
             standardized_pattern.infer_pauli_measurements()
             .remove_pauli_measurements(stacklevel=stacklevel + 1)
