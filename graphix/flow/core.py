@@ -78,6 +78,19 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 class XZCorrections(Parameterizable, Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
+    If a flow is well-formed, then the method ``to_xzcorrections``
+    returns an instance of ``XZCorrections`` that is well-formed by
+    construction.
+
+    No well-formedness checks are performed when instantiating an
+    ``XZCorrections`` object directly by calling the constructor: the
+    corrections may not be runnable, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form
+    well-formed XZ-corrections. The :meth`:check_well_formed` method
+    can be called to explicitly verify that the corrections are
+    well-formed.
+
     Attributes
     ----------
     og : OpenGraph[_AM_co]
@@ -92,6 +105,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
     Notes
     -----
     The XZ-corrections mappings define a partial order, therefore, only ``og``, ``x_corrections`` and ``z_corrections`` are necessary to initialize an ``XZCorrections`` instance (see :func:`XZCorrections.from_measured_nodes_mapping`). However, XZ-corrections are often extracted from a flow whose partial order is known and can be used to construct a pattern, so it can also be passed as an argument to the ``dataclass`` constructor. The correctness of the input parameters is not verified automatically.
+
     """
 
     og: OpenGraph[_AM_co]
@@ -572,6 +586,18 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 class PauliFlow(Parameterizable, Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
+    The methods :meth:`OpenGraph.to_pauliflow` and
+    :meth:`Pattern.to_pauliflow` return well-formed Pauli flows by
+    construction.
+
+    No well-formedness checks are performed when instantiating a
+    ``PauliFlow`` object directly by calling the constructor: the
+    correction function may not be valid, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form a
+    well-formed Pauli flow. The :meth`:check_well_formed` method can
+    be called to explicitly verify that the flow is well-formed.
+
     Attributes
     ----------
     og : OpenGraph[_AM_co]
@@ -591,6 +617,7 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
     ----------
     [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
     [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
+
     """
 
     og: OpenGraph[_AM_co]
@@ -959,6 +986,16 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
     should be reserved for cases where the flow is known to be focused
     by construction (typically, with the class method
     ``from_correctionmatrix_or_none``).
+
+    No well-formedness checks are performed when instantiating a
+    ``FocusedPauliFlow`` object directly: the correction function may
+    not be valid, the layers may be incompatible with the open graph
+    or the corrections, and the flow, if any, may not be focused. The
+    caller is responsible for ensuring that the provided attributes
+    form a well-formed and focused Pauli flow. The
+    :meth`:check_well_formed` method can be called to explicitly
+    verify that the flow is well-formed, and the `is_focused` method
+    can be called to explicitly verify that the flow is focused.
     """
 
     @classmethod
@@ -1069,6 +1106,18 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         - It cannot be constructed from ``OpenGraph[Axis]`` instances, since the gflow is only defined for planar measurements.
         - The extraction of XZ-corrections from the gflow does not require knowledge on the partial order.
         - The method :func:`GFlow.is_well_formed` verifies the definition of gflow (Definition 2.36 in Ref. [1]).
+
+    The methods :meth:`OpenGraph.to_gflow` and
+    :meth:`Pattern.to_gflow` return well-formed gflows by
+    construction.
+
+    No well-formedness checks are performed when instantiating a
+    ``GFlow`` object directly by calling the constructor: the
+    correction function may not be valid, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form a
+    well-formed gflow. The :meth`:check_well_formed` method can be
+    called to explicitly verify that the flow is well-formed.
 
     References
     ----------
@@ -1255,6 +1304,16 @@ class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
     reserved for cases where the flow is known to be focused by
     construction (typically, with the class method
     ``from_correctionmatrix_or_none``).
+
+    No well-formedness checks are performed when instantiating a
+    ``FocusedGFlow`` object directly: the correction function may not
+    be valid, the layers may be incompatible with the open graph or
+    the corrections, and the flow, if any, may not be focused. The
+    caller is responsible for ensuring that the provided attributes
+    form a well-formed and focused gflow. The
+    :meth`:check_well_formed` method can be called to explicitly
+    verify that the flow is well-formed, and the `is_focused` method
+    can be called to explicitly verify that the flow is focused.
     """
 
     @override
@@ -1269,6 +1328,18 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     This class differs from its parent class in the following:
         - The extraction of XZ-corrections from the causal flow does assumes that correction sets have one element only.
         - The method :func:`CausalFlow.is_well_formed` verifies the definition of causal flow (Definition 2 in Ref. [1]).
+
+    The methods :meth:`OpenGraph.to_causalflow` and
+    :meth:`Pattern.to_causalflow` return well-formed causal flows by
+    construction.
+
+    No well-formedness checks are performed when instantiating a
+    ``CausalFlow`` object directly by calling the constructor: the
+    correction function may not be valid, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form a
+    well-formed causal flow. The :meth`:check_well_formed` method can
+    be called to explicitly verify that the flow is well-formed.
 
     References
     ----------
