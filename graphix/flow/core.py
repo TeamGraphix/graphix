@@ -1004,7 +1004,7 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
         return self
 
     @cached_property
-    def extraction_pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
+    def extraction_pauli_strings(self: FocusedPauliFlow[Measurement]) -> dict[int, PauliString]:
         """Compute the extraction Pauli strings associated with each node in the correction function.
 
         This property requires the flow to be focused.
