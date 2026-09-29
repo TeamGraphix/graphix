@@ -70,6 +70,8 @@ doc = [
     "matplotlib",
     "sphinx",
     "sphinx-gallery",
+    "sphinxcontrib-bibtex",
+    "jupyter-sphinx",
 ]
 typing = [
     "numpy==2.5.2; python_version >= '3.12'",
