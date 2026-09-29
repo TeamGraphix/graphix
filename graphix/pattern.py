@@ -1819,8 +1819,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                 before the other measurements. If ``copy`` is ``False``,
                 the result is ``self``.
         """
-        standardized_pattern = self.to_standardizedpattern()
-        standardized_pattern = standardized_pattern.remove_pauli_measurements(stacklevel=stacklevel + 1)
+        standardized_pattern = self.to_standardizedpattern().remove_pauli_measurements(stacklevel=stacklevel + 1)
         pattern = standardized_pattern.to_pattern() if standardize else standardized_pattern.to_space_optimal_pattern()
         if copy:
             return pattern
