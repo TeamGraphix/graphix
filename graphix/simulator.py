@@ -21,6 +21,7 @@ from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, N
 from graphix.fundamentals import AbstractMeasurement
+from graphix.measurements import PauliMeasurement
 from graphix.sim import (
     Backend,
     DensityMatrixBackend,
@@ -655,13 +656,15 @@ class Simulable(Generic[_AM_co]):
             Optimized pattern.
         """
         standardized_pattern = self.to_standardizedpattern().minimize_space()
-        standardized_pattern2 = (
-            standardized_pattern.infer_pauli_measurements()
-            .remove_pauli_measurements(stacklevel=stacklevel + 1)
-            .minimize_space()
-        )
-        if standardized_pattern2.max_space() <= standardized_pattern.max_space():
-            standardized_pattern = standardized_pattern2
+        standardized_pattern2 = standardized_pattern.infer_pauli_measurements()
+        if any(isinstance(m.measurement, PauliMeasurement) for m in standardized_pattern2.m_list):
+            standardized_pattern2 = standardized_pattern2.remove_pauli_measurements(stacklevel=stacklevel + 1)
+            if len(standardized_pattern2.m_list) < len(standardized_pattern.m_list):
+                # Minimization is applied again only if some
+                # measurements have been removed.
+                standardized_pattern2 = standardized_pattern2.minimize_space()
+                if standardized_pattern2.max_space() <= standardized_pattern.max_space():
+                    standardized_pattern = standardized_pattern2
         return standardized_pattern.to_space_optimal_pattern()
 
     @overload
