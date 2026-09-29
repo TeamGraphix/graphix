@@ -664,8 +664,14 @@ class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
     @override
-    def to_pattern(self: PauliFlow[Measurement]) -> Pattern:
-        return self.to_xzcorrections().to_pattern()
+    def to_pattern(self: PauliFlow[Measurement], total_measurement_order: TotalOrder | None = None) -> Pattern:
+        """Generate a pattern from this ``PauliFlow[Measurement]`` instance.
+
+        See :meth:`XZCorrections.to_pattern` for further details about
+        the ``total_measurement_order`` parameter and the exceptions
+        that may be raised.
+        """
+        return self.to_xzcorrections().to_pattern(total_measurement_order)
 
     def is_well_formed(self) -> bool:
         """Verify if flow is well formed.
