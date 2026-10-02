@@ -79,7 +79,7 @@ def check_qasm3_pattern(pattern: Pattern) -> None:
     # Reorder qubits to match the pattern's expected output ordering.
     backend.finalize(pattern.output_nodes)
     state_qiskit = backend.state
-    state_mbqc = pattern.simulate(branch_selector=branch_selector)
+    state_mbqc = pattern.simulate(branch_selector=branch_selector, optimized=False)
     assert state_mbqc.isclose(state_qiskit)
 
 
