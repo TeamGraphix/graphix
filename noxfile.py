@@ -93,22 +93,13 @@ class ReverseDependency:
 
 
 REVERSE_DEPENDENCIES = {
-    "graphix-symbolic": ReverseDependency(
-        "https://github.com/thierry-martinez/graphix-symbolic", branch="suppress_warnings"
-    ),
-    "graphix-stim-backend": ReverseDependency(
-        "https://github.com/thierry-martinez/graphix-stim-backend", branch="suppress_warnings"
-    ),
+    "graphix-symbolic": ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
+    "graphix-stim-backend": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
     "graphix-qasm-parser": ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
-    "graphix-ibmq": ReverseDependency(
-        "https://github.com/thierry-martinez/graphix-ibmq", doctest_modules=False, branch="suppress_warnings"
-    ),
-    "graphix-stim-compiler": ReverseDependency(
-        "https://github.com/thierry-martinez/graphix-stim-compiler", branch="suppress_warnings"
-    ),
+    "graphix-ibmq": ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
+    "graphix-stim-compiler": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
     "graphix-pyzx": ReverseDependency(
-        "https://github.com/thierry-martinez/graphix-pyzx",
-        branch="suppress_warnings",
+        "https://github.com/TeamGraphix/graphix-pyzx",
         # Precompile pyzx before running pytest with warnings-as-errors.
         # See zxcalc/pyzx#518.
         initialization=lambda session: session.run("python", "-c", "import pyzx"),
@@ -119,14 +110,9 @@ REVERSE_DEPENDENCIES = {
         ),
     ),
     "veriphix": ReverseDependency(
-        "https://github.com/thierry-martinez/veriphix",
-        doctest_modules=False,
-        install_target=".[dev]",
-        branch="suppress_warnings",
+        "https://github.com/qat-inria/veriphix", doctest_modules=False, install_target=".[dev]"
     ),
-    "graphix-mqtbench": ReverseDependency(
-        "https://github.com/thierry-martinez/graphix-mqtbench", branch="add_openqasm_gates"
-    ),
+    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/5/head"),
 }
 
 
