@@ -7,6 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import enum
+import itertools
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, overload
@@ -31,21 +32,24 @@ from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import Statevector, StatevectorBackend
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+    from collections.abc import Set as AbstractSet
     from typing import Literal
 
     from numpy.random import Generator
 
     from graphix.command import Node
     from graphix.fundamentals import ParameterizedAngle
-    from graphix.instruction import InstructionType
+    from graphix.instruction import InstructionType, InstructionTypeWithControl, InstructionTypeWithoutM
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
     from graphix.sim import Data
     from graphix.sim.base_backend import DenseState, Matrix
     from graphix.sim.density_matrix import DensityMatrix
+    from graphix.states import PlanarState, State
 
     _BuiltinDenseStateBackend = DensityMatrixBackend | StatevectorBackend
     _DenseStateBackendLiteral = Literal["statevector", "densitymatrix"]
@@ -103,37 +107,102 @@ class _MapAngleVisitor(InstructionVisitor):
         return self.f(angle)
 
 
-class Circuit(InplaceParameterizable):
-    """Gate-to-MBQC transpiler.
+class _InstructionValidatorVisitor(InstructionVisitor):
+    """Instruction visitor that validates operations on active qubits.
 
-    Holds gate operations and translates into MBQC measurement patterns.
+    The ``active_qubits`` attribute references the same mutable set as the
+    circuit's ``active_qubits`` attribute. The circuit updates this set after measurement gates are applied. See :meth:`Circuit.m`.
+    """
+
+    output_kind: dict[int, OutputKind]
+
+    def __init__(self, nqubit: int) -> None:
+        self.output_kind = dict.fromkeys(range(nqubit), OutputKind.Qubit)
+
+    @override
+    def visit_qubit(self, qubit: int) -> int:
+        if self.output_kind.get(qubit) is not OutputKind.Qubit:
+            raise ValueError(f"Qubit {qubit} is not an active qubit.")
+        return qubit
+
+    @override
+    def visit_domain(self, domain: set[int]) -> set[int]:
+        for bit in domain:
+            if self.output_kind.get(bit) is not OutputKind.Bit:
+                raise ValueError(f"Qubit {bit} is not a measured qubit.")
+        return domain
+
+
+class Circuit(InplaceParameterizable):
+    """Quantum circuit.
+
+    Stores a sequence of gate operations. Supports transpilation into
+    measurement-based quantum computing (MBQC) measurement patterns and
+    state vector simulation.
 
     Attributes
     ----------
     width : int
-        Number of logical qubits (for gate network)
-    instruction : list
-        List containing the gate sequence applied.
+        Number of logical qubits in the gate network.
+    instruction : list of InstructionType
+        Sequence of gate instructions applied to the circuit.
+    ancillas : int
+        Number of ancilla qubits.
+    ancilla_state : State
+        Initial state of the ancilla qubits.
+    active_qubits : set of int
+        Indices of qubits currently active in the circuit, including logical
+        and ancilla qubits.
     """
 
     instruction: list[InstructionType]
 
-    def __init__(self, width: int, instr: Iterable[InstructionType] | None = None) -> None:
-        """
-        Construct a circuit.
+    def __init__(
+        self,
+        width: int,
+        instr: Iterable[InstructionType] | None = None,
+        *,
+        ancillas: int = 0,
+        ancilla_state: State = BasicStates.PLUS,
+    ) -> None:
+        """Initialize a circuit.
 
         Parameters
         ----------
         width : int
-            number of logical qubits for the gate network
-        instr : list[InstructionType] | None
-            Optional. List of initial instructions.
+            Number of logical qubits in the gate network.
+        instr : Iterable[InstructionType] or None, optional
+            Initial sequence of instructions to add to the circuit. If
+            ``None``, no instructions are added.
+        ancillas : int, default=0
+            Number of ancilla qubits.
+        ancilla_state : State, default=BasicStates.PLUS
+            Initial state assigned to the ancilla qubits.
+
+        Notes
+        -----
+        Circuit simulation is supported for any ``ancilla_state``. However,
+        transpilation to a measurement pattern is currently supported only when
+        ``ancilla_state`` is a member of ``BasicStates``.
         """
         self.width = width
+        self.ancillas = ancillas
+        self.ancilla_state = ancilla_state
         self.instruction = []
-        self.active_qubits = set(range(width))
+        self.active_qubits = set(range(width + ancillas))
+        # The visitor contains a reference to the `active_qubits` mutable set.
+        # Changes on `self.active_qubits` also occur on `self._visitor.active_qubits`.
+        self._visitor = _InstructionValidatorVisitor(width + ancillas)
         if instr is not None:
             self.extend(instr)
+
+    @property
+    def nqubit(self) -> int:
+        """Total number of qubits in the circuit.
+
+        It includes logical and ancilla qubits, whether they are active or not.
+        """
+        return self.width + self.ancillas
 
     def add(self, instr: InstructionType) -> None:
         """Add an instruction to the circuit."""
@@ -202,6 +271,8 @@ class Circuit(InplaceParameterizable):
                 self.cswap(instr.control, instr.targets[0], instr.targets[1])
             case InstructionKind.GPHASE:
                 self.gphase(instr.angle)
+            case InstructionKind.CONDINSTR:
+                self.condinstr(instr.instructions, instr.domain)
             case _:
                 assert_never(instr.kind)
 
@@ -212,7 +283,7 @@ class Circuit(InplaceParameterizable):
 
     def __repr__(self) -> str:
         """Return a representation of the Circuit."""
-        return f"Circuit(width={self.width}, instr={self.instruction})"
+        return f"Circuit(width={self.width}, instr={self.instruction}, ancillas={self.ancillas}, ancilla_state={self.ancilla_state!r})"
 
     def cnot(self, control: int, target: int) -> None:
         """Apply a CNOT gate.
@@ -226,10 +297,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CNOT(control=control, target=target))
+        self.instruction.append(Instruction.CNOT(control=control, target=target).visit(self._visitor))
 
     def swap(self, qubit1: int, qubit2: int) -> None:
         """Apply a SWAP gate.
@@ -243,15 +311,10 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             second qubit to be swapped
         """
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert qubit1 != qubit2
-        self.instruction.append(Instruction.SWAP(targets=(qubit1, qubit2)))
+        self.instruction.append(Instruction.SWAP(targets=(qubit1, qubit2)).visit(self._visitor))
 
     def cz(self, qubit1: int, qubit2: int) -> None:
         """Apply a CZ gate.
-
-        See :class:`~graphix.instruction.CZ` for more information.
 
         Parameters
         ----------
@@ -260,10 +323,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             target qubit
         """
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert qubit1 != qubit2
-        self.instruction.append(Instruction.CZ(targets=(qubit1, qubit2)))
+        self.instruction.append(Instruction.CZ(targets=(qubit1, qubit2)).visit(self._visitor))
 
     def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
@@ -275,8 +335,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.H(target=qubit))
+        self.instruction.append(Instruction.H(target=qubit).visit(self._visitor))
 
     def s(self, qubit: int) -> None:
         """Apply an S gate.
@@ -288,8 +347,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.S(target=qubit))
+        self.instruction.append(Instruction.S(target=qubit).visit(self._visitor))
 
     def x(self, qubit: int) -> None:
         """Apply a Pauli X gate.
@@ -301,8 +359,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.X(target=qubit))
+        self.instruction.append(Instruction.X(target=qubit).visit(self._visitor))
 
     def y(self, qubit: int) -> None:
         """Apply a Pauli Y gate.
@@ -314,8 +371,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.Y(target=qubit))
+        self.instruction.append(Instruction.Y(target=qubit).visit(self._visitor))
 
     def z(self, qubit: int) -> None:
         """Apply a Pauli Z gate.
@@ -327,8 +383,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.Z(target=qubit))
+        self.instruction.append(Instruction.Z(target=qubit).visit(self._visitor))
 
     def rx(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply an X rotation gate.
@@ -342,8 +397,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.RX(target=qubit, angle=angle))
+        self.instruction.append(Instruction.RX(target=qubit, angle=angle).visit(self._visitor))
 
     def ry(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Y rotation gate.
@@ -357,8 +411,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.RY(target=qubit, angle=angle))
+        self.instruction.append(Instruction.RY(target=qubit, angle=angle).visit(self._visitor))
 
     def rz(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Z rotation gate.
@@ -372,8 +425,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.RZ(target=qubit, angle=angle))
+        self.instruction.append(Instruction.RZ(target=qubit, angle=angle).visit(self._visitor))
 
     def j(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a J rotation gate.
@@ -387,8 +439,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.J(target=qubit, angle=angle))
+        self.instruction.append(Instruction.J(target=qubit, angle=angle).visit(self._visitor))
 
     def r(self, qubit: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a rotation gate on the given axis.
@@ -434,9 +485,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        self.instruction.append(Instruction.RZZ(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.RZZ(control=control, target=target, angle=angle).visit(self._visitor))
 
     def ccx(self, control1: int, control2: int, target: int) -> None:
         r"""Apply a CCX (Toffoli) gate.
@@ -452,13 +501,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        assert control1 in self.active_qubits
-        assert control2 in self.active_qubits
-        assert target in self.active_qubits
-        assert control1 != control2
-        assert control1 != target
-        assert control2 != target
-        self.instruction.append(Instruction.CCX(controls=(control1, control2), target=target))
+        self.instruction.append(Instruction.CCX(controls=(control1, control2), target=target).visit(self._visitor))
 
     def i(self, qubit: int) -> None:
         """Apply an identity (teleportation) gate.
@@ -470,8 +513,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.I(target=qubit))
+        self.instruction.append(Instruction.I(target=qubit).visit(self._visitor))
 
     def m(self, qubit: int, axis: Axis) -> None:
         """Measure a quantum qubit.
@@ -487,9 +529,9 @@ class Circuit(InplaceParameterizable):
         axis : Axis
             measurement basis
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.M(target=qubit, axis=axis))
+        self.instruction.append(Instruction.M(target=qubit, axis=axis).visit(self._visitor))
         self.active_qubits.remove(qubit)
+        self._visitor.output_kind[qubit] = OutputKind.Bit
 
     def sdg(self, qubit: int) -> None:
         """Apply an SDG gate.
@@ -502,7 +544,7 @@ class Circuit(InplaceParameterizable):
             target qubit
         """
         assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SDG(target=qubit))
+        self.instruction.append(Instruction.SDG(target=qubit).visit(self._visitor))
 
     def t(self, qubit: int) -> None:
         """Apply a T gate.
@@ -514,8 +556,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.T(target=qubit))
+        self.instruction.append(Instruction.T(target=qubit).visit(self._visitor))
 
     def tdg(self, qubit: int) -> None:
         """Apply a TDG gate.
@@ -527,8 +568,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.TDG(target=qubit))
+        self.instruction.append(Instruction.TDG(target=qubit).visit(self._visitor))
 
     def sx(self, qubit: int) -> None:
         """Apply an SX gate.
@@ -540,8 +580,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SX(target=qubit))
+        self.instruction.append(Instruction.SX(target=qubit).visit(self._visitor))
 
     def sxdg(self, qubit: int) -> None:
         """Apply an SXDG gate.
@@ -553,8 +592,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SXDG(target=qubit))
+        self.instruction.append(Instruction.SXDG(target=qubit).visit(self._visitor))
 
     def cy(self, control: int, target: int) -> None:
         """Apply a Controlled-Y gate.
@@ -568,10 +606,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CY(control=control, target=target))
+        self.instruction.append(Instruction.CY(control=control, target=target).visit(self._visitor))
 
     def p(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Phase rotation gate.
@@ -585,8 +620,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.P(target=qubit, angle=angle))
+        self.instruction.append(Instruction.P(target=qubit, angle=angle).visit(self._visitor))
 
     def u(self, qubit: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> None:
         """Apply a universal single-qubit gate.
@@ -604,8 +638,7 @@ class Circuit(InplaceParameterizable):
         lambda_ : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_))
+        self.instruction.append(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_).visit(self._visitor))
 
     def cj(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-J rotation gate.
@@ -621,10 +654,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CJ(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CJ(control=control, target=target, angle=angle).visit(self._visitor))
 
     def cp(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-P rotation gate.
@@ -640,10 +670,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CP(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CP(control=control, target=target, angle=angle).visit(self._visitor))
 
     def crx(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply an controlled-X rotation gate.
@@ -659,10 +686,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CRX(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CRX(control=control, target=target, angle=angle).visit(self._visitor))
 
     def cry(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-Y rotation gate.
@@ -678,10 +702,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CRY(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CRY(control=control, target=target, angle=angle).visit(self._visitor))
 
     def crz(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-Z rotation gate.
@@ -697,10 +718,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
-        self.instruction.append(Instruction.CRZ(control=control, target=target, angle=angle))
+        self.instruction.append(Instruction.CRZ(control=control, target=target, angle=angle).visit(self._visitor))
 
     def cr(self, control: int, target: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a controlled-rotation gate on the given axis.
@@ -754,11 +772,10 @@ class Circuit(InplaceParameterizable):
         gamma : ParameterizedAngle
             rotation angle in units of π
         """
-        assert control in self.active_qubits
-        assert target in self.active_qubits
-        assert control != target
         self.instruction.append(
-            Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma)
+            Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma).visit(
+                self._visitor
+            )
         )
 
     def cswap(self, control: int, qubit1: int, qubit2: int) -> None:
@@ -775,13 +792,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             second qubit to be swapped
         """
-        assert control in self.active_qubits
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert control != qubit1
-        assert control != qubit2
-        assert qubit1 != qubit2
-        self.instruction.append(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)))
+        self.instruction.append(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)).visit(self._visitor))
 
     def gphase(self, angle: ParameterizedAngle) -> None:
         r"""Apply a global phase.
@@ -793,7 +804,28 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.GPHASE(angle))
+        self.instruction.append(Instruction.GPHASE(angle).visit(self._visitor))
+
+    def condinstr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None) -> None:
+        """Apply a conditional sequence of gates.
+
+        Parameters
+        ----------
+        instrs : Iterable[InstructionTypeWithoutM]
+            Sequence of instructions to apply conditionally.
+        domain : AbstractSet[int] or None, optional
+            Indices of measured qubits whose outcomes determine the condition. Defaults to ``None``.
+
+        Notes
+        -----
+        .. The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
+
+        .. Condional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
+        """
+        domain_set = set(domain) if domain is not None else set()
+        self.instruction.append(
+            Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set).visit(self._visitor)
+        )
 
     def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
@@ -806,15 +838,29 @@ class Circuit(InplaceParameterizable):
         -------
             the result of the transpilation: a causal flow and classical outputs.
         """
-        indices: list[int | None] = list(range(self.width))
-        n_nodes = self.width
+        n_nodes = self.nqubit
+        indices: list[int | None] = list(range(n_nodes))
         measurements: dict[int, BlochMeasurement] = {}
         classical_outputs: dict[int, command.M] = {}
-        inputs = list(range(n_nodes))
-        graph: nx.Graph[int] = nx.Graph()
-        graph.add_nodes_from(inputs)
+        inputs = list(range(self.width))
+        graph: nx.Graph[int] = nx.empty_graph(n_nodes)
         x_corrections: dict[int, set[int]] = {}
-        for instr in instructions_to_jcz(self.instruction):
+
+        circuit = (
+            self.transpile_ancilla_state(BasicStates.PLUS)
+            if self.ancillas and self.ancilla_state is not BasicStates.PLUS
+            else self
+        )
+
+        circuit = (
+            circuit.transpile_condinstr()
+            if any(instr.kind == InstructionKind.CONDINSTR for instr in circuit.instruction)
+            else circuit
+        )
+
+        instructions = circuit.instruction
+
+        for instr in instructions_to_jcz(instructions):
             match instr.kind:
                 case InstructionKind.M:
                     target = indices[instr.target]
@@ -952,97 +998,21 @@ class Circuit(InplaceParameterizable):
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        _backend = _initialize_backend(backend, branch_selector, self.width)
+        _backend = _initialize_backend(backend, branch_selector, self.nqubit)
 
         if input_state is None:
             _backend.add_nodes(range(self.width))
         else:
             _backend.add_nodes(range(self.width), input_state)
+        if self.ancillas:
+            _backend.add_nodes(range(self.width, self.nqubit), self.ancilla_state)
 
         classical_measures: list[Outcome] = []
+        results: dict[int, Outcome] = {}  # Mimics `DefaultMeasureMethod.results`
 
-        for i in range(len(self.instruction)):
-            instr = self.instruction[i]
+        # Modifies in place `_backend`, `results`, `classical_measures`
+        simulate_instructions(self.instruction, _backend, rng, results, classical_measures, stacklevel=stacklevel + 1)
 
-            def evolve_single(op: Matrix, target: int) -> None:
-                _backend.state.evolve_single(op, _backend.node_index.index(target))
-
-            def evolve(op: Matrix, qargs: Iterable[int]) -> None:
-                _backend.state.evolve(op, [_backend.node_index.index(qarg) for qarg in qargs])
-
-            match instr.kind:
-                case InstructionKind.CNOT:
-                    evolve(Ops.CNOT, [instr.control, instr.target])
-                case InstructionKind.SWAP:
-                    u, v = instr.targets
-                    _backend.state.swap((_backend.node_index.index(u), _backend.node_index.index(v)))
-                case InstructionKind.CY:
-                    evolve(Ops.CY, [instr.control, instr.target])
-                case InstructionKind.CZ:
-                    u, v = instr.targets
-                    _backend.state.entangle((_backend.node_index.index(u), _backend.node_index.index(v)))
-                case InstructionKind.I:
-                    pass
-                case InstructionKind.S:
-                    evolve_single(Ops.S, instr.target)
-                case InstructionKind.SDG:
-                    evolve_single(Ops.SDG, instr.target)
-                case InstructionKind.T:
-                    evolve_single(Ops.T, instr.target)
-                case InstructionKind.TDG:
-                    evolve_single(Ops.TDG, instr.target)
-                case InstructionKind.SX:
-                    evolve_single(Ops.SX, instr.target)
-                case InstructionKind.SXDG:
-                    evolve_single(Ops.SXDG, instr.target)
-                case InstructionKind.H:
-                    evolve_single(Ops.H, instr.target)
-                case InstructionKind.X:
-                    evolve_single(Ops.X, instr.target)
-                case InstructionKind.Y:
-                    evolve_single(Ops.Y, instr.target)
-                case InstructionKind.Z:
-                    evolve_single(Ops.Z, instr.target)
-                case InstructionKind.P:
-                    evolve_single(Ops.p(instr.angle), instr.target)
-                case InstructionKind.RX:
-                    evolve_single(Ops.rx(instr.angle), instr.target)
-                case InstructionKind.RY:
-                    evolve_single(Ops.ry(instr.angle), instr.target)
-                case InstructionKind.RZ:
-                    evolve_single(Ops.rz(instr.angle), instr.target)
-                case InstructionKind.J:
-                    evolve_single(Ops.j(instr.angle), instr.target)
-                case InstructionKind.CJ:
-                    evolve(Ops.cj(instr.angle), [instr.control, instr.target])
-                case InstructionKind.U:
-                    evolve_single(Ops.u(instr.theta, instr.phi, instr.lambda_), instr.target)
-                case InstructionKind.CU:
-                    evolve(Ops.cu(instr.theta, instr.phi, instr.lambda_, instr.gamma), [instr.control, instr.target])
-                case InstructionKind.CP:
-                    evolve(Ops.cp(instr.angle), [instr.control, instr.target])
-                case InstructionKind.CRX:
-                    evolve(Ops.crx(instr.angle), [instr.control, instr.target])
-                case InstructionKind.CRY:
-                    evolve(Ops.cry(instr.angle), [instr.control, instr.target])
-                case InstructionKind.CRZ:
-                    evolve(Ops.crz(instr.angle), [instr.control, instr.target])
-                case InstructionKind.RZZ:
-                    evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
-                case InstructionKind.CCX:
-                    evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
-                case InstructionKind.CSWAP:
-                    evolve(Ops.CSWAP, [instr.control, instr.targets[0], instr.targets[1]])
-                case InstructionKind.M:
-                    result = _backend.measure(
-                        instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1
-                    )
-                    classical_measures.append(result)
-                case InstructionKind.GPHASE:
-                    # Global phase is currently ignored
-                    pass
-                case _:
-                    assert_never(instr.kind)
         return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Circuit:
@@ -1064,7 +1034,7 @@ class Circuit(InplaceParameterizable):
             The rewritten circuit. Equal to ``self`` if ``copy`` is ``False``.
         """
         if copy:
-            result = Circuit(self.width)
+            result = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
             for instr in self.instruction:
                 result.instruction.append(instr.visit(visitor, copy=True))
             return result
@@ -1122,8 +1092,13 @@ class Circuit(InplaceParameterizable):
         return self.apply_angle(lambda angle: parameter.with_parameters(angle, assignment), copy=copy)
 
     def transpile_to_qasm_gates(self) -> Circuit:
-        """Return an equivalent circuit using only the standard OpenQASM gate set."""
-        new_circuit = Circuit(self.width)
+        """Return an equivalent circuit using only the standard OpenQASM gate set.
+
+        Returns
+        -------
+        Circuit
+        """
+        new_circuit = Circuit(self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
         for instr in self.instruction:
             match instr.kind:
                 case InstructionKind.J:
@@ -1149,16 +1124,100 @@ class Circuit(InplaceParameterizable):
                     new_circuit.add(instr)
         return new_circuit
 
-    def transpile_rzz(self) -> Circuit:
-        """Return an equivalent circuit where all RZZ gates have been replaced with OpenQASM gates."""
-        new_circuit = Circuit(self.width)
+    def transpile_ancilla_state(self, target_state: PlanarState = BasicStates.PLUS) -> Circuit:
+        """Return an equivalent circuit with ancillas initialized to ``target_state``.
+
+        Parameters
+        ----------
+        target_state : BasicStates, default=BasicStates.PLUS
+            State to which the ancillas should be transpiled. Supported states are ``BasicStates.ZERO`` and ``BasicStates.PLUS``.
+
+        Returns
+        -------
+        Circuit
+            Equivalent circuit with the required initialization gates prepended.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``target_state`` is not supported.
+        """
+        new_circuit = Circuit(self.width, ancillas=self.ancillas, ancilla_state=target_state)
+        match target_state:
+            case BasicStates.PLUS:
+                initialization = transpile_to_plus(self.ancilla_state)
+            case BasicStates.ZERO:
+                initialization = transpile_to_zero(self.ancilla_state)
+            case _:
+                raise NotImplementedError(
+                    f"Ancilla transpilation is only possible to |0> or |+> states. Attempted to transpile to {target_state}"
+                )
+
+        for qubit in range(self.width, self.nqubit):
+            for instr in initialization:
+                new_circuit.add(instr(qubit))
+        new_circuit.instruction += self.instruction
+        return new_circuit
+
+    def transpile_condinstr(self) -> Circuit:
+        r"""Return an equivalent circuit without conditional instructions.
+
+        Conditional instructions are replaced by controlled instructions,
+        using measurements of their domain qubits in the :math:`Z` basis as control
+        conditions. Measurements are moved to the end of the circuit.
+
+        Returns
+        -------
+        Circuit
+
+        Notes
+        -----
+        For each qubit that appears in the domain of a conditional instruction,
+        its measurement is transpiled to a :math:`Z`-axis measurement. If the original
+        measurement is in the :math:`X` or :math:`Y` basis, the corresponding basis rotation
+        is inserted before the controlled instruction:
+        .. :math:`X`-axis measurements are preceded by a Hadamard gate.
+
+        .. :math:`Y`-axis measurements are preceded by an :math:`R_X(\pi/2)` gate.
+
+        The domain qubits are chained using CNOT gates to implement the conditional instruction. The CNOT chain is then reversed to restore the state of the domain qubits.
+
+        Non-conditional instructions are preserved unchanged.
+
+        All measurements are deferred to the end of the circuit, even if they do not appear in any
+        conditional instruction.
+        """
+        circuit = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
+        measurements: dict[int, Instruction.M] = {}
         for instr in self.instruction:
             match instr.kind:
-                case InstructionKind.RZZ:
-                    new_circuit.extend(decompose_rzz(instr))
+                case InstructionKind.M:
+                    measurements[instr.target] = instr
+                case InstructionKind.CONDINSTR:
+                    if instr.domain:
+                        domain_list = list(instr.domain)
+                        for cbit in domain_list:
+                            meas_instr = measurements[cbit]
+                            assert cbit == meas_instr.target
+                            if meas_instr.axis == Axis.X:
+                                circuit.h(cbit)
+                            elif meas_instr.axis == Axis.Y:
+                                circuit.rx(cbit, ANGLE_PI / 2)
+                            measurements[cbit] = Instruction.M(cbit, Axis.Z)  # Record updated measurement
+                        cnot_instr = [
+                            Instruction.CNOT(control=control, target=target)
+                            for control, target in itertools.pairwise(domain_list)
+                        ]
+                        circuit.extend(cnot_instr)
+                        circuit.extend(insert_control(domain_list[-1], instr.instructions))
+                        circuit.extend(cnot_instr[::-1])
                 case _:
-                    new_circuit.add(instr)
-        return new_circuit
+                    circuit.add(instr)
+
+        for instr in measurements.values():
+            circuit.add(instr)
+
+        return circuit
 
 
 def decompose_rzz(instr: Instruction.RZZ) -> Iterator[Instruction.CNOT | Instruction.RZ]:
@@ -1381,44 +1440,6 @@ def decompose_cu(instr: Instruction.CU) -> Iterator[Instruction.CJ | Instruction
     yield Instruction.P(target=instr.control, angle=instr.gamma - instr.theta / 2)
 
 
-def insert_control(
-    control: int,
-    instrs: Iterable[
-        Instruction.GPHASE | Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ
-    ],
-) -> Iterator[Instruction.CNOT | Instruction.CZ | Instruction.CJ | Instruction.CCX | Instruction.CRZ | Instruction.P]:
-    """Yield a controlled gate sequence from a gate sequence.
-
-    Parameters
-    ----------
-    control: int
-        The control qubit.
-    instrs: Iterable[Instruction.GPHASE | Instruction.X | Instruction.Z | Instruction.J | Instruction.CNOT | Instruction.RZ]
-        The gate sequence.
-
-    Yields
-    ------
-    InstructionType
-        The controlled gate sequence.
-    """
-    for instr in instrs:
-        match instr.kind:
-            case InstructionKind.X:
-                yield Instruction.CNOT(control=control, target=instr.target)
-            case InstructionKind.Z:
-                yield Instruction.CZ((control, instr.target))
-            case InstructionKind.J:
-                yield Instruction.CJ(control=control, target=instr.target, angle=instr.angle)
-            case InstructionKind.CNOT:
-                yield Instruction.CCX(target=instr.target, controls=(control, instr.control))
-            case InstructionKind.RZ:
-                yield Instruction.CRZ(control=control, target=instr.target, angle=instr.angle)
-            case InstructionKind.GPHASE:
-                yield Instruction.P(target=control, angle=instr.angle)
-            case _:
-                assert_never(instr.kind)
-
-
 def decompose_cj(instr: Instruction.CJ) -> Iterator[Instruction.RZ | Instruction.CNOT | Instruction.RY | Instruction.P]:
     """Yield a decomposed gate sequence of the CJ gate.
 
@@ -1441,6 +1462,97 @@ def decompose_p(instr: Instruction.P) -> Iterator[Instruction.RZ | Instruction.G
     """
     yield Instruction.RZ(instr.target, instr.angle)
     yield Instruction.GPHASE(instr.angle / 2)
+
+
+def insert_control(
+    control: int,
+    instrs: Iterable[InstructionTypeWithoutM],
+) -> Iterator[InstructionTypeWithControl | Instruction.CONDINSTR]:
+    """Yield a controlled gate sequence from a gate sequence.
+
+    Parameters
+    ----------
+    control: int
+        The control qubit.
+    instrs: Iterable[InstructionTypeWithoutM]
+        The gate sequence.
+
+    Yields
+    ------
+    InstructionTypeWithControl | Instruction.CONDINSTR
+        The controlled gate sequence.
+    """
+    for instr in instrs:
+        match instr.kind:
+            case InstructionKind.I:
+                pass
+            case InstructionKind.X:
+                yield Instruction.CNOT(control=control, target=instr.target)
+            case InstructionKind.Y:
+                yield Instruction.CY(control=control, target=instr.target)
+            case InstructionKind.Z:
+                yield Instruction.CZ((control, instr.target))
+            case InstructionKind.H:
+                yield Instruction.CJ(control=control, target=instr.target, angle=0)
+            case InstructionKind.J:
+                yield Instruction.CJ(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.P:
+                yield Instruction.CP(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.RX:
+                yield Instruction.CRX(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.RY:
+                yield Instruction.CRY(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.RZ:
+                yield Instruction.CRZ(control=control, target=instr.target, angle=instr.angle)
+            case InstructionKind.U:
+                yield Instruction.CU(
+                    control=control,
+                    target=instr.target,
+                    theta=instr.theta,
+                    phi=instr.phi,
+                    lambda_=instr.lambda_,
+                    gamma=0,
+                )
+            case InstructionKind.CZ:
+                # Controlled-(H(1), CNOT(control=0, target=1), H(1))
+                q0, q1 = instr.targets
+                yield Instruction.CJ(control=control, target=q1, angle=0)
+                yield Instruction.CCX(target=q1, controls=(control, q0))
+                yield Instruction.CJ(control=control, target=q1, angle=0)
+            case InstructionKind.CU:
+                yield from insert_control(control, decompose_cu(instr))
+            case InstructionKind.CNOT:
+                yield Instruction.CCX(target=instr.target, controls=(control, instr.control))
+            case InstructionKind.CJ:
+                yield from insert_control(control, decompose_cj(instr))
+            case InstructionKind.CCX:
+                yield from insert_control(control, decompose_ccx(instr))
+            case InstructionKind.RZZ:
+                yield from insert_control(control, decompose_rzz(instr))
+            case InstructionKind.SWAP:
+                yield Instruction.CSWAP(control=control, targets=instr.targets)
+            case (
+                InstructionKind.S
+                | InstructionKind.SDG
+                | InstructionKind.T
+                | InstructionKind.TDG
+                | InstructionKind.SX
+                | InstructionKind.SXDG
+                | InstructionKind.CP
+                | InstructionKind.CRX
+                | InstructionKind.CRY
+                | InstructionKind.CRZ
+                | InstructionKind.CY
+                | InstructionKind.CSWAP
+            ):
+                yield from insert_control(control, _without_m(instructions_to_jcz([instr])))
+            case InstructionKind.GPHASE:
+                yield Instruction.P(target=control, angle=instr.angle)
+            case InstructionKind.CONDINSTR:
+                controlled_instr = insert_control(control, instr.instructions)
+                yield Instruction.CONDINSTR(tuple(controlled_instr), instr.domain)
+            case _:
+                assert_never(instr.kind)
 
 
 def instructions_to_jcz(
@@ -1529,6 +1641,10 @@ def instructions_to_jcz(
                 )
             case InstructionKind.GPHASE:
                 yield instr
+            case InstructionKind.CONDINSTR:
+                raise NotImplementedError(
+                    "Direct transpilation of conditional instructions is not supported. First remove conditional instructions with the `Circuit.transpile_condinstr()` method."
+                )
             case _:
                 assert_never(instr.kind)
 
@@ -1550,6 +1666,87 @@ def normalize_angle(angle: ParameterizedAngle) -> ParameterizedAngle:
     if isinstance(angle, float):
         return angle % (2 * ANGLE_PI)
     return angle
+
+
+def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWithoutM]:
+    """Narrow ``InstructionType`` to ``InstructionTypeWithoutM``."""
+    for instr in instrs:
+        assert instr.kind != InstructionKind.M
+        yield instr
+
+
+def transpile_to_plus(ancilla_state: State) -> tuple[Callable[[int], InstructionType], ...]:
+    r"""Return instructions that transform an ancilla state to :math:`|+\rangle`.
+
+    Parameters
+    ----------
+    ancilla_state : State
+        Initial state of the ancilla.
+
+    Returns
+    -------
+    tuple[Callable[[int], InstructionType], ...]
+        Instructions that transform ``ancilla_state`` to :math:`|+\rangle`.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``ancilla_state`` is not a supported basic state.
+    """
+    match ancilla_state:
+        case BasicStates.PLUS:
+            return ()
+        case BasicStates.MINUS:
+            return (Instruction.Z,)
+        case BasicStates.ZERO:
+            return (Instruction.H,)
+        case BasicStates.ONE:
+            return (Instruction.H, Instruction.X)
+        case BasicStates.PLUS_I:
+            return (Instruction.S,)
+        case BasicStates.MINUS_I:
+            return (Instruction.S, Instruction.Z)
+        case _:
+            raise _unsupported_ancilla_state(ancilla_state)
+
+
+def transpile_to_zero(ancilla_state: State) -> tuple[Callable[[int], InstructionType], ...]:
+    r"""Return instructions that transform an ancilla state to :math:`|0\rangle`.
+
+    Parameters
+    ----------
+    ancilla_state : State
+        Initial state of the ancilla.
+
+    Returns
+    -------
+    tuple[Callable[[int], InstructionType], ...]
+        Instructions that transform ``ancilla_state`` to :math:`|0\rangle`.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``ancilla_state`` is not a supported basic state.
+    """
+    match ancilla_state:
+        case BasicStates.PLUS:
+            return (Instruction.H,)
+        case BasicStates.MINUS:
+            return (Instruction.H, Instruction.Z)
+        case BasicStates.ZERO:
+            return ()
+        case BasicStates.ONE:
+            return (Instruction.X,)
+        case BasicStates.PLUS_I:
+            return (Instruction.H, Instruction.S)
+        case BasicStates.MINUS_I:
+            return (Instruction.H, Instruction.S, Instruction.Z)
+        case _:
+            raise _unsupported_ancilla_state(ancilla_state)
+
+
+def _unsupported_ancilla_state(ancilla_state: State) -> NotImplementedError:
+    return NotImplementedError(f"Transpilation only supports `BasicStates` ancillas. Ancilla state is {ancilla_state}")
 
 
 @dataclass(frozen=True)
@@ -1651,8 +1848,8 @@ def transpile_swaps(circuit: Circuit, *, copy: bool = False) -> TranspileSwapsRe
         the returned circuit; or the qubit has been measured, and
         ``outputs`` provides the index of the measurement.
     """
-    new_circuit = Circuit(circuit.width)
-    visitor = _TranspileSwapVisitor(circuit.width)
+    new_circuit = Circuit(circuit.width, ancillas=circuit.ancillas, ancilla_state=circuit.ancilla_state)
+    visitor = _TranspileSwapVisitor(circuit.nqubit)
     measurement_index = 0
     for instr in circuit.instruction:
         if instr.kind == InstructionKind.SWAP:
@@ -1740,3 +1937,121 @@ def _initialize_backend(
             return DensityMatrixBackend(branch_selector=branch_selector)
         case _:
             raise ValueError(f"Unknown backend {backend}.")
+
+
+def simulate_instructions(
+    instructions: Iterable[InstructionType],
+    backend: _BuiltinDenseStateBackend | DenseStateBackend[_DenseStateT],
+    rng: Generator | None,
+    results: dict[int, Outcome],
+    classical_outputs: list[Outcome],
+    *,
+    stacklevel: int = 1,
+) -> None:
+    """Simulate a sequence of quantum instructions.
+
+    Parameters
+    ----------
+    instructions : Iterable[InstructionType]
+        Sequence of instructions to simulate.
+    backend : _BuiltinDenseStateBackend or DenseStateBackend[_DenseStateT]
+        Backend containing the quantum state.
+    rng : Generator or None
+        Random number generator used for stochastic measurements. If ``None``, the backend's default random number generation behavior is used.
+    results : dict[int, Outcome]
+        Mapping from measured qubit indices to their measurement outcomes. This mapping is updated in place as measurement instructions are simulated.
+    classical_outputs : list[Outcome]
+        List of measurement outcomes. This list is updated in place and retained for backwards compatibility.
+    stacklevel : int, default=1
+        Stack level used when reporting warnings generated during measurement.
+    """
+
+    def evolve_single(op: Matrix, target: int) -> None:
+        backend.state.evolve_single(op, backend.node_index.index(target))
+
+    def evolve(op: Matrix, qargs: Iterable[int]) -> None:
+        backend.state.evolve(op, [backend.node_index.index(qarg) for qarg in qargs])
+
+    # Mimics `MeasureMethod.check_domain`
+    def check_domain(domain: set[int]) -> bool:
+        return sum(results[j] for j in domain) % 2 == 1
+
+    for instr in instructions:
+        match instr.kind:
+            case InstructionKind.CNOT:
+                evolve(Ops.CNOT, [instr.control, instr.target])
+            case InstructionKind.SWAP:
+                u, v = instr.targets
+                backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))
+            case InstructionKind.CY:
+                evolve(Ops.CY, [instr.control, instr.target])
+            case InstructionKind.CZ:
+                u, v = instr.targets
+                backend.state.entangle((backend.node_index.index(u), backend.node_index.index(v)))
+            case InstructionKind.I:
+                pass
+            case InstructionKind.S:
+                evolve_single(Ops.S, instr.target)
+            case InstructionKind.SDG:
+                evolve_single(Ops.SDG, instr.target)
+            case InstructionKind.T:
+                evolve_single(Ops.T, instr.target)
+            case InstructionKind.TDG:
+                evolve_single(Ops.TDG, instr.target)
+            case InstructionKind.SX:
+                evolve_single(Ops.SX, instr.target)
+            case InstructionKind.SXDG:
+                evolve_single(Ops.SXDG, instr.target)
+            case InstructionKind.H:
+                evolve_single(Ops.H, instr.target)
+            case InstructionKind.X:
+                evolve_single(Ops.X, instr.target)
+            case InstructionKind.Y:
+                evolve_single(Ops.Y, instr.target)
+            case InstructionKind.Z:
+                evolve_single(Ops.Z, instr.target)
+            case InstructionKind.P:
+                evolve_single(Ops.p(instr.angle), instr.target)
+            case InstructionKind.RX:
+                evolve_single(Ops.rx(instr.angle), instr.target)
+            case InstructionKind.RY:
+                evolve_single(Ops.ry(instr.angle), instr.target)
+            case InstructionKind.RZ:
+                evolve_single(Ops.rz(instr.angle), instr.target)
+            case InstructionKind.J:
+                evolve_single(Ops.j(instr.angle), instr.target)
+            case InstructionKind.CJ:
+                evolve(Ops.cj(instr.angle), [instr.control, instr.target])
+            case InstructionKind.U:
+                evolve_single(Ops.u(instr.theta, instr.phi, instr.lambda_), instr.target)
+            case InstructionKind.CU:
+                evolve(Ops.cu(instr.theta, instr.phi, instr.lambda_, instr.gamma), [instr.control, instr.target])
+            case InstructionKind.CP:
+                evolve(Ops.cp(instr.angle), [instr.control, instr.target])
+            case InstructionKind.CRX:
+                evolve(Ops.crx(instr.angle), [instr.control, instr.target])
+            case InstructionKind.CRY:
+                evolve(Ops.cry(instr.angle), [instr.control, instr.target])
+            case InstructionKind.CRZ:
+                evolve(Ops.crz(instr.angle), [instr.control, instr.target])
+            case InstructionKind.RZZ:
+                evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
+            case InstructionKind.CCX:
+                evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
+            case InstructionKind.CSWAP:
+                evolve(Ops.CSWAP, [instr.control, instr.targets[0], instr.targets[1]])
+            case InstructionKind.M:
+                result = backend.measure(instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1)
+                # We keep `classical_outputs` for backwards compatibility but ``results`` contains the same information
+                classical_outputs.append(result)
+                results[instr.target] = result
+            case InstructionKind.GPHASE:
+                # Global phase is currently ignored
+                pass
+            case InstructionKind.CONDINSTR:
+                if check_domain(instr.domain):
+                    simulate_instructions(
+                        instr.instructions, backend, rng, results, classical_outputs, stacklevel=stacklevel + 1
+                    )
+            case _:
+                assert_never(instr.kind)
