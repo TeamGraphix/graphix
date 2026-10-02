@@ -147,7 +147,7 @@ class Circuit(InplaceParameterizable):
             case InstructionKind.SWAP:
                 self.swap(instr.targets[0], instr.targets[1])
             case InstructionKind.CZ:
-                self.cz(instr.targets[0], instr.targets[1])
+                self.cz(instr.control, instr.target)
             case InstructionKind.H:
                 self.h(instr.target)
             case InstructionKind.S:
@@ -263,7 +263,7 @@ class Circuit(InplaceParameterizable):
         assert qubit1 in self.active_qubits
         assert qubit2 in self.active_qubits
         assert qubit1 != qubit2
-        self.instruction.append(Instruction.CZ(targets=(qubit1, qubit2)))
+        self.instruction.append(Instruction.CZ(qubit1, qubit2))
 
     def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
@@ -834,8 +834,7 @@ class Circuit(InplaceParameterizable):
                     n_nodes += 1
                     continue
                 case InstructionKind.CZ:
-                    t0, t1 = instr.targets
-                    i0, i1 = indices[t0], indices[t1]
+                    i0, i1 = indices[instr.control], indices[instr.target]
                     if i0 is None or i1 is None:
                         raise RuntimeError("Ill-formed circuit")
                     # If edge exists, remove it; else, add it
@@ -979,8 +978,9 @@ class Circuit(InplaceParameterizable):
                 case InstructionKind.CY:
                     evolve(Ops.CY, [instr.control, instr.target])
                 case InstructionKind.CZ:
-                    u, v = instr.targets
-                    _backend.state.entangle((_backend.node_index.index(u), _backend.node_index.index(v)))
+                    _backend.state.entangle(
+                        (_backend.node_index.index(instr.control), _backend.node_index.index(instr.target))
+                    )
                 case InstructionKind.I:
                     pass
                 case InstructionKind.S:
@@ -1232,7 +1232,7 @@ def decompose_cnot(instr: Instruction.CNOT) -> Iterator[Instruction.H | Instruct
 
     """
     yield Instruction.H(instr.target)
-    yield Instruction.CZ((instr.control, instr.target))
+    yield Instruction.CZ(instr.control, instr.target)
     yield Instruction.H(instr.target)
 
 
@@ -1406,7 +1406,7 @@ def insert_control(
             case InstructionKind.X:
                 yield Instruction.CNOT(control=control, target=instr.target)
             case InstructionKind.Z:
-                yield Instruction.CZ((control, instr.target))
+                yield Instruction.CZ(control, instr.target)
             case InstructionKind.J:
                 yield Instruction.CJ(control=control, target=instr.target, angle=instr.angle)
             case InstructionKind.CNOT:

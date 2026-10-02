@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #596, #597: Pattern's `n_node` property updated after Pauli removal.
 
+- #598, #608:
+  - The order of the attributes of the controlled instructions has been changed to put the control qubits first, to ensure consistency between all controlled instructions, with the matrix description of the gates, and with the `Circuit` methods that add instructions to the circuit.
+  - `CZ` is now a `ControlledSingleTargetInstruction` and takes a `control` and a `target` instead of a pair of `targets`.
+
 ## [0.4] - 2026-08-18
 
 ### Added

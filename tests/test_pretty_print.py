@@ -30,8 +30,8 @@ if TYPE_CHECKING:
 
 
 def test_circuit_repr() -> None:
-    circuit = Circuit(width=3, instr=[instruction.H(0), instruction.RX(1, ANGLE_PI), instruction.CCX(0, (1, 2))])
-    assert repr(circuit) == "Circuit(width=3, instr=[H(0), RX(1, pi), CCX(0, (1, 2))])"
+    circuit = Circuit(width=3, instr=[instruction.H(0), instruction.RX(1, ANGLE_PI), instruction.CCX((0, 1), 2)])
+    assert repr(circuit) == "Circuit(width=3, instr=[H(0), RX(1, pi), CCX((0, 1), 2)])"
 
 
 def j_alpha() -> Pattern:
