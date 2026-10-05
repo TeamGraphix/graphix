@@ -248,22 +248,22 @@ class Circuit(InplaceParameterizable):
         assert qubit1 != qubit2
         self.instruction.append(Instruction.SWAP(targets=(qubit1, qubit2)))
 
-    def cz(self, qubit1: int, qubit2: int) -> None:
+    def cz(self, control: int, target: int) -> None:
         """Apply a CZ gate.
 
         See :class:`~graphix.instruction.CZ` for more information.
 
         Parameters
         ----------
-        qubit1 : int
+        control : int
             control qubit
-        qubit2 : int
+        target : int
             target qubit
         """
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert qubit1 != qubit2
-        self.instruction.append(Instruction.CZ(qubit1, qubit2))
+        assert control in self.active_qubits
+        assert target in self.active_qubits
+        assert control != target
+        self.instruction.append(Instruction.CZ(control, target))
 
     def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
