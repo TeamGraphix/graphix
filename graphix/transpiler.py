@@ -231,22 +231,22 @@ class Circuit(InplaceParameterizable):
         assert control != target
         self.instruction.append(Instruction.CNOT(control=control, target=target))
 
-    def swap(self, qubit1: int, qubit2: int) -> None:
+    def swap(self, target1: int, target2: int) -> None:
         """Apply a SWAP gate.
 
         See :class:`~graphix.instruction.SWAP` for more information.
 
         Parameters
         ----------
-        qubit1 : int
+        target1 : int
             first qubit to be swapped
-        qubit2 : int
+        target2 : int
             second qubit to be swapped
         """
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert qubit1 != qubit2
-        self.instruction.append(Instruction.SWAP(targets=(qubit1, qubit2)))
+        assert target1 in self.active_qubits
+        assert target2 in self.active_qubits
+        assert target1 != target2
+        self.instruction.append(Instruction.SWAP(targets=(target1, target2)))
 
     def cz(self, control: int, target: int) -> None:
         """Apply a CZ gate.
@@ -265,137 +265,137 @@ class Circuit(InplaceParameterizable):
         assert control != target
         self.instruction.append(Instruction.CZ(control, target))
 
-    def h(self, qubit: int) -> None:
+    def h(self, target: int) -> None:
         """Apply a Hadamard gate.
 
         See :class:`~graphix.instruction.H` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.H(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.H(target))
 
-    def s(self, qubit: int) -> None:
+    def s(self, target: int) -> None:
         """Apply an S gate.
 
         See :class:`~graphix.instruction.S` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.S(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.S(target=target))
 
-    def x(self, qubit: int) -> None:
+    def x(self, target: int) -> None:
         """Apply a Pauli X gate.
 
         See :class:`~graphix.instruction.X` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.X(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.X(target=target))
 
-    def y(self, qubit: int) -> None:
+    def y(self, target: int) -> None:
         """Apply a Pauli Y gate.
 
         See :class:`~graphix.instruction.Y` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.Y(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.Y(target=target))
 
-    def z(self, qubit: int) -> None:
+    def z(self, target: int) -> None:
         """Apply a Pauli Z gate.
 
         See :class:`~graphix.instruction.Z` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.Z(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.Z(target=target))
 
-    def rx(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def rx(self, target: int, angle: ParameterizedAngle) -> None:
         """Apply an X rotation gate.
 
         See :class:`~graphix.instruction.RX` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.RX(target=qubit, angle=angle))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.RX(target=target, angle=angle))
 
-    def ry(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def ry(self, target: int, angle: ParameterizedAngle) -> None:
         """Apply a Y rotation gate.
 
         See :class:`~graphix.instruction.RY` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.RY(target=qubit, angle=angle))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.RY(target=target, angle=angle))
 
-    def rz(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def rz(self, target: int, angle: ParameterizedAngle) -> None:
         """Apply a Z rotation gate.
 
         See :class:`~graphix.instruction.RZ` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.RZ(target=qubit, angle=angle))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.RZ(target=target, angle=angle))
 
-    def j(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def j(self, target: int, angle: ParameterizedAngle) -> None:
         """Apply a J rotation gate.
 
         See :class:`~graphix.instruction.J` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.J(target=qubit, angle=angle))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.J(target=target, angle=angle))
 
-    def r(self, qubit: int, axis: Axis, angle: ParameterizedAngle) -> None:
+    def r(self, target: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a rotation gate on the given axis.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         axis : Axis
             rotation axis
@@ -404,11 +404,11 @@ class Circuit(InplaceParameterizable):
         """
         match axis:
             case Axis.X:
-                self.rx(qubit, angle)
+                self.rx(target, angle)
             case Axis.Y:
-                self.ry(qubit, angle)
+                self.ry(target, angle)
             case Axis.Z:
-                self.rz(qubit, angle)
+                self.rz(target, angle)
             case _:
                 assert_never(axis)
 
@@ -460,20 +460,20 @@ class Circuit(InplaceParameterizable):
         assert control2 != target
         self.instruction.append(Instruction.CCX(controls=(control1, control2), target=target))
 
-    def i(self, qubit: int) -> None:
+    def i(self, target: int) -> None:
         """Apply an identity (teleportation) gate.
 
         See :class:`~graphix.instruction.I` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.I(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.I(target=target))
 
-    def m(self, qubit: int, axis: Axis) -> None:
+    def m(self, target: int, axis: Axis) -> None:
         """Measure a quantum qubit.
 
         The measured qubit cannot be used afterwards.
@@ -482,79 +482,79 @@ class Circuit(InplaceParameterizable):
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         axis : Axis
             measurement basis
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.M(target=qubit, axis=axis))
-        self.active_qubits.remove(qubit)
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.M(target=target, axis=axis))
+        self.active_qubits.remove(target)
 
-    def sdg(self, qubit: int) -> None:
+    def sdg(self, target: int) -> None:
         """Apply an SDG gate.
 
         See :class:`~graphix.instruction.SDG` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SDG(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.SDG(target=target))
 
-    def t(self, qubit: int) -> None:
+    def t(self, target: int) -> None:
         """Apply a T gate.
 
         See :class:`~graphix.instruction.T` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.T(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.T(target=target))
 
-    def tdg(self, qubit: int) -> None:
+    def tdg(self, target: int) -> None:
         """Apply a TDG gate.
 
         See :class:`~graphix.instruction.TDG` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.TDG(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.TDG(target=target))
 
-    def sx(self, qubit: int) -> None:
+    def sx(self, target: int) -> None:
         """Apply an SX gate.
 
         See :class:`~graphix.instruction.SX` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SX(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.SX(target=target))
 
-    def sxdg(self, qubit: int) -> None:
+    def sxdg(self, target: int) -> None:
         """Apply an SXDG gate.
 
         See :class:`~graphix.instruction.SXDG` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SXDG(target=qubit))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.SXDG(target=target))
 
     def cy(self, control: int, target: int) -> None:
         """Apply a Controlled-Y gate.
@@ -573,29 +573,29 @@ class Circuit(InplaceParameterizable):
         assert control != target
         self.instruction.append(Instruction.CY(control=control, target=target))
 
-    def p(self, qubit: int, angle: ParameterizedAngle) -> None:
+    def p(self, target: int, angle: ParameterizedAngle) -> None:
         """Apply a Phase rotation gate.
 
         See :class:`~graphix.instruction.P` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.P(target=qubit, angle=angle))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.P(target=target, angle=angle))
 
-    def u(self, qubit: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> None:
+    def u(self, target: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> None:
         """Apply a universal single-qubit gate.
 
         See :class:`~graphix.instruction.U` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         theta : ParameterizedAngle
             rotation angle in units of π
@@ -604,8 +604,8 @@ class Circuit(InplaceParameterizable):
         lambda_ : ParameterizedAngle
             rotation angle in units of π
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_))
+        assert target in self.active_qubits
+        self.instruction.append(Instruction.U(target=target, theta=theta, phi=phi, lambda_=lambda_))
 
     def cj(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-J rotation gate.
@@ -761,7 +761,7 @@ class Circuit(InplaceParameterizable):
             Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma)
         )
 
-    def cswap(self, control: int, qubit1: int, qubit2: int) -> None:
+    def cswap(self, control: int, target1: int, target2: int) -> None:
         """Apply a CSWAP gate.
 
         See :class:`~graphix.instruction.CSWAP` for more information.
@@ -770,18 +770,18 @@ class Circuit(InplaceParameterizable):
         ----------
         control : int
             control qubit
-        qubit1 : int
+        target1 : int
             first qubit to be swapped
-        qubit2 : int
+        target2 : int
             second qubit to be swapped
         """
         assert control in self.active_qubits
-        assert qubit1 in self.active_qubits
-        assert qubit2 in self.active_qubits
-        assert control != qubit1
-        assert control != qubit2
-        assert qubit1 != qubit2
-        self.instruction.append(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)))
+        assert target1 in self.active_qubits
+        assert target2 in self.active_qubits
+        assert control != target1
+        assert control != target2
+        assert target1 != target2
+        self.instruction.append(Instruction.CSWAP(control=control, targets=(target1, target2)))
 
     def gphase(self, angle: ParameterizedAngle) -> None:
         r"""Apply a global phase.
