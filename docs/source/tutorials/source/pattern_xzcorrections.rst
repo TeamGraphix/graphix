@@ -1,3 +1,5 @@
+.. _patterns_to_corrections:
+
 From patterns to corrections and back
 =====================================
 

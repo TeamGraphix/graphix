@@ -31,7 +31,7 @@ For an arbitrary input state :math:`\ket{\psi} = a\ket{0}_0 + b\ket{1}_0`, the c
    \end{cases} \\
    &\sim a\ketplus_1 + b\ketminus_1 .
 
-Both measurement outcomes lead to the same final state. This is the whole point of feed-forward: when :math:`s_0 = 1`, the :math:`X` correction flips the sign of the :math:`\ketminus` component and cancels the randomness of the measurement. If you compare the input and output states, you will notice that this circuit implements a Hadamard gate, since :math:`H\ket{\psi} = a\ketplus + b\ketminus`. Note also that the result now lives on qubit 1. The information has been *teleported* from the input register to the output register as a side effect of the computation.
+Both measurement outcomes lead to the same final state. This is the whole point of feed-forward: when :math:`s_0 = 1`, the :math:`X` correction flips the sign of the :math:`\ketminus` component and "corrects" the randomness of the measurement. If you compare the input and output states, you will notice that this circuit implements a Hadamard gate, since :math:`H\ket{\psi} = a\ketplus + b\ketminus`. Note also that the result now lives on qubit 1. The information has been *teleported* from the input register to the output register as a side effect of the computation.
 
 Our example is a circuit enriched with *ancillas*, *mid-circuit measurements* and *classical feed-forward*. MBQC generalizes this idea: it provides a language and tools for expressing computations independently of any circuit representation.
 

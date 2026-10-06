@@ -173,15 +173,15 @@ correction into later measurements. This transformation reflects the
 adaptivity of MBQC: a Pauli correction applied just before a measurement
 is equivalent to measuring at a modified angle.
 
-Concretely, applying :math:`X_i^s Z_i^t` to qubit :math:`i` right before
+Concretely, applying :math:`\X_i^s \Z_i^t` to qubit :math:`i` right before
 measuring it gives
 
 .. math::
    :label: eq-calc-domains-update
 
-   {}_t\!\left[M_i^{\lambda,\alpha}\right]^s
-   := M_i^{\lambda,\alpha} \, X_i^s \, Z_i^t
-   = M_i^{\lambda,\alpha'_{s,t}}
+   {}_t\!\left[\M_i^{\lambda,\alpha}\right]^s
+   := \M_i^{\lambda,\alpha} \, \X_i^s \, \Z_i^t
+   = \M_i^{\lambda,\alpha'_{s,t}}
 
 where the new angle depends on the measurement plane:
 
