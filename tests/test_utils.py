@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import pytest
 
 from graphix.utils import extract_qubits
+
 
 def test_extract_qubits() -> None:
     assert extract_qubits((0, 1), (0, 0)) == (0, 1)
