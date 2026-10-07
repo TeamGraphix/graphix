@@ -190,7 +190,7 @@ def extract_qubits(qubits: Qubits, template: QubitTemplate) -> QubitTemplate:
         _a, _b, _c = extract_qubits((0, 1), (0, 0))
 
     The function is only intended to be called with tuple literals for
-    the ``template`` argument.  It is unsafe to use with arbitrary
+    the ``template`` argument.  It is unsafe to use it with arbitrary
     values. For example, the following assignments are well-typed but
     result in ``_x`` being assigned ``(1,)`` while having the type
     ``tuple[Literal[0]]``.
