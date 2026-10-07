@@ -30,17 +30,17 @@ if TYPE_CHECKING:
 
 
 def test_circuit_repr() -> None:
-    circuit = Circuit(width=3, instr=[instruction.H(0), instruction.RX(1, ANGLE_PI), instruction.CCX(0, (1, 2))])
-    assert repr(circuit) == "Circuit(width=3, instr=[H(0), RX(1, pi), CCX(0, (1, 2))])"
+    circuit = Circuit(width=3, instr=[instruction.H(0), instruction.RX(1, ANGLE_PI), instruction.CCX(0, 1, 2)])
+    assert repr(circuit) == "Circuit(width=3, instr=[H(0), RX(1, pi), CCX(0, 1, 2)])"
 
 
 def j_alpha() -> Pattern:
-    return Pattern(input_nodes=[1], cmds=[command.N(2), command.E((1, 2)), command.M(1), command.X(2, domain={1})])
+    return Pattern(input_nodes=[1], cmds=[command.N(2), command.E(1, 2), command.M(1), command.X(2, domain={1})])
 
 
 def test_pattern_repr_j_alpha() -> None:
     p = j_alpha()
-    assert repr(p) == "Pattern(input_nodes=[1], cmds=[N(2), E((1, 2)), M(1), X(2, {1})], output_nodes=[2])"
+    assert repr(p) == "Pattern(input_nodes=[1], cmds=[N(2), E(1, 2), M(1), X(2, {1})], output_nodes=[2])"
 
 
 def test_pattern_pretty_print_j_alpha() -> None:
@@ -58,7 +58,7 @@ def example_pattern() -> Pattern:
             command.N(3),
             command.N(10),
             command.N(4),
-            command.E((1, 2)),
+            command.E(1, 2),
             command.C(1, Clifford.H),
             command.M(1, Measurement.Y),
             command.M(2, Measurement.XZ(-0.25)),
@@ -73,7 +73,7 @@ def test_pattern_repr_example() -> None:
     p = example_pattern()
     assert (
         repr(p)
-        == "Pattern(cmds=[N(1), N(2), N(3), N(10), N(4), E((1, 2)), C(1, Clifford.H), M(1, Measurement.Y), M(2, Measurement.XZ(-0.25)), M(10, Measurement.XZ(-0.25)), M(3, Measurement.XY(0.1), {1, 10}, {2}), M(4, s_domain={1}, t_domain={2, 3})])"
+        == "Pattern(cmds=[N(1), N(2), N(3), N(10), N(4), E(1, 2), C(1, Clifford.H), M(1, Measurement.Y), M(2, Measurement.XZ(-0.25)), M(10, Measurement.XZ(-0.25)), M(3, Measurement.XY(0.1), {1, 10}, {2}), M(4, s_domain={1}, t_domain={2, 3})])"
     )
 
 

@@ -6,7 +6,7 @@ import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias, overload
 
 # Self introduced in Python 3.11
 # override introduced in Python 3.12
@@ -19,7 +19,8 @@ from graphix.fundamentals import (
     Plane,
 )
 from graphix.pretty_print import OutputFormat, angle_to_str
-from graphix.repr_mixins import DataclassReprMixin
+from graphix.repr_mixins import DataclassReprMixin, repr_pair
+from graphix.utils import extract_qubits
 
 
 def repr_angle(angle: ParameterizedAngle) -> str:
@@ -132,7 +133,7 @@ class BaseInstruction(ABC, DataclassReprMixin):
         """
 
 
-@dataclass(repr=False)
+@dataclass(repr=False, init=False)
 class CCX(_KindChecker, BaseInstruction):
     r"""Toffoli circuit instruction.
 
@@ -163,19 +164,42 @@ class CCX(_KindChecker, BaseInstruction):
         Index of the target qubit.
     """
 
+    controls: tuple[int, int] = field(metadata={"repr": repr_pair})
     target: int
-    controls: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.CCX]] = field(default=InstructionKind.CCX, init=False)
+
+    @overload
+    def __init__(self, controls: tuple[int, int], target: int) -> None: ...
+
+    @overload
+    def __init__(self, control1: int, control2: int, target: int, /) -> None: ...
+
+    def __init__(self, controls: tuple[int, int] | int, target: int, *others: int) -> None:
+        """Construct a CCX gate.
+
+        Notes
+        -----
+        This method can be called either with a single ``controls`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
+        Parameters
+        ----------
+        controls : tuple[int, int]
+            Indices of the two control qubits.
+        target : int
+            Index of the target qubit.
+        """
+        control1, control2, self.target = extract_qubits((controls, target, others), (0, 0, 0))
+        self.controls = control1, control2
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CCX:
         u, v = self.controls
-        target = visitor.visit_qubit(self.target)
         controls = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        target = visitor.visit_qubit(self.target)
         if copy:
-            return CCX(target, controls)
-        self.target = target
+            return CCX(controls, target)
         self.controls = controls
+        self.target = target
         return self
 
 
@@ -210,20 +234,20 @@ class RZZ(_KindChecker, BaseInstruction):
         Rotation angle.
     """
 
-    target: int
     control: int
+    target: int
     angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RZZ]] = field(default=InstructionKind.RZZ, init=False)
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> RZZ:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         angle = visitor.visit_angle(self.angle)
         if copy:
-            return RZZ(target, control, angle)
-        self.target = target
+            return RZZ(control, target, angle)
         self.control = control
+        self.target = target
         self.angle = angle
         return self
 
@@ -232,17 +256,17 @@ class RZZ(_KindChecker, BaseInstruction):
 class ControlledSingleTargetInstruction(BaseInstruction):
     """Base class for controlled single-target circuit instructions."""
 
-    target: int
     control: int
+    target: int
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         if copy:
-            return type(self)(target, control)
-        self.target = target
+            return type(self)(control, target)
         self.control = control
+        self.target = target
         return self
 
 
@@ -306,10 +330,8 @@ class CNOT(_KindChecker, ControlledSingleTargetInstruction):
     kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
 
 
-# CZ is not defined as a ControlledSingleTargetInstruction because of
-# the symmetry between the control and the target.
 @dataclass(repr=False)
-class CZ(_KindChecker, BaseInstruction):
+class CZ(_KindChecker, ControlledSingleTargetInstruction):
     r"""CZ circuit instruction.
 
     The CZ gate applies the matrix
@@ -325,28 +347,20 @@ class CZ(_KindChecker, BaseInstruction):
 
     in the computational basis. The basis states use big-endian
     ordering, with the most significant qubit first. The qubits are
-    numbered in the order ``targets[0]``, ``targets[1]``.
+    numbered in the order ``control``, ``target``.
 
     Attributes
     ----------
-    targets : tuple[int, int]
-        Index of the target qubits.
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
     """
 
-    targets: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.CZ]] = field(default=InstructionKind.CZ, init=False)
 
-    @override
-    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CZ:
-        u, v = self.targets
-        targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
-        if copy:
-            return CZ(targets)
-        self.targets = targets
-        return self
 
-
-@dataclass(repr=False)
+@dataclass(repr=False, init=False)
 class SWAP(_KindChecker, BaseInstruction):
     r"""SWAP circuit instruction.
 
@@ -368,11 +382,31 @@ class SWAP(_KindChecker, BaseInstruction):
     Attributes
     ----------
     targets : tuple[int, int]
-        Index of the target qubits.
+        Indices of the two target qubits.
     """
 
-    targets: tuple[int, int]
+    targets: tuple[int, int] = field(metadata={"repr": repr_pair})
     kind: ClassVar[Literal[InstructionKind.SWAP]] = field(default=InstructionKind.SWAP, init=False)
+
+    @overload
+    def __init__(self, targets: tuple[int, int]) -> None: ...
+
+    @overload
+    def __init__(self, target1: int, target2: int, /) -> None: ...
+
+    def __init__(self, targets: tuple[int, int] | int, *others: int) -> None:
+        """Construct a SWAP gate.
+
+        Notes
+        -----
+        This method can be called either with a single ``targets`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
+        Parameters
+        ----------
+        targets : tuple[int, int]
+            Indices of the two target qubits.
+        """
+        self.targets = extract_qubits((targets, others), (0, 0))
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> SWAP:
@@ -384,7 +418,7 @@ class SWAP(_KindChecker, BaseInstruction):
         return self
 
 
-@dataclass(repr=False)
+@dataclass(repr=False, init=False)
 class CSWAP(_KindChecker, BaseInstruction):
     r"""CSWAP circuit instruction.
 
@@ -416,8 +450,31 @@ class CSWAP(_KindChecker, BaseInstruction):
     """
 
     control: int
-    targets: tuple[int, int]
+    targets: tuple[int, int] = field(metadata={"repr": repr_pair})
     kind: ClassVar[Literal[InstructionKind.CSWAP]] = field(default=InstructionKind.CSWAP, init=False)
+
+    @overload
+    def __init__(self, control: int, targets: tuple[int, int]) -> None: ...
+
+    @overload
+    def __init__(self, control: int, target1: int, target2: int, /) -> None: ...
+
+    def __init__(self, control: int, targets: tuple[int, int] | int, *others: int) -> None:
+        """Construct a CSWAP gate.
+
+        Notes
+        -----
+        This method can be called either with a single ``targets`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
+        Parameters
+        ----------
+        control : int
+            Index of the control qubit.
+        targets : tuple[int, int]
+            Indices of the two target qubits.
+        """
+        self.control = control
+        self.targets = extract_qubits((targets, others), (0, 0))
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CSWAP:
@@ -828,19 +885,19 @@ class CU(_KindChecker, BaseInstruction):
 class ControlledRotationInstruction(BaseInstruction):
     """Base class for rotation instructions."""
 
-    target: int
     control: int
+    target: int
     angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
 
     @override
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
-        target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        target = visitor.visit_qubit(self.target)
         angle = visitor.visit_angle(self.angle)
         if copy:
-            return type(self)(target, control, angle)
-        self.target = target
+            return type(self)(control, target, angle)
         self.control = control
+        self.target = target
         self.angle = angle
         return self
 

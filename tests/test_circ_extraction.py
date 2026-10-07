@@ -90,7 +90,7 @@ class TestPauliExponentialDAG:
                     partial_order_layers=[{5, 3}, {2}, {0, 1}],
                     output_nodes=[5, 3],  # Node 5 -> qubit 0 (control), node 3 -> qubit 1 (target)
                 ),
-                Circuit(width=2, instr=[CNOT(1, 0)]),
+                Circuit(width=2, instr=[CNOT(0, 1)]),
             ),
             PauliExpTestCase(
                 PauliExponentialDAG(
@@ -100,7 +100,7 @@ class TestPauliExponentialDAG:
                     partial_order_layers=[{1, 2, 3, 4}, {0}],
                     output_nodes=[2, 1, 3, 4],
                 ),
-                Circuit(width=4, instr=[H(1), CNOT(3, 1), CNOT(0, 3), RZ(0, -alpha), CNOT(0, 3), CNOT(3, 1), H(1)]),
+                Circuit(width=4, instr=[H(1), CNOT(1, 3), CNOT(3, 0), RZ(0, -alpha), CNOT(3, 0), CNOT(1, 3), H(1)]),
             ),
         ],
     )
@@ -267,7 +267,7 @@ class TestCliffordMap:
                 ),
             ),
             (
-                Circuit(width=2, instr=[CNOT(1, 0)]),
+                Circuit(width=2, instr=[CNOT(0, 1)]),
                 CliffordMap(
                     x_map=(
                         PauliString(dim=2, axes={0: Axis.X, 1: Axis.X}, sign=Sign.PLUS),
@@ -282,7 +282,7 @@ class TestCliffordMap:
                 ),
             ),
             (
-                Circuit(width=3, instr=[CNOT(1, 0), H(0), H(1), CNOT(2, 1), S(1), CNOT(2, 0), H(2), S(2)]),
+                Circuit(width=3, instr=[CNOT(0, 1), H(0), H(1), CNOT(1, 2), S(1), CNOT(0, 2), H(2), S(2)]),
                 CliffordMap(
                     x_map=(
                         PauliString(dim=3, axes={0: Axis.Z, 1: Axis.Z}, sign=Sign.PLUS),
@@ -308,7 +308,7 @@ class TestCliffordMap:
                 ),
             ),
             (
-                Circuit(width=2, instr=[CNOT(1, 0), H(0), S(0), S(0), H(0), S(1), S(1)]),
+                Circuit(width=2, instr=[CNOT(0, 1), H(0), S(0), S(0), H(0), S(1), S(1)]),
                 CliffordMap(
                     x_map=(
                         PauliString(dim=2, axes={0: Axis.X, 1: Axis.X}, sign=Sign.MINUS),
@@ -328,15 +328,15 @@ class TestCliffordMap:
                     instr=[
                         S(0),
                         H(2),
-                        CNOT(2, 0),
+                        CNOT(0, 2),
                         H(1),
                         H(2),
-                        CNOT(0, 1),
-                        CNOT(0, 2),
+                        CNOT(1, 0),
+                        CNOT(2, 0),
                         S(2),
-                        CNOT(2, 1),
-                        H(2),
                         CNOT(1, 2),
+                        H(2),
+                        CNOT(2, 1),
                         H(2),
                         H(1),
                         S(1),
@@ -367,30 +367,30 @@ class TestCliffordMap:
                 Circuit(
                     width=4,
                     instr=[
-                        CNOT(0, 3),
                         CNOT(3, 0),
                         CNOT(0, 3),
+                        CNOT(3, 0),
                         S(0),
                         H(0),
                         S(0),
                         H(2),
-                        CNOT(2, 0),
+                        CNOT(0, 2),
                         H(1),
                         H(3),
-                        CNOT(0, 1),
-                        CNOT(0, 3),
+                        CNOT(1, 0),
+                        CNOT(3, 0),
                         S(1),
                         S(2),
                         S(3),
-                        CNOT(2, 1),
-                        CNOT(3, 1),
-                        S(3),
-                        H(3),
                         CNOT(1, 2),
                         CNOT(1, 3),
-                        CNOT(2, 3),
+                        S(3),
+                        H(3),
+                        CNOT(2, 1),
+                        CNOT(3, 1),
                         CNOT(3, 2),
                         CNOT(2, 3),
+                        CNOT(3, 2),
                         S(2),
                         S(3),
                         H(3),

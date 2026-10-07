@@ -648,11 +648,11 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         >>> with warnings.catch_warnings():
         ...     warnings.filterwarnings("ignore", message="Open graph with non-inferred Pauli measurements.")
         ...     og.to_circuit()
-        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
+        Circuit(width=3, instr=[H(2), H(1), CNOT(1, 2), H(1), H(1), H(0), CNOT(0, 2), CNOT(0, 1), H(2), H(1), H(0)])
         >>> # The default compilation passes do not exploit the lower depth of the Pauli flow
         >>> # compared the gflow.
         >>> og.infer_pauli_measurements().to_circuit()
-        Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
+        Circuit(width=3, instr=[H(2), H(1), CNOT(1, 2), H(1), H(1), H(0), CNOT(0, 2), CNOT(0, 1), H(2), H(1), H(0)])
         """
         return (
             self.to_pauliflow(stacklevel=stacklevel + 1)
