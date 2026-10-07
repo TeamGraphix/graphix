@@ -20,10 +20,11 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Operating System :: OS Independent",
   "Topic :: Scientific/Engineering :: Physics",
 ]
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.10,<3.16"
 
 dependencies = [
     "matplotlib",
@@ -31,7 +32,10 @@ dependencies = [
     "numba>=0.65.1",
     "numpy>=2",
     "quimb",
-    "scipy",
+    # Python 3.15 requires scipy>=1.18.1, but support for Python<3.12
+    # rejects this lower bound.
+    "scipy; python_version < '3.15'",
+    "scipy>=1.18.1; python_version >= '3.15'",
     "sympy",
     "typing_extensions",
 ]
@@ -61,7 +65,8 @@ dev = [
     "pytest-mpl",
     "qiskit>=1.0,<2.4",
     "qiskit_qasm3_import",
-    "qiskit-aer",
+    # See Qiskit/qiskit-aer#2468
+    "qiskit-aer; python_version < '3.15'",
     "matplotlib==3.10.9",
 ]
 doc = [
@@ -73,7 +78,7 @@ doc = [
 ]
 typing = [
     "numpy==2.5.2; python_version >= '3.12'",
-    "numba==0.67.0; python_version >= '3.12'",
+    "numba==0.68.0; python_version >= '3.12'",
     "numpy==2.4.6; python_version == '3.11'",
     "numba==0.66.0; python_version == '3.11'",
     "numpy<2.4.2; python_version == '3.10'",
