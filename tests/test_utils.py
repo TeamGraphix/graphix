@@ -11,3 +11,9 @@ def test_extract_qubits() -> None:
         extract_qubits(0, (0, 0))
     with pytest.raises(ValueError, match="qubits expected"):
         extract_qubits((0, 1, 2), (0, 0))
+    with pytest.raises(ValueError, match="not enough values to unpack"):
+        # The following line contains a type error:
+        # Need more than 2 values to unpack (3 expected)  [misc]
+        # If mypy does not catch it, a warning will be issued (Unused
+        # "type: ignore" comment).
+        _a, _b, _c = extract_qubits((0, 1), (0, 0))  # type: ignore[misc]
