@@ -234,6 +234,7 @@ For example:
 Flow extraction algorithms don't identify Pauli measurements. This means that if your open graph contains for instance an ``Measurement.XY(0)``, it will be treated as a planar measurement and not as a Pauli measurement ``PauliMeasurement.X``. However, you can manually cast planar measurements with a Pauli angle into Pauli measurements with the method :meth:`OpenGraph.infer_pauli_measurements`. This distinction can allow to extract a Pauli flow where a gflow does not exist or a flow with lower depth:
 
 ---> Add link to measurement types
+---> ads discussions planes vs meas
 
 .. jupyter-execute::
 
