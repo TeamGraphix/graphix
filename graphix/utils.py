@@ -164,7 +164,22 @@ QubitTemplate = TypeVar("QubitTemplate", bound=tuple[int, ...])
 
 
 def extract_qubits(qubits: Qubits, template: QubitTemplate) -> QubitTemplate:
-    """Return a flat tuple of ints from nested qubits and check its length."""
+    """Return a flat tuple of ints from nested qubits and check its length.
+
+    Notes
+    -----
+    The expected length is specified by a tuple, since there is no
+    direct way to express a tuple length dependent on an integer
+    argument.
+
+    Parameters
+    ----------
+    qubits: Qubits
+        Qubits, given as arbitrary nested tuples of ints
+    template: QubitTemplate
+        Int-tuple of the expected length.
+
+    """
     flat = flat_qubits(qubits)
     if len(flat) != len(template):
         msg = f"{len(template)} qubits expected but {len(flat)} provided."
