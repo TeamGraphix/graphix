@@ -6,7 +6,7 @@ import inspect
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeVar, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeAlias, TypeVar, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -148,3 +148,25 @@ class Probability(BoundedFloat):
 
     def __init__(self) -> None:
         super().__init__(minvalue=0, maxvalue=1)
+
+
+Qubits: TypeAlias = int | tuple["Qubits", ...]
+
+
+def flat_qubits(qubits: Qubits) -> tuple[int, ...]:
+    """Return a flat tuple of ints from nested qubits."""
+    if isinstance(qubits, int):
+        return (qubits,)
+    return tuple(qubit for item in qubits for qubit in flat_qubits(item))
+
+
+QubitTemplate = TypeVar("QubitTemplate", bound=tuple[int, ...])
+
+
+def extract_qubits(qubits: Qubits, template: QubitTemplate) -> QubitTemplate:
+    """Return a flat tuple of ints from nested qubits and check its length."""
+    flat = flat_qubits(qubits)
+    if len(flat) != len(template):
+        msg = f"{len(template)} qubits expected but {len(flat)} provided."
+        raise ValueError(msg)
+    return cast("QubitTemplate", flat)

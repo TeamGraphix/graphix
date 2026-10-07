@@ -6,8 +6,9 @@ import dataclasses
 import enum
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import field
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias, overload
 
 # override introduced in Python 3.12
 from typing_extensions import override
@@ -15,8 +16,9 @@ from typing_extensions import override
 from graphix import utils
 from graphix.clifford import Clifford, Domains
 from graphix.measurements import Measurement
-from graphix.repr_mixins import DataclassReprMixin
+from graphix.repr_mixins import DataclassReprMixin, repr_pair
 from graphix.states import BasicStates, State
+from graphix.utils import extract_qubits
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -181,7 +183,7 @@ class M(BaseM, _KindChecker):
         return M(f(self.node), self.measurement, set(map(f, self.s_domain)), set(map(f, self.t_domain)))
 
 
-@dataclasses.dataclass(repr=False)
+@dataclasses.dataclass(repr=False, init=False)
 class E(_KindChecker, BaseCommand):
     r"""Entanglement command between two qubits.
 
@@ -191,13 +193,33 @@ class E(_KindChecker, BaseCommand):
         Pair of nodes to entangle.
     """
 
-    nodes: tuple[Node, Node]
+    nodes: tuple[Node, Node] = field(metadata={"repr": repr_pair})
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
+
+    @overload
+    def __init__(self, nodes: tuple[int, int]) -> None: ...
+
+    @overload
+    def __init__(self, node1: int, node2: int, /) -> None: ...
+
+    def __init__(self, nodes: tuple[int, int] | int, *others: int) -> None:
+        """Construct an E command.
+
+        Notes
+        -----
+        This method can be called either with a single ``nodes`` argument containing a pair of nodes, or with the two nodes passed as separate arguments.
+
+        Parameters
+        ----------
+        nodes : tuple[int, int]
+            Indices of the two nodes.
+        """
+        self.nodes = extract_qubits((nodes, others), (0, 0))
 
     @override
     def reindex(self, f: Callable[[Node], Node]) -> E:
         u, v = self.nodes
-        return E((f(u), f(v)))
+        return E(f(u), f(v))
 
 
 @dataclasses.dataclass(repr=False)

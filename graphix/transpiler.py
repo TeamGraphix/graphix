@@ -31,6 +31,7 @@ from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import Statevector, StatevectorBackend
+from graphix.utils import extract_qubits
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -231,18 +232,27 @@ class Circuit(InplaceParameterizable):
         assert control != target
         self.instruction.append(Instruction.CNOT(control=control, target=target))
 
-    def swap(self, target1: int, target2: int) -> None:
+    @overload
+    def swap(self, targets: tuple[int, int]) -> None: ...
+
+    @overload
+    def swap(self, target1: int, target2: int, /) -> None: ...
+
+    def swap(self, targets: tuple[int, int] | int, *others: int) -> None:
         """Apply a SWAP gate.
 
         See :class:`~graphix.instruction.SWAP` for more information.
 
+        Notes
+        -----
+        This method can be called either with a single ``targets`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
         Parameters
         ----------
-        target1 : int
-            first qubit to be swapped
-        target2 : int
-            second qubit to be swapped
+        targets : tuple[int, int]
+            Indices of the two target qubits.
         """
+        target1, target2 = extract_qubits((targets, others), (0, 0))
         assert target1 in self.active_qubits
         assert target2 in self.active_qubits
         assert target1 != target2
@@ -438,20 +448,29 @@ class Circuit(InplaceParameterizable):
         assert target in self.active_qubits
         self.instruction.append(Instruction.RZZ(control=control, target=target, angle=angle))
 
-    def ccx(self, control1: int, control2: int, target: int) -> None:
+    @overload
+    def ccx(self, controls: tuple[int, int], target: int) -> None: ...
+
+    @overload
+    def ccx(self, control1: int, control2: int, target: int, /) -> None: ...
+
+    def ccx(self, controls: tuple[int, int] | int, target: int, *others: int) -> None:
         r"""Apply a CCX (Toffoli) gate.
 
         See :class:`~graphix.instruction.CCX` for more information.
 
+        Notes
+        -----
+        This method can be called either with a single ``controls`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
         Parameters
         ----------
-        control1 : int
-            first control qubit
-        control2 : int
-            second control qubit
+        controls : tuple[int, int]
+            Indices of the two control qubits.
         target : int
-            target qubit
+            Index of the target qubit.
         """
+        control1, control2, target = extract_qubits((controls, target, others), (0, 0, 0))
         assert control1 in self.active_qubits
         assert control2 in self.active_qubits
         assert target in self.active_qubits
@@ -761,20 +780,29 @@ class Circuit(InplaceParameterizable):
             Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma)
         )
 
-    def cswap(self, control: int, target1: int, target2: int) -> None:
+    @overload
+    def cswap(self, control: int, targets: tuple[int, int]) -> None: ...
+
+    @overload
+    def cswap(self, control: int, target1: int, target2: int, /) -> None: ...
+
+    def cswap(self, control: int, targets: tuple[int, int] | int, *others: int) -> None:
         """Apply a CSWAP gate.
 
         See :class:`~graphix.instruction.CSWAP` for more information.
 
+        Notes
+        -----
+        This method can be called either with a single ``targets`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
         Parameters
         ----------
         control : int
-            control qubit
-        target1 : int
-            first qubit to be swapped
-        target2 : int
-            second qubit to be swapped
+            Index of the control qubit.
+        targets : tuple[int, int]
+            Indices of the two target qubits.
         """
+        target1, target2 = extract_qubits((targets, others), (0, 0))
         assert control in self.active_qubits
         assert target1 in self.active_qubits
         assert target2 in self.active_qubits
