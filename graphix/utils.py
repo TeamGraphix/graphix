@@ -173,15 +173,32 @@ def extract_qubits(qubits: Qubits, template: QubitTemplate) -> QubitTemplate:
     argument.  The type variable ``QubitTemplate`` occurs both as a
     parameter and as a result, ensuring that the result has the same
     type as the given ``template``. The ``template`` parameter can be
-    of any tuple type containing ints, in particular a fixed-length
-    tuple, allowing the result to be safely unpacked with the
+    of any tuple type containing ints. In particular, fixed-length
+    tuple types allow the result to be deconstructed with the
     corresponding number of components.
 
     The following line is well-typed:
-    ``_a, _b = extract_qubits((0, 1), (0, 0))``
+
+    .. code-block:: python
+
+        _a, _b = extract_qubits((0, 1), (0, 0))
 
     but the following line is not:
-    ``_a, _b, _c = extract_qubits((0, 1), (0, 0))``
+
+    .. code-block:: python
+
+        _a, _b, _c = extract_qubits((0, 1), (0, 0))
+
+    The function is only intended to be called with tuple literals for
+    the ``template`` argument.  It is unsafe to use with arbitrary
+    values. For example, the following assignments are well-typed but
+    result in ``_x`` being assigned ``(1,)`` while having the type
+    ``tuple[Literal[0]]``.
+
+    .. code-block:: python
+
+        s: tuple[Literal[0]] = (0,)
+        _x: tuple[Literal[0]] = extract_qubits((1,), s)
 
     Parameters
     ----------
@@ -189,7 +206,6 @@ def extract_qubits(qubits: Qubits, template: QubitTemplate) -> QubitTemplate:
         Qubits, given as arbitrary nested tuples of ints
     template: QubitTemplate
         Int-tuple of the expected length.
-
     """
     flat = flat_qubits(qubits)
     if len(flat) != len(template):
