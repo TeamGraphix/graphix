@@ -15,13 +15,13 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
+from typing import TYPE_CHECKING, Literal, SupportsFloat, assert_never, overload
 from warnings import warn
 
 import networkx as nx
 
 # override introduced in Python 3.12
-from typing_extensions import assert_never, override
+from typing_extensions import override
 
 from graphix import command, optimization
 from graphix.command import CommandKind, Node

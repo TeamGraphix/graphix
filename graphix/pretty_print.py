@@ -9,10 +9,7 @@ from contextvars import ContextVar
 from enum import Enum
 from fractions import Fraction
 from math import pi
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
-
-# `assert_never` introduced in Python 3.11
-from typing_extensions import assert_never
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, assert_never
 
 from graphix import command
 from graphix._db import CLIFFORD_TO_QASM3

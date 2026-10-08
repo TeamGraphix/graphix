@@ -8,14 +8,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from enum import Enum, auto
 from functools import singledispatch
-from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, assert_never
 
 import matplotlib.transforms as mtransforms
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from matplotlib import pyplot as plt
-from typing_extensions import assert_never
 
 from graphix.flow.core import CausalFlow, PauliFlow, XZCorrections
 from graphix.measurements import PauliMeasurement

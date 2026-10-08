@@ -1,12 +1,11 @@
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Literal
+from typing import Literal, Self
 
 import numpy as np
 import numpy.typing as npt
 from cotengra.oe import PathOptimizer
 from matplotlib.axes import Axes
 from quimb import oset
-from typing_extensions import Self
 
 class Tensor:
     data: npt.NDArray[np.generic]

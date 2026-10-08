@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, ClassVar
-
-import typing_extensions
+from typing import TYPE_CHECKING, ClassVar, assert_never
 
 from graphix.fundamentals import IXYZ_VALUES, Axis, ComplexUnit, I, SupportsComplexCtor
 from graphix.ops import Ops
@@ -79,7 +77,7 @@ class Pauli(metaclass=_PauliMeta):
                 # Any state is eigenstate of the identity
                 if self.symbol == I:
                     return BasicStates.PLUS
-                typing_extensions.assert_never(self.symbol)
+                assert_never(self.symbol)
 
     def _repr_impl(self, prefix: str | None) -> str:
         """Return ``repr`` string with an optional prefix."""
@@ -96,7 +94,7 @@ class Pauli(metaclass=_PauliMeta):
             case ComplexUnit.MINUS_J:
                 return f"-1j * {sym}"
             case _:
-                typing_extensions.assert_never(self.unit)
+                assert_never(self.unit)
 
     def __repr__(self) -> str:
         """Return a string representation of the Pauli."""

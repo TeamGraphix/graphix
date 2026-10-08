@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 import typing_extensions
 
@@ -142,7 +142,7 @@ class AmplitudeDampingNoiseModel(NoiseModel):
             case CommandKind.S:
                 raise ValueError("Unexpected signal!")
             case _:  # pragma: no cover
-                typing_extensions.assert_never(cmd.kind)
+                assert_never(cmd.kind)
 
     @typing_extensions.override
     def confuse_result(

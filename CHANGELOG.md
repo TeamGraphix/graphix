@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- #614:
+  - Support for Python 3.15
+  - Drop support for Python 3.10 (end-of-life: 2026-10-01)
+
 ### Fixed
 
 - #591: `FixedBranchSelector` now passes its RNG parameter to its `default` branch selector.

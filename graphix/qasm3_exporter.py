@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-# assert_never added in Python 3.11
-from typing_extensions import assert_never
+from typing import TYPE_CHECKING, assert_never
 
 from graphix._version import version
 from graphix.command import CommandKind
