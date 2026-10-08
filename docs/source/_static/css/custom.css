@@ -30,19 +30,19 @@
 }
 
 .hero {
-    border-radius: 1rem;
     place-items: center;
 }
 
 .hero h1 {
-    font-size: clamp(3rem, 8vw, 6rem);
+    font-size: clamp(3rem, 6vw, 4rem);
     margin: 0.25em 0;
+    text-align: center;
 }
 
 .hero-tagline {
     max-width: 500px;
     font-size: 1rem;
-    text-align: center;
+    margin: 0 auto;
 }
 
 .hero-buttons {

@@ -55,12 +55,13 @@ Explore Graphix
 How to cite us
 --------------
 
-If you use Graphix in your research, please consider citing the latest software release
-and the accompanying paper.
+If you use Graphix in your research, please consider citing the latest software release and the accompanying paper.
 
 **Software**
 
-   M. Uldemolins, M. Fukushima, E. Graham, P. Nair, D. Sasaki, S. Shiratani, Y. Watanabe, T. Martinez, M. Garnier, and S. Sunami, "Graphix" (v0.4), Zenodo (2026), `<https://doi.org/10.5281/zenodo.21997813>`_
+   M. Uldemolins, M. Fukushima, E. Graham, P. Nair, D. Sasaki, S. Shiratani, 
+   Y. Watanabe, T. Martinez, M. Garnier, and S. Sunami, "Graphix" (v0.4), 
+   Zenodo (2026), `<https://doi.org/10.5281/zenodo.21997813>`_
 
    .. code-block:: bibtex
 
@@ -76,13 +77,16 @@ and the accompanying paper.
          doi       = {10.5281/zenodo.21997813},
       }
 
-**Paper**
+**Papers**
 
-   M. Uldemolins, P. Nair, E. Graham, S. Sunami, T. Martinez, and
+   [1] M. Uldemolins, P. Nair, E. Graham, S. Sunami, T. Martinez, and
    M. Garnier, *Graphix: A software framework for Measurement-Based
    Quantum Computation*, arXiv:2608.24781 (2026).
 
-   `Read the paper on arXiv <https://arxiv.org/abs/2608.24781>`_
+   `Read the new paper on arXiv now! <https://arxiv.org/abs/2608.24781>`_
+
+   [2] S. Sunami, M. Fukushima. *Graphix: optimizing and simulating measurement-based 
+   quantum computation on local-Clifford decorated graph*, arxiv:2212.11975 (2022).
 
 
 .. raw:: html
