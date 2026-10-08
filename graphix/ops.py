@@ -5,13 +5,10 @@ from __future__ import annotations
 from functools import reduce
 from itertools import product
 from math import pi
-from typing import TYPE_CHECKING, ClassVar, overload
+from typing import TYPE_CHECKING, ClassVar, assert_never, overload
 
 import numpy as np
 import numpy.typing as npt
-
-# assert_never added in Python 3.11
-from typing_extensions import assert_never
 
 from graphix import utils
 from graphix.fundamentals import IXYZ, Axis, I, angle_to_rad

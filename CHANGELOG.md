@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- #614: Support for Python 3.15
+- #614:
+  - Support for Python 3.15
+  - Drop support for Python 3.10 (end-of-life: 2026-10-01)
 
 ### Fixed
 

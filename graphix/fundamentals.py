@@ -7,9 +7,7 @@ import enum
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
 from math import pi
-from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, SupportsIndex, overload
-
-import typing_extensions
+from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, SupportsIndex, assert_never, overload
 
 # override introduced in Python 3.12
 from typing_extensions import override
@@ -408,7 +406,7 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
             case Plane.XZ:
                 return (Axis.X, Axis.Z)
             case _:
-                typing_extensions.assert_never(self)
+                assert_never(self)
 
     @property
     def orth(self) -> Axis:
@@ -421,7 +419,7 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
             case Plane.XZ:
                 return Axis.Y
             case _:
-                typing_extensions.assert_never(self)
+                assert_never(self)
 
     @property
     def cos(self) -> Axis:
@@ -434,7 +432,7 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
             case Plane.XZ:
                 return Axis.Z  # former convention was X
             case _:
-                typing_extensions.assert_never(self)
+                assert_never(self)
 
     @property
     def sin(self) -> Axis:
@@ -447,7 +445,7 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
             case Plane.XZ:
                 return Axis.X  # former convention was Z
             case _:
-                typing_extensions.assert_never(self)
+                assert_never(self)
 
     @overload
     def polar(self, angle: Angle) -> tuple[float, float, float]: ...

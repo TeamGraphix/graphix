@@ -11,7 +11,6 @@ from warnings import warn
 
 import networkx as nx
 
-# assert_never added in Python 3.11
 from graphix import command
 from graphix.clifford import Clifford, Domains
 from graphix.command import CommandKind, Node

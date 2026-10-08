@@ -6,11 +6,11 @@ import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, Literal, Self, SupportsFloat, TypeAlias
 
 # Self introduced in Python 3.11
 # override introduced in Python 3.12
-from typing_extensions import Self, override
+from typing_extensions import override
 
 from graphix import utils
 from graphix.fundamentals import (

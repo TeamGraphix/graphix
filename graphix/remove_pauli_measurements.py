@@ -25,11 +25,10 @@ from __future__ import annotations
 import dataclasses
 import itertools
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 from warnings import warn
 
 import networkx as nx
-from typing_extensions import assert_never
 
 from graphix.clifford import Clifford, Domains
 from graphix.command import Command

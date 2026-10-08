@@ -5,10 +5,9 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
 
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
-from typing_extensions import assert_never
+from typing import TYPE_CHECKING, assert_never
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet

@@ -10,11 +10,10 @@ import abc
 import logging
 import warnings
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, Literal, TypedDict, TypeVar, overload
+from typing import TYPE_CHECKING, Generic, Literal, TypedDict, TypeVar, assert_never, overload
 
-# assert_never introduced in Python 3.11
 # override introduced in Python 3.12
-from typing_extensions import assert_never, override
+from typing_extensions import override
 
 from graphix import command
 from graphix.branch_selector import BranchSelector, RandomBranchSelector

@@ -7,13 +7,13 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar, assert_never
 
 import networkx as nx
 import numpy as np
 
-# ``override`` introduced in Python 3.12, ``assert_never`` introduced in Python 3.11
-from typing_extensions import assert_never, override
+# ``override`` introduced in Python 3.12
+from typing_extensions import override
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.circ_ext.extraction import (
