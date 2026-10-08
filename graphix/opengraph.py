@@ -15,7 +15,7 @@ from typing_extensions import override
 from graphix.clifford import Clifford
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
-from graphix.flow.core import GFlow, PauliFlow
+from graphix.flow.core import FocusedGFlow, FocusedPauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.measurements import BlochMeasurement, Measurement
 from graphix.parameter import Parameterizable
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
-    from graphix import CausalFlow, Pattern
+    from graphix import CausalFlow, Pattern, PauliFlow
     from graphix.circ_ext.extraction import CliffordMap, PauliExponentialDAG
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.transpiler import Circuit
@@ -401,7 +401,7 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
             raise OpenGraphError("The open graph does not have a causal flow.")
         return cf
 
-    def to_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co]:
+    def to_gflow(self: OpenGraph[_PM_co]) -> FocusedGFlow[_PM_co]:
         r"""Try to extract a maximally delayed generalised flow (gflow) on the open graph.
 
         This method is a wrapper over :func:`OpenGraph.to_gflow_or_none` with a single return type.
@@ -412,8 +412,8 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
 
         Returns
         -------
-        GFlow[_PM_co]
-            A gflow object if the open graph has gflow.
+        FocusedGFlow[_PM_co]
+            A focused gflow object if the open graph has gflow.
 
         Raises
         ------
@@ -430,7 +430,7 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
             raise OpenGraphError("The open graph does not have a gflow.")
         return gf
 
-    def to_pauliflow(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> PauliFlow[_AM_co]:
+    def to_pauliflow(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> FocusedPauliFlow[_AM_co]:
         r"""Try to extract a maximally delayed Pauli on the open graph.
 
         This method is a wrapper over :func:`OpenGraph.to_pauliflow_or_none` with a single return type.
@@ -487,7 +487,7 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         """
         return find_cflow(self)
 
-    def to_gflow_or_none(self: OpenGraph[_PM_co]) -> GFlow[_PM_co] | None:
+    def to_gflow_or_none(self: OpenGraph[_PM_co]) -> FocusedGFlow[_PM_co] | None:
         r"""Return a maximally delayed Pauli on the open graph if it exists.
 
         This method requires all measurements to be planar: to find
@@ -496,8 +496,8 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
 
         Returns
         -------
-        GFlow[_PM_co] | None
-            A gflow object if the open graph has gflow or ``None`` otherwise.
+        FocusedGFlow[_PM_co] | None
+            A focused gflow object if the open graph has gflow or ``None`` otherwise.
 
         See Also
         --------
@@ -516,11 +516,11 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
             return None
-        return GFlow.from_correctionmatrix_or_none(
+        return FocusedGFlow.from_correctionmatrix_or_none(
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    def to_pauliflow_or_none(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> PauliFlow[_AM_co] | None:
+    def to_pauliflow_or_none(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> FocusedPauliFlow[_AM_co] | None:
         r"""Return a maximally delayed Pauli on the open graph if it exists.
 
         Parameters
@@ -531,8 +531,8 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
 
         Returns
         -------
-        PauliFlow[_AM_co] | None
-            A Pauli flow object if the open graph has Pauli flow or ``None`` otherwise.
+        FocusedPauliFlow[_AM_co] | None
+            A focused Pauli flow object if the open graph has Pauli flow or ``None`` otherwise.
 
         See Also
         --------
@@ -572,7 +572,7 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
             return None
-        return PauliFlow.from_correctionmatrix_or_none(
+        return FocusedPauliFlow.from_correctionmatrix_or_none(
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
