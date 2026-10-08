@@ -37,6 +37,7 @@ extensions = [
     "jupyter_sphinx",
     "sphinxcontrib.bibtex",
     "matplotlib.sphinxext.plot_directive",
+    "sphinx_design",
     # "sphinx_gallery.gen_gallery",
 ]
 
@@ -112,6 +113,7 @@ html_theme = "furo"
 html_title = " "  # title for documentation (shown in sidebar, kept empty)
 
 html_static_path = ["_static"]
+html_css_files = ["css/custom.css"]
 
 html_context = {
     "mode": "production",
@@ -125,6 +127,10 @@ pygments_dark_style = "monokai"
 html_theme_options = {
     "light_logo": "black_with_name.png",
     "dark_logo": "white_with_text.png",
+    "light_css_variables": {
+        "color-brand-primary": "#7C4DFF",
+        "color-brand-content": "#7C4DFF",
+    },
 }
 
 default_role = "any"
