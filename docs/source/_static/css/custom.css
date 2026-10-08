@@ -28,3 +28,32 @@
   max-width: 340px;
   max-height: 300px;
 }
+
+.hero {
+    border-radius: 1rem;
+    place-items: center;
+}
+
+.hero h1 {
+    font-size: clamp(3rem, 8vw, 6rem);
+    margin: 0.25em 0;
+}
+
+.hero-tagline {
+    max-width: 500px;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.hero-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.section-divider {
+    height: 2px;
+    margin: 2.5rem 0;
+    background: var(--color-background-border);
+}
