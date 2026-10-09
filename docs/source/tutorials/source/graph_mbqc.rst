@@ -123,6 +123,27 @@ In Graphix, an MBQC computation can be represented with the :class:`.XZCorrectio
 
 The red arrow from node 0 to node 1 represents the correction :math:`X_1^{s_0}`. The nodes are arranged in layers that show the measurement order, from left to right. In this basic example only node 0 is measured, and node 1 is an output node.
 
+.. attention::
+   All angles in Graphix are expressed in units of :math:`\pi`.
+
+Finally, you can simulate the MBQC computation by calling the method :meth:`.XZCorrections.simulate`.
+We cover simulation in depth in the :ref:`dedicated tutorial <simulation-tutorial>`, but two points are worth knowing right away:
+
+- **Input state.** By default, every input qubit starts in :math:`\ket{+}`. You
+  can pass any other input state. Below, we start from the all-:math:`\ket{0}`
+  state. The output confirms that we are implementing a Hadamard.
+- **Randomness.** Measurement outcomes are drawn at random. To make your runs
+  reproducible, you can pass a seeded random number generator (:class:`numpy.random.Generator`).
+  We recommend always doing so.
+
+.. jupyter-execute::
+
+   from numpy.random import default_rng
+   from graphix import BasicStates
+   
+   state = xz_corr.simulate(input_state=BasicStates.ZERO, rng=default_rng(seed=42))
+   print(state) 
+
 .. note::
 
    **Planes or measurements?**
@@ -147,10 +168,10 @@ The red arrow from node 0 to node 1 represents the correction :math:`X_1^{s_0}`.
       * - ``Axis.Z``
         - ``+Measurement.Z`` or ``-Measurement.Z``
    
+   However, it is only possible to simulate objects with defined measurement angles.
    To learn more about the differences between the two representations, see the advanced :ref:`tutorial on measurement types <types-tutorial>`.
 
-.. note::
-    All angles in Graphix are expressed in units of :math:`\pi`.
+
 
 Beyond this example
 -------------------

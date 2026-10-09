@@ -100,16 +100,7 @@ In Graphix, patterns are represented by the :class:`.Pattern` class. The example
     pattern = Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), X(1, {0})])
     print(pattern)
 
-Once a pattern is built, you can run it with :meth:`.Pattern.simulate`. We
-cover simulation in depth in the :ref:`dedicated tutorial <simulation-tutorial>`,
-but two points are worth knowing right away:
-
-- **Input state.** By default, every input qubit starts in :math:`\ket{+}`. You
-  can pass any other input state. Below, we start from the all-:math:`\ket{0}`
-  state. You can see the expected output for the Hadamard pattern.
-- **Randomness.** Measurement outcomes are drawn at random. To make your runs
-  reproducible, you can pass a seeded random number generator
-  (:class:`numpy.random.Generator`). We recommend always doing so.
+Once a pattern is built, you can run it with :meth:`.Pattern.simulate` :ref:`as we did with the XZ-corrections <hadamard-example>`.
 
 .. jupyter-execute::
 
@@ -261,7 +252,14 @@ the measurement domains, leaving only output corrections at the end:
         output_state_std = pattern_std.simulate(input_state=input_state, rng=rng)
         assert output_state.isclose(output_state_std)
 
-
+Clifford commands
+-----------------
+Beyond the standard measurement calculus, Graphix adds one command,
+:math:`\C_i` (:class:`~.command.C`), which applies an unconditional local
+Clifford operation to node :math:`i`. Clifford commands appear as by-products of
+certain optimization routines, such as :ref:`Pauli-measurement removal
+<pauli-removal>`. They are covered in a :ref:`dedicated tutorial
+<clifford-commands>`.
 
 References
 ----------

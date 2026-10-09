@@ -193,6 +193,7 @@ mathjax3_config = {
             "M": r"\mathsf{M}",
             "X": r"\mathsf{X}",
             "Z": r"\mathsf{Z}",
+            "C": r"\mathsf{C}",
         },
     },
 }

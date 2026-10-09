@@ -13,30 +13,24 @@ In your terminal or a new python file, type the following:
    from graphix import OpenGraph, Measurement
 
    og = OpenGraph(
-      graph=nx.Graph([(1, 2), (2, 3), (0, 3), (3, 4)]),
+      graph=nx.Graph([(0, 3), (1, 2), (2, 3), (2, 4)]),
       input_nodes=[0, 1],
-      output_nodes=[0, 4],
-      measurements={node: Measurement.X for node in [1, 2, 3]}
+      output_nodes=[3, 4],
+      measurements={node: Measurement.XY(0) for node in range(3)}
    )
    
    og.draw()
 
-To fully describe an MBQC computation however, an open graph needs to be supplemented with a `correction strategy <og-corrections>` that assigns conditional Pauli operations to nodes based on previous measurement results. 
-
-If an open graph is compatible with a valid correction strategy, the resulting computation can be described as an `MBQC pattern <measurement-calculus>`, which contains a sequence of commands including qubit preparation, entanglement, single-qubit measurement, and Pauli corrections.
-
-Let's try to extract a pattern from the above open graph and simulate the computation.
+To fully describe an MBQC computation however, an open graph needs to be supplemented with a `correction strategy <og-corrections>` that assigns conditional Pauli operations to nodes based on previous measurement results. You will learn how to intepret and define correction strategies in later tutorials. For now, let Graphix find one for you and simulate the computation directly.
 
 .. jupyter-execute::
 
    from numpy.random import default_rng
-
-   pattern = og.to_pattern()
-   print(pattern)
+   from graphix import BasicStates
    
-   state = pattern.simulate(rng=default_rng(seed=42))
+   state = og.simulate(input_state=BasicStates.ZERO, rng=default_rng(seed=42))
    print(state)
 
-Congratulations! You've just run your first MBQC simulation in Graphix and created a Bell state. 
+Congratulations! You've just run your first MBQC simulation in Graphix and prepared a Bell state. 
 
 To dive deeper into MBQC concepts and learn how to use Graphix to build, optimize and simulate measurement-based quantum programs, head over to the :ref:`Tutorials <tutorials>` section.

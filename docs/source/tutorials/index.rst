@@ -28,3 +28,4 @@ Throughout the tutorials, we link to the original research articles so you can d
 
     source/symbolic
     source/measurement_types
+    source/clifford_commands

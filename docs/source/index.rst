@@ -6,7 +6,7 @@
       <h1>Graphix</h1>
 
       <div class="hero-tagline">
-         A open-source Python library for building, optimizing, and simulating measurement-based quantum computations. Develop your MBQC workflow with the help of our modular, extensible, and user-friendly software framework.
+         An open-source Python library for building, optimizing, and simulating measurement-based quantum computations (MBQC). Develop your MBQC workflow with the help of our modular, extensible, and user-friendly software framework.
       </div>
    </div>
 
