@@ -55,6 +55,14 @@ intersphinx_mapping = {
     "sympy": ("https://docs.sympy.org/latest/", None),
 }
 
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,      # include members without docstrings
+    "show-inheritance": True,
+    "private-members": False,
+    "member-order": "bysource",
+}
+add_module_names = False
 
 def skip(
     app: Sphinx,
@@ -69,7 +77,9 @@ def skip(
     return would_skip
 
 
-CIRCUITS_DIR = Path(__file__).parent / "tutorials" / "plots" / "circuits"
+CONF_DIR = Path(__file__).parent
+CIRCUITS_DIR = CONF_DIR / "tutorials" / "plots" / "circuits"
+
 
 
 def build_circuits(app: Sphinx) -> None:
@@ -100,6 +110,21 @@ def build_circuits(app: Sphinx) -> None:
                 )
             except subprocess.CalledProcessError as e:
                 raise ExtensionError(f"Failed to build svg {tex.name}:\n{e.stdout}\n{e.stderr}") from e
+
+def run_apidoc(app):
+    # Adjust these two paths so they're relative to conf.py's location
+    output_dir = CONF_DIR / "development" / "apiref" / "source"
+    module_dir = CONF_DIR.parent.parent / "graphix" / "graphix"
+
+    subprocess.check_call(
+        [
+            sys.executable, "-m", "sphinx.ext.apidoc",
+            "-o", str(output_dir),
+            str(module_dir),
+            "--separate",
+            "--force",  # overwrite files so they stay in sync with the code
+        ]
+    )
 
 
 def setup(app: Sphinx) -> None:
