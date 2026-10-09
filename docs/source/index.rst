@@ -25,18 +25,21 @@ Whether you are learning MBQC, developing protocols and algorithms, or testing n
    .. grid-item-card:: Installation
       :link: installation
       :link-type: doc
+      :class-card: index-card
 
       Install Graphix and customize your local environment.
 
    .. grid-item-card:: Getting started
       :link: getting_started
       :link-type: doc
+      :class-card: index-card
 
       Learn the basics of Graphix and run your first MBQC program.
 
    .. grid-item-card:: Tutorials
       :link: tutorials/index
       :link-type: doc
+      :class-card: index-card
 
       Dive into the core MBQC objects implemented in Graphix, and learn to run various computations with guided examples.
 
@@ -44,6 +47,7 @@ Whether you are learning MBQC, developing protocols and algorithms, or testing n
    .. grid-item-card:: Research workflows
       :link: research_workflows/index
       :link-type: doc
+      :class-card: index-card
 
       Discover examples of recent work in MBQC reproduced and extended by simulations in Graphix.
 
