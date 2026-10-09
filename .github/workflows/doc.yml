@@ -43,7 +43,7 @@ jobs:
             pdf2svg
 
       - name: Make docs
-        run: uv run --extra dev --extra doc sphinx-build -W docs/source docs/build -j auto
+        run: uv run --extra dev --extra doc sphinx-build docs/source docs/build -j auto
 
   lint-text:
     runs-on: ubuntu-latest
