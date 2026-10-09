@@ -59,7 +59,26 @@ Whether you are learning MBQC, developing protocols and algorithms, or testing n
 How to cite us
 --------------
 
-If you use Graphix in your research, please consider citing the latest software release and the accompanying paper.
+If you use Graphix in your research, please consider citing the `latest paper <https://arxiv.org/abs/2608.24781>`_ and the accompanying `software release <https://zenodo.org/records/21997813>`_.
+
+**Papers**
+
+   [1] M. Uldemolins, P. Nair, E. Graham, S. Sunami, T. Martinez, and M. Garnier, *Graphix: A software framework for Measurement-Based Quantum Computation*, arXiv:2608.24781 (2026).
+
+   .. tab-set::
+
+      .. tab-item:: BibTeX
+
+         .. code-block:: bibtex
+
+            @article{uldemolins2026_graphix,
+               title={Graphix: A software framework for Measurement-Based Quantum Computation},
+               author={Uldemolins, Mateo and Nair, Pranav and Graham, Emlyn and Sunami, Shinichi and Martinez, Thierry and Garnier, Maxime},
+               journal={arXiv preprint arXiv:2608.24781},
+               year={2026}
+            }
+
+   [2] S. Sunami, M. Fukushima. *Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph*, arxiv:2212.11975 (2022).
 
 **Software**
 
@@ -67,27 +86,23 @@ If you use Graphix in your research, please consider citing the latest software 
    Y. Watanabe, T. Martinez, M. Garnier, and S. Sunami, "Graphix" (v0.4), 
    Zenodo (2026), `<https://doi.org/10.5281/zenodo.21997813>`_
 
-   .. code-block:: bibtex
+   .. tab-set::
 
-      @software{graphix_v04,
-         author    = {Uldemolins, Mateo and Fukushima, Masato and
-                     Graham, Emlyn and Nair, Pranav and Sasaki, Daichi and
-                     Shiratani, Sora and Watanabe, Yuki and
-                     Martinez, Thierry and Garnier, Maxime and Sunami, Shinichi},
-         title     = {Graphix},
-         version   = {0.4},
-         year      = {2026},
-         publisher = {Zenodo},
-         doi       = {10.5281/zenodo.21997813},
-      }
+      .. tab-item:: BibTeX
 
-**Papers**
+         .. code-block:: bibtex
 
-   [1] M. Uldemolins, P. Nair, E. Graham, S. Sunami, T. Martinez, and M. Garnier, *Graphix: A software framework for Measurement-Based Quantum Computation*, arXiv:2608.24781 (2026).
-
-   `Read the new paper on arXiv now! <https://arxiv.org/abs/2608.24781>`_
-
-   [2] S. Sunami, M. Fukushima. *Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph*, arxiv:2212.11975 (2022).
+            @software{graphix_v04,
+               author    = {Uldemolins, Mateo and Fukushima, Masato and
+                           Graham, Emlyn and Nair, Pranav and Sasaki, Daichi and
+                           Shiratani, Sora and Watanabe, Yuki and
+                           Martinez, Thierry and Garnier, Maxime and Sunami, Shinichi},
+               title     = {Graphix},
+               version   = {0.4},
+               year      = {2026},
+               publisher = {Zenodo},
+               doi       = {10.5281/zenodo.21997813},
+            }
 
 
 .. raw:: html
