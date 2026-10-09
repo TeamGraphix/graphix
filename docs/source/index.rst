@@ -52,10 +52,9 @@ Whether you are learning MBQC, developing protocols and algorithms, or testing n
       Discover examples of recent work in MBQC reproduced and extended by simulations in Graphix.
 
 
-Explore Graphix
----------------
-*Mention some key features*
+.. raw:: html
 
+   <div class="section-divider"></div>
 
 How to cite us
 --------------
