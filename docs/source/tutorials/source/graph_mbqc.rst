@@ -53,10 +53,11 @@ In Graphix, open graphs are represented by the :class:`.OpenGraph` class. The ex
     )
     og.draw()
 
-From open graphs to computations
---------------------------------
 
 .. _og-corrections:
+
+From open graphs to computations
+--------------------------------
 
 A labelled open graph says which qubits are measured and in which plane, but does not have information about the classical feed-forward. A complete description of an MBQC computation is the tuple :math:`(\Gamma, \alpha, \boldsymbol{x}, \boldsymbol{z})`, made of:
 
