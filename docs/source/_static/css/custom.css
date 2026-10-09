@@ -71,3 +71,41 @@
 html {
     color-scheme: light !important;
 }
+/* Styling of Definition box */
+
+body {
+  --definition-color: #ec4899;
+  --definition-bg: rgba(236, 72, 153, 0.10);
+}
+
+body[data-theme="dark"] {
+  --definition-color: #f472b6;
+  --definition-bg: rgba(244, 114, 182, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --definition-color: #f472b6;
+    --definition-bg: rgba(244, 114, 182, 0.16);
+  }
+}
+
+.admonition.definition {
+  border-left: 0.2rem solid var(--definition-color);
+  border-radius: 0.3rem;
+}
+
+.admonition.definition > .admonition-title {
+  background-color: var(--definition-bg);
+  font-weight: 600;
+}
+
+.admonition.definition > .admonition-title::before {
+  background-color: var(--definition-color);
+  -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+}

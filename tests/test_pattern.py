@@ -19,7 +19,6 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
-from graphix.optimization import StandardizedPattern
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
@@ -216,7 +215,6 @@ class TestPattern:
         pattern.standardize()
         pattern.shift_signals(method="mc")
         assert pattern.is_standard()
-        pattern = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
         state = circuit.simulate().state
         state_mbqc = pattern.simulate(rng=rng)
         assert state_mbqc.isclose(state)
@@ -260,7 +258,7 @@ class TestPattern:
             if cmd.kind == CommandKind.M and cmd.node not in input_node_set
         )
 
-    @pytest.mark.parametrize("pm", PauliMeasurement)
+    @pytest.mark.parametrize("pm", tuple(PauliMeasurement))
     def test_pauli_measurement_single(self, pm: PauliMeasurement) -> None:
         pattern = Pattern(input_nodes=[0, 1])
         pattern.add(E(nodes=(0, 1)))
@@ -272,7 +270,7 @@ class TestPattern:
         state_ref = pattern_ref.simulate(branch_selector=branch_selector)
         assert state.isclose(state_ref)
 
-    def test_pauli_measurement(self) -> None:
+    def test_pauli_measurement(self, fx_rng: Generator) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -296,8 +294,8 @@ class TestPattern:
         assert isolated_nodes == set()
         pattern.minimize_space()
         pattern_opt.minimize_space()
-        state = pattern.simulate()
-        state_opt = pattern.simulate()
+        state = pattern.simulate(rng=fx_rng)
+        state_opt = pattern.simulate(rng=fx_rng)
         assert state.isclose(state_opt)
 
     @pytest.mark.parametrize("jumps", range(1, 6))
@@ -644,7 +642,7 @@ class TestPattern:
         p2 = circuit_2.transpile().pattern  # inputs: [0]
 
         p, _ = p1.compose(p2, mapping={0: 1, 1: 2, 2: 3})
-        p = StandardizedPattern.from_pattern(p).to_space_optimal_pattern()
+        p = p.to_standardizedpattern().to_space_optimal_pattern()
 
         circuit_12 = Circuit(1)
         circuit_12.h(0)
@@ -675,6 +673,7 @@ class TestPattern:
         assert s.isclose(s_compose)
 
     # Test warning composition after standardization
+    @pytest.mark.filterwarnings("ignore:Non-Pauli measurement on an isolated node was removed.")
     def test_compose_7(self, fx_rng: Generator) -> None:
         alpha = 2 * ANGLE_PI * fx_rng.random()
 
@@ -937,14 +936,10 @@ class TestPattern:
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
         p_ref.infer_pauli_measurements()
-        p_test = p_ref.to_bloch().to_causalflow().to_xzcorrections().to_pattern()
-        p_test.infer_pauli_measurements()
-
-        p_ref.remove_pauli_measurements()
-        p_test.remove_pauli_measurements()
+        f_test = p_ref.to_bloch().to_causalflow()
 
         s_ref = p_ref.simulate(rng=rng)
-        s_test = p_test.simulate(rng=rng)
+        s_test = f_test.simulate(rng=rng)
         assert s_ref.isclose(s_test)
 
     # Extract gflow from random circuits
@@ -957,14 +952,10 @@ class TestPattern:
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
         p_ref.infer_pauli_measurements()
-        p_test = p_ref.to_bloch().to_gflow().to_xzcorrections().to_pattern()
-        p_test.infer_pauli_measurements()
-
-        p_ref.remove_pauli_measurements()
-        p_test.remove_pauli_measurements()
+        f_test = p_ref.to_bloch().to_gflow()
 
         s_ref = p_ref.simulate(rng=rng)
-        s_test = p_test.simulate(rng=rng)
+        s_test = f_test.simulate(rng=rng)
         assert s_ref.isclose(s_test)
 
     # Extract Pauli flow from random circuits
@@ -977,14 +968,10 @@ class TestPattern:
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
         p_ref.infer_pauli_measurements()
-        p_test = p_ref.to_bloch().to_pauliflow().to_xzcorrections().to_pattern()
-        p_test.infer_pauli_measurements()
-
-        p_ref.remove_pauli_measurements()
-        p_test.remove_pauli_measurements()
+        f_test = p_ref.to_bloch().to_pauliflow()
 
         s_ref = p_ref.simulate(rng=rng)
-        s_test = p_test.simulate(rng=rng)
+        s_test = f_test.simulate(rng=rng)
         assert s_ref.isclose(s_test)
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
@@ -993,8 +980,8 @@ class TestPattern:
             alpha = 2 * np.pi * fx_rng.random()
             s_ref = test_case.pattern.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-            p_test = test_case.pattern.to_bloch().to_causalflow().to_xzcorrections().to_pattern()
-            s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+            f_test = test_case.pattern.to_bloch().to_causalflow()
+            s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert s_ref.isclose(s_test)
         else:
@@ -1008,8 +995,8 @@ class TestPattern:
             alpha = 2 * np.pi * fx_rng.random()
             s_ref = test_case.pattern.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-            p_test = test_case.pattern.to_bloch().to_gflow().to_xzcorrections().to_pattern()
-            s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+            f_test = test_case.pattern.to_bloch().to_gflow()
+            s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert s_ref.isclose(s_test)
         else:
@@ -1027,8 +1014,8 @@ class TestPattern:
         alpha = 2 * np.pi * fx_rng.random()
         s_ref = test_case.pattern.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-        p_test = test_case.pattern.to_bloch().to_pauliflow().to_xzcorrections().to_pattern()
-        s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        f_test = test_case.pattern.to_bloch().to_pauliflow()
+        s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
@@ -1047,11 +1034,11 @@ class TestPattern:
                 4: Measurement.XY(0.4),
             },
         )
-        p_ref = og.to_causalflow().to_xzcorrections().to_pattern()
+        p_ref = og.to_causalflow().to_pattern()
         s_ref = p_ref.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-        p_test = p_ref.to_causalflow().to_xzcorrections().to_pattern()
-        s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        f_test = p_ref.to_causalflow()
+        s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
@@ -1071,11 +1058,11 @@ class TestPattern:
             },
         )
 
-        p_ref = og.to_gflow().to_xzcorrections().to_pattern()
+        p_ref = og.to_gflow().to_pattern()
         s_ref = p_ref.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-        p_test = p_ref.to_gflow().to_xzcorrections().to_pattern()
-        s_test = p_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+        f_test = p_ref.to_gflow()
+        s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)
 
@@ -1090,11 +1077,6 @@ class TestPattern:
         xzc = p_ref.to_xzcorrections()
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
-
-        p_ref.infer_pauli_measurements()
-        p_ref.remove_pauli_measurements()
-        p_test.infer_pauli_measurements()
-        p_test.remove_pauli_measurements()
 
         s_ref = p_ref.simulate(rng=rng)
         s_test = p_test.simulate(rng=rng)
@@ -1202,10 +1184,10 @@ class TestPattern:
         ],
     )
     def test_to_opengraph_roundtrip(self, pattern: Pattern, fx_rng: Generator) -> None:
-        pattern_test = pattern.to_opengraph().to_pattern()
+        og_test = pattern.to_opengraph()
 
         sv = pattern.simulate(rng=fx_rng)
-        sv_test = pattern_test.simulate(rng=fx_rng)
+        sv_test = og_test.simulate(rng=fx_rng)
 
         assert sv.isclose(sv_test)
 

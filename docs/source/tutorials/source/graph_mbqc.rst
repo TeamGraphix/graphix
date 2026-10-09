@@ -36,7 +36,7 @@ Partial graph states are also *partial stabilizer states*:
    \qquad
    K_j := X_j \prod_{i \in N_G(j)} Z_i,
 
-where :math:`N_G(j)` is the neighbourhood of node :math:`j` in :math:`G`. This holds for any input state :math:`\ket{\psi}_I` :cite:`BKMP07:gflow`.
+where :math:`N_G(j)` is the neighbourhood of node :math:`j` in :math:`G`. This holds for any input state :math:`\ket{\psi}_I` :cite:`graph-BKMP07:gflow`.
 
 In Graphix, open graphs are represented by the :class:`.OpenGraph` class. The example below builds and draws the smallest non-trivial one, with two nodes joined by a single edge:
 
@@ -92,6 +92,8 @@ When :math:`\alpha(i) \in \{0, \pi/2, \pi, 3\pi/2\}`, the measurement is along a
 
 .. note::
   :math:`\XYplane` measurements with an arbitrary angle :math:`\alpha` are enough for universal quantum computation, but allowing measurements on the :math:`\XZplane` and :math:`\YZplane` planes is very practical.
+
+.. _hadamard-example:
 
 Example: the Hadamard gate
 --------------------------
@@ -160,3 +162,4 @@ References
 
 .. bibliography::
    :cited:
+   :keyprefix: graph-

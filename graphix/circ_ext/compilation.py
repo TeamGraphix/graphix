@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from graphix.fundamentals import ANGLE_PI, Axis
-from graphix.instruction import CNOT, SWAP, H, S, X, Y, Z
+from graphix.instruction import CNOT, SDG, SWAP, H, X, Y, Z
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -200,7 +200,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
     -----
     This pass only handles unitaries so far (Clifford maps with the same number of input and output nodes).
 
-    Gate set: H, S, CNOT, SWAP, X, Y, Z
+    Gate set: H, SDG, CNOT, SWAP, X, Y, Z
 
     This function converts a ``CliffordMap`` into a sequence of quantum
     gate instructions by operating on its binary tableau representation.
@@ -280,7 +280,7 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
         col_idx_zx = np.flatnonzero(tab[row_idx, n : 2 * n])  # Don't take the sign column
         for j in col_idx_zx:
             # Each iteration sets the element `tab[row_idx, n+j]` to 0.
-            add_s(tab, instructions, int(j)) if tab[row_idx, j] else add_h(tab, instructions, int(j))
+            add_sdg(tab, instructions, int(j)) if tab[row_idx, j] else add_h(tab, instructions, int(j))
 
     def do_step_2(tab: MatGF2, instructions: list[InstructionType], row_idx: int) -> int:
         col_idx_xx = np.flatnonzero(tab[row_idx, :n])
@@ -298,11 +298,11 @@ def cm_berg_pass(clifford_map: CliffordMap, circuit: Circuit) -> None:
         tab[:, [q, q + n]] = tab[:, [q + n, q]]  # The usual tuple assignment `a, b = b, a` does not work here.
         instructions.append(H(q))
 
-    def add_s(tab: MatGF2, instructions: list[InstructionType], q: int) -> None:
+    def add_sdg(tab: MatGF2, instructions: list[InstructionType], q: int) -> None:
         tab[:, -1] ^= tab[:, q] & tab[:, q + n]
         tab[:, q + n] ^= tab[:, q]
         q = int(q)
-        instructions.extend((S(q), Z(q)))  # We append Sdagger to get C instead of C^dagger
+        instructions.append(SDG(q))  # We append S^dagger to get C instead of C^dagger
 
     def add_cnot(tab: MatGF2, instructions: list[InstructionType], qc: int, qt: int) -> None:
         tab[:, -1] ^= tab[:, qc] & tab[:, qt + n] & (tab[:, qt] ^ tab[:, qc + n] ^ 1)

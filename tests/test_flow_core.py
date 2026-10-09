@@ -403,7 +403,7 @@ class TestFlowPatternConversion:
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
         if isinstance(test_case, PatternTestCase):
-            pattern = test_case.flow.to_xzcorrections().to_pattern()
+            pattern = test_case.flow.to_pattern()
             n_shots = 2
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:

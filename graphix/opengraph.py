@@ -19,6 +19,7 @@ from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.measurements import BlochMeasurement, Measurement
 from graphix.parameter import Parameterizable
+from graphix.simulator import Simulable
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -41,7 +42,7 @@ _B = TypeVar("_B", bound=AbstractMeasurement)
 
 
 @dataclass(frozen=True)
-class OpenGraph(Parameterizable, Generic[_AM_co]):
+class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of open graph states.
 
     Attributes
@@ -104,7 +105,7 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
             raise OpenGraphError("Cliffords in `output_cliffords` mapping can only act on output nodes.")
 
     def to_pattern(self: OpenGraph[Measurement], *, stacklevel: int = 1) -> Pattern:
-        """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
+        """Extract a deterministic pattern from an ``OpenGraph[Measurement]`` if it exists.
 
         Parameters
         ----------
@@ -126,12 +127,12 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         -----
         - The open graph instance must be of parametric type `Measurement` to allow for a pattern extraction, otherwise it does not contain information about the measurement angles.
 
-        - This method proceeds by searching a flow on the open graph and converting it into a pattern as prescripted in Ref. [1].
-        It first attempts to find a causal flow because the corresponding flow-finding algorithm has lower complexity. If it fails, it attemps to find a Pauli flow because this property is more general than a generalised flow, and the corresponding flow-finding algorithms have the same complexity in the current implementation.
+        - This method proceeds by searching a flow on the open graph and converting it into a pattern as prescripted in Ref. [1_to_pattern]_.
+          It first attempts to find a causal flow because the corresponding flow-finding algorithm has lower complexity. If it fails, it attemps to find a Pauli flow because this property is more general than a generalised flow, and the corresponding flow-finding algorithms have the same complexity in the current implementation.
 
         References
         ----------
-        [1] Browne et al., NJP 9, 250 (2007)
+        .. [1_to_pattern] Browne et al., NJP 9, 250 (2007)
         """
         try:
             bloch_case = self.downcast_bloch()
@@ -317,14 +318,16 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         Returns
         -------
         bool
-        ``True`` if ``self`` and ``og`` have the same structure.
+            ``True`` if ``self`` and ``og`` have the same structure.
 
         Notes
         -----
         This method verifies the open graphs have:
-            - Truly equal underlying graphs (not up to an isomorphism).
-            - Equal input and output nodes. This assumes equal types as well, i.e., if ``self.input_nodes`` is a ``list`` and ``other.input_nodes`` is a ``tuple``, this method will return ``False``.
-            - Equal ``output_cliffords`` mappings.
+
+        - Truly equal underlying graphs (not up to an isomorphism).
+        - Equal input and output nodes. This assumes equal types as well, i.e., if ``self.input_nodes`` is a ``list`` and ``other.input_nodes`` is a ``tuple``, this method will return ``False``.
+        - Equal ``output_cliffords`` mappings.
+
         It assumes the open graphs are well formed.
 
         The static typer allows comparing the structure of two open graphs with different parametric type.
@@ -549,13 +552,16 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
 
         Example
         -------
+        >>> import warnings
         >>> import networkx as nx
         >>> from graphix.opengraph import OpenGraph
         >>> from graphix.measurements import Measurement
         >>> graph = nx.Graph([(0, 1), (1, 2)])
         >>> measurements = {0: Measurement.XZ(0.5), 1: Measurement.XZ(0.5)}
         >>> og = OpenGraph(graph, [0], [2], measurements)
-        >>> og.to_pauliflow()
+        >>> with warnings.catch_warnings():
+        ...     warnings.filterwarnings("ignore", message="Open graph with non-inferred Pauli measurements.")
+        ...     og.to_pauliflow()
         Traceback (most recent call last):
             ...
         graphix.opengraph.OpenGraphError: The open graph does not have a Pauli flow.
@@ -584,19 +590,19 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
 
         This method acts as a wrapper around the circuit extraction routine, simplifying
         its usage. It first attempts to extract the Pauli flow of the open graph, then
-        applies the circuit extraction procedure described in Ref. [1], and finally compiles
+        applies the circuit extraction procedure described in Ref. [1_to_circuit]_, and finally compiles
         the resulting circuit using the provided passes.
         To obtain the open graph's unitary in the form of a Pauli exponential DAG along with
-        a Clifford transformation, as presented in Ref. [1], one should instead operate
+        a Clifford transformation, as presented in Ref. [1_to_circuit]_, one should instead operate
         directly on the flow object using :meth:`PauliFlow.extract_circuit`.
 
         Parameters
         ----------
-        pexp_cp: Callable[[PauliExponentialDAG, Circuit], None] | None
+        pexp_cp : Callable[[PauliExponentialDAG, Circuit], None] | None
             Compilation pass to synthesize a Pauli exponential DAG.
             If ``None`` (default), :func:`graphix.circ_ext.compilation.pexp_ladder_pass` is
             employed.
-        cm_cp: Callable[[CliffordMap, Circuit], None] | None
+        cm_cp : Callable[[CliffordMap, Circuit], None] | None
             Compilation pass to synthesize a Clifford map. If ``None`` (default),
             :func:`graphix.circ_ext.compilation.cm_berg_pass` is employed. This pass
             only handles unitaries so far (Clifford maps with the same number of input
@@ -613,25 +619,26 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         Notes
         -----
         - The open graph instance must be of parametric type ``Measurement`` to allow
-        for a circuit extraction, otherwise it does not contain information about the
-        measurement angles.
+          for a circuit extraction, otherwise it does not contain information about the
+          measurement angles.
 
         - This wrapper extracts a Pauli flow rather than a gflow, as the former is more
-        general while the underlying extraction algorithms have the same computational
-        complexity in both cases. The resulting unitary is identical whether it is
-        obtained from a ``GFlow`` or from a ``PauliFlow`` with inferred Pauli measurements.
-        However, compilation passes that simultaneously diagonalize Pauli exponentials
-        within the same layer of the Pauli exponential DAG may benefit from flows of
-        lower depth, which is often the case for Pauli flow.  The pass
-        :func:`graphix.circ_ext.compilation.pexp_ladder_pass` does not take into account
-        the flow's depth.
+          general while the underlying extraction algorithms have the same computational
+          complexity in both cases. The resulting unitary is identical whether it is
+          obtained from a ``GFlow`` or from a ``PauliFlow`` with inferred Pauli measurements.
+          However, compilation passes that simultaneously diagonalize Pauli exponentials
+          within the same layer of the Pauli exponential DAG may benefit from flows of
+          lower depth, which is often the case for Pauli flow.  The pass
+          :func:`graphix.circ_ext.compilation.pexp_ladder_pass` does not take into account
+          the flow's depth.
 
         References
         ----------
-        [1] Simmons, 2021 (arXiv:2109.05654).
+        .. [1_to_circuit] Simmons, 2021 (arXiv:2109.05654).
 
         Examples
         --------
+        >>> import warnings
         >>> import networkx as nx
         >>> from graphix.opengraph import OpenGraph
         >>> from graphix.measurements import Measurement
@@ -641,14 +648,20 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         ...     output_nodes=(2, 5, 8),
         ...     measurements=dict.fromkeys((0, 1, 3, 4, 6, 7), Measurement.XY(angle=0)),
         ... )
-        >>> og.to_circuit()
+        >>> with warnings.catch_warnings():
+        ...     warnings.filterwarnings("ignore", message="Open graph with non-inferred Pauli measurements.")
+        ...     og.to_circuit()
         Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         >>> # The default compilation passes do not exploit the lower depth of the Pauli flow
         >>> # compared the gflow.
         >>> og.infer_pauli_measurements().to_circuit()
         Circuit(width=3, instr=[H(2), H(1), CNOT(2, 1), H(1), H(1), H(0), CNOT(2, 0), CNOT(1, 0), H(2), H(1), H(0)])
         """
-        return self.to_pauliflow(stacklevel=stacklevel + 1).extract_circuit().to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
+        return (
+            self.to_pauliflow(stacklevel=stacklevel + 1)
+            .extract_circuit(stacklevel=stacklevel + 1)
+            .to_circuit(pexp_cp=pexp_cp, cm_cp=cm_cp)
+        )
 
     def compose(self, other: OpenGraph[_AM_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_AM_co], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from ``self`` and ``other``, and relabeling the nodes of ``other`` that were not merged.
@@ -657,35 +670,38 @@ class OpenGraph(Parameterizable, Generic[_AM_co]):
         ----------
         other : OpenGraph[_AM_co]
             Open graph to be composed with ``self``.
-        mapping: dict[int, int]
+        mapping : dict[int, int]
             Partial relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node labels, respectively.
 
         Returns
         -------
-        og: OpenGraph[_AM_co]
+        og : OpenGraph[_AM_co]
             Composed open graph.
-        mapping_complete: dict[int, int]
+        mapping_complete : dict[int, int]
             Complete relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node label, respectively.
 
         Notes
         -----
-        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the resulting open graph `og` and `{v:u}` an element of `mapping`.
+        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph ``self``, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph ``other``, :math:`\{G(V, E), I, O\}` the resulting open graph ``og`` and ``{v:u}`` an element of ``mapping``.
 
-        We define :math:`V, U` the set of nodes in `mapping.keys()` and `mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
+        We define :math:`V, U` the set of nodes in ``mapping.keys()`` and ``mapping.values()``, and :math:`M = U \cap V_1` the set of merged nodes.
 
         The open graph composition requires that
+
         - :math:`V \subseteq V_2`.
-        - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
+        - If both ``v`` and ``u`` are measured, the corresponding measurements must have the same plane and angle.
 
         The returned open graph follows this convention:
+
         - :math:`I = (I_1 \cup I_2) \setminus M \cup (I_1 \cap I_2 \cap M)`,
         - :math:`O = (O_1 \cup O_2) \setminus M \cup (O_1 \cap O_2 \cap M)`,
-        - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
-        - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
+        - If only one node of the pair ``{v:u}`` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
+        - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph ``self`` followed by those of the open graph ``other``. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph ``self``.
         - Clifford operations on output nodes:
-            - if two output nodes :math:`o_1` and :math:`o_2` are merged, then :math:`C(o_1) = C_2(o_2) \circ C_1(o_1)`;
-            - if an output node :math:`o_1` is merged with a measured node :math:`m_2`, then :math:`M(o_1) = M_2(m_2) \circ C_1(o_1)`;
-            - if a measured node :math:`m_1` is merged with an output node :math:`o_2`, then :math:`M(m_1) = M_1(m_1) \circ C_2(o_2)`.
+
+          - if two output nodes :math:`o_1` and :math:`o_2` are merged, then :math:`C(o_1) = C_2(o_2) \circ C_1(o_1)`;
+          - if an output node :math:`o_1` is merged with a measured node :math:`m_2`, then :math:`M(o_1) = M_2(m_2) \circ C_1(o_1)`;
+          - if a measured node :math:`m_1` is merged with an output node :math:`o_2`, then :math:`M(m_1) = M_1(m_1) \circ C_2(o_2)`.
         """
         if not (mapping.keys() <= other.graph.nodes):
             raise ValueError("Keys of mapping must be correspond to nodes of other.")
