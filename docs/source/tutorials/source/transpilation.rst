@@ -2,4 +2,6 @@
 
 From circuits to patterns
 =========================
-*This tutorial should describe the JCZ transpiler and the Circuit API. Fig. 7 is potentially useful*
+*Tutorial coming soon...*
+
+In the meantime you can see some examples in our `latest preprint <https://arxiv.org/abs/2608.24781>`__!

@@ -3,5 +3,6 @@
 Pattern simulation
 ===================
 
-*This tutorial could start with a simple pattern simulation example (like in "Getting started"), then cover sections 3.6. No need to put the Figure.*
-*There should be subsections: branch selection, noisy simulation and maybe "Advance usage" : custom noise models.*
+*Tutorial coming soon...*
+
+In the meantime you can see some examples in our `latest preprint <https://arxiv.org/abs/2608.24781>`__!
