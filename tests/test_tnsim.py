@@ -377,7 +377,8 @@ class TestTN:
 
             assert abs(coef_tn) == pytest.approx(abs(coef_sv))
 
-    @pytest.mark.parametrize(("nqubits", "jumps"), itertools.product(range(2, 6), range(1, 6)))
+    @pytest.mark.parametrize("nqubits", range(2, 6))
+    @pytest.mark.parametrize("jumps", range(1, 6))
     def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         circuit = rand_circuit(nqubits, 3, rng)

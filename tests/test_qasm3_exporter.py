@@ -60,6 +60,14 @@ def test_to_qasm3_j() -> None:
     _qasm3 = circuit_to_qasm3(circuit)
 
 
+def test_to_qasm3_cj() -> None:
+    circuit = Circuit(2)
+    circuit.cj(0, 1, 0.25)
+    with pytest.raises(ValueError, match="CJ gates must be decomposed before QASM3 export"):
+        circuit_to_qasm3(circuit, transpile=False)
+    _qasm3 = circuit_to_qasm3(circuit)
+
+
 def test_to_qasm3_rzz() -> None:
     circuit = Circuit(2)
     circuit.rzz(0, 1, 0.25)

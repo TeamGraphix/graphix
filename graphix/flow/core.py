@@ -49,6 +49,7 @@ from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement,
 from graphix.measurements import Measurement
 from graphix.parameter import Parameterizable
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
+from graphix.simulator import Simulable
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -75,7 +76,7 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class XZCorrections(Parameterizable, Generic[_AM_co]):
+class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
     Attributes
@@ -146,6 +147,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
         return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
+    @override
     def to_pattern(
         self: XZCorrections[Measurement],
         total_measurement_order: TotalOrder | None = None,
@@ -569,7 +571,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
 
 @dataclass(frozen=True)
-class PauliFlow(Parameterizable, Generic[_AM_co]):
+class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
     Attributes
@@ -660,6 +662,16 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
             future |= layer
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
+
+    @override
+    def to_pattern(self: PauliFlow[Measurement], total_measurement_order: TotalOrder | None = None) -> Pattern:
+        """Generate a pattern from this ``PauliFlow[Measurement]`` instance.
+
+        See :meth:`XZCorrections.to_pattern` for further details about
+        the ``total_measurement_order`` parameter and the exceptions
+        that may be raised.
+        """
+        return self.to_xzcorrections().to_pattern(total_measurement_order)
 
     def is_well_formed(self) -> bool:
         """Verify if flow is well formed.
@@ -967,10 +979,16 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
             raise ValueError("Flow is not focused.")
         return {node: extraction_ps_from_corrected_node(self, node) for node in self.correction_function}
 
-    def extract_circuit(self: PauliFlow[Measurement]) -> ExtractionResult:
+    def extract_circuit(self: PauliFlow[Measurement], *, stacklevel: int = 1) -> ExtractionResult:
         """Extract a circuit from a flow.
 
         This routine assumes that the flow ``self`` is focused (see Notes).
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -991,7 +1009,7 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         if self.og.output_cliffords:
             raise NotImplementedError("Circuit extraction is not supported for open graphs with Clifford decorations.")
         pexp_dag = PauliExponentialDAG.from_focused_flow(self)
-        clifford_map = CliffordMap.from_focused_flow(self)
+        clifford_map = CliffordMap.from_focused_flow(self, stacklevel=stacklevel + 1)
 
         return ExtractionResult(pexp_dag=pexp_dag, clifford_map=clifford_map)
 

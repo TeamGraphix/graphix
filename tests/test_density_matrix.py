@@ -1044,7 +1044,7 @@ class TestDensityMatrixBackend:
         assert np.allclose(backend.state.rho, expected_matrix)
 
 
-@pytest.mark.parametrize("permutation", itertools.permutations(range(3)))
+@pytest.mark.parametrize("permutation", tuple(itertools.permutations(range(3))))
 def test_permute(fx_rng: Generator, permutation: Sequence[int]) -> None:
     nqubits = len(permutation)
     dm = DensityMatrix(rand_state_vector(nqubits, fx_rng))
