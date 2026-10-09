@@ -4,6 +4,6 @@ API Reference
 Automatically generated API reference
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     source/modules
