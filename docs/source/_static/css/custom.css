@@ -57,3 +57,17 @@
     margin: 2.5rem 0;
     background: var(--color-background-border);
 }
+
+.theme-toggle {
+    display: none !important;
+}
+
+/* Light mode color background */
+.highlight pre {
+    background-color: #f0eeb7;
+}
+
+/* Force light color scheme */
+html {
+    color-scheme: light !important;
+}

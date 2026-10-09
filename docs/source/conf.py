@@ -128,8 +128,8 @@ html_theme_options = {
     "light_logo": "black_with_name.png",
     "dark_logo": "white_with_text.png",
     "light_css_variables": {
-        "color-brand-primary": "#7C4DFF",
-        "color-brand-content": "#7C4DFF",
+        "color-brand-primary": "#B163E1",
+        "color-brand-content": "#7F23C1",
     },
 }
 
