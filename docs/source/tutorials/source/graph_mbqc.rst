@@ -126,7 +126,7 @@ The red arrow from node 0 to node 1 represents the correction :math:`X_1^{s_0}`.
 .. attention::
    All angles in Graphix are expressed in units of :math:`\pi`.
 
-Finally, you can simulate the MBQC computation by calling the method :meth:`.XZCorrections.simulate`.
+Finally, you can simulate the MBQC computation by calling the method :meth:`~.Simulable.simulate`.
 We cover simulation in depth in the :ref:`dedicated tutorial <simulation-tutorial>`, but two points are worth knowing right away:
 
 - **Input state.** By default, every input qubit starts in :math:`\ket{+}`. You

@@ -199,10 +199,10 @@ As with causal flow, gflow and Pauli flow also yield a specific deterministic
 correction strategy on the open graph. For the definitions and the ensuing corrections, see
 :cite:`flows-BKMP07:gflow, flows-UNGSMG26:graphix`.
 
-Graphix provides :meth:`.Opengraph.to_gflow` and :meth:`.Opengraph.to_pauliflow`.
+Graphix provides :meth:`.OpenGraph.to_gflow` and :meth:`.OpenGraph.to_pauliflow`.
 Both run in :math:`O(N^3)`, with :math:`N` is the number of nodes. They return a
 :class:`.GFlow` or a :class:`.PauliFlow` instance, respectively, or raise an
-:class:`.OpenGraphError` if the flow does not exist. The methods :meth:`.Opengraph.to_gflow_or_none`, :meth:`.Opengraph.to_pauliflow_or_none` handle the exception and return ``None`` if it doesn't exist any flow.
+:class:`.OpenGraphError` if the flow does not exist. The methods :meth:`.OpenGraph.to_gflow_or_none`, :meth:`.OpenGraph.to_pauliflow_or_none` handle the exception and return ``None`` if it doesn't exist any flow.
 
 For example:
 
@@ -226,7 +226,7 @@ For example:
     gf = og.to_gflow()
     gf.draw()
 
-Flow extraction algorithms don't identify Pauli measurements. This means that if your open graph contains for instance an ``Measurement.XY(0)``, it will be treated as a planar measurement and not as a Pauli measurement ``PauliMeasurement.X``. However, you can manually cast planar measurements with a Pauli angle into Pauli measurements with the method :meth:`OpenGraph.infer_pauli_measurements`. This distinction can allow to extract a Pauli flow where a gflow does not exist or a flow with lower depth:
+Flow extraction algorithms don't identify Pauli measurements. This means that if your open graph contains for instance an ``Measurement.XY(0)``, it will be treated as a planar measurement and not as a Pauli measurement ``PauliMeasurement.X``. However, you can manually cast planar measurements with a Pauli angle into Pauli measurements with the method :meth:`.OpenGraph.infer_pauli_measurements`. This distinction can allow to extract a Pauli flow where a gflow does not exist or a flow with lower depth:
 
 .. jupyter-execute::
 
@@ -259,7 +259,7 @@ of a Pauli flow.
     Extracting a gflow or a causal flow from an open graph that contains Pauli
     measurements is not a valid operation. For instance,
     ``og.infer_pauli_measurements().to_gflow()`` in the previous example fails
-    at runtime. The type checker ``mypy`` catches the mistake before you run
+    at runtime. The type checker :mypy:`mypy <index.html>` catches the mistake before you run
     the code, because the inferred Pauli measurements have a different type.
     To learn more, see the advanced :ref:`tutorial on measurement types
     <types-tutorial>`. 
@@ -334,8 +334,7 @@ specified as a mapping from nodes to :class:`.Plane` or :class:`.Axis`, instead 
             1: Plane.XZ,
             2: Axis.Y,
             3: Plane.XY,
-            4: Axis.Z,
-        },
+            4: Axis.Z},
     )
 
     pf = og.to_pauliflow()
@@ -346,7 +345,7 @@ specified as a mapping from nodes to :class:`.Plane` or :class:`.Axis`, instead 
 
 However, building a pattern needs the measurement angles. Calling
 ``xz_corr.to_pattern()`` on the previous example is therefore incorrect.
-``mypy`` flags it, and running it anyway produces a faulty :class:`.Pattern`. If you don't want to commit to *concrete* angle values yet, you can use :ref:`parametric placeholders <symbolic-tutorial>` instead. They let you build the pattern now and assign the angles later.
+:mypy:`mypy <index.html>` flags it, and running it anyway produces a faulty :class:`.Pattern`. If you don't want to commit to *concrete* angle values yet, you can use :ref:`parametric placeholders <symbolic-tutorial>` instead. They let you build the pattern now and assign the angles later.
 
 Extracting flows from corrections
 ---------------------------------

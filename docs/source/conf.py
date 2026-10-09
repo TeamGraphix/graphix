@@ -37,6 +37,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
+    "sphinx.ext.extlinks",
     "jupyter_sphinx",
     "sphinxcontrib.bibtex",
     "matplotlib.sphinxext.plot_directive",
@@ -53,7 +54,10 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "networkx": ("https://networkx.github.io/documentation/stable/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
+
+extlinks = {"mypy": ("https://mypy.readthedocs.io/en/stable/%s", "%s")}
 
 autodoc_default_options = {
     "members": True,

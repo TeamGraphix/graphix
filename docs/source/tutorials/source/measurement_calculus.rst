@@ -100,7 +100,7 @@ In Graphix, patterns are represented by the :class:`.Pattern` class. The example
     pattern = Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), X(1, {0})])
     print(pattern)
 
-Once a pattern is built, you can run it with :meth:`.Pattern.simulate` :ref:`as we did with the XZ-corrections <hadamard-example>`.
+Once a pattern is built, you can run it with :meth:`~.Simulable.simulate` :ref:`as we did with the XZ-corrections <hadamard-example>`.
 
 .. jupyter-execute::
 
@@ -199,11 +199,11 @@ Applying this rule repeatedly, together with the other rules of the
 calculus :cite:`patterns-DKP07:calculus`, allows to bring any pattern into
 *standard form*:
 
-1. all qubit preparations (:math:`N` commands),
-2. then all entanglements (:math:`E` commands),
-3. then all measurements (:math:`M` commands),
-4. and finally the corrections on the output qubits (:math:`X` and
-   :math:`Z` commands).
+1. all qubit preparations (:math:`\N` commands),
+2. then all entanglements (:math:`\E` commands),
+3. then all measurements (:math:`\M` commands),
+4. and finally the corrections on the output qubits (:math:`\X` and
+   :math:`\Z` commands).
 
 Graphix implements these rules in :meth:`.Pattern.standardize`. In the example
 below, the corrections scattered between the measurements are absorbed into
