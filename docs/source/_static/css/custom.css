@@ -45,9 +45,9 @@
     margin: 0 auto;
     padding: 1rem 1.5rem;
     text-align: center;
-    border: 1px solid #060606;
+    /* border: 1px solid #060606; */
     border-radius: 0.8rem;
-    background-color: var(--color-brand-primary);
+    /* background-color: var(--color-brand-primary); */
     border-color: var(--color-brand-secondary);
     box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
