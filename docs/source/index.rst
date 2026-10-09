@@ -79,14 +79,11 @@ If you use Graphix in your research, please consider citing the latest software 
 
 **Papers**
 
-   [1] M. Uldemolins, P. Nair, E. Graham, S. Sunami, T. Martinez, and
-   M. Garnier, *Graphix: A software framework for Measurement-Based
-   Quantum Computation*, arXiv:2608.24781 (2026).
+   [1] M. Uldemolins, P. Nair, E. Graham, S. Sunami, T. Martinez, and M. Garnier, *Graphix: A software framework for Measurement-Based Quantum Computation*, arXiv:2608.24781 (2026).
 
    `Read the new paper on arXiv now! <https://arxiv.org/abs/2608.24781>`_
 
-   [2] S. Sunami, M. Fukushima. *Graphix: optimizing and simulating measurement-based 
-   quantum computation on local-Clifford decorated graph*, arxiv:2212.11975 (2022).
+   [2] S. Sunami, M. Fukushima. *Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph*, arxiv:2212.11975 (2022).
 
 
 .. raw:: html
