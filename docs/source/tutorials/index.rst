@@ -55,7 +55,7 @@ Throughout the tutorials, we link to the original research articles so you can d
       :class-card: tutorial-card
       :shadow: md
 
-      An introduction to flows and how to decide whether an MBQC computation is deterministic.
+      An introduction to flows and how to build deterministic MBQC computations.
 
    .. grid-item-card:: From circuits to patterns
       :link: source/transpilation

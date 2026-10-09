@@ -56,6 +56,17 @@ Whether you are learning MBQC, developing protocols and algorithms, or testing n
 
    <div class="section-divider"></div>
 
+
+About
+-----
+
+Graphix was started in 2022 by `Shinichi Sunami <https://github.com/shinich1>`_ (University of Oxford) and `Masato Fukushima <https://github.com/masa10-fk>`_ (University of Tokyo, Fixstars Amplify). `Daichi Sasaki <https://github.com/d1ssk>`_, Yuki Watanabe and `Sora Shiratani <https://github.com/EarlMilktea>`_ (University of Tokyo, Fixstars Amplify) later joined the team.
+
+In 2023, the `QAT team <https://qat.inria.fr/presentation/>`_ the efforts. Currently, Graphix is actively developped an maintained by `Thierry Martinez <https://github.com/thierry-martinez>`_, `Mateo Uldemolins <https://github.com/matulni>`_, `Pranav Nair <https://github.com/pranav97nair>`_ and `Maxime Garnier <https://github.com/mgarnier59>`_ (Inria).
+
+The project has been supported by `Fixstars Amplify <https://amplify.fixstars.com/en/>`_ and the `Unitary Foundation <https://unitary.foundation>`_, and currently participates in the `French Hybrid Quantum Initiative <https://www.hqi.fr/>`_.
+
+
 How to cite us
 --------------
 
@@ -147,3 +158,4 @@ If you use Graphix in your research, please consider citing the `latest paper <h
    development/compatibility
    development/apiref/index
    plugins/index
+ 
