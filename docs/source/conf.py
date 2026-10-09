@@ -27,6 +27,9 @@ author = "Shinichi Sunami"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+sys.path.insert(0, os.path.abspath("../../"))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "_ext")))
+
 extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
@@ -39,6 +42,7 @@ extensions = [
     "matplotlib.sphinxext.plot_directive",
     "sphinx_design",
     # "sphinx_gallery.gen_gallery",
+    "definition", # definition box, see _ext/definition.py
 ]
 
 templates_path = ["_templates"]
@@ -51,7 +55,6 @@ intersphinx_mapping = {
     "sympy": ("https://docs.sympy.org/latest/", None),
 }
 
-sys.path.insert(0, os.path.abspath("../../"))
 
 
 def skip(
