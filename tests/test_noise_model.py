@@ -162,12 +162,19 @@ def test_confuse_result(fx_rng: Generator, noise_model: NoiseModel) -> None:
     # Pattern that measures 0 on qubit 0 with probability 1.
     pattern = Pattern(cmds=[N(0), M(0)])
     measure_method = DefaultMeasureMethod()
+    # `optimized=False` to keep isolated node 0
     pattern.simulate(
-        backend="densitymatrix", noise_model=NoiselessNoiseModel(), rng=fx_rng, measure_method=measure_method
+        backend="densitymatrix",
+        noise_model=NoiselessNoiseModel(),
+        rng=fx_rng,
+        measure_method=measure_method,
+        optimized=False,
     )
     assert measure_method.results[0] == 0
     measure_method = DefaultMeasureMethod()
-    pattern.simulate(backend="densitymatrix", noise_model=noise_model, rng=fx_rng, measure_method=measure_method)
+    pattern.simulate(
+        backend="densitymatrix", noise_model=noise_model, rng=fx_rng, measure_method=measure_method, optimized=False
+    )
     assert measure_method.results[0] == 1
 
 

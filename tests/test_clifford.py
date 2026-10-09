@@ -103,9 +103,8 @@ class TestClifford:
     def test_to_pattern(self, fx_rng: Generator, c: Clifford) -> None:
         og = c.to_opengraph()
         og.to_bloch().to_causalflow()
-        pattern = og.to_pattern()
         pattern_ref = Pattern(input_nodes=[0], cmds=[Command.C(0, c)])
         input_state = rand_state_vector(nqubits=1, rng=fx_rng)
-        state = pattern.simulate(input_state=input_state, rng=fx_rng)
+        state = og.simulate(input_state=input_state, rng=fx_rng)
         state_ref = pattern_ref.simulate(input_state=input_state, rng=fx_rng)
         assert state.isclose(state_ref)
