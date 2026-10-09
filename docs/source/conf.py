@@ -111,10 +111,10 @@ def build_circuits(app: Sphinx) -> None:
             except subprocess.CalledProcessError as e:
                 raise ExtensionError(f"Failed to build svg {tex.name}:\n{e.stdout}\n{e.stderr}") from e
 
-def run_apidoc(app):
+def run_apidoc(app: Sphinx) ->None:
     # Adjust these two paths so they're relative to conf.py's location
     output_dir = CONF_DIR / "development" / "apiref" / "source"
-    module_dir = CONF_DIR.parent.parent / "graphix" / "graphix"
+    module_dir = CONF_DIR.parent.parent / "graphix" 
 
     subprocess.check_call(
         [
@@ -130,6 +130,7 @@ def run_apidoc(app):
 def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip)
     app.connect("builder-inited", build_circuits)
+    app.connect("builder-inited", run_apidoc)
 
 
 # -- Options for HTML output -------------------------------------------------
