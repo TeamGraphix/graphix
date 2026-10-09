@@ -80,6 +80,19 @@ If you use Graphix in your research, please consider citing the `latest paper <h
 
    [2] S. Sunami, M. Fukushima. *Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph*, arxiv:2212.11975 (2022).
 
+   .. tab-set::
+
+      .. tab-item:: BibTeX
+
+         .. code-block:: bibtex
+
+            @article{sunami2022_graphix,
+               title={Graphix: Optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph},
+               author={Sunami, Shinichi and Fukushima, Masato},
+               journal={arXiv preprint arXiv:2212.11975},
+               year={2022}
+            }
+
 **Software**
 
    M. Uldemolins, M. Fukushima, E. Graham, P. Nair, D. Sasaki, S. Shiratani, 
