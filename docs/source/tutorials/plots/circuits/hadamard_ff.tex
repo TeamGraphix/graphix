@@ -1,0 +1,9 @@
+\documentclass[tikz,border=2pt]{standalone}
+\usepackage{braket}
+\usepackage{quantikz}
+\begin{document}
+\begin{quantikz}
+    \lstick{\(\ket{\psi}\)} & \ctrl{1} & \meter{\bra{\pm}}\vcw{1} \\
+    \lstick{\(\ket{+}\)} & \control{} & \gate{X} & \qw \rstick{\(\ket{\psi'}\)}
+    \end{quantikz}
+\end{document}

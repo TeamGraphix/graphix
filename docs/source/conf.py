@@ -10,6 +10,13 @@ from sphinx.application import Sphinx
 import os
 import sys
 
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+from sphinx.errors import ExtensionError
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -20,6 +27,9 @@ author = "Shinichi Sunami"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+sys.path.insert(0, os.path.abspath("../../"))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "_ext")))
+
 extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
@@ -27,7 +37,13 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
-    "sphinx_gallery.gen_gallery",
+    "sphinx.ext.extlinks",
+    "jupyter_sphinx",
+    "sphinxcontrib.bibtex",
+    "matplotlib.sphinxext.plot_directive",
+    "sphinx_design",
+    # "sphinx_gallery.gen_gallery",
+    "definition",  # definition box, see _ext/definition.py
 ]
 
 templates_path = ["_templates"]
@@ -38,10 +54,19 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "networkx": ("https://networkx.github.io/documentation/stable/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
 
-sys.path.insert(0, os.path.abspath("../../"))
+extlinks = {"mypy": ("https://mypy.readthedocs.io/en/stable/%s", "%s")}
 
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,      # include members without docstrings
+    "show-inheritance": True,
+    "private-members": False,
+    "member-order": "bysource",
+}
+add_module_names = False
 
 def skip(
     app: Sphinx,
@@ -56,8 +81,60 @@ def skip(
     return would_skip
 
 
+CONF_DIR = Path(__file__).parent
+CIRCUITS_DIR = CONF_DIR / "tutorials" / "plots" / "circuits"
+
+
+
+def build_circuits(app: Sphinx) -> None:
+    """Compile every circuits/*.tex into a sibling .svg (skipped if up to date)."""
+    tex_files = sorted(CIRCUITS_DIR.glob("*.tex"))
+
+    for tex in tex_files:
+        svg = tex.with_suffix(".svg")
+        if svg.exists() and svg.stat().st_mtime >= tex.stat().st_mtime:
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                subprocess.run(
+                    ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", f"-output-directory={tmp}", tex.name],
+                    cwd=CIRCUITS_DIR,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            except subprocess.CalledProcessError as e:
+                raise ExtensionError(f"Failed to build pdf. {tex.name}:\n{e.stdout}\n{e.stderr}") from e
+            try:
+                subprocess.run(
+                    ["pdf2svg", str(Path(tmp) / f"{tex.stem}.pdf"), str(svg)],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            except subprocess.CalledProcessError as e:
+                raise ExtensionError(f"Failed to build svg {tex.name}:\n{e.stdout}\n{e.stderr}") from e
+
+def run_apidoc(app: Sphinx) ->None:
+    # Adjust these two paths so they're relative to conf.py's location
+    output_dir = CONF_DIR / "development" / "apiref" / "source"
+    module_dir = CONF_DIR.parent.parent / "graphix" 
+
+    subprocess.check_call(
+        [
+            sys.executable, "-m", "sphinx.ext.apidoc",
+            "-o", str(output_dir),
+            str(module_dir),
+            "--separate",
+            "--force",  # overwrite files so they stay in sync with the code
+        ]
+    )
+
+
 def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip)
+    app.connect("builder-inited", build_circuits)
+    app.connect("builder-inited", run_apidoc)
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -68,6 +145,7 @@ html_theme = "furo"
 html_title = " "  # title for documentation (shown in sidebar, kept empty)
 
 html_static_path = ["_static"]
+html_css_files = ["css/custom.css"]
 
 html_context = {
     "mode": "production",
@@ -81,27 +159,55 @@ pygments_dark_style = "monokai"
 html_theme_options = {
     "light_logo": "black_with_name.png",
     "dark_logo": "white_with_text.png",
+    "light_css_variables": {
+        "color-brand-primary": "#B163E1",
+        "color-brand-content": "#7F23C1",
+    },
 }
 
 default_role = "any"
 
-sphinx_gallery_conf = {
-    # path to your example scripts
-    "examples_dirs": ["../../examples"],
-    # path to where to save gallery generated output
-    "gallery_dirs": ["gallery"],
-    "filename_pattern": "/",
-    "thumbnail_size": (800, 550),
-    "parallel": True,
-}
+# sphinx_gallery_conf = {
+#     # path to your example scripts
+#     "examples_dirs": ["../../examples"],
+#     # path to where to save gallery generated output
+#     "gallery_dirs": ["gallery"],
+#     "filename_pattern": "/",
+#     "thumbnail_size": (800, 550),
+#     "parallel": True,
+# }
 
 suppress_warnings = ["config.cache"]
 
 mathjax3_config = {
     "loader": {"load": ["[tex]/braket"]},
-    "tex": {"packages": {"[+]": ["braket"]}},
+    "tex": {
+        "packages": {"[+]": ["braket"]},
+        "macros": {
+            "Xaxis": r"\mathrm{X}",
+            "Yaxis": r"\mathrm{Y}",
+            "Zaxis": r"\mathrm{Z}",
+            "XYplane": r"\mathrm{XY}",
+            "XZplane": r"\mathrm{XZ}",
+            "YZplane": r"\mathrm{YZ}",
+            "ketplus": r"|+\rangle",
+            "ketminus": r"|-\rangle",
+            "N": r"\mathsf{N}",
+            "E": r"\mathsf{E}",
+            "M": r"\mathsf{M}",
+            "X": r"\mathsf{X}",
+            "Z": r"\mathsf{Z}",
+            "C": r"\mathsf{C}",
+        },
+    },
 }
 # For LaTeX/PDF output:
 latex_elements = {
     "preamble": r"\usepackage{braket}",
 }
+bibtex_bibfiles = ["references.bib"]  # path relative to conf.py
+bibtex_default_style = "alpha"
+
+plot_formats = ["svg"]  # HTML only: one sharp vector output
+plot_html_show_source_link = False  # hides the "Source code" link
+plot_html_show_formats = False  # hides the "png", "hires.png", "pdf" links
