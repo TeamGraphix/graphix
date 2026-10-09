@@ -43,6 +43,7 @@
     max-width: 750px;
     font-size: 1rem;
     margin: 0 auto;
+    text-align: center;
 }
 
 .hero-buttons {
@@ -108,4 +109,20 @@ body[data-theme="dark"] {
           mask-repeat: no-repeat;
   -webkit-mask-size: contain;
           mask-size: contain;
+}
+
+/* Tutorial cards */
+.tutorial-card {
+    border-radius: 0.75rem;
+}
+
+/* Card titles */
+.tutorial-card .sd-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Card body */
+.tutorial-card .sd-card-body {
+    padding: 1.25rem;
 }
