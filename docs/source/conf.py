@@ -42,7 +42,7 @@ extensions = [
     "matplotlib.sphinxext.plot_directive",
     "sphinx_design",
     # "sphinx_gallery.gen_gallery",
-    "definition", # definition box, see _ext/definition.py
+    "definition",  # definition box, see _ext/definition.py
 ]
 
 templates_path = ["_templates"]
@@ -54,7 +54,6 @@ intersphinx_mapping = {
     "networkx": ("https://networkx.github.io/documentation/stable/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
 }
-
 
 
 def skip(
