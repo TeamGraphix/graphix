@@ -1,3 +1,4 @@
+.. _landing-page:
 
 .. raw:: html
 
@@ -109,11 +110,9 @@ If you use Graphix in your research, please consider citing the latest software 
 
    installation
    getting_started
-   intro
    tutorials/index
    research_workflows/index
    development/contributing
    development/compatibility
    development/apiref/index
    plugins/index
-.. .. toctree::
