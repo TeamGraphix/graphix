@@ -16,7 +16,7 @@ In your terminal or a new python file, type the following:
       graph=nx.Graph([(0, 3), (1, 2), (2, 3), (2, 4)]),
       input_nodes=[0, 1],
       output_nodes=[3, 4],
-      measurements={node: Measurement.XY(0) for node in range(3)}
+      measurements={node: Measurement.X for node in range(3)}
    )
    
    og.draw()
