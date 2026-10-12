@@ -1,4 +1,21 @@
-<img src="https://github.com/TeamGraphix/graphix/raw/master/docs/logo/black_with_name.png" alt="logo" width="550">
+<p align="center">
+  <picture>
+    <source
+      media="(prefers-color-scheme: dark)"
+      srcset="assets/white_with_name.png"
+    >
+    <source
+      media="(prefers-color-scheme: light)"
+      srcset="assets/black_with_name.png"
+    >
+    <img
+      src="assets/black_with_name.png"
+      alt="Graphix logo"
+      width="550"
+    >
+  </picture>
+</p>
+
 
 ![PyPI](https://img.shields.io/pypi/v/graphix)
 ![License](https://img.shields.io/github/license/TeamGraphix/graphix)
@@ -13,12 +30,12 @@
 
 **Graphix** is a measurement-based quantum computing (MBQC) software package, featuring
 
-- the measurement calculus framework with integrated graphical rewrite rules for Pauli measurement preprocessing
-- circuit-to-pattern transpiler, graph-based deterministic pattern generator and manual pattern generation
-- flow, gflow and pauliflow finding tools and graph visualization based on flows (see below)
-- statevector, density matrix and tensornetwork pattern simulation backends
-- QPU interface and fusion network extraction tool
-- _new_: [efficient implementation of fast O(N^3) pauli-flow finding algorithm](https://github.com/TeamGraphix/graphix/pull/337)
+- The measurement calculus framework with integrated graphical rewrite rules for pre-processing Pauli measurements
+- Circuit-to-pattern transpiler, graph-based deterministic pattern generator and manual pattern generation
+- Causal flow, Gflow and Pauli flow finding tools and graph visualization based on flows (see below)
+- Statevector, density matrix and tensor network pattern simulation backends
+- Export to OpenQASM for external simulation and QPU integration
+- [Efficient implementation of fast $\mathcal{O}(N^3$) Pauli flow-finding algorithm](https://github.com/TeamGraphix/graphix/pull/337)
 
 ## Installation
 
@@ -42,42 +59,43 @@ This creates a virtual environment and installs all development dependencies fro
 
 ## Using graphix
 
-### generating pattern from a circuit
+### Generating a pattern from a circuit
 
 ```python
 from graphix import Circuit
 
 circuit = Circuit(4)
-circuit.h(0)
 ...
 pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
+
 pattern.draw_graph(flow_from_pattern=False)
 ```
 
-<img src="https://github.com/TeamGraphix/graphix/assets/33350509/de17c663-f607-44e2-945b-835f4082a940" alt="graph_flow" width="750">
+<img src="assets/qaoa_pattern.png" alt="graph_flow" width="900">
 
-<small>See [our example code](examples/qaoa.py) to generate this pattern. Arrows indicate the [_causal flow_](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. the vertical dashed partitions and the labels 'l:n' below indicate the execution _layers_ or the order in the graph (measurements should happen from left to right, and nodes in the same layer can be measured simultaneously), based on the partial order associated with the (maximally-delayed) flow. </small>
+<small>See [our example code](examples/qaoa.py) to generate this pattern. Arrows indicate the [_causal flow_](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. The vertical dashed partitions and the labels below indicate the execution _layers_ based on the partial order associated with the (maximally-delayed) flow of the graph. Measurements should happen from left to right, and nodes in the same layer can be measured simultaneously. </small>
 
-### preprocessing Pauli measurements (Clifford gates)
+### Pre-processing Pauli measurements (Clifford gates)
 
 ```python
+pattern.infer_pauli_measurements()
 pattern.remove_pauli_measurements()
-pattern.draw_graph()
-```
 
-<img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="graph_gflow" width="140">
+pattern.draw(flow_from_pattern=False)
+```
+<img src="assets/qaoa_pauli_removed.png" alt="graph_gflow" width="340">
 
 <small>(here, the visualization is based on [_generalized flow_](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250)).</small>
 
-### simulating the pattern
+### Simulating the pattern
 
 ```python
 state_out = pattern.simulate(backend="statevector")
 ```
 
-### and more..
+### And more..
 
 - See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
 - Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
@@ -106,36 +124,25 @@ state_out = pattern.simulate(backend="statevector")
 
 ## Citing
 
-Please cite as
-
+If you use Graphix, please cite us as:
 ```
-@software{uldemolins2026grpahix034,
-  author       = {Uldemolins, Mateo and
-                  Fukushima, Masato and
-                  Graham, Emlyn and
-                  Nair, Pranav and
-                  Sasaki, Daichi and
-                  Shiratani, Sora and
-                  Watanabe, Yuki and
-                  Martinez, Thierry and
-                  Garnier, Maxime and
-                  Sunami, Shinichi},
-  title        = {Graphix},
-  month        = feb,
-  year         = 2026,
-  publisher    = {Zenodo},
-  version      = {v0.3.4},
-  doi          = {10.5281/zenodo.18503266},
-  url          = {https://doi.org/10.5281/zenodo.18503266},
+@software{graphix_v04,
+  author    = {Uldemolins, Mateo and Fukushima, Masato and
+              Graham, Emlyn and Nair, Pranav and Sasaki, Daichi and
+              Shiratani, Sora and Watanabe, Yuki and
+              Martinez, Thierry and Garnier, Maxime and Sunami, Shinichi},
+  title     = {Graphix},
+  version   = {0.4},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.21997813},
 }
-@misc{sunami2022graphix,
-      title={Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph},
-      author={Shinichi Sunami and Masato Fukushima},
-      year={2022},
-      eprint={2212.11975},
-      archivePrefix={arXiv},
-      primaryClass={quant-ph},
-      url={https://arxiv.org/abs/2212.11975},
+
+@article{uldemolins2026_graphix,
+  title={Graphix: A software framework for Measurement-Based Quantum Computation},
+  author={Uldemolins, Mateo and Nair, Pranav and Graham, Emlyn and Sunami, Shinichi and Martinez, Thierry and Garnier, Maxime},
+  journal={arXiv preprint arXiv:2608.24781},
+  year={2026}
 }
 ```
 
@@ -149,22 +156,18 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 - Please visit [Unitary Foundation's Discord server](https://discord.com/servers/unitary-foundation-764231928676089909), where you can find a channel for `graphix`.
 
-## Maintainers (alphabetical order)
+## Current maintainers (alphabetical order)
 
-- Masato Fukushima (University of Tokyo, Fixstars Amplify)
 - Maxime Garnier (Inria Paris)
-- Emlyn Graham (Inria Paris)
 - Thierry Martinez (Inria Paris)
 - Pranav Nair (Inria Paris)
-- Sora Shiratani (University of Tokyo, Fixstars Amplify)
-- Shinichi Sunami (University of Oxford)
 - Mateo Uldemolins (Inria Paris)
 
 ## Acknowledgements
 
-Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) with assistance from Masato Fukushima (University of Tokyo, Fixstars Amplify), supported by [Fixstars Amplify](https://amplify.fixstars.com/en/) and [Unitary Foundation](https://unitary.foundation/grants.html), and later joined by Daichi Sasaki, Yuki Watanabe and Sora Shiratani (University of Tokyo, Fixstars Amplify).
+Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) with assistance from Masato Fukushima (University of Tokyo, Fixstars Amplify), supported by [Fixstars Amplify](https://amplify.fixstars.com/en/) and [Unitary Foundation](https://unitary.foundation/grants.html), and later joined by Daichi Sasaki, Yuki Watanabe and Sora Shiratani (University of Tokyo, Fixstars Amplify). 
 
-<p>
+<p align="center">
 <a href="https://unitary.foundation/grants/" style="margin-right: 30px;">
 <img src="https://unitary.foundation/images/UFoundation.png" alt="Unitary Foundation logo" width="180"/>
 </a>
@@ -173,9 +176,9 @@ Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) with assis
 </a>
 </p>
 
-Since 2023, Graphix team is joined by the Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/), who develops and maintains the library.
+Since 2023, Graphix team is joined by the Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/), which now develops and maintains the library. We thank Emlyn Graham (Inria Paris) for his contributions to Graphix from 2025 to 2026.
 
-<p>
+<p align="center">
 <a href="https://www.inria.fr/" style="margin-right: 30px;">
   <img src="https://www.inria.fr/sites/default/files/2025-04/RF-Inria_Logo_RVB.jpg" alt="Inria logo" width="150"/>
 </a>
@@ -190,11 +193,11 @@ Since 2023, Graphix team is joined by the Qode group of the [QAT](https://qat.in
 </p>
 
 Special thanks also to [HQI](https://www.hqi.fr).
-
+<p align="center">
 <a href="https://www.hqi.fr">
   <img src="https://www.hqi.fr/wp-content/uploads/2022/06/logo_HQI_RVB.jpg" alt="HQI logo" width="150"/>
 </a>
-
+</p>
 
 
 ## License
