@@ -28,14 +28,22 @@
 [![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-**Graphix** is a measurement-based quantum computing (MBQC) software package, featuring
+**Graphix** is an open-source Python library for building, optimizing, and simulating measurement-based quantum computations (MBQC). It features:
 
-- The measurement calculus framework with integrated graphical rewrite rules for pre-processing Pauli measurements
-- Circuit-to-pattern transpiler, graph-based deterministic pattern generator and manual pattern generation
-- Causal flow, Gflow and Pauli flow finding tools and graph visualization based on flows (see below)
-- Statevector, density matrix and tensor network pattern simulation backends
-- Export to OpenQASM for external simulation and QPU integration
-- [Efficient implementation of fast $\mathcal{O}(N^3$) Pauli flow-finding algorithm](https://github.com/TeamGraphix/graphix/pull/337)
+- The measurement calculus framework with integrated graphical rewrite rules for pre-processing Pauli measurements.
+- Circuit-to-pattern transpiler, automatic pattern generation from graph states and manual pattern generation.
+- State-of-the-art causal flow, gflow and Pauli flow finding algorithms and visualization tools.
+- Statevector and density matrix simulation backends.
+- Circuit extraction.
+- Parametric MBQC computations.
+- Export to OpenQASM for external simulation and QPU integration.
+- An extensible [plugin ecosystem](#graphix-plugins).
+
+For usage examples drawn from recent research on MBQC and further details on the architecture, design and algorithm implementations, check our [latest preprint](https://arxiv.org/abs/2608.24781)!
+
+Full documentation, including detailed Graphix tutorials and an introduction to measurement-based quantum computation (MBQC), is available at [graphix.readthedocs.io](https://graphix.readthedocs.io/en/latest/).
+
+
 
 ## Installation
 
@@ -57,7 +65,7 @@ uv sync --extra dev
 
 This creates a virtual environment and installs all development dependencies from the `pyproject.toml` and `uv` lockfile.
 
-## Using graphix
+## Using Graphix
 
 ### Generating a pattern from a circuit
 
@@ -75,7 +83,7 @@ pattern.draw_graph(flow_from_pattern=False)
 
 <img src="assets/qaoa_pattern.png" alt="graph_flow" width="900">
 
-<small>See [our example code](examples/qaoa.py) to generate this pattern. Arrows indicate the [_causal flow_](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. The vertical dashed partitions and the labels below indicate the execution _layers_ based on the partial order associated with the (maximally-delayed) flow of the graph. Measurements should happen from left to right, and nodes in the same layer can be measured simultaneously. </small>
+<small>See [our example code](examples/qaoa.py) to generate this pattern. Arrows indicate the [_causal flow_](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. The vertical dashed partitions and the labels below indicate the execution _layers_ based on the partial order associated with the (maximally-delayed) flow of the graph. Measurements happen from left to right, and nodes in the same layer can be measured simultaneously. </small>
 
 ### Pre-processing Pauli measurements (Clifford gates)
 
@@ -92,15 +100,12 @@ pattern.draw(flow_from_pattern=False)
 ### Simulating the pattern
 
 ```python
-state_out = pattern.simulate(backend="statevector")
+state_out = pattern.simulate()
 ```
 
-### And more..
+### And more...
 
-- See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
-- Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
-- For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
-- Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
+Check [graphix.readthedocs.io](https://graphix.readthedocs.io/en/latest/) !
 
 ## Graphix plugins
 
@@ -112,19 +117,36 @@ state_out = pattern.simulate(backend="statevector")
 - [`graphix-stim-compiler`](https://github.com/TeamGraphix/graphix-stim-compiler): `stim` backend for efficient compilation of Clifford maps.
 - [`graphix-symbolic`](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
 - [`graphix-mqtbench`](https://github.com/TeamGraphix/graphix-mqtbench): an interface between Graphix and the [MQT Bench](https://mqt.readthedocs.io/projects/bench/en/latest/index.html) suite for benchmarking purposes.
-## Related packages
 
-- [swiflow](https://github.com/TeamGraphix/swiflow): rust-based implementation of flow-finding algorithms.
-- [graphqomb](https://github.com/TeamGraphix/graphqomb): modular graph state compiler for fault-tolerant MBQC and more.
-
-### Projects using `graphix`
+## Projects using Graphix
 
 - [veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
 - [optyx](https://github.com/quantinuum-dev/optyx): ZX-based software for networked quantum computing.
+- [QPatLib](https://github.com/vws100/QPatLib): a community repository for MBQC patterns and supporting tooling.
 
 ## Citing
 
-If you use Graphix, please cite us as:
+If you use Graphix in your research, please consider citing the [associated papers](https://arxiv.org/abs/2608.24781) and the accompanying [software release](https://zenodo.org/records/21997813).
+
+### Papers
+```
+@article{uldemolins2026_graphix,
+  title={Graphix: A software framework for Measurement-Based Quantum Computation},
+  author={Uldemolins, Mateo and Nair, Pranav and Graham, Emlyn and Sunami, Shinichi and Martinez, Thierry and Garnier, Maxime},
+  journal={arXiv preprint arXiv:2608.24781},
+  year={2026}
+}
+```
+```
+@article{sunami2022_graphix,
+  title={Graphix: Optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph},
+  author={Sunami, Shinichi and Fukushima, Masato},
+  journal={arXiv preprint arXiv:2212.11975},
+  year={2022}
+}
+```
+
+### Software
 ```
 @software{graphix_v04,
   author    = {Uldemolins, Mateo and Fukushima, Masato and
@@ -136,13 +158,6 @@ If you use Graphix, please cite us as:
   year      = {2026},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.21997813},
-}
-
-@article{uldemolins2026_graphix,
-  title={Graphix: A software framework for Measurement-Based Quantum Computation},
-  author={Uldemolins, Mateo and Nair, Pranav and Graham, Emlyn and Sunami, Shinichi and Martinez, Thierry and Garnier, Maxime},
-  journal={arXiv preprint arXiv:2608.24781},
-  year={2026}
 }
 ```
 
@@ -158,14 +173,20 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 ## Current maintainers (alphabetical order)
 
-- Maxime Garnier (Inria Paris)
-- Thierry Martinez (Inria Paris)
-- Pranav Nair (Inria Paris)
-- Mateo Uldemolins (Inria Paris)
+- [Maxime Garnier](https://github.com/mgarnier59) (Inria Paris)
+- [Thierry Martinez](https://github.com/thierry-martinez) (Inria Paris)
+- [Pranav Nair](https://github.com/pranav97nair) (Inria Paris)
+- [Mateo Uldemolins](https://github.com/matulni) (Inria Paris)
 
 ## Acknowledgements
 
-Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) with assistance from Masato Fukushima (University of Tokyo, Fixstars Amplify), supported by [Fixstars Amplify](https://amplify.fixstars.com/en/) and [Unitary Foundation](https://unitary.foundation/grants.html), and later joined by Daichi Sasaki, Yuki Watanabe and Sora Shiratani (University of Tokyo, Fixstars Amplify). 
+Graphix was started in 2022 by [Shinichi Sunami](https://github.com/shinich1) (University of Oxford) and [Masato Fukushima](https://github.com/masa10-fk) (University of Tokyo, Fixstars Amplify). [Daichi Sasaki](https://github.com/d1ssk), Yuki Watanabe, and [Sora Shiratani](https://github.com/EarlMilktea) (University of Tokyo, Fixstars Amplify) later joined the team.
+
+In 2023, the [QAT team](https://qat.inria.fr/presentation/) joined the effort and now maintains the library. We thank Emlyn Graham (Inria Paris) for his contributions to Graphix from 2025 to 2026.
+
+The project has been supported by [Fixstars Amplify](https://amplify.fixstars.com/en/) and the [Unitary Foundation](https://unitary.foundation/), and currently participates in the [French Hybrid Quantum Initiative](https://www.hqi.fr/).
+
+
 
 <p align="center">
 <a href="https://unitary.foundation/grants/" style="margin-right: 30px;">
@@ -176,7 +197,6 @@ Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) with assis
 </a>
 </p>
 
-Since 2023, Graphix team is joined by the Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/), which now develops and maintains the library. We thank Emlyn Graham (Inria Paris) for his contributions to Graphix from 2025 to 2026.
 
 <p align="center">
 <a href="https://www.inria.fr/" style="margin-right: 30px;">
@@ -192,7 +212,6 @@ Since 2023, Graphix team is joined by the Qode group of the [QAT](https://qat.in
 </a>
 </p>
 
-Special thanks also to [HQI](https://www.hqi.fr).
 <p align="center">
 <a href="https://www.hqi.fr">
   <img src="https://www.hqi.fr/wp-content/uploads/2022/06/logo_HQI_RVB.jpg" alt="HQI logo" width="150"/>
