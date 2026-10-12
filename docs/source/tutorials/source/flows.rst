@@ -20,8 +20,7 @@ known as *flow conditions*
 :cite:`flows-MP08:finding_flows,flows-BKMP07:gflow,flows-S21:pauli_flow,flows-BMBdF+21,flows-MB24:algebraic`.
 There are different flavors of flows depending on the measurements of the open graph, but they all share the same structure. Each consists of:
 
-* a **correction function**, which maps each measured qubit to a prepared qubit that
-  will absorb its correction, and
+* a **correction function**, which maps each measured qubit to prepared qubits, and
 * a **partial order** on the nodes, which fixes the order in which measurements may
   be performed.
 
@@ -76,8 +75,8 @@ We visualize flows similarly to :ref:`XZ-correction maps <hadamard-example>`: bl
 
     The layer numbering follows this convention:
 
-    * **Layer 0** holds the output nodes, if there are any.
-    * **Higher layers are measured first.** If :math:`l_i < l_j`, every node in layer :math:`l_j` is measured before the nodes in layer :math:`l_i`. In terms of the flow, this says that nodes in layer :math:`l_j` precede nodes in layer :math:`l_i` in the partial order :math:`\prec`.
+    * Layer 0 holds the output nodes, if there are any.
+    * Higher layers are measured first. If :math:`l_i < l_j`, every node in layer :math:`l_j` is measured before the nodes in layer :math:`l_i`. In terms of the flow, this says that nodes in layer :math:`l_j` precede nodes in layer :math:`l_i` in the partial order :math:`\prec`.
 
 
 From flows to computations
@@ -102,8 +101,8 @@ where :math:`N_G(j)` is the neighborhood of node :math:`j` in the open graph. Fr
    \M^{\XYplane,\alpha_i}_i \right) \prod_{(i,j) \in E} \E_{ij}
    \prod_{i \in I^c} \N_i,
 
-Recall that we read patterns from right to left: prepare the non-input nodes,
-entangle them according to the graph, then go through the measured
+Recall that we read patterns from right to left: we first prepare the non-input nodes,
+then entangle them according to the graph, and finally go through the measured
 nodes in the order given by :math:`\prec`. Each node is measured, and its outcome
 :math:`s_i` is immediately used to correct the nodes :math:`c(i)` and
 :math:`N_G(c(i)) \setminus \{i\}`.
@@ -179,6 +178,10 @@ the X and Z corrections, and from there you can recover the corresponding determ
     xz_corr.draw()
     print("Pattern: ", pattern)
 
+.. tip::
+
+    :meth:`~.PauliFlow.to_pattern` bundles both steps (`to_xzcorrections` followed by `to_pattern`) into a single call.
+
 Gflow and Pauli flow
 --------------------
 Causal flow only covers measurements in the :math:`\XYplane` plane. Once
@@ -196,7 +199,7 @@ even when no gflow exists. This more general setting is captured by the *Pauli f
 which strictly generalizes gflow by taking advantage of these fixed Pauli measurements.
 
 As with causal flow, gflow and Pauli flow also yield a specific deterministic
-correction strategy on the open graph. For the definitions and the ensuing corrections, see
+correction strategy on the open graph. For the flow definitions and the ensuing corrections, see
 :cite:`flows-BKMP07:gflow, flows-UNGSMG26:graphix`.
 
 Graphix provides :meth:`.OpenGraph.to_gflow` and :meth:`.OpenGraph.to_pauliflow`.
@@ -246,17 +249,21 @@ Flow extraction algorithms don't identify Pauli measurements. This means that if
     gf.draw()
     pf.draw()
 
-The two plots share the same graph structure (nodes and dashed lines). What
-changes is the correction function and the number of layers. If you skip the
+The two plots share the same graph structure (nodes and dashed lines). Only the
+correction function and the number of layers differ. If you skip the
 Pauli-measurement inference and call ``og.to_pauliflow()``
-directly on the previous open graph, you still get a :class:`.PauliFlow`
+directly on the original open graph, you still get a :class:`.PauliFlow`
 object. Its correction function and partial order, however, are identical
-to those of the gflow. This is not a problem: every gflow is a special case
-of a Pauli flow.
+to those of the gflow. This is valid, because every gflow is also a
+Pauli flow; it simply does not exploit the Pauli measurements.
+
+.. note::
+
+    It follows from the flow definitions :cite:`flows-BKMP07:gflow, flows-UNGSMG26:graphix` that causal flows are a special case of gflows (with :math:`\XYplane`-measurements only), and gflows are a special case of Pauli flows (with planar measurements only). Accordingly, :class:`.CausalFlow` is a subclass of :class:`.GFlow`, which is itself a subclass of :class:`.PauliFlow`.
 
 .. warning::
 
-    Extracting a gflow or a causal flow from an open graph that contains Pauli
+    Attempting to extract a gflow or a causal flow from an open graph that contains Pauli
     measurements is not a valid operation. For instance,
     ``og.infer_pauli_measurements().to_gflow()`` in the previous example fails
     at runtime. The type checker :mypy:`mypy <index.html>` catches the mistake before you run
@@ -307,14 +314,14 @@ Whether an open graph has a flow depends only on the measurement *planes* and
    only through whether they are Pauli:
 
    * A **non-Pauli angle** in a plane behaves like any other non-Pauli angle in
-     that plane. Changing its value never changes whether a flow exists. This
-     is robust determinism.
+     that plane. Changing its value never changes whether a flow exists.
+
    * A **Pauli angle** places the measurement on an axis (:math:`\Xaxis`, :math:`\Yaxis`
      or :math:`\Zaxis`). That extra structure is what Pauli flow exploits, and an
      :class:`.Axis` records it directly.
 
    So the question "does a flow exist?" is answered by the planes and axes
-   alone, with no need to know the continuous angle values.
+   alone, without needing to know the continuous angle values.
 
 This means we can extract flows from open graphs where ``measurements`` is
 specified as a mapping from nodes to :class:`.Plane` or :class:`.Axis`, instead of
@@ -356,13 +363,13 @@ correction strategy on an open graph, you can recover the flow it implements
 with :meth:`.XZCorrections.to_causalflow`, :meth:`.XZCorrections.to_gflow`, and
 :meth:`.XZCorrections.to_pauliflow`.
 
-These methods do **not** call the open-graph flow-finding algorithms. They read
+These methods do not call the open-graph flow-finding algorithms. They read
 the flow's correction function directly from the X and Z correction maps.
 
-This distinction matters. Running a flow-finding algorithm on the open graph
+This is an important distinction: running a flow-finding algorithm on the open graph
 underlying your corrections returns *a* gflow or Pauli flow, not necessarily the
 one that produced them, because the flow of an open graph is not unique. The
-corrections derived from that flow may therefore differ from your original
+corrections derived from that flow may therefore differ from the original
 strategy. Extracting the flow from the corrections themselves avoids this
 ambiguity. We illustrate this effect in the example below:
 
@@ -409,7 +416,7 @@ Most of the time you will obtain flows programmatically, from open graphs or
 patterns, as in the previous examples. However, you can also instantiate a flow directly
 by specifying its correction function and its partial order.
 
-Graphix lets you represent flows that are **not** valid. To check one, call
+Graphix lets you represent flows that are not valid. To check one, call
 :meth:`.CausalFlow.check_well_formed`, :meth:`.GFlow.check_well_formed`, or
 :meth:`.PauliFlow.check_well_formed`. If the flow is not well formed, they raise
 a :exc:`.FlowException` that tells you exactly which condition is violated.

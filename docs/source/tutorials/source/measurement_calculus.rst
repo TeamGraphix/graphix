@@ -100,7 +100,14 @@ In Graphix, patterns are represented by the :class:`.Pattern` class. The example
     pattern = Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), X(1, {0})])
     print(pattern)
 
-Once a pattern is built, you can run it with :meth:`~.Simulable.simulate` :ref:`as we did with the XZ-corrections <hadamard-example>`.
+.. tip::
+
+    Patterns print as ASCII by default. You can use :meth:`.Pattern.to_unicode` or
+    :meth:`.Pattern.to_latex` for other formats. All three methods, including
+    :meth:`.Pattern.to_ascii`, accept the parameter ``limit`` to truncate long outputs.
+    Other printable objects offer the same options.
+
+Once a pattern is built, you can run it with :meth:`~.Simulable.simulate` :ref:`as we did with the XZ-corrections <hadamard-example>`:
 
 .. jupyter-execute::
 
