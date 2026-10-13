@@ -5,7 +5,7 @@ Introduction
 
 In the measurement-based quantum computation (MBQC) model, computation works differently from the circuit model. Instead of applying a sequence of unitary gates to an input state, we first prepare a `graph state <https://en.wikipedia.org/wiki/Graph_state>`__ that acts as a computational resource, with the input embedded in it. We then run the computation by performing a sequence of single-qubit measurements. To compensate for the randomness of quantum measurements, we apply Pauli corrections conditioned on earlier measurement outcomes, a mechanism known as *feed-forward*. By the end, the resource state has been "consumed": only the output qubits, which now hold the result, remain.
 
-Let's see this principle in action on the small circuit below.
+Let's see this principle in action on the small circuit below:
 
 .. image:: ../plots/circuits/hadamard_ff.svg
    :align: center
@@ -18,7 +18,7 @@ The procedure has three steps:
 2. Measure qubit 0 along the :math:`\Xaxis` axis. The outcome :math:`s_0` is :math:`0` if the qubit is projected onto :math:`\ketplus` and :math:`1` if it is projected onto :math:`\ketminus`.
 3. Apply a Pauli :math:`X` correction to qubit 1 if :math:`s_0 = 1`.
 
-For an arbitrary input state :math:`\ket{\psi} = a\ket{0}_0 + b\ket{1}_0`, the computation unfolds as follow (up to a global factor):
+For an arbitrary input state :math:`\ket{\psi} = a\ket{0}_0 + b\ket{1}_0`, the computation unfolds as follows (up to a global factor):
 
 .. math::
 

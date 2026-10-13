@@ -114,7 +114,7 @@ In Graphix, an MBQC computation can be represented with the :class:`.XZCorrectio
         measurements={0: Measurement.XY(0)},
     )
 
-    # Node 1 receives an X correction depending on the measuring outcome of node 0.
+    # Node 1 receives an X correction depending on the measurement outcome of node 0.
     # The Z-correction map is empty.
     x_map = {0: {1}}
 

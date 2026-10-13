@@ -109,7 +109,7 @@ nodes in the order given by :math:`\prec`. Each node is measured, and its outcom
 
 .. note::
 
-    To see why these corrections make the pattern deterministic notice that we
+    To see why these corrections make the pattern deterministic, notice that we
     can make a single measurement :math:`\M_i^{\XYplane,\alpha_i}` deterministic by
     preceding it with a Pauli-:math:`Z` correction :math:`\Z_i^{s_i}`. For example, for a
     one-qubit state :math:`\lvert\psi_0\rangle = a\lvert 0\rangle + b\lvert 1\rangle`,
@@ -190,7 +190,7 @@ strong determinism is characterized by the existence of a *generalised flow*,
 or *gflow*. Both causal flow and gflow guarantee strong determinism for **any** choice of
 measurement angles. This property is called *robust determinism*.
 
-Robust determinism can be relaxed by fixing some measurement angles to Pauli
+Whether a gflow exists depends on the relationship between the entanglement structure of the open graph, and the chosen measurement planes. Given an open graph, one can fix some measurement angles to Pauli
 angles, that is, integer multiples of :math:`\pi/2`. At these angles, a
 measurement belongs to two measurement planes at once. For example, an
 :math:`\XYplane` measurement at angle :math:`0` is also an :math:`\XZplane`
@@ -203,9 +203,9 @@ correction strategy on the open graph. For the flow definitions and the ensuing 
 :cite:`flows-BKMP07:gflow, flows-UNGSMG26:graphix`.
 
 Graphix provides :meth:`.OpenGraph.to_gflow` and :meth:`.OpenGraph.to_pauliflow`.
-Both run in :math:`O(N^3)`, with :math:`N` is the number of nodes. They return a
+Both run in :math:`O(N^3)`, with :math:`N` the number of nodes. They return a
 :class:`.GFlow` or a :class:`.PauliFlow` instance, respectively, or raise an
-:class:`.OpenGraphError` if the flow does not exist. The methods :meth:`.OpenGraph.to_gflow_or_none`, :meth:`.OpenGraph.to_pauliflow_or_none` handle the exception and return ``None`` if it doesn't exist any flow.
+:class:`.OpenGraphError` if the flow does not exist. The methods :meth:`.OpenGraph.to_gflow_or_none`, :meth:`.OpenGraph.to_pauliflow_or_none` handle the exception and return ``None`` if no flow exists.
 
 For example:
 
@@ -280,13 +280,13 @@ implement the same unitary transformation:
     from numpy.random import default_rng
     rng = default_rng(42)
 
-    pattern_gf = gf.to_xzcorrections().to_pattern()
-    pattern_pf = pf.to_xzcorrections().to_pattern()
+    pattern_gf = gf.to_pattern() # Equivalent to ``gf.to_xzcorrections().to_pattern()``
+    pattern_pf = pf.to_pattern()
     
     # The "gflow pattern" has more commands:
     assert len(pattern_gf) > len(pattern_pf)
 
-    # By the default, the input state is |+++〉
+    # By default, the input state is |+++〉
     state_gf = pattern_gf.simulate(rng=rng)
     state_pf = pattern_pf.simulate(rng=rng)
 
@@ -350,9 +350,11 @@ specified as a mapping from nodes to :class:`.Plane` or :class:`.Axis`, instead 
     print(pf)
     xz_corr.draw()
 
-However, building a pattern needs the measurement angles. Calling
-``xz_corr.to_pattern()`` on the previous example is therefore incorrect.
-:mypy:`mypy <index.html>` flags it, and running it anyway produces a faulty :class:`.Pattern`. If you don't want to commit to *concrete* angle values yet, you can use :ref:`parametric placeholders <symbolic-tutorial>` instead. They let you build the pattern now and assign the angles later.
+.. warning::
+
+    Building a pattern requires the measurement angles, so calling
+    ``xz_corr.to_pattern()`` on the previous example is incorrect.
+    :mypy:`mypy <index.html>` flags it, and running it anyway produces a faulty :class:`.Pattern` (simulating this pattern will fail at runtime, for instance). If you don't want to commit to *concrete* angle values yet, you can use :ref:`parametric placeholders <symbolic-tutorial>` instead. They let you build the pattern now and assign the angles later.
 
 Extracting flows from corrections
 ---------------------------------

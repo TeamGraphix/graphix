@@ -90,7 +90,7 @@ Commands are executed from right to left, so the pattern reads as follows:
 4. :math:`\X_1^{s_0}`: apply an :math:`X` correction to qubit 1 if
    :math:`s_0 = 1`.
 
-In Graphix, patterns are represented by the :class:`.Pattern` class. The example below direclty instantiates the Hadamard pattern by specifying the input qubits and the sequence of commands. The output qubits are inferred from the non-measured qubits.
+In Graphix, patterns are represented by the :class:`.Pattern` class. The example below directly instantiates the Hadamard pattern by specifying the input qubits and the sequence of commands. The output qubits are inferred from the non-measured qubits.
 
 .. jupyter-execute::
 
@@ -158,7 +158,7 @@ Patterns can be visualized with the method :meth:`.Pattern.draw`. By default it 
 
 Notice that input qubits can be output qubits too!
 
-The pattern in the example implements a :math:`R_x(\frac{\pi}{2})` rotation on qubit 0 followed by a :math:`CZ` on qubits 0 and 1. You can try to prove it as an exercice, but don't worry if it looks too cumbersome. Typically, we don't instantiate large patterns by hand. In later tutorials, you will learn how to :ref:`extract patterns from open graphs <flows-tutorial>` and how to :ref:`transpile patterns from circuits <transpilation-tutorial>`.
+The pattern in the example implements a :math:`R_x(\frac{\pi}{2})` rotation on qubit 0 followed by a :math:`CZ` on qubits 0 and 1. You can try to prove it as an exercise, but don't worry if it looks too cumbersome. Typically, we don't instantiate large patterns by hand. In later tutorials, you will learn how to :ref:`extract patterns from open graphs <flows-tutorial>` and how to :ref:`transpile patterns from circuits <transpilation-tutorial>`.
       
 
 
