@@ -9,13 +9,12 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, overload
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, assert_never, overload
 
 import networkx as nx
 
-# assert_never introduced in Python 3.11
 # override introduced in Python 3.12
-from typing_extensions import assert_never, override
+from typing_extensions import override
 
 from graphix import Instruction, command, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector

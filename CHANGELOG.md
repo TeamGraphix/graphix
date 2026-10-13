@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #493, #607: New base class `Simulable`, implemented by `Pattern`, `StandardizedPattern`, `OpenGraph`, `PauliFlow`, and `XZCorrections`. The `simulate` method runs the simulation on a pattern derived from the object, applying usual optimization passes by default. Optimizations can be disabled by passing `optimized=False`.
 
+- #614:
+  - Support for Python 3.15
+  - Drop support for Python 3.10 (end-of-life: 2026-10-01)
+
 ### Fixed
 
 - #591: `FixedBranchSelector` now passes its RNG parameter to its `default` branch selector.
