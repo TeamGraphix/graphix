@@ -91,7 +91,7 @@ class TestTranspilerUnitGates:
         ).state
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate(
-            rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend
+            rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend, optimized=False
         )
         if isinstance(state_mbqc, Statevector) and isinstance(state, Statevector):
             assert state_mbqc.isclose(state)
@@ -263,6 +263,7 @@ class TestTranspilerUnitGates:
             input_state=input_state,
             branch_selector=FixedBranchSelector(results=results_pattern),
             measure_method=measure_method,
+            optimized=False,
         )
         assert len(transpile_result.classical_outputs) == len(circuit_result.classical_measures)
         pattern_measures = [measure_method.results[node] for node in transpile_result.classical_outputs]
