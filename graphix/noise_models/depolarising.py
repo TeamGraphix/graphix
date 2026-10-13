@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 import typing_extensions
 
@@ -136,7 +136,7 @@ class DepolarisingNoiseModel(NoiseModel):
             case CommandKind.S:
                 raise ValueError("Unexpected signal!")
             case _:
-                typing_extensions.assert_never(cmd.kind)
+                assert_never(cmd.kind)
 
     @typing_extensions.override
     def confuse_result(

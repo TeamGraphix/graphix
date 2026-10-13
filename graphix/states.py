@@ -5,11 +5,10 @@ from __future__ import annotations
 import abc
 import dataclasses
 from abc import ABC
-from typing import ClassVar
+from typing import ClassVar, assert_never
 
 import numpy as np
 import numpy.typing as npt
-import typing_extensions
 
 from graphix.fundamentals import ANGLE_PI, Angle, Plane, angle_to_rad
 
@@ -76,7 +75,7 @@ class PlanarState(State):
                 return np.asarray([np.cos(angle_rad / 2), np.sin(angle_rad / 2)], dtype=np.complex128)
             case _:
                 # other case never happens since exhaustive
-                typing_extensions.assert_never(self.plane)
+                assert_never(self.plane)
 
 
 # States namespace for input initialization.

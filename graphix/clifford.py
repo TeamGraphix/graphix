@@ -6,11 +6,10 @@ import copy
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, assert_never
 
 import networkx as nx
 import numpy as np
-import typing_extensions
 
 from graphix._db import (
     CLIFFORD,
@@ -173,7 +172,7 @@ class Clifford(Enum):
             case Axis.Z:
                 symbol, sign = table.z
             case _:
-                typing_extensions.assert_never(axis)
+                assert_never(axis)
         return Pauli(symbol, ComplexUnit.from_properties(sign=sign))
 
     def measure(self, pauli: Pauli) -> Pauli:

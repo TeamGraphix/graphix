@@ -6,13 +6,10 @@ import dataclasses
 from copy import copy
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 from warnings import warn
 
 import networkx as nx
-
-# override added in Python 3.12
-from typing_extensions import override
 
 from graphix import command
 from graphix.clifford import Clifford, Domains
