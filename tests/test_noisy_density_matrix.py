@@ -216,6 +216,7 @@ class TestNoisyDensityMatrixBackend:
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(prepare_error_prob=prepare_error_pr),
             rng=fx_rng,
+            optimized=False,
         )
         # analytical result
         assert isinstance(res, DensityMatrix)
@@ -250,6 +251,7 @@ class TestNoisyDensityMatrixBackend:
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(entanglement_error_prob=entanglement_error_pr),
             rng=fx_rng,
+            optimized=False,
         )
         # analytical result for tensor depolarizing channel
         # assert np.allclose(
@@ -303,6 +305,7 @@ class TestNoisyDensityMatrixBackend:
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_channel_prob=measure_channel_pr),
             rng=fx_rng,
+            optimized=False,
         )
 
         assert isinstance(res, DensityMatrix)
@@ -346,6 +349,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr),
             branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
+            optimized=False,
         )
 
         # Pattern has X(2, {1}), so X error noise only applied when x_outcome=1
@@ -384,6 +388,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=DepolarisingNoiseModel(z_error_prob=z_error_pr),
             branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
+            optimized=False,
         )
 
         # Pattern has Z(2, {0}), so Z error noise only applied when outcome_z=1
@@ -425,6 +430,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr, z_error_prob=z_error_pr),
             branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
+            optimized=False,
         )
 
         # Pattern has X(2, {1}) and Z(2, {0}), noise applied conditionally
@@ -486,6 +492,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=DepolarisingNoiseModel(measure_error_prob=1.0),
             branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
+            optimized=False,
         )
 
         exact = rz_exact_res(alpha)
@@ -757,6 +764,7 @@ class TestAmplitudeDampingAnalytic:
             noise_model=AmplitudeDampingNoiseModel(**{param: gamma}),
             branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
+            optimized=False,
         )
         assert isinstance(res, DensityMatrix)
         assert np.allclose(res.rho, self._rz_expected(param, gamma, alpha, outcome_z, outcome_x))

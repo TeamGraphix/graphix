@@ -1,6 +1,6 @@
 # Contributing
 
-thank you for your interest in `Graphix`!
+Thank you for your interest in Graphix!
 
 ## Motivation
 
@@ -43,6 +43,31 @@ uv run ruff check --fix .
 uv run ruff format .
 uv run pytest --cov=./graphix --cov-report=xml --cov-report=term --doctest-modules
 ```
+
+## Building the documentation
+
+To render the documentation locally, you will need to install the following tools in your system:
+
+```bash
+texlive-latex-extra
+texlive-pictures
+texlive-science
+pdf2svg
+```
+
+Then go to the `graphix/graphix/docs/` directory and run
+
+```bash
+uv run --extra dev --extra doc make html
+```
+
+To visualize it, then run
+
+```bash
+open build/html/index.html
+```
+
+
 
 ### VS Code configuration
 

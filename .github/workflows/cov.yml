@@ -6,7 +6,7 @@ permissions:
   contents: read
 
 env:
-  python-version: "3.14"
+  python-version: "3.15"
 
 jobs:
   cov:

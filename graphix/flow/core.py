@@ -7,13 +7,13 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar, assert_never
 
 import networkx as nx
 import numpy as np
 
-# ``override`` introduced in Python 3.12, ``assert_never`` introduced in Python 3.11
-from typing_extensions import assert_never, override
+# ``override`` introduced in Python 3.12
+from typing_extensions import override
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.circ_ext.extraction import (
@@ -49,6 +49,7 @@ from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement,
 from graphix.measurements import Measurement
 from graphix.parameter import Parameterizable
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
+from graphix.simulator import Simulable
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -75,7 +76,7 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class XZCorrections(Parameterizable, Generic[_AM_co]):
+class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
     Attributes
@@ -146,6 +147,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
         return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
+    @override
     def to_pattern(
         self: XZCorrections[Measurement],
         total_measurement_order: TotalOrder | None = None,
@@ -569,7 +571,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
 
 @dataclass(frozen=True)
-class PauliFlow(Parameterizable, Generic[_AM_co]):
+class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
     Attributes
@@ -660,6 +662,16 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
             future |= layer
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
+
+    @override
+    def to_pattern(self: PauliFlow[Measurement], total_measurement_order: TotalOrder | None = None) -> Pattern:
+        """Generate a pattern from this ``PauliFlow[Measurement]`` instance.
+
+        See :meth:`XZCorrections.to_pattern` for further details about
+        the ``total_measurement_order`` parameter and the exceptions
+        that may be raised.
+        """
+        return self.to_xzcorrections().to_pattern(total_measurement_order)
 
     def is_well_formed(self) -> bool:
         """Verify if flow is well formed.

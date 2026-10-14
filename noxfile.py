@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 nox.options.default_venv_backend = "uv|virtualenv"
 
-PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
 
 def install_pytest(session: Session) -> None:
@@ -93,11 +93,23 @@ class ReverseDependency:
 
 
 REVERSE_DEPENDENCIES = {
-    "graphix-symbolic": ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
-    "graphix-stim-backend": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
+    "graphix-symbolic": ReverseDependency(
+        "https://github.com/TeamGraphix/graphix-symbolic", branch="refs/pull/12/head"
+    ),
+    "graphix-stim-backend": ReverseDependency(
+        "https://github.com/TeamGraphix/graphix-stim-backend", branch="refs/pull/4/head"
+    ),
     "graphix-qasm-parser": ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
-    "graphix-ibmq": ReverseDependency("https://github.com/TeamGraphix/graphix-ibmq", doctest_modules=False),
-    "graphix-stim-compiler": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
+    "graphix-ibmq": ReverseDependency(
+        "https://github.com/TeamGraphix/graphix-ibmq",
+        doctest_modules=False,
+        # Bumping to Python 3.15 requires qiskit-aer to support Python 3.15.
+        # See Qiskit/qiskit-aer#2468
+        version_constraint=VersionRange(upper=Version("3.15")),
+    ),
+    "graphix-stim-compiler": ReverseDependency(
+        "https://github.com/TeamGraphix/graphix-stim-compiler", branch="refs/pull/3/head"
+    ),
     "graphix-pyzx": ReverseDependency(
         "https://github.com/TeamGraphix/graphix-pyzx",
         # Precompile pyzx before running pytest with warnings-as-errors.
@@ -113,8 +125,11 @@ REVERSE_DEPENDENCIES = {
         "https://github.com/qat-inria/veriphix",
         doctest_modules=False,
         install_target=".[dev]",
+        # Bumping to Python 3.15 requires qiskit-aer to support Python 3.15.
+        # See Qiskit/qiskit-aer#2468
+        version_constraint=VersionRange(upper=Version("3.15")),
     ),
-    "graphix-mqtbench": ReverseDependency("https://github.com/matulni/graphix-mqtbench", branch="new-circuit-api"),
+    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench"),
 }
 
 

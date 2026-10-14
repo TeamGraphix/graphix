@@ -226,7 +226,7 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
         return self.og.measurements[node].to_plane()
 
 
-@dataclass(frozen=True)  # `NamedTuple` does not support multiple inheritance in Python 3.9 and 3.10
+@dataclass(frozen=True)
 class CorrectionMatrix(Generic[_AM_co]):
     r"""A dataclass to bundle the correction matrix and its associated open graph.
 
