@@ -687,15 +687,41 @@ class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         return True
 
     def check_well_formed(self) -> None:
-        r"""Verify if the Pauli flow is well formed.
+        r"""Verify that the Pauli flow is well-formed.
 
         Raises
         ------
         FlowError
-            if the Pauli flow is not well formed.
+            if the Pauli flow is not well-formed.
 
         Notes
         -----
+        This method checks that the instance is indeed a valid Pauli
+        flow.  Moreover, if ``self`` is an instance of
+        :class:`FocusedPauliFlow`, it also checks that the flow is
+        focused.  Use :meth:`check_flow_properties` to check only flow
+        properties.
+        """
+        self.check_flow_properties()
+
+    def check_flow_properties(self) -> None:
+        r"""Verify that the Pauli flow satisfies the flow properties.
+
+        Raises
+        ------
+        FlowError
+            if the Pauli flow does not satisfy the flow properties.
+
+        Notes
+        -----
+        This method checks the properties for the instance to be a
+        valid Pauli flow.  It does not check whether the flow is
+        focused, even if ``self`` is an instance of
+        :class:`FocusedPauliFlow`.  By contrast,
+        :meth:`check_well_formed` checks that the flow is valid and,
+        for instances of :class:`FocusedPauliFlow`, also checks that
+        the flow is focused.
+
         General properties of flows:
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
@@ -1040,7 +1066,7 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
         return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
 
     def check_well_formed(self) -> None:
-        """Verify if the Pauli flow is well formed and focused.
+        """Verify that the Pauli flow is well-formed and focused.
 
         See :meth:`PauliFlow.check_well_formed` and :meth:`PauliFlow.is_focused` for details.
         """
@@ -1169,16 +1195,24 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
-    def check_well_formed(self) -> None:
-        r"""Verify if the generalised flow is well formed.
+    @override
+    def check_flow_properties(self) -> None:
+        r"""Verify that the generalised flow satisfies the flow properties.
 
         Raises
         ------
         FlowError
-            if the gflow is not well formed.
+            if the gflow does not satisfy the flow properties.
 
         Notes
         -----
+        This method checks the properties for the instance to be a
+        valid generalised flow.  It does not check whether the flow is
+        focused, even if ``self`` is an instance of
+        :class:`FocusedGFlow`.  By contrast, :meth:`check_well_formed`
+        checks that the flow is valid and, for instances of
+        :class:`FocusedGFlow`, also checks that the flow is focused.
+
         General properties of flows:
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.

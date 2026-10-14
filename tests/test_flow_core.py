@@ -9,6 +9,7 @@ import pytest
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
     CausalFlow,
+    FocusedGFlow,
     FocusedPauliFlow,
     GFlow,
     PauliFlow,
@@ -501,7 +502,7 @@ class TestFlow:
         assert flow_focused.is_focused()
 
         flow_focused = flow_focused.to_focused()
-        assert flow_focused == flow_focused.to_focused()
+        assert flow_focused is flow_focused.to_focused()
 
         pauliflow = PauliFlow(og, cf, partial_order)
         pauliflow_focused = PauliFlow(og, cf_focused, partial_order)
@@ -511,11 +512,17 @@ class TestFlow:
         assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
 
         pauliflow_focused = pauliflow_focused.to_focused()
-        assert pauliflow_focused == pauliflow_focused.to_focused()
+        assert pauliflow_focused is pauliflow_focused.to_focused()
 
         pauliflow = FocusedPauliFlow(og, cf, partial_order)
         with pytest.raises(FlowGenericError) as exc_info:
             pauliflow.check_well_formed()
+        assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
+
+        bad_flow_focused = FocusedGFlow(og, cf, partial_order)
+        bad_flow_focused.check_flow_properties()
+        with pytest.raises(FlowGenericError) as exc_info:
+            bad_flow_focused.check_well_formed()
         assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
 
 
