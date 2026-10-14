@@ -66,7 +66,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         input_state = rand_state_vector(1, rng=rng) if with_ancillas else rand_state_vector(3, rng=rng)
         state = circuit.simulate(input_state=input_state).state
-        state_mbqc = pattern.simulate(input_state=input_state, rng=rng)
+        state_mbqc = pattern.simulate(input_state=input_state, rng=rng, optimized=False)
         assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
@@ -97,9 +97,7 @@ class TestTranspilerUnitGates:
             branch_selector=branch_selector,
         ).state
         state_test = pattern_test.simulate(
-            rng=fx_rng,
-            input_state=input_state,
-            branch_selector=branch_selector,
+            rng=fx_rng, input_state=input_state, branch_selector=branch_selector, optimized=False
         )
 
         assert state_ref.isclose(state_test)
@@ -127,7 +125,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         input_state = rand_state_vector(1, rng=fx_rng)
         state = circuit.simulate(input_state=input_state).state
-        state_mbqc = pattern.simulate(input_state=input_state, rng=fx_rng)
+        state_mbqc = pattern.simulate(input_state=input_state, rng=fx_rng, optimized=False)
         assert state_mbqc.isclose(state)
 
     def test_transpiled(self, fx_rng: Generator) -> None:
@@ -224,7 +222,7 @@ class TestTranspilerUnitGates:
         ).state
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate(
-            rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend
+            rng=rng, input_state=input_state, branch_selector=branch_selector, backend=backend, optimized=False
         )
         if isinstance(state_mbqc, Statevector) and isinstance(state, Statevector):
             assert state_mbqc.isclose(state)
@@ -250,7 +248,9 @@ class TestTranspilerUnitGates:
         branch_selector = ConstBranchSelector(outcome)
         state = circuit.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector).state
         pattern = circuit.transpile().pattern
-        state_mbqc = pattern.simulate(rng=rng, input_state=input_state, branch_selector=branch_selector)
+        state_mbqc = pattern.simulate(
+            rng=rng, input_state=input_state, branch_selector=branch_selector, optimized=False
+        )
         assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("input_axis", [Axis.X, Axis.Y, Axis.Z])
@@ -379,7 +379,7 @@ class TestTranspilerUnitGates:
         circuit.ccx(0, 1, 2)
         ref_state = circuit.simulate(rng=fx_rng).state
         pattern = circuit.transpile().pattern
-        state = pattern.simulate(rng=fx_rng)
+        state = pattern.simulate(rng=fx_rng, optimized=False)
         assert state.isclose(ref_state)
 
     def test_ccx_decomposition(self) -> None:
@@ -762,7 +762,7 @@ def test_transpile_pattern_swaps_with_measurements_simple(fx_rng: Generator, tra
 
     pattern = circuit.transpile(transpile_swaps=transpile_swaps).pattern
     state_qc = circuit.simulate(rng=fx_rng).state
-    state_mbqc = pattern.simulate(rng=fx_rng)
+    state_mbqc = pattern.simulate(rng=fx_rng, optimized=False)
     assert state_mbqc.isclose(state_qc)
 
 
@@ -780,7 +780,7 @@ def test_transpile_pattern_swaps_with_measurements(fx_rng: Generator, transpile_
 
     pattern = circuit.transpile(transpile_swaps=transpile_swaps).pattern
     state_qc = circuit.simulate(rng=fx_rng).state
-    state_mbqc = pattern.simulate(rng=fx_rng)
+    state_mbqc = pattern.simulate(rng=fx_rng, optimized=False)
     assert state_mbqc.isclose(state_qc)
 
 
