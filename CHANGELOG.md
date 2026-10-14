@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.4.1] - 2026-10-13
+
+### Added
+
+- #592: Add all standard OpenQASM gates
+
+- #493, #607: New base class `Simulable`, implemented by `Pattern`, `StandardizedPattern`, `OpenGraph`, `PauliFlow`, and `XZCorrections`. The `simulate` method runs the simulation on a pattern derived from the object, applying usual optimization passes by default. Optimizations can be disabled by passing `optimized=False`.
+
+- #614:
+  - Support for Python 3.15
+  - Drop support for Python 3.10 (end-of-life: 2026-10-01)
 
 ### Fixed
 
@@ -14,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #595: `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
 
 - #596, #597: Pattern's `n_node` property updated after Pauli removal.
+
+## Changed
+
+- #601: New documentation / tutorial
 
 ## [0.4] - 2026-08-18
 

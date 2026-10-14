@@ -12,6 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # Bumping to Python 3.15 requires qiskit-aer to support Python 3.15.
+  # See Qiskit/qiskit-aer#2468
   python-version: "3.14"
 
 jobs:
