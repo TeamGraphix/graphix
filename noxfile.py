@@ -101,7 +101,8 @@ REVERSE_DEPENDENCIES = {
     ),
     "graphix-qasm-parser": ReverseDependency(
         # Keep in sync with .github/qasm-parser-requirements.txt
-        "https://github.com/TeamGraphix/graphix-qasm-parser", branch="refs/pull/20/head"
+        "https://github.com/TeamGraphix/graphix-qasm-parser",
+        branch="refs/pull/20/head",
     ),
     "graphix-ibmq": ReverseDependency(
         "https://github.com/TeamGraphix/graphix-ibmq",
