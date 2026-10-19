@@ -154,6 +154,8 @@ def instruction_to_qasm3(instruction: InstructionType) -> str:
             return qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
         case InstructionKind.CY:
             return qasm3_gate_call("cy", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+        case InstructionKind.CH:
+            return qasm3_gate_call("ch", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
         case InstructionKind.SWAP:
             return qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
         case InstructionKind.CSWAP:

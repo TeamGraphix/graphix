@@ -180,6 +180,8 @@ class Circuit(InplaceParameterizable):
                 self.sxdg(instr.target)
             case InstructionKind.CY:
                 self.cy(instr.control, instr.target)
+            case InstructionKind.CH:
+                self.ch(instr.control, instr.target)
             case InstructionKind.P:
                 self.p(instr.target, instr.angle)
             case InstructionKind.U:
@@ -570,6 +572,23 @@ class Circuit(InplaceParameterizable):
         assert target in self.active_qubits
         assert control != target
         self.instruction.append(Instruction.CY(control=control, target=target))
+
+    def ch(self, control: int, target: int) -> None:
+        """Apply a Controlled-H gate.
+
+        See :class:`~graphix.instruction.CH` for more information.
+
+        Parameters
+        ----------
+        control : int
+            control qubit
+        target : int
+            target qubit
+        """
+        assert control in self.active_qubits
+        assert target in self.active_qubits
+        assert control != target
+        self.instruction.append(Instruction.CH(control=control, target=target))
 
     def p(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Phase rotation gate.
@@ -979,6 +998,8 @@ class Circuit(InplaceParameterizable):
                 case InstructionKind.CZ:
                     u, v = instr.targets
                     _backend.state.entangle((_backend.node_index.index(u), _backend.node_index.index(v)))
+                case InstructionKind.CH:
+                    evolve(Ops.CH, [instr.control, instr.target])
                 case InstructionKind.I:
                     pass
                 case InstructionKind.S:
@@ -1501,6 +1522,8 @@ def instructions_to_jcz(
                 yield from instructions_to_jcz(decompose_swap(instr))
             case InstructionKind.CY:
                 yield from instructions_to_jcz(insert_control(instr.control, decompose_y(Instruction.Y(instr.target))))
+            case InstructionKind.CH:
+                yield from instructions_to_jcz(insert_control(instr.control, (Instruction.J(instr.target, 0),)))
             case InstructionKind.CJ:
                 yield from instructions_to_jcz(decompose_cj(instr))
             case InstructionKind.CP:

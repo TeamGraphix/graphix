@@ -99,7 +99,11 @@ REVERSE_DEPENDENCIES = {
     "graphix-stim-backend": ReverseDependency(
         "https://github.com/TeamGraphix/graphix-stim-backend", branch="refs/pull/4/head"
     ),
-    "graphix-qasm-parser": ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
+    "graphix-qasm-parser": ReverseDependency(
+        # Keep in sync with .github/qasm-parser-requirements.txt
+        "https://github.com/TeamGraphix/graphix-qasm-parser",
+        branch="refs/pull/20/head",
+    ),
     "graphix-ibmq": ReverseDependency(
         "https://github.com/TeamGraphix/graphix-ibmq",
         doctest_modules=False,
@@ -129,7 +133,7 @@ REVERSE_DEPENDENCIES = {
         # See Qiskit/qiskit-aer#2468
         version_constraint=VersionRange(upper=Version("3.15")),
     ),
-    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench"),
+    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/7/head"),
 }
 
 
