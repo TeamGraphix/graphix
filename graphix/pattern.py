@@ -490,8 +490,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         'M(0,0)'
         >>> pattern.to_ascii(target={CommandKind.X, CommandKind.Z})
         'X(1,{0})'
-        >>> circuit = Circuit(3)
-        >>> circuit.ccx(0, 1, 2)
+        >>> circuit = Circuit(3).ccx(0, 1, 2)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_ascii(limit=5)
         'X(24,{21}) Z(24,{20}) X(32,{31}) Z(32,{28})...(98 more commands)'
