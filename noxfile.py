@@ -133,7 +133,7 @@ REVERSE_DEPENDENCIES = {
         # See Qiskit/qiskit-aer#2468
         version_constraint=VersionRange(upper=Version("3.15")),
     ),
-    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench"),
+    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/7/head"),
 }
 
 
