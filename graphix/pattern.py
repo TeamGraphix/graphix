@@ -24,7 +24,6 @@ import networkx as nx
 from typing_extensions import override
 
 from graphix import command, optimization
-from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, Plane, Sign
@@ -47,6 +46,7 @@ if TYPE_CHECKING:
     # Unpack introduced in Python 3.12
     from typing_extensions import Unpack
 
+    from graphix.clifford import Clifford
     from graphix.command import CommandType
     from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
     from graphix.opengraph import OpenGraph
@@ -1575,29 +1575,27 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                         circuit.condinstr((Instruction.Z(qubit),), domain)
                 case CommandKind.C:
                     qubit = node_idx.index(cmd.node)
-                    match cmd.clifford:
-                        case Clifford.X:
-                            circuit.x(qubit)
-                        case Clifford.Y:
-                            circuit.y(qubit)
-                        case Clifford.SDG:
-                            circuit.sdg(qubit)
-                        case _:
-                            for clifford in cmd.clifford.hsz:
-                                match clifford:
-                                    case Clifford.I:
-                                        circuit.i(qubit)
-                                    case Clifford.Z:
-                                        circuit.z(qubit)
-                                    case Clifford.S:
-                                        circuit.s(qubit)
-                                    case Clifford.H:
-                                        circuit.h(qubit)
-                                    case _:
-                                        raise RuntimeError("Invalid Clifford decomposition.")
+                    for clifford_str in cmd.clifford.qasm3:
+                        match clifford_str:
+                            case "id":
+                                circuit.i(qubit)
+                            case "x":
+                                circuit.x(qubit)
+                            case "y":
+                                circuit.y(qubit)
+                            case "z":
+                                circuit.y(qubit)
+                            case "s":
+                                circuit.s(qubit)
+                            case "sdg":
+                                circuit.sdg(qubit)
+                            case "h":
+                                circuit.h(qubit)
+                            case _:
+                                raise RuntimeError("Invalid Clifford decomposition.")
 
         # The following code adds SWAP gates so that qubits are in the same
-        # order that output nodes.
+        # order as the output nodes.
 
         sorted_qubits = (node_idx.index(node) for node in self.output_nodes)
         sorted_idx = NodeIndex()

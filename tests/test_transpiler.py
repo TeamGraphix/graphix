@@ -37,7 +37,7 @@ from tests.test_instruction import INSTRUCTION_TEST_CASES, VisitAngle
 if TYPE_CHECKING:
     from typing import Literal
 
-    from graphix.instruction import InstructionType, InstructionTypeWithoutMandCONDINSTR
+    from graphix.instruction import InstructionType, InstructionTypeWithoutM
     from graphix.measurements import Outcome
     from graphix.states import State
     from tests.test_instruction import InstructionTestCase
@@ -861,7 +861,7 @@ def test_decompose_cu(fx_rng: Generator) -> None:
 @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
 def test_insert_control(fx_rng: Generator, test_case: InstructionTestCase, ancilla_state: PlanarState) -> None:
     instr = [test_case.instruction(fx_rng)]
-    instr_ref: list[InstructionTypeWithoutMandCONDINSTR] = instr if ancilla_state == BasicStates.ONE else []
+    instr_ref: list[InstructionTypeWithoutM] = instr if ancilla_state == BasicStates.ONE else []
     instr_test = list(insert_control(3, instr))
 
     circuit_ref = Circuit(3, instr_ref, ancillas=1, ancilla_state=ancilla_state)

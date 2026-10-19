@@ -804,7 +804,7 @@ class Circuit(InplaceParameterizable):
         """
         self.instruction.append(Instruction.GPHASE(angle).visit(self._visitor))
 
-    def condinstr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None) -> None:
+    def condinstr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None = None) -> None:
         """Apply a conditional sequence of gates.
 
         Parameters
@@ -818,7 +818,7 @@ class Circuit(InplaceParameterizable):
         -----
         .. The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
 
-        .. Condional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
+        .. Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
         """
         domain_set = set(domain) if domain is not None else set()
         self.instruction.append(

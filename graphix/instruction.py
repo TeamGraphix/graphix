@@ -251,6 +251,8 @@ class ControlledSingleTargetInstruction(BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        if target == control:
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         if copy:
             return type(self)(target, control)
         self.target = target
@@ -316,18 +318,6 @@ class CNOT(_KindChecker, ControlledSingleTargetInstruction):
     """
 
     kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
-
-    @override
-    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CNOT:
-        target = visitor.visit_qubit(self.target)
-        control = visitor.visit_qubit(self.control)
-        if target == control:
-            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
-        if copy:
-            return CNOT(target, control)
-        self.target = target
-        self.control = control
-        return self
 
 
 # CZ is not defined as a ControlledSingleTargetInstruction because of
@@ -1076,9 +1066,7 @@ class GPHASE(_KindChecker, BaseInstruction):
         return self
 
 
-# Needed to specify dataclass attributes in CONDINSTR,
-# so it cannot be inside TYPE_CHECKING block.
-InstructionTypeWithoutMandCONDINSTR = (
+InstructionTypeWithoutM: TypeAlias = """(
     I
     | X
     | Y
@@ -1110,17 +1098,18 @@ InstructionTypeWithoutMandCONDINSTR = (
     | SWAP
     | CSWAP
     | GPHASE
-)
+    | CONDINSTR
+)"""
 
 
 @dataclass(repr=False)
 class CONDINSTR(_KindChecker, BaseInstruction):
     """Base class for conditional circuit instructions.
 
-    Condional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the attribute ``instructions`` cannot contain instances of `Instruction.M`.
+    Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the attribute ``instructions`` cannot contain instances of `Instruction.M`.
     """
 
-    instructions: tuple[InstructionTypeWithoutMandCONDINSTR | CONDINSTR, ...]
+    instructions: tuple[InstructionTypeWithoutM, ...]
     domain: set[int] = field(default_factory=set)
     kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
 
@@ -1183,7 +1172,6 @@ class Instruction:
 
 
 if TYPE_CHECKING:
-    InstructionTypeWithoutM = InstructionTypeWithoutMandCONDINSTR | CONDINSTR
     InstructionTypeWithControl = (
         Instruction.CNOT
         | Instruction.CY
