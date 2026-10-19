@@ -719,9 +719,7 @@ class Statevector(DenseState):
         Examples
         --------
         >>> from graphix.transpiler import Circuit
-        >>> circuit = Circuit(2)
-        >>> circuit.h(0)
-        >>> circuit.cz(0, 1)
+        >>> circuit = Circuit(2).h(0).cz(0, 1)
         >>> print(circuit.simulate().state.draw())
         sqrt(2)/2(|00> + |01>)
         """

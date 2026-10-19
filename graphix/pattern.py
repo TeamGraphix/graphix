@@ -479,8 +479,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         Examples
         --------
         >>> from graphix import Circuit
-        >>> circuit = Circuit(1)
-        >>> circuit.h(0)
+        >>> circuit = Circuit(1).h(0)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_ascii()
         'X(1,{0}) M(0,0) E(0,1) N(1)'
@@ -524,8 +523,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         Examples
         --------
         >>> from graphix import Circuit
-        >>> circuit = Circuit(1)
-        >>> circuit.h(0)
+        >>> circuit = Circuit(1).h(0)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_latex()
         '\\(X_{1}^{0}\\,M_{0}^{0}\\,E_{0,1}\\,N_{1}\\)'
@@ -560,8 +558,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         Examples
         --------
         >>> from graphix import Circuit
-        >>> circuit = Circuit(1)
-        >>> circuit.h(0)
+        >>> circuit = Circuit(1).h(0)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_unicode()
         'X₁⁰ M₀(0) E₀₋₁ N₁'
