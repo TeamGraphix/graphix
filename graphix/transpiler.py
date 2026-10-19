@@ -106,11 +106,7 @@ class _MapAngleVisitor(InstructionVisitor):
 
 
 class _InstructionValidatorVisitor(InstructionVisitor):
-    """Instruction visitor that validates operations on active qubits.
-
-    The ``active_qubits`` attribute references the same mutable set as the
-    circuit's ``active_qubits`` attribute. The circuit updates this set after measurement gates are applied. See :meth:`Circuit.m`.
-    """
+    """Instruction visitor that validates operations on active qubits."""
 
     output_kind: dict[int, OutputKind]
 
@@ -188,8 +184,6 @@ class Circuit(InplaceParameterizable):
         self.ancilla_state = ancilla_state
         self.instruction = []
         self.active_qubits = set(range(width + ancillas))
-        # The visitor contains a reference to the `active_qubits` mutable set.
-        # Changes on `self.active_qubits` also occur on `self._visitor.active_qubits`.
         self._visitor = _InstructionValidatorVisitor(width + ancillas)
         if instr is not None:
             self.extend(instr)
@@ -204,75 +198,10 @@ class Circuit(InplaceParameterizable):
 
     def add(self, instr: InstructionType) -> None:
         """Add an instruction to the circuit."""
-        match instr.kind:
-            case InstructionKind.CCX:
-                self.ccx(instr.controls[0], instr.controls[1], instr.target)
-            case InstructionKind.RZZ:
-                self.rzz(instr.control, instr.target, instr.angle)
-            case InstructionKind.CNOT:
-                self.cnot(instr.control, instr.target)
-            case InstructionKind.SWAP:
-                self.swap(instr.targets[0], instr.targets[1])
-            case InstructionKind.CZ:
-                self.cz(instr.targets[0], instr.targets[1])
-            case InstructionKind.H:
-                self.h(instr.target)
-            case InstructionKind.S:
-                self.s(instr.target)
-            case InstructionKind.X:
-                self.x(instr.target)
-            case InstructionKind.Y:
-                self.y(instr.target)
-            case InstructionKind.Z:
-                self.z(instr.target)
-            case InstructionKind.I:
-                self.i(instr.target)
-            case InstructionKind.M:
-                self.m(instr.target, instr.axis)
-            case InstructionKind.RX:
-                self.rx(instr.target, instr.angle)
-            case InstructionKind.RY:
-                self.ry(instr.target, instr.angle)
-            case InstructionKind.RZ:
-                self.rz(instr.target, instr.angle)
-            case InstructionKind.J:
-                self.j(instr.target, instr.angle)
-            case InstructionKind.SDG:
-                self.sdg(instr.target)
-            case InstructionKind.T:
-                self.t(instr.target)
-            case InstructionKind.TDG:
-                self.tdg(instr.target)
-            case InstructionKind.SX:
-                self.sx(instr.target)
-            case InstructionKind.SXDG:
-                self.sxdg(instr.target)
-            case InstructionKind.CY:
-                self.cy(instr.control, instr.target)
-            case InstructionKind.P:
-                self.p(instr.target, instr.angle)
-            case InstructionKind.U:
-                self.u(instr.target, instr.theta, instr.phi, instr.lambda_)
-            case InstructionKind.CJ:
-                self.cj(instr.control, instr.target, instr.angle)
-            case InstructionKind.CP:
-                self.cp(instr.control, instr.target, instr.angle)
-            case InstructionKind.CRX:
-                self.crx(instr.control, instr.target, instr.angle)
-            case InstructionKind.CRY:
-                self.cry(instr.control, instr.target, instr.angle)
-            case InstructionKind.CRZ:
-                self.crz(instr.control, instr.target, instr.angle)
-            case InstructionKind.CU:
-                self.cu(instr.control, instr.target, instr.theta, instr.phi, instr.lambda_, instr.gamma)
-            case InstructionKind.CSWAP:
-                self.cswap(instr.control, instr.targets[0], instr.targets[1])
-            case InstructionKind.GPHASE:
-                self.gphase(instr.angle)
-            case InstructionKind.CONDINSTR:
-                self.condinstr(instr.instructions, instr.domain)
-            case _:
-                assert_never(instr.kind)
+        self.instruction.append(instr.visit(self._visitor))
+        if instr.kind == InstructionKind.M:
+            self.active_qubits.remove(instr.target)
+            self._visitor.output_kind[instr.target] = OutputKind.Bit
 
     def extend(self, instrs: Iterable[InstructionType]) -> None:
         """Add instructions to the circuit."""
@@ -295,7 +224,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        self.instruction.append(Instruction.CNOT(control=control, target=target).visit(self._visitor))
+        self.add(Instruction.CNOT(control=control, target=target))
 
     def swap(self, qubit1: int, qubit2: int) -> None:
         """Apply a SWAP gate.
@@ -309,7 +238,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             second qubit to be swapped
         """
-        self.instruction.append(Instruction.SWAP(targets=(qubit1, qubit2)).visit(self._visitor))
+        self.add(Instruction.SWAP(targets=(qubit1, qubit2)))
 
     def cz(self, qubit1: int, qubit2: int) -> None:
         """Apply a CZ gate.
@@ -321,7 +250,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             target qubit
         """
-        self.instruction.append(Instruction.CZ(targets=(qubit1, qubit2)).visit(self._visitor))
+        self.add(Instruction.CZ(targets=(qubit1, qubit2)))
 
     def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
@@ -333,7 +262,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.H(target=qubit).visit(self._visitor))
+        self.add(Instruction.H(target=qubit))
 
     def s(self, qubit: int) -> None:
         """Apply an S gate.
@@ -345,7 +274,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.S(target=qubit).visit(self._visitor))
+        self.add(Instruction.S(target=qubit))
 
     def x(self, qubit: int) -> None:
         """Apply a Pauli X gate.
@@ -357,7 +286,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.X(target=qubit).visit(self._visitor))
+        self.add(Instruction.X(target=qubit))
 
     def y(self, qubit: int) -> None:
         """Apply a Pauli Y gate.
@@ -369,7 +298,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.Y(target=qubit).visit(self._visitor))
+        self.add(Instruction.Y(target=qubit))
 
     def z(self, qubit: int) -> None:
         """Apply a Pauli Z gate.
@@ -381,7 +310,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.Z(target=qubit).visit(self._visitor))
+        self.add(Instruction.Z(target=qubit))
 
     def rx(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply an X rotation gate.
@@ -395,7 +324,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.RX(target=qubit, angle=angle).visit(self._visitor))
+        self.add(Instruction.RX(target=qubit, angle=angle))
 
     def ry(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Y rotation gate.
@@ -409,7 +338,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             angle in units of π
         """
-        self.instruction.append(Instruction.RY(target=qubit, angle=angle).visit(self._visitor))
+        self.add(Instruction.RY(target=qubit, angle=angle))
 
     def rz(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Z rotation gate.
@@ -423,7 +352,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.RZ(target=qubit, angle=angle).visit(self._visitor))
+        self.add(Instruction.RZ(target=qubit, angle=angle))
 
     def j(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a J rotation gate.
@@ -437,7 +366,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.J(target=qubit, angle=angle).visit(self._visitor))
+        self.add(Instruction.J(target=qubit, angle=angle))
 
     def r(self, qubit: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a rotation gate on the given axis.
@@ -483,7 +412,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.RZZ(control=control, target=target, angle=angle).visit(self._visitor))
+        self.add(Instruction.RZZ(control=control, target=target, angle=angle))
 
     def ccx(self, control1: int, control2: int, target: int) -> None:
         r"""Apply a CCX (Toffoli) gate.
@@ -499,7 +428,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        self.instruction.append(Instruction.CCX(controls=(control1, control2), target=target).visit(self._visitor))
+        self.add(Instruction.CCX(controls=(control1, control2), target=target))
 
     def i(self, qubit: int) -> None:
         """Apply an identity (teleportation) gate.
@@ -511,7 +440,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.I(target=qubit).visit(self._visitor))
+        self.add(Instruction.I(target=qubit))
 
     def m(self, qubit: int, axis: Axis) -> None:
         """Measure a quantum qubit.
@@ -527,9 +456,7 @@ class Circuit(InplaceParameterizable):
         axis : Axis
             measurement basis
         """
-        self.instruction.append(Instruction.M(target=qubit, axis=axis).visit(self._visitor))
-        self.active_qubits.remove(qubit)
-        self._visitor.output_kind[qubit] = OutputKind.Bit
+        self.add(Instruction.M(target=qubit, axis=axis))
 
     def sdg(self, qubit: int) -> None:
         """Apply an SDG gate.
@@ -541,8 +468,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        assert qubit in self.active_qubits
-        self.instruction.append(Instruction.SDG(target=qubit).visit(self._visitor))
+        self.add(Instruction.SDG(target=qubit))
 
     def t(self, qubit: int) -> None:
         """Apply a T gate.
@@ -554,7 +480,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.T(target=qubit).visit(self._visitor))
+        self.add(Instruction.T(target=qubit))
 
     def tdg(self, qubit: int) -> None:
         """Apply a TDG gate.
@@ -566,7 +492,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.TDG(target=qubit).visit(self._visitor))
+        self.add(Instruction.TDG(target=qubit))
 
     def sx(self, qubit: int) -> None:
         """Apply an SX gate.
@@ -578,7 +504,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.SX(target=qubit).visit(self._visitor))
+        self.add(Instruction.SX(target=qubit))
 
     def sxdg(self, qubit: int) -> None:
         """Apply an SXDG gate.
@@ -590,7 +516,7 @@ class Circuit(InplaceParameterizable):
         qubit : int
             target qubit
         """
-        self.instruction.append(Instruction.SXDG(target=qubit).visit(self._visitor))
+        self.add(Instruction.SXDG(target=qubit))
 
     def cy(self, control: int, target: int) -> None:
         """Apply a Controlled-Y gate.
@@ -604,7 +530,7 @@ class Circuit(InplaceParameterizable):
         target : int
             target qubit
         """
-        self.instruction.append(Instruction.CY(control=control, target=target).visit(self._visitor))
+        self.add(Instruction.CY(control=control, target=target))
 
     def p(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Phase rotation gate.
@@ -618,7 +544,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.P(target=qubit, angle=angle).visit(self._visitor))
+        self.add(Instruction.P(target=qubit, angle=angle))
 
     def u(self, qubit: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> None:
         """Apply a universal single-qubit gate.
@@ -636,7 +562,7 @@ class Circuit(InplaceParameterizable):
         lambda_ : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_).visit(self._visitor))
+        self.add(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_))
 
     def cj(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-J rotation gate.
@@ -652,7 +578,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.CJ(control=control, target=target, angle=angle).visit(self._visitor))
+        self.add(Instruction.CJ(control=control, target=target, angle=angle))
 
     def cp(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-P rotation gate.
@@ -668,7 +594,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.CP(control=control, target=target, angle=angle).visit(self._visitor))
+        self.add(Instruction.CP(control=control, target=target, angle=angle))
 
     def crx(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply an controlled-X rotation gate.
@@ -684,7 +610,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.CRX(control=control, target=target, angle=angle).visit(self._visitor))
+        self.add(Instruction.CRX(control=control, target=target, angle=angle))
 
     def cry(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-Y rotation gate.
@@ -700,7 +626,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             angle in units of π
         """
-        self.instruction.append(Instruction.CRY(control=control, target=target, angle=angle).visit(self._visitor))
+        self.add(Instruction.CRY(control=control, target=target, angle=angle))
 
     def crz(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         """Apply a controlled-Z rotation gate.
@@ -716,7 +642,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.CRZ(control=control, target=target, angle=angle).visit(self._visitor))
+        self.add(Instruction.CRZ(control=control, target=target, angle=angle))
 
     def cr(self, control: int, target: int, axis: Axis, angle: ParameterizedAngle) -> None:
         """Apply a controlled-rotation gate on the given axis.
@@ -770,11 +696,7 @@ class Circuit(InplaceParameterizable):
         gamma : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(
-            Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma).visit(
-                self._visitor
-            )
-        )
+        self.add(Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma))
 
     def cswap(self, control: int, qubit1: int, qubit2: int) -> None:
         """Apply a CSWAP gate.
@@ -790,7 +712,7 @@ class Circuit(InplaceParameterizable):
         qubit2 : int
             second qubit to be swapped
         """
-        self.instruction.append(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)).visit(self._visitor))
+        self.add(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)))
 
     def gphase(self, angle: ParameterizedAngle) -> None:
         r"""Apply a global phase.
@@ -802,7 +724,7 @@ class Circuit(InplaceParameterizable):
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        self.instruction.append(Instruction.GPHASE(angle).visit(self._visitor))
+        self.add(Instruction.GPHASE(angle))
 
     def condinstr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None = None) -> None:
         """Apply a conditional sequence of gates.
@@ -821,9 +743,7 @@ class Circuit(InplaceParameterizable):
         .. Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
         """
         domain_set = set(domain) if domain is not None else set()
-        self.instruction.append(
-            Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set).visit(self._visitor)
-        )
+        self.add(Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set))
 
     def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
