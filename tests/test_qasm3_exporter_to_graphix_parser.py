@@ -47,8 +47,8 @@ def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
     check_circuit = circuit.transpile_to_qasm_gates()
     parser = OpenQASMParser()
-    parsed_circuit = parser.parse_str(qasm)
-    for parsed_instr, instr in zip(parsed_circuit.instruction, check_circuit.instruction, strict=True):
+    parsed = parser.parse_str(qasm)
+    for parsed_instr, instr in zip(parsed.circuit.instruction, check_circuit.instruction, strict=True):
         assert parsed_instr.kind == instr.kind
         assert all(
             math.isclose(x, y) if isinstance(x, float) and isinstance(y, float) else x == y
@@ -78,8 +78,8 @@ def test_j_to_qasm3() -> None:
     circuit = Circuit(1, instr=[Instruction.J(target=0, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
-    parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.transpile_to_qasm_gates().instruction
+    parsed = parser.parse_str(qasm)
+    assert parsed.circuit.instruction == circuit.transpile_to_qasm_gates().instruction
 
 
 def test_j_to_qasm3_failure() -> None:
@@ -92,16 +92,16 @@ def test_cj_to_qasm3() -> None:
     circuit = Circuit(2, instr=[Instruction.CJ(control=0, target=1, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
-    parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.transpile_to_qasm_gates().instruction
+    parsed = parser.parse_str(qasm)
+    assert parsed.circuit.instruction == circuit.transpile_to_qasm_gates().instruction
 
 
 def test_rzz_to_qasm3() -> None:
     circuit = Circuit(2, instr=[Instruction.RZZ(control=0, target=1, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
-    parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == circuit.transpile_to_qasm_gates().instruction
+    parsed = parser.parse_str(qasm)
+    assert parsed.circuit.instruction == circuit.transpile_to_qasm_gates().instruction
 
 
 def test_gphase_to_qasm3() -> None:
@@ -109,8 +109,8 @@ def test_gphase_to_qasm3() -> None:
     circuit = Circuit(1, instr=[instr])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser()
-    parsed_circuit = parser.parse_str(qasm)
-    assert parsed_circuit.instruction == [instr]
+    parsed = parser.parse_str(qasm)
+    assert parsed.circuit.instruction == [instr]
 
 
 def test_measurement() -> None:
