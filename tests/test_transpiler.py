@@ -709,6 +709,93 @@ class TestCircuits:
 
         assert state_ref.isclose(state_test)
 
+    def test_chained_instructions(self, fx_rng: Generator) -> None:
+        angle = 0.3
+        axis = Axis.X  # We measure the ancilla along X, circuit is deterministic
+        qc_test = (
+            Circuit(3, ancillas=1, ancilla_state=BasicStates.MINUS)
+            .cnot(0, 1)
+            .swap(0, 1)
+            .cz(0, 1)
+            .h(0)
+            .s(0)
+            .x(0)
+            .y(0)
+            .z(0)
+            .rx(0, angle)
+            .ry(0, angle)
+            .rz(0, angle)
+            .j(0, angle)
+            .r(0, axis, angle)
+            .rzz(0, 1, angle)
+            .ccx(0, 1, 2)
+            .i(0)
+            .sdg(0)
+            .t(0)
+            .tdg(0)
+            .sx(0)
+            .sxdg(0)
+            .cy(0, 1)
+            .p(0, angle)
+            .u(0, angle, angle, angle)
+            .cj(0, 1, angle)
+            .cp(0, 1, angle)
+            .crx(0, 1, angle)
+            .cry(0, 1, angle)
+            .crz(0, 1, angle)
+            .cr(0, 1, axis, angle)
+            .cu(0, 1, angle, angle, angle, angle)
+            .cswap(0, 1, 2)
+            .gphase(angle)
+            .m(3, axis)
+            .condinstr([Instruction.H(0), Instruction.X(0)], {3})
+        )
+        qc_ref = Circuit(3, ancillas=1, ancilla_state=BasicStates.MINUS)
+        qc_ref.extend(
+            [
+                Instruction.CNOT(control=0, target=1),
+                Instruction.SWAP((0, 1)),
+                Instruction.CZ((0, 1)),
+                Instruction.H(0),
+                Instruction.S(0),
+                Instruction.X(0),
+                Instruction.Y(0),
+                Instruction.Z(0),
+                Instruction.RX(0, angle),
+                Instruction.RY(0, angle),
+                Instruction.RZ(0, angle),
+                Instruction.J(0, angle),
+                Instruction.RX(0, angle),
+                Instruction.RZZ(control=0, target=1, angle=angle),
+                Instruction.CCX(controls=(0, 1), target=2),
+                Instruction.I(0),
+                Instruction.SDG(0),
+                Instruction.T(0),
+                Instruction.TDG(0),
+                Instruction.SX(0),
+                Instruction.SXDG(0),
+                Instruction.CY(control=0, target=1),
+                Instruction.P(0, angle),
+                Instruction.U(0, angle, angle, angle),
+                Instruction.CJ(control=0, target=1, angle=angle),
+                Instruction.CP(control=0, target=1, angle=angle),
+                Instruction.CRX(control=0, target=1, angle=angle),
+                Instruction.CRY(control=0, target=1, angle=angle),
+                Instruction.CRZ(control=0, target=1, angle=angle),
+                Instruction.CRX(control=0, target=1, angle=angle),
+                Instruction.CU(0, 1, angle, angle, angle, angle),
+                Instruction.CSWAP(control=0, targets=(1, 2)),
+                Instruction.GPHASE(angle),
+                Instruction.M(3, axis),
+                Instruction.CONDINSTR((Instruction.H(0), Instruction.X(0)), {3}),
+            ]
+        )
+
+        input_state = rand_state_vector(3, rng=fx_rng)
+        state_ref = qc_ref.simulate(rng=fx_rng, input_state=input_state).state
+        state_test = qc_test.simulate(rng=fx_rng, input_state=input_state).state
+        assert state_ref.isclose(state_test)
+
 
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_transpile_swaps(fx_bg: PCG64, jumps: int) -> None:

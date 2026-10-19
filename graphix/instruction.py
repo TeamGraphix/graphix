@@ -855,6 +855,8 @@ class ControlledRotationInstruction(BaseInstruction):
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
         angle = visitor.visit_angle(self.angle)
+        if target == control:
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         if copy:
             return type(self)(target, control, angle)
         self.target = target
