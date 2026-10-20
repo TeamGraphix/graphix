@@ -26,7 +26,7 @@ from typing_extensions import override
 from graphix import command, optimization
 from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Axis, Plane, Sign
+from graphix.fundamentals import Plane, Sign
 from graphix.instruction import Instruction
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
 from graphix.parameter import InplaceParameterizable
@@ -1550,18 +1550,8 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                         circuit.m(qubit, meas.axis)
                     else:
                         bloch = cmd.measurement.to_bloch()
-                        match bloch.plane:
-                            case Plane.XY:
-                                circuit.rz(qubit, -bloch.angle)
-                                circuit.m(qubit, Axis.X)
-                            case Plane.XZ:
-                                circuit.ry(qubit, -bloch.angle)
-                                circuit.m(qubit, Axis.Z)
-                            case Plane.YZ:
-                                circuit.rx(qubit, bloch.angle)
-                                circuit.m(qubit, Axis.Z)
-                            case _:
-                                assert_never(bloch.plane)
+                        circuit.r(qubit, bloch.plane.orth, Sign.plus_if(bloch.plane == Plane.YZ) * bloch.angle)
+                        circuit.m(qubit, bloch.plane.cos)
                 case CommandKind.X | CommandKind.Z:
                     qubit = node_idx.index(cmd.node)
                     domain = {node_idx.index(node) for node in cmd.domain}
@@ -1580,7 +1570,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                             case "y":
                                 circuit.y(qubit)
                             case "z":
-                                circuit.y(qubit)
+                                circuit.z(qubit)
                             case "s":
                                 circuit.s(qubit)
                             case "sdg":
