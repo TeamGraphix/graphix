@@ -8,7 +8,7 @@ from graphix.channels import KrausChannel
 from graphix.circ_ext import CliffordMap, PauliExponential, PauliExponentialDAG, PauliString
 from graphix.clifford import Clifford
 from graphix.command import Command
-from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
+from graphix.flow.core import CausalFlow, FocusedGFlow, FocusedPauliFlow, GFlow, PauliFlow, XZCorrections
 from graphix.fundamentals import ANGLE_PI, Axis, Plane, Sign, angle_to_rad, rad_to_angle
 from graphix.graphsim import GraphState
 from graphix.instruction import Instruction
@@ -42,6 +42,8 @@ __all__ = [
     "DepolarisingNoiseModel",
     "DrawPatternAnnotations",
     "FixedBranchSelector",
+    "FocusedGFlow",
+    "FocusedPauliFlow",
     "GFlow",
     "GraphState",
     "Instruction",
