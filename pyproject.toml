@@ -50,8 +50,8 @@ dev = [
     "mypy==2.4.0",
     "pre-commit",
     "pyright",
-    "ruff==0.16.10",
-    "types-networkx==3.6.1.20260911",
+    "ruff==0.17.0",
+    "types-networkx==3.6.1.20261006",
     "types-psutil",
     "types-setuptools",
     "scipy-stubs",
@@ -62,6 +62,7 @@ dev = [
     "pytest-cov",
     "pytest-mock",
     "pytest-mpl",
+    # Qiskit version is capped to 2.4 due to mypy#21263. Issue is solved but not released, remove cap next mypy update
     "qiskit>=1.0,<2.4",
     "qiskit_qasm3_import",
     # See Qiskit/qiskit-aer#2468
