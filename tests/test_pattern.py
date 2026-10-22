@@ -1277,8 +1277,13 @@ class TestPattern:
         )  # Tested in test_transpile.TestTranspilerUnitGates.test_instructions()
         circuit_test = pattern.to_circuit()
 
+        # Simulatin circuits with feedforward is extremely inefficient because we instantiate
+        # all qubits (inputs and ancillas) at the very beginning. Roughly speaking, it is as
+        # bad as standardizing the pattern before simulating.
+        # Doing the simulation on the pattern object is perfectly ok.
+
         if circuit_test.nqubit > 20:
-            pytest.skip("Circuit with classical control has too many ancilla qubits to be simulated.")
+            pytest.skip("Circuit with classical control has too many ancilla qubits to be simulated in a reasonable time.")
 
         input_state = rand_state_vector(3, rng=rng)
         state_ref = circuit_ref.simulate(input_state=input_state, rng=rng).state
