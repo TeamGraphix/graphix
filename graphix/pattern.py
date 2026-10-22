@@ -1504,7 +1504,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         Returns
         -------
         Circuit
-            Quantum circuit represented as a set of instructions.
+            Quantum circuit represented as a sequence of instructions.
 
         Notes
         -----
