@@ -1283,7 +1283,9 @@ class TestPattern:
         # Doing the simulation on the pattern object is perfectly ok.
 
         if circuit_test.nqubit > 20:
-            pytest.skip("Circuit with classical control has too many ancilla qubits to be simulated in a reasonable time.")
+            pytest.skip(
+                "Circuit with classical control has too many ancilla qubits to be simulated in a reasonable time."
+            )
 
         input_state = rand_state_vector(3, rng=rng)
         state_ref = circuit_ref.simulate(input_state=input_state, rng=rng).state
