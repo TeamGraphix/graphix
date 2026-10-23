@@ -173,9 +173,8 @@ class TestPauliExponentialDAG:
         )
 
         flow.check_well_formed()
-        assert flow.is_focused()
 
-        pexp_dag = PauliExponentialDAG.from_focused_flow(flow)
+        pexp_dag = PauliExponentialDAG.from_focusedflow(flow.to_focused())
 
         pexp_dag_ref = PauliExponentialDAG(
             pauli_exponentials={
@@ -523,12 +522,12 @@ class TestExtraction:
             ),
         ],
     )
+    @pytest.mark.filterwarnings("ignore:Non-Pauli measurement on an isolated node was removed.")
     def test_extract_og(self, test_case: OpenGraph[Measurement], fx_rng: Generator) -> None:
-        pattern = test_case.to_pattern()
         circuit = test_case.to_circuit()
 
         state = circuit.simulate(rng=fx_rng).state
-        state_ref = pattern.simulate(rng=fx_rng)
+        state_ref = test_case.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("infer_pauli", [True, False])
@@ -569,11 +568,10 @@ class TestExtraction:
                 4: Measurement.XY(0.4),
             },
         )
-        pattern = og.to_pattern()
         circuit = og.to_gflow().extract_circuit().to_circuit()
 
         state = circuit.simulate(rng=fx_rng).state
-        state_ref = pattern.simulate(rng=fx_rng)
+        state_ref = og.simulate(rng=fx_rng)
         assert state.isclose(state_ref)
 
     @pytest.mark.parametrize("test_case", [0.2, 0.5, 1.0])

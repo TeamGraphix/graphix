@@ -7,13 +7,13 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar, assert_never
 
 import networkx as nx
 import numpy as np
 
-# ``override`` introduced in Python 3.12, ``assert_never`` introduced in Python 3.11
-from typing_extensions import assert_never, override
+# ``override`` introduced in Python 3.12
+from typing_extensions import override
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.circ_ext.extraction import (
@@ -49,6 +49,7 @@ from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement,
 from graphix.measurements import Measurement
 from graphix.parameter import Parameterizable
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
+from graphix.simulator import Simulable
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -75,8 +76,21 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class XZCorrections(Parameterizable, Generic[_AM_co]):
+class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
+
+    If a flow is well-formed, then the method ``to_xzcorrections``
+    returns an instance of ``XZCorrections`` that is well-formed by
+    construction.
+
+    No well-formedness checks are performed when instantiating an
+    ``XZCorrections`` object directly by calling the constructor: the
+    corrections may not be runnable, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form
+    well-formed XZ-corrections. The :meth`:check_well_formed` method
+    can be called to explicitly verify that the corrections are
+    well-formed.
 
     Attributes
     ----------
@@ -92,6 +106,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
     Notes
     -----
     The XZ-corrections mappings define a partial order, therefore, only ``og``, ``x_corrections`` and ``z_corrections`` are necessary to initialize an ``XZCorrections`` instance (see :func:`XZCorrections.from_measured_nodes_mapping`). However, XZ-corrections are often extracted from a flow whose partial order is known and can be used to construct a pattern, so it can also be passed as an argument to the ``dataclass`` constructor. The correctness of the input parameters is not verified automatically.
+
     """
 
     og: OpenGraph[_AM_co]
@@ -146,6 +161,7 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
         return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
+    @override
     def to_pattern(
         self: XZCorrections[Measurement],
         total_measurement_order: TotalOrder | None = None,
@@ -569,8 +585,20 @@ class XZCorrections(Parameterizable, Generic[_AM_co]):
 
 
 @dataclass(frozen=True)
-class PauliFlow(Parameterizable, Generic[_AM_co]):
+class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
+
+    The methods :meth:`OpenGraph.to_pauliflow` and
+    :meth:`Pattern.to_pauliflow` return well-formed Pauli flows by
+    construction.
+
+    No well-formedness checks are performed when instantiating a
+    ``PauliFlow`` object directly by calling the constructor: the
+    correction function may not be valid, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form a
+    well-formed Pauli flow. The :meth`:check_well_formed` method can
+    be called to explicitly verify that the flow is well-formed.
 
     Attributes
     ----------
@@ -591,6 +619,7 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
     ----------
     [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
     [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
+
     """
 
     og: OpenGraph[_AM_co]
@@ -598,35 +627,6 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
     partial_order_layers: Sequence[AbstractSet[int]]
 
     _CF_PREFIX: str = "p"  # Correction function prefix for printing
-
-    @classmethod
-    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_AM_co]) -> Self | None:
-        """Initialize a ``PauliFlow`` object from a matrix encoding a correction function.
-
-        Parameters
-        ----------
-        correction_matrix : CorrectionMatrix[_AM_co]
-            Algebraic representation of the correction function.
-
-        Returns
-        -------
-        Self | None
-            A Pauli flow if it exists, ``None`` otherwise.
-
-        Notes
-        -----
-        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a Pauli flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
-
-        References
-        ----------
-        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
-        """
-        correction_function = correction_matrix.to_correction_function()
-        partial_order_layers = compute_partial_order_layers(correction_matrix)
-        if partial_order_layers is None:
-            return None
-
-        return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
 
     def to_xzcorrections(self) -> XZCorrections[_AM_co]:
         """Compute the X and Z corrections induced by the Pauli flow encoded in ``self``.
@@ -661,6 +661,16 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
+    @override
+    def to_pattern(self: PauliFlow[Measurement], total_measurement_order: TotalOrder | None = None) -> Pattern:
+        """Generate a pattern from this ``PauliFlow[Measurement]`` instance.
+
+        See :meth:`XZCorrections.to_pattern` for further details about
+        the ``total_measurement_order`` parameter and the exceptions
+        that may be raised.
+        """
+        return self.to_xzcorrections().to_pattern(total_measurement_order)
+
     def is_well_formed(self) -> bool:
         """Verify if flow is well formed.
 
@@ -677,15 +687,41 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         return True
 
     def check_well_formed(self) -> None:
-        r"""Verify if the Pauli flow is well formed.
+        r"""Verify that the Pauli flow is well-formed.
 
         Raises
         ------
         FlowError
-            if the Pauli flow is not well formed.
+            if the Pauli flow is not well-formed.
 
         Notes
         -----
+        This method checks that the instance is indeed a valid Pauli
+        flow.  Moreover, if ``self`` is an instance of
+        :class:`FocusedPauliFlow`, it also checks that the flow is
+        focused.  Use :meth:`check_flow_properties` to check only flow
+        properties.
+        """
+        self.check_flow_properties()
+
+    def check_flow_properties(self) -> None:
+        r"""Verify that the Pauli flow satisfies the flow properties.
+
+        Raises
+        ------
+        FlowError
+            if the Pauli flow does not satisfy the flow properties.
+
+        Notes
+        -----
+        This method checks the properties for the instance to be a
+        valid Pauli flow.  It does not check whether the flow is
+        focused, even if ``self`` is an instance of
+        :class:`FocusedPauliFlow`.  By contrast,
+        :meth:`check_well_formed` checks that the flow is valid and,
+        for instances of :class:`FocusedPauliFlow`, also checks that
+        the flow is focused.
+
         General properties of flows:
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
@@ -942,8 +978,108 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
                     return False
         return True
 
+    def to_focused(self) -> FocusedPauliFlow[_AM_co]:
+        """Return this Pauli flow as a focused Pauli flow, after verifying that it is focused.
+
+        Notes
+        -----
+        This method is overridden in subclasses:
+
+        - In :class:`FocusedPauliFlow`, the check is bypassed and
+          ``self`` is returned directly.
+
+        - In :class:`GFlow`: the return type is narrowed to
+          ``FocusedGFlow[_PM_co]``.
+
+        - In :class:`FocusedGFlow`, the check is bypassed and
+          ``self`` is returned directly.
+
+        Raises
+        ------
+        FlowGenericError
+            If the Pauli flow is not focused, with the reason ``NotFocused``.
+
+        Returns
+        -------
+        FocusedPauliFlow[_AM_co]
+            The Pauli flow, verified to be focused.
+        """
+        if not self.is_focused():
+            raise FlowGenericError(FlowGenericErrorReason.NotFocused)
+        return FocusedPauliFlow(self.og, self.correction_function, self.partial_order_layers)
+
+
+class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
+    """An immutable dataclass representing a focused Pauli flow.
+
+    A ``FocusedPauliFlow`` instance is a :class:`PauliFlow` that
+    satisfies the :meth:`PauliFlow.is_focused` predicate. Once a
+    ``FocusedPauliFlow`` instance has been obtained, this property
+    does not need to be checked again.
+
+    Instances of ``FocusedPauliFlow`` are obtained from instances of
+    :class:`PauliFlow` with the method ``to_focused``, which verifies
+    that the flow satisfies the :meth:`PauliFlow.is_focused`
+    predicate.  Direct construction of a ``FocusedPauliFlow`` instance
+    should be reserved for cases where the flow is known to be focused
+    by construction (typically, with the class method
+    ``from_correctionmatrix_or_none``).
+
+    No well-formedness checks are performed when instantiating a
+    ``FocusedPauliFlow`` object directly: the correction function may
+    not be valid, the layers may be incompatible with the open graph
+    or the corrections, and the flow, if any, may not be focused. The
+    caller is responsible for ensuring that the provided attributes
+    form a well-formed and focused Pauli flow. The
+    :meth`:check_well_formed` method can be called to explicitly
+    verify that the flow is well-formed, and the `is_focused` method
+    can be called to explicitly verify that the flow is focused.
+    """
+
+    @classmethod
+    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_AM_co]) -> Self | None:
+        """Initialize a ``PauliFlow`` object from a matrix encoding a correction function.
+
+        Parameters
+        ----------
+        correction_matrix : CorrectionMatrix[_AM_co]
+            Algebraic representation of the correction function.
+
+        Returns
+        -------
+        Self | None
+            A Pauli flow if it exists, ``None`` otherwise.
+
+        Notes
+        -----
+        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a Pauli flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
+
+        References
+        ----------
+        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        correction_function = correction_matrix.to_correction_function()
+        partial_order_layers = compute_partial_order_layers(correction_matrix)
+        if partial_order_layers is None:
+            return None
+
+        return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
+
+    def check_well_formed(self) -> None:
+        """Verify that the Pauli flow is well-formed and focused.
+
+        See :meth:`PauliFlow.check_well_formed` and :meth:`PauliFlow.is_focused` for details.
+        """
+        super().check_well_formed()
+        if not self.is_focused():
+            raise FlowGenericError(FlowGenericErrorReason.NotFocused)
+
+    @override
+    def to_focused(self) -> FocusedPauliFlow[_AM_co]:
+        return self
+
     @cached_property
-    def extraction_pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
+    def extraction_pauli_strings(self: FocusedPauliFlow[Measurement]) -> dict[int, PauliString]:
         """Compute the extraction Pauli strings associated with each node in the correction function.
 
         This property requires the flow to be focused.
@@ -963,11 +1099,9 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         This property is cached; the dictionary is computed only once upon the first access and stored for subsequent calls.
         See notes in ``PauliString.from_measured_node`` for additional information.
         """
-        if not self.is_focused():
-            raise ValueError("Flow is not focused.")
         return {node: extraction_ps_from_corrected_node(self, node) for node in self.correction_function}
 
-    def extract_circuit(self: PauliFlow[Measurement], *, stacklevel: int = 1) -> ExtractionResult:
+    def extract_circuit(self: FocusedPauliFlow[Measurement], *, stacklevel: int = 1) -> ExtractionResult:
         """Extract a circuit from a flow.
 
         This routine assumes that the flow ``self`` is focused (see Notes).
@@ -996,8 +1130,8 @@ class PauliFlow(Parameterizable, Generic[_AM_co]):
         """
         if self.og.output_cliffords:
             raise NotImplementedError("Circuit extraction is not supported for open graphs with Clifford decorations.")
-        pexp_dag = PauliExponentialDAG.from_focused_flow(self)
-        clifford_map = CliffordMap.from_focused_flow(self, stacklevel=stacklevel + 1)
+        pexp_dag = PauliExponentialDAG.from_focusedflow(self)
+        clifford_map = CliffordMap.from_focusedflow(self, stacklevel=stacklevel + 1)
 
         return ExtractionResult(pexp_dag=pexp_dag, clifford_map=clifford_map)
 
@@ -1011,6 +1145,18 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         - The extraction of XZ-corrections from the gflow does not require knowledge on the partial order.
         - The method :func:`GFlow.is_well_formed` verifies the definition of gflow (Definition 2.36 in Ref. [1]).
 
+    The methods :meth:`OpenGraph.to_gflow` and
+    :meth:`Pattern.to_gflow` return well-formed gflows by
+    construction.
+
+    No well-formedness checks are performed when instantiating a
+    ``GFlow`` object directly by calling the constructor: the
+    correction function may not be valid, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form a
+    well-formed gflow. The :meth`:check_well_formed` method can be
+    called to explicitly verify that the flow is well-formed.
+
     References
     ----------
     [1] Backens et al., Quantum 5, 421 (2021), doi.org/10.22331/q-2021-03-25-421
@@ -1018,31 +1164,6 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
     """
 
     _CF_PREFIX: str = "g"  # Correction function prefix for printing
-
-    @override
-    @classmethod
-    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> Self | None:
-        """Initialize a ``GFlow`` object from a matrix encoding a correction function.
-
-        Parameters
-        ----------
-        correction_matrix : CorrectionMatrix[_PM_co]
-            Algebraic representation of the correction function.
-
-        Returns
-        -------
-        Self | None
-            A gflow if it exists, ``None`` otherwise.
-
-        Notes
-        -----
-        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a generalised flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
-
-        References
-        ----------
-        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
-        """
-        return super().from_correctionmatrix_or_none(correction_matrix)
 
     @override
     def to_xzcorrections(self) -> XZCorrections[_PM_co]:
@@ -1074,16 +1195,24 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
-    def check_well_formed(self) -> None:
-        r"""Verify if the generalised flow is well formed.
+    @override
+    def check_flow_properties(self) -> None:
+        r"""Verify that the generalised flow satisfies the flow properties.
 
         Raises
         ------
         FlowError
-            if the gflow is not well formed.
+            if the gflow does not satisfy the flow properties.
 
         Notes
         -----
+        This method checks the properties for the instance to be a
+        valid generalised flow.  It does not check whether the flow is
+        focused, even if ``self`` is an instance of
+        :class:`FocusedGFlow`.  By contrast, :meth:`check_well_formed`
+        checks that the flow is valid and, for instances of
+        :class:`FocusedGFlow`, also checks that the flow is focused.
+
         General properties of flows:
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
@@ -1181,6 +1310,62 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         """
         return self.og.measurements[node].to_plane()
 
+    @override
+    def to_focused(self) -> FocusedGFlow[_PM_co]:
+        """Return this gflow as a focused gflow, after verifying that it is focused.
+
+        Notes
+        -----
+        This method is overridden in the subclass
+        :class:`FocusedGFlow`: the check is bypassed and ``self`` is
+        returned directly.
+
+        Raises
+        ------
+        FlowGenericError
+            Raised if the gflow is not focused, with the reason ``NotFocused``.
+
+        Returns
+        -------
+        FocusedGFlow[_PM_co]
+            The gflow, verified to be focused.
+        """
+        if not self.is_focused():
+            raise FlowGenericError(FlowGenericErrorReason.NotFocused)
+        return FocusedGFlow(self.og, self.correction_function, self.partial_order_layers)
+
+
+class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
+    """An immutable dataclass representing a focused gflow.
+
+    A ``FocusedGFlow`` instance is a :class:`GFlow` that satisfies
+    the :meth:`PauliFlow.is_focused` predicate. Once a
+    ``FocusedGFlow`` instance has been obtained, this property does
+    not need to be checked again.
+
+    Instances of ``FocusedGFlow`` are obtained from instances of
+    :class:`GFlow` with the method ``to_focused``, which verifies that
+    the flow satisfies the :meth:`PauliFlow.is_focused` predicate.
+    Direct construction of a ``FocusedGFlow`` instance should be
+    reserved for cases where the flow is known to be focused by
+    construction (typically, with the class method
+    ``from_correctionmatrix_or_none``).
+
+    No well-formedness checks are performed when instantiating a
+    ``FocusedGFlow`` object directly: the correction function may not
+    be valid, the layers may be incompatible with the open graph or
+    the corrections, and the flow, if any, may not be focused. The
+    caller is responsible for ensuring that the provided attributes
+    form a well-formed and focused gflow. The
+    :meth`:check_well_formed` method can be called to explicitly
+    verify that the flow is well-formed, and the `is_focused` method
+    can be called to explicitly verify that the flow is focused.
+    """
+
+    @override
+    def to_focused(self) -> FocusedGFlow[_PM_co]:
+        return self
+
 
 @dataclass(frozen=True)
 class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
@@ -1190,6 +1375,18 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
         - The extraction of XZ-corrections from the causal flow does assumes that correction sets have one element only.
         - The method :func:`CausalFlow.is_well_formed` verifies the definition of causal flow (Definition 2 in Ref. [1]).
 
+    The methods :meth:`OpenGraph.to_causalflow` and
+    :meth:`Pattern.to_causalflow` return well-formed causal flows by
+    construction.
+
+    No well-formedness checks are performed when instantiating a
+    ``CausalFlow`` object directly by calling the constructor: the
+    correction function may not be valid, and the layers may be
+    incompatible with the open graph or the corrections. The caller is
+    responsible for ensuring that the provided attributes form a
+    well-formed causal flow. The :meth`:check_well_formed` method can
+    be called to explicitly verify that the flow is well-formed.
+
     References
     ----------
     [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
@@ -1197,11 +1394,6 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     """
 
     _CF_PREFIX: str = "c"  # Correction function prefix for printing
-
-    @override
-    @classmethod
-    def from_correctionmatrix_or_none(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> None:
-        raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
     def to_xzcorrections(self) -> XZCorrections[_PM_co]:

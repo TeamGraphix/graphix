@@ -28,3 +28,111 @@
   max-width: 340px;
   max-height: 300px;
 }
+
+.hero {
+    place-items: center;
+}
+
+.hero h1 {
+    font-size: clamp(3rem, 6vw, 4rem);
+    margin: 0.25em 0;
+    text-align: center;
+}
+
+.hero-tagline {
+    max-width: 750px;
+    font-size: 1rem;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    text-align: center;
+    /* border: 1px solid #060606; */
+    border-radius: 0.8rem;
+    /* background-color: var(--color-brand-primary); */
+    border-color: var(--color-brand-secondary);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+}
+
+.hero-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.section-divider {
+    height: 2px;
+    margin: 2.5rem 0;
+    background: var(--color-background-border);
+}
+
+.theme-toggle {
+    display: none !important;
+}
+
+/* Light mode color background */
+.highlight pre {
+    background-color: #fbfae6;
+}
+
+/* Force light color scheme */
+html {
+    color-scheme: light !important;
+}
+/* Styling of Definition box */
+
+body {
+  --definition-color: #ec4899;
+  --definition-bg: rgba(236, 72, 153, 0.10);
+}
+
+body[data-theme="dark"] {
+  --definition-color: #f472b6;
+  --definition-bg: rgba(244, 114, 182, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --definition-color: #f472b6;
+    --definition-bg: rgba(244, 114, 182, 0.16);
+  }
+}
+
+.admonition.definition {
+  border-left: 0.2rem solid var(--definition-color);
+  border-radius: 0.3rem;
+}
+
+.admonition.definition > .admonition-title {
+  background-color: var(--definition-bg);
+  font-weight: 600;
+}
+
+.admonition.definition > .admonition-title::before {
+  background-color: var(--definition-color);
+  -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+}
+
+/* Tutorial cards */
+.tutorial-card {
+    border-radius: 0.75rem;
+}
+
+/* Card titles */
+.tutorial-card .sd-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Card body */
+.tutorial-card .sd-card-body {
+    padding: 1.25rem;
+}
+
+.index-card {
+    border-radius: 1rem;
+}

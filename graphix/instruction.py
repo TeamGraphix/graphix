@@ -8,9 +8,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Literal, SupportsFloat, TypeAlias, overload
 
-# Self introduced in Python 3.11
 # override introduced in Python 3.12
-from typing_extensions import Self, override
+from typing_extensions import override
 
 from graphix import utils
 from graphix.fundamentals import (
@@ -21,6 +20,9 @@ from graphix.fundamentals import (
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.repr_mixins import DataclassReprMixin, repr_pair
 from graphix.utils import extract_qubits
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 def repr_angle(angle: ParameterizedAngle) -> str:

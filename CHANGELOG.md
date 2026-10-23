@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.4.1] - 2026-10-13
+
+### Added
+
+- #592: Add all standard OpenQASM gates
+
+- #493, #607: New base class `Simulable`, implemented by `Pattern`, `StandardizedPattern`, `OpenGraph`, `PauliFlow`, and `XZCorrections`. The `simulate` method runs the simulation on a pattern derived from the object, applying usual optimization passes by default. Optimizations can be disabled by passing `optimized=False`.
+
+- #614:
+  - Support for Python 3.15
+  - Drop support for Python 3.10 (end-of-life: 2026-10-01)
 
 ### Fixed
 
@@ -22,8 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `Circuit` methods: `swap`, `cswap`, `ccx`.
     - `Instruction` constructors: `SWAP`, `CSWAP`, `CCX`.
     - `E` command in patterns.
-  - The pretty-printing (`repr`) of instructions and commands is updated
-to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
+  - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
+
+## Changed
+
+- #601: New documentation / tutorial
 
 ## [0.4] - 2026-08-18
 
@@ -77,6 +90,8 @@ to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
     - `replace_parameters`, an in-place variant of `with_parameters` (or `xreplace`).
 
 - #585: Added `rand_outcome`.
+
+- #474, #564: Added `FocusedPauliFlow` and `FocusedGFlow` classes to encapsulate operations specific to focused flows. Flow-finding algorithms return focused flows by construction. Having dedicated classes removes the need to dynamically recheck that a flow is focused during circuit extraction.
 
 ### Fixed
 

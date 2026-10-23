@@ -5,10 +5,9 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
 
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
-from typing_extensions import assert_never
+from typing import TYPE_CHECKING, assert_never
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
@@ -90,6 +89,9 @@ class FlowGenericErrorReason(Enum):
 
     NoPauliFlow = enum.auto()
     """No Pauli flow is compatible with the given XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."""
+
+    NotFocused = enum.auto()
+    """The Pauli flow is not focused."""
 
 
 class XZCorrectionsOrderErrorReason(Enum):
@@ -227,6 +229,8 @@ class FlowGenericError(FlowError):
                 return "Causal flow is only defined on open graphs with XY measurements."
             case FlowGenericErrorReason.NoPauliFlow:
                 return "No Pauli flow is compatible with the XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."
+            case FlowGenericErrorReason.NotFocused:
+                return "Flow is not focused."
             case _:
                 assert_never(self.reason)
 

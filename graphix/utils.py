@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, 
 import numpy as np
 import numpy.typing as npt
 
-# Self introduced in Python 3.11
 # override introduced in Python 3.12
-from typing_extensions import Self, override
+from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
+    from typing import Self
 
 _T = TypeVar("_T")
 

@@ -9,13 +9,12 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, overload
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, assert_never, overload
 
 import networkx as nx
 
-# assert_never introduced in Python 3.11
 # override introduced in Python 3.12
-from typing_extensions import assert_never, override
+from typing_extensions import override
 
 from graphix import Instruction, command, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
@@ -25,7 +24,6 @@ from graphix.instruction import InstructionKind, InstructionVisitor
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.ops import Ops
-from graphix.optimization import StandardizedPattern
 from graphix.parameter import InplaceParameterizable
 from graphix.pattern import Pattern
 from graphix.sim.base_backend import DenseStateBackend
@@ -75,7 +73,7 @@ class TranspiledFlow:
 
     def to_pattern(self) -> TranspiledPattern:
         """Return the transpiled pattern."""
-        pattern = StandardizedPattern.from_pattern(self.flow.to_xzcorrections().to_pattern()).to_space_optimal_pattern()
+        pattern = self.flow.to_standardizedpattern().to_space_optimal_pattern()
         pattern.extend(self.classical_outputs.values())
         return TranspiledPattern(pattern, tuple(self.classical_outputs.keys()))
 
