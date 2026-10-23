@@ -427,7 +427,7 @@ def rand_circuit(
         for rotation in (circuit.rx, circuit.ry, circuit.rz)
         for parameter in parameters or []
     )
-    gate_choice: tuple[Callable[[int], None], ...] = (
+    gate_choice: tuple[Callable[[int], Circuit], ...] = (
         functools.partial(circuit.ry, angle=ANGLE_PI / 4),
         functools.partial(circuit.rz, angle=-ANGLE_PI / 4),
         functools.partial(circuit.rx, angle=-ANGLE_PI / 4),

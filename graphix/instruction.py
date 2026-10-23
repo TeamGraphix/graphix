@@ -70,6 +70,7 @@ class InstructionKind(Enum):
     CU = enum.auto()
     CSWAP = enum.auto()
     GPHASE = enum.auto()
+    CONDINSTR = enum.auto()
 
 
 class _KindChecker:
@@ -105,6 +106,10 @@ class InstructionVisitor:
     def visit_axis(self, axis: Axis) -> Axis:
         """Rewrite an axis."""
         return axis
+
+    def visit_domain(self, domain: set[int]) -> set[int]:
+        """Rewrite a domain of a conditional instruction."""
+        return domain
 
 
 class BaseInstruction(ABC, DataclassReprMixin):
@@ -171,6 +176,12 @@ class CCX(_KindChecker, BaseInstruction):
         u, v = self.controls
         target = visitor.visit_qubit(self.target)
         controls = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if controls[0] == controls[1]:
+            raise ValueError(f"Control qubits cannot be the same. Qubit index: {controls[0]}.")
+        for i, c in enumerate(controls):
+            if target == c:
+                raise ValueError(f"Target and control-{i} qubits cannot be the same. Qubit index: {target}.")
+
         if copy:
             return CCX(target, controls)
         self.target = target
@@ -218,6 +229,8 @@ class RZZ(_KindChecker, BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> RZZ:
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        if target == control:
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         angle = visitor.visit_angle(self.angle)
         if copy:
             return RZZ(target, control, angle)
@@ -238,6 +251,8 @@ class ControlledSingleTargetInstruction(BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
+        if target == control:
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         if copy:
             return type(self)(target, control)
         self.target = target
@@ -339,6 +354,8 @@ class CZ(_KindChecker, BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> CZ:
         u, v = self.targets
         targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if targets[0] == targets[1]:
+            raise ValueError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
         if copy:
             return CZ(targets)
         self.targets = targets
@@ -377,6 +394,8 @@ class SWAP(_KindChecker, BaseInstruction):
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> SWAP:
         u, v = self.targets
         targets = (visitor.visit_qubit(u), visitor.visit_qubit(v))
+        if targets[0] == targets[1]:
+            raise ValueError(f"Target qubits cannot be the same. Qubit index: {targets[0]}.")
         if copy:
             return SWAP(targets)
         self.targets = targets
@@ -836,6 +855,8 @@ class ControlledRotationInstruction(BaseInstruction):
         target = visitor.visit_qubit(self.target)
         control = visitor.visit_qubit(self.control)
         angle = visitor.visit_angle(self.angle)
+        if target == control:
+            raise ValueError(f"Target and control qubits cannot be the same. Qubit index: {target}.")
         if copy:
             return type(self)(target, control, angle)
         self.target = target
@@ -1047,12 +1068,70 @@ class GPHASE(_KindChecker, BaseInstruction):
         return self
 
 
+InstructionTypeWithoutM: TypeAlias = """(
+    I
+    | X
+    | Y
+    | Z
+    | H
+    | S
+    | SDG
+    | T
+    | TDG
+    | SX
+    | SXDG
+    | J
+    | P
+    | RX
+    | RY
+    | RZ
+    | U
+    | CJ
+    | CP
+    | CRX
+    | CRY
+    | CRZ
+    | CU
+    | CNOT
+    | CY
+    | CZ
+    | CCX
+    | RZZ
+    | SWAP
+    | CSWAP
+    | GPHASE
+    | CONDINSTR
+)"""
+
+
+@dataclass(repr=False)
+class CONDINSTR(_KindChecker, BaseInstruction):
+    """Base class for conditional circuit instructions.
+
+    Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the attribute ``instructions`` cannot contain instances of `Instruction.M`.
+    """
+
+    instructions: tuple[InstructionTypeWithoutM, ...]
+    domain: set[int] = field(default_factory=set)
+    kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
+
+    @override
+    def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Self:
+        instructions = tuple(instr.visit(visitor, copy=copy) for instr in self.instructions)
+        domain = visitor.visit_domain(self.domain)
+        if copy:
+            return type(self)(instructions, domain)
+        self.instructions = instructions
+        self.domain = domain
+        return self
+
+
 class Instruction:
     """Grouping of all instructions for namespace exposure.
 
     Notes
     -----
-    This class is not meant to be instantiated, but rather serves as a namespace for all instructions except RZZ.
+    This class is not meant to be instantiated, but rather serves as a namespace for all instructions.
     The type alias for "any command" is :data:`InstructionKind`.
     """
 
@@ -1088,43 +1167,25 @@ class Instruction:
     CSWAP: TypeAlias = CSWAP
     M: TypeAlias = M
     GPHASE: TypeAlias = GPHASE
+    CONDINSTR: TypeAlias = CONDINSTR
 
     def __init__(self) -> None:
         raise TypeError("Instruction is a namespace, not a class.")
 
 
 if TYPE_CHECKING:
-    InstructionType = (
-        I
-        | X
-        | Y
-        | Z
-        | H
-        | S
-        | SDG
-        | T
-        | TDG
-        | SX
-        | SXDG
-        | J
-        | P
-        | RX
-        | RY
-        | RZ
-        | U
-        | CJ
-        | CP
-        | CRX
-        | CRY
-        | CRZ
-        | CU
-        | CNOT
-        | CY
-        | CZ
-        | CCX
-        | RZZ
-        | SWAP
-        | CSWAP
-        | M
-        | GPHASE
+    InstructionTypeWithControl = (
+        Instruction.CNOT
+        | Instruction.CY
+        | Instruction.CZ
+        | Instruction.CJ
+        | Instruction.CCX
+        | Instruction.CRX
+        | Instruction.CRY
+        | Instruction.CRZ
+        | Instruction.CU
+        | Instruction.P
+        | Instruction.CP
+        | Instruction.CSWAP
     )
+    InstructionType = InstructionTypeWithoutM | M

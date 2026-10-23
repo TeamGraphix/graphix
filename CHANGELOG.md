@@ -17,18 +17,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for Python 3.15
   - Drop support for Python 3.10 (end-of-life: 2026-10-01)
 
+- #587:
+  - Added ancilla qubits to `Circuit` API (new attributes `ancillas` and `ancilla_state`).
+  - Added conditional instructions (`CONDINSTR`). Added simulation, transpilation and qasm-conversion capabilities.
+  - Added `Pattern.to_circuit` method to convert a `Pattern` into a `Circuit` with ancillas and classical control.
+
 ### Fixed
 
 - #591: `FixedBranchSelector` now passes its RNG parameter to its `default` branch selector.
 
-- #595: `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
-
 - #596, #597: Pattern's `n_node` property updated after Pauli removal.
 
-## Changed
+- #595: Fixed the export of circuit measurements and `RZZ` gates to OpenQASM. `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
 
-- #601: New documentation / tutorial
+- #592:
+  - Added the following gates specified in the OpenQASM 3.0 specification: SDG, T, TDG, SX, SXDG, CY, P, U, CP, CRX, CRY, CRZ, CU, CSWAP, and GPHASE.
+  - Subsumed `Circuit.transpile_measurements_to_z_axis`, `Circuit.transpile_j_to_rzh` and `Circuit.transpile_rzz` by `Circuit.transpile_to_qasm_gates`
 
+### Changed
+
+- #587;
+  - Factorized instruction-validity checks in method `Circuit.add` via an instruction visitor.
+  - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
+
+  
 ## [0.4] - 2026-08-18
 
 ### Added
