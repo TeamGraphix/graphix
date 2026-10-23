@@ -21,13 +21,13 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.fundamentals import ParameterizedAngle
-    from graphix.instruction import InstructionType
+    from graphix.instruction import InstructionTypeWithoutM
 
 
 @dataclass(frozen=True)
 class InstructionTestCase:
     name: str
-    instruction: Callable[[Generator], InstructionType]
+    instruction: Callable[[Generator], InstructionTypeWithoutM]
 
 
 INSTRUCTION_TEST_CASES: tuple[InstructionTestCase, ...] = (

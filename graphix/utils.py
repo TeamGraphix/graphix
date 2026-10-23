@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -34,8 +35,15 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
         msg = f"{cls.__name__} must have a tag attribute named kind."
         raise TypeError(msg)
 
+    module = sys.modules.get(cls.__module__)
+    # Patch in a self-reference: while __init_subclass__ runs, `cls` has not
+    # yet been bound to its name in the module namespace, so any field whose
+    # annotation refers back to the class being defined (e.g. CONDINSTR)
+    # would otherwise fail to resolve.
+    globalns = {**getattr(module, "__dict__", {}), cls.__name__: cls}
+
     # Type annotation to work around a regression in mypy 1.17, see https://github.com/python/mypy/issues/19458
-    ann: Any | None = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
+    ann: Any | None = inspect.get_annotations(cls, eval_str=True, locals=scope, globals=globalns).get("kind")
     if ann is None:
         msg = "kind must be annotated."
         raise TypeError(msg)

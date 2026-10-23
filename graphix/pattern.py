@@ -26,12 +26,14 @@ from typing_extensions import override
 from graphix import command, optimization
 from graphix.command import CommandKind, Node
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Plane, Sign
+from graphix.instruction import Instruction
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, toggle_outcome
 from graphix.parameter import InplaceParameterizable
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.sim import DensityMatrix, MBQCTensorNet, Statevector
+from graphix.sim.base_backend import NodeIndex
 from graphix.simulator import Simulable
 from graphix.space_minimization import pattern_max_space
 from graphix.states import BasicStates
@@ -51,6 +53,7 @@ if TYPE_CHECKING:
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.space_minimization import SpaceMinimizationHeuristic
     from graphix.states import State
+    from graphix.transpiler import Circuit
     from graphix.visualization import DrawKwargs
 
     K = TypeVar("K")
@@ -476,8 +479,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         Examples
         --------
         >>> from graphix import Circuit
-        >>> circuit = Circuit(1)
-        >>> circuit.h(0)
+        >>> circuit = Circuit(1).h(0)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_ascii()
         'X(1,{0}) M(0,0) E(0,1) N(1)'
@@ -488,8 +490,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         'M(0,0)'
         >>> pattern.to_ascii(target={CommandKind.X, CommandKind.Z})
         'X(1,{0})'
-        >>> circuit = Circuit(3)
-        >>> circuit.ccx(0, 1, 2)
+        >>> circuit = Circuit(3).ccx(0, 1, 2)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_ascii(limit=5)
         'X(24,{21}) Z(24,{20}) X(32,{31}) Z(32,{28})...(98 more commands)'
@@ -521,8 +522,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         Examples
         --------
         >>> from graphix import Circuit
-        >>> circuit = Circuit(1)
-        >>> circuit.h(0)
+        >>> circuit = Circuit(1).h(0)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_latex()
         '\\(X_{1}^{0}\\,M_{0}^{0}\\,E_{0,1}\\,N_{1}\\)'
@@ -557,8 +557,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         Examples
         --------
         >>> from graphix import Circuit
-        >>> circuit = Circuit(1)
-        >>> circuit.h(0)
+        >>> circuit = Circuit(1).h(0)
         >>> pattern = circuit.transpile().pattern
         >>> pattern.to_unicode()
         'X₁⁰ M₀(0) E₀₋₁ N₁'
@@ -1498,6 +1497,109 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         """
         with Path(filename).with_suffix(".qasm").open("w", encoding="utf-8") as file:
             file.writelines(pattern_to_qasm3_lines(self, input_state=input_state))
+
+    def to_circuit(self) -> Circuit:
+        """Convert pattern to circuit.
+
+        Returns
+        -------
+        Circuit
+            Quantum circuit represented as a sequence of instructions.
+
+        Notes
+        -----
+        This method returns a circuit with classical control flow, where Pauli corrections are represented
+        as conditional instructions :class:`graphix.instruction.CONDINSTR` and :math:`N` commands as ancilla
+        qubits.
+
+        To extract a unitary circuit from a pattern, see :meth:`OpenGraph.to_circuit`.
+        """
+        from graphix import Circuit  # noqa: PLC0415 # Avoid circular imports
+
+        width = len(self.input_nodes)
+        all_nodes = [*self.input_nodes, *(cmd.node for cmd in self.__seq if cmd.kind == CommandKind.N)]
+        ancillas = len(all_nodes) - width
+        node_idx = NodeIndex()  # Mapping nodes to qubits
+        node_idx.extend(all_nodes)
+        circuit = Circuit(width, ancillas=ancillas)
+        ancilla_state: State | None = None
+
+        for cmd in self.__seq:
+            match cmd.kind:
+                case CommandKind.N:
+                    if ancilla_state is None:
+                        ancilla_state = cmd.state
+                    elif ancilla_state != cmd.state:
+                        raise NotImplementedError(
+                            f"Pattern to circuit conversion is only possible if all N commands have the same state. {ancilla_state} and {cmd.state} were found."
+                        )
+                case CommandKind.E:
+                    q0 = node_idx.index(cmd.nodes[0])
+                    q1 = node_idx.index(cmd.nodes[1])
+                    circuit.cz(q0, q1)
+                case CommandKind.M:
+                    qubit = node_idx.index(cmd.node)
+                    if cmd.s_domain:
+                        circuit.condinstr((Instruction.X(qubit),), {node_idx.index(node) for node in cmd.s_domain})
+                    if cmd.t_domain:
+                        circuit.condinstr((Instruction.Z(qubit),), {node_idx.index(node) for node in cmd.t_domain})
+
+                    meas = cmd.measurement.to_pauli_or_none()
+                    if meas is not None and meas.sign == Sign.PLUS:
+                        # Instruction.M can only handle positive axes (X,Y,Z)
+                        circuit.m(qubit, meas.axis)
+                    else:
+                        bloch = cmd.measurement.to_bloch()
+                        circuit.r(qubit, bloch.plane.orth, Sign.plus_if(bloch.plane == Plane.YZ) * bloch.angle)
+                        circuit.m(qubit, bloch.plane.cos)
+                case CommandKind.X | CommandKind.Z:
+                    qubit = node_idx.index(cmd.node)
+                    domain = {node_idx.index(node) for node in cmd.domain}
+                    if cmd.kind == CommandKind.X:
+                        circuit.condinstr((Instruction.X(qubit),), domain)
+                    else:
+                        circuit.condinstr((Instruction.Z(qubit),), domain)
+                case CommandKind.C:
+                    qubit = node_idx.index(cmd.node)
+                    for clifford_str in cmd.clifford.qasm3:
+                        match clifford_str:
+                            case "id":
+                                circuit.i(qubit)
+                            case "x":
+                                circuit.x(qubit)
+                            case "y":
+                                circuit.y(qubit)
+                            case "z":
+                                circuit.z(qubit)
+                            case "s":
+                                circuit.s(qubit)
+                            case "sdg":
+                                circuit.sdg(qubit)
+                            case "h":
+                                circuit.h(qubit)
+                            case _:
+                                raise RuntimeError("Invalid Clifford decomposition.")
+
+        # The following code adds SWAP gates so that qubits are in the same
+        # order as the output nodes.
+
+        sorted_qubits = (node_idx.index(node) for node in self.output_nodes)
+        sorted_idx = NodeIndex()
+        sorted_idx.extend(sorted_qubits)
+
+        active_qubit_idx = 0
+        for qubit in range(circuit.nqubit):
+            if qubit in circuit.active_qubits:
+                idx = sorted_idx.index(qubit)
+                if active_qubit_idx != idx:
+                    circuit.swap(qubit, sorted_idx[active_qubit_idx])
+                    sorted_idx.swap(active_qubit_idx, idx)
+                active_qubit_idx += 1
+
+        if ancilla_state is not None:
+            circuit.ancilla_state = ancilla_state
+
+        return circuit
 
     def is_parameterized(self) -> bool:
         """
