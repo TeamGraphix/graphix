@@ -31,6 +31,7 @@ from graphix.sim.base_backend import DenseStateBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import Statevector, StatevectorBackend
 from graphix.states import BasicStates
+from graphix.utils import extract_qubits
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -228,154 +229,163 @@ class Circuit(InplaceParameterizable):
         """
         return self.add(Instruction.CNOT(control=control, target=target))
 
-    def swap(self, qubit1: int, qubit2: int) -> Self:
+    @overload
+    def swap(self, targets: tuple[int, int]) -> Self: ...
+
+    @overload
+    def swap(self, target1: int, target2: int, /) -> Self: ...
+
+    def swap(self, targets: tuple[int, int] | int, *others: int) -> Self:
         """Apply a SWAP gate.
 
         See :class:`~graphix.instruction.SWAP` for more information.
 
+        Notes
+        -----
+        This method can be called either with a single ``targets`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
         Parameters
         ----------
-        qubit1 : int
-            first qubit to be swapped
-        qubit2 : int
-            second qubit to be swapped
+        targets : tuple[int, int]
+            Indices of the two target qubits.
         """
-        return self.add(Instruction.SWAP(targets=(qubit1, qubit2)))
+        target1, target2 = extract_qubits((targets, others), (0, 0))
+        return self.add(Instruction.SWAP(targets=(target1, target2)))
 
-    def cz(self, qubit1: int, qubit2: int) -> Self:
+    def cz(self, control: int, target: int) -> Self:
         """Apply a CZ gate.
 
         Parameters
         ----------
-        qubit1 : int
+        control : int
             control qubit
-        qubit2 : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.CZ(targets=(qubit1, qubit2)))
+        return self.add(Instruction.CZ(control, target))
 
-    def h(self, qubit: int) -> Self:
+    def h(self, target: int) -> Self:
         """Apply a Hadamard gate.
 
         See :class:`~graphix.instruction.H` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.H(target=qubit))
+        return self.add(Instruction.H(target=target))
 
-    def s(self, qubit: int) -> Self:
+    def s(self, target: int) -> Self:
         """Apply an S gate.
 
         See :class:`~graphix.instruction.S` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.S(target=qubit))
+        return self.add(Instruction.S(target=target))
 
-    def x(self, qubit: int) -> Self:
+    def x(self, target: int) -> Self:
         """Apply a Pauli X gate.
 
         See :class:`~graphix.instruction.X` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.X(target=qubit))
+        return self.add(Instruction.X(target=target))
 
-    def y(self, qubit: int) -> Self:
+    def y(self, target: int) -> Self:
         """Apply a Pauli Y gate.
 
         See :class:`~graphix.instruction.Y` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.Y(target=qubit))
+        return self.add(Instruction.Y(target=target))
 
-    def z(self, qubit: int) -> Self:
+    def z(self, target: int) -> Self:
         """Apply a Pauli Z gate.
 
         See :class:`~graphix.instruction.Z` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.Z(target=qubit))
+        return self.add(Instruction.Z(target=target))
 
-    def rx(self, qubit: int, angle: ParameterizedAngle) -> Self:
+    def rx(self, target: int, angle: ParameterizedAngle) -> Self:
         """Apply an X rotation gate.
 
         See :class:`~graphix.instruction.RX` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        return self.add(Instruction.RX(target=qubit, angle=angle))
+        return self.add(Instruction.RX(target=target, angle=angle))
 
-    def ry(self, qubit: int, angle: ParameterizedAngle) -> Self:
+    def ry(self, target: int, angle: ParameterizedAngle) -> Self:
         """Apply a Y rotation gate.
 
         See :class:`~graphix.instruction.RY` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             angle in units of π
         """
-        return self.add(Instruction.RY(target=qubit, angle=angle))
+        return self.add(Instruction.RY(target=target, angle=angle))
 
-    def rz(self, qubit: int, angle: ParameterizedAngle) -> Self:
+    def rz(self, target: int, angle: ParameterizedAngle) -> Self:
         """Apply a Z rotation gate.
 
         See :class:`~graphix.instruction.RZ` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        return self.add(Instruction.RZ(target=qubit, angle=angle))
+        return self.add(Instruction.RZ(target=target, angle=angle))
 
-    def j(self, qubit: int, angle: ParameterizedAngle) -> Self:
+    def j(self, target: int, angle: ParameterizedAngle) -> Self:
         """Apply a J rotation gate.
 
         See :class:`~graphix.instruction.J` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        return self.add(Instruction.J(target=qubit, angle=angle))
+        return self.add(Instruction.J(target=target, angle=angle))
 
-    def r(self, qubit: int, axis: Axis, angle: ParameterizedAngle) -> Self:
+    def r(self, target: int, axis: Axis, angle: ParameterizedAngle) -> Self:
         """Apply a rotation gate on the given axis.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         axis : Axis
             rotation axis
@@ -384,11 +394,11 @@ class Circuit(InplaceParameterizable):
         """
         match axis:
             case Axis.X:
-                self.rx(qubit, angle)
+                self.rx(target, angle)
             case Axis.Y:
-                self.ry(qubit, angle)
+                self.ry(target, angle)
             case Axis.Z:
-                self.rz(qubit, angle)
+                self.rz(target, angle)
             case _:
                 assert_never(axis)
         return self
@@ -417,35 +427,44 @@ class Circuit(InplaceParameterizable):
         """
         return self.add(Instruction.RZZ(control=control, target=target, angle=angle))
 
-    def ccx(self, control1: int, control2: int, target: int) -> Self:
+    @overload
+    def ccx(self, controls: tuple[int, int], target: int) -> Self: ...
+
+    @overload
+    def ccx(self, control1: int, control2: int, target: int, /) -> Self: ...
+
+    def ccx(self, controls: tuple[int, int] | int, target: int, *others: int) -> Self:
         r"""Apply a CCX (Toffoli) gate.
 
         See :class:`~graphix.instruction.CCX` for more information.
 
+        Notes
+        -----
+        This method can be called either with a single ``controls`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
         Parameters
         ----------
-        control1 : int
-            first control qubit
-        control2 : int
-            second control qubit
+        controls : tuple[int, int]
+            Indices of the two control qubits.
         target : int
-            target qubit
+            Index of the target qubit.
         """
+        control1, control2, target = extract_qubits((controls, target, others), (0, 0, 0))
         return self.add(Instruction.CCX(controls=(control1, control2), target=target))
 
-    def i(self, qubit: int) -> Self:
+    def i(self, target: int) -> Self:
         """Apply an identity (teleportation) gate.
 
         See :class:`~graphix.instruction.I` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.I(target=qubit))
+        return self.add(Instruction.I(target=target))
 
-    def m(self, qubit: int, axis: Axis) -> Self:
+    def m(self, target: int, axis: Axis) -> Self:
         """Measure a quantum qubit.
 
         The measured qubit cannot be used afterwards.
@@ -454,72 +473,72 @@ class Circuit(InplaceParameterizable):
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         axis : Axis
             measurement basis
         """
-        return self.add(Instruction.M(target=qubit, axis=axis))
+        return self.add(Instruction.M(target=target, axis=axis))
 
-    def sdg(self, qubit: int) -> Self:
+    def sdg(self, target: int) -> Self:
         """Apply an SDG gate.
 
         See :class:`~graphix.instruction.SDG` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.SDG(target=qubit))
+        return self.add(Instruction.SDG(target=target))
 
-    def t(self, qubit: int) -> Self:
+    def t(self, target: int) -> Self:
         """Apply a T gate.
 
         See :class:`~graphix.instruction.T` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.T(target=qubit))
+        return self.add(Instruction.T(target=target))
 
-    def tdg(self, qubit: int) -> Self:
+    def tdg(self, target: int) -> Self:
         """Apply a TDG gate.
 
         See :class:`~graphix.instruction.TDG` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.TDG(target=qubit))
+        return self.add(Instruction.TDG(target=target))
 
-    def sx(self, qubit: int) -> Self:
+    def sx(self, target: int) -> Self:
         """Apply an SX gate.
 
         See :class:`~graphix.instruction.SX` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.SX(target=qubit))
+        return self.add(Instruction.SX(target=target))
 
-    def sxdg(self, qubit: int) -> Self:
+    def sxdg(self, target: int) -> Self:
         """Apply an SXDG gate.
 
         See :class:`~graphix.instruction.SXDG` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         """
-        return self.add(Instruction.SXDG(target=qubit))
+        return self.add(Instruction.SXDG(target=target))
 
     def cy(self, control: int, target: int) -> Self:
         """Apply a Controlled-Y gate.
@@ -535,28 +554,28 @@ class Circuit(InplaceParameterizable):
         """
         return self.add(Instruction.CY(control=control, target=target))
 
-    def p(self, qubit: int, angle: ParameterizedAngle) -> Self:
+    def p(self, target: int, angle: ParameterizedAngle) -> Self:
         """Apply a Phase rotation gate.
 
         See :class:`~graphix.instruction.P` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         angle : ParameterizedAngle
             rotation angle in units of π
         """
-        return self.add(Instruction.P(target=qubit, angle=angle))
+        return self.add(Instruction.P(target=target, angle=angle))
 
-    def u(self, qubit: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> Self:
+    def u(self, target: int, theta: ParameterizedAngle, phi: ParameterizedAngle, lambda_: ParameterizedAngle) -> Self:
         """Apply a universal single-qubit gate.
 
         See :class:`~graphix.instruction.U` for more information.
 
         Parameters
         ----------
-        qubit : int
+        target : int
             target qubit
         theta : ParameterizedAngle
             rotation angle in units of π
@@ -565,7 +584,7 @@ class Circuit(InplaceParameterizable):
         lambda_ : ParameterizedAngle
             rotation angle in units of π
         """
-        return self.add(Instruction.U(target=qubit, theta=theta, phi=phi, lambda_=lambda_))
+        return self.add(Instruction.U(target=target, theta=theta, phi=phi, lambda_=lambda_))
 
     def cj(self, control: int, target: int, angle: ParameterizedAngle) -> Self:
         """Apply a controlled-J rotation gate.
@@ -704,21 +723,30 @@ class Circuit(InplaceParameterizable):
             Instruction.CU(control=control, target=target, theta=theta, phi=phi, lambda_=lambda_, gamma=gamma)
         )
 
-    def cswap(self, control: int, qubit1: int, qubit2: int) -> Self:
+    @overload
+    def cswap(self, control: int, targets: tuple[int, int]) -> Self: ...
+
+    @overload
+    def cswap(self, control: int, target1: int, target2: int, /) -> Self: ...
+
+    def cswap(self, control: int, targets: tuple[int, int] | int, *others: int) -> Self:
         """Apply a CSWAP gate.
 
         See :class:`~graphix.instruction.CSWAP` for more information.
 
+        Notes
+        -----
+        This method can be called either with a single ``targets`` argument containing a pair of qubits, or with the two qubits passed as separate arguments.
+
         Parameters
         ----------
         control : int
-            control qubit
-        qubit1 : int
-            first qubit to be swapped
-        qubit2 : int
-            second qubit to be swapped
+            Index of the control qubit.
+        targets : tuple[int, int]
+            Indices of the two target qubits.
         """
-        return self.add(Instruction.CSWAP(control=control, targets=(qubit1, qubit2)))
+        target1, target2 = extract_qubits((targets, others), (0, 0))
+        return self.add(Instruction.CSWAP(control=control, targets=(target1, target2)))
 
     def gphase(self, angle: ParameterizedAngle) -> Self:
         r"""Apply a global phase.
@@ -804,8 +832,7 @@ class Circuit(InplaceParameterizable):
                     n_nodes += 1
                     continue
                 case InstructionKind.CZ:
-                    t0, t1 = instr.targets
-                    i0, i1 = indices[t0], indices[t1]
+                    i0, i1 = indices[instr.control], indices[instr.target]
                     if i0 is None or i1 is None:
                         raise RuntimeError("Ill-formed circuit")
                     # If edge exists, remove it; else, add it
@@ -936,7 +963,6 @@ class Circuit(InplaceParameterizable):
 
         # Modifies in place `_backend`, `results`, `classical_measures`
         simulate_instructions(self.instruction, _backend, rng, results, classical_measures, stacklevel=stacklevel + 1)
-
         return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Circuit:
@@ -1215,7 +1241,7 @@ def decompose_cnot(instr: Instruction.CNOT) -> Iterator[Instruction.H | Instruct
 
     """
     yield Instruction.H(instr.target)
-    yield Instruction.CZ((instr.control, instr.target))
+    yield Instruction.CZ(instr.control, instr.target)
     yield Instruction.H(instr.target)
 
 
@@ -1415,7 +1441,7 @@ def insert_control(
             case InstructionKind.Y:
                 yield Instruction.CY(control=control, target=instr.target)
             case InstructionKind.Z:
-                yield Instruction.CZ((control, instr.target))
+                yield Instruction.CZ(control=control, target=instr.target)
             case InstructionKind.H:
                 yield Instruction.CJ(control=control, target=instr.target, angle=0)
             case InstructionKind.J:
@@ -1439,10 +1465,9 @@ def insert_control(
                 )
             case InstructionKind.CZ:
                 # Controlled-(H(1), CNOT(control=0, target=1), H(1))
-                q0, q1 = instr.targets
-                yield Instruction.CJ(control=control, target=q1, angle=0)
-                yield Instruction.CCX(target=q1, controls=(control, q0))
-                yield Instruction.CJ(control=control, target=q1, angle=0)
+                yield Instruction.CJ(control=control, target=instr.target, angle=0)
+                yield Instruction.CCX(target=instr.target, controls=(control, instr.control))
+                yield Instruction.CJ(control=control, target=instr.target, angle=0)
             case InstructionKind.CU:
                 yield from insert_control(control, decompose_cu(instr))
             case InstructionKind.CNOT:
@@ -1910,8 +1935,9 @@ def simulate_instructions(
             case InstructionKind.CY:
                 evolve(Ops.CY, [instr.control, instr.target])
             case InstructionKind.CZ:
-                u, v = instr.targets
-                backend.state.entangle((backend.node_index.index(u), backend.node_index.index(v)))
+                backend.state.entangle(
+                    (backend.node_index.index(instr.control), backend.node_index.index(instr.target))
+                )
             case InstructionKind.I:
                 pass
             case InstructionKind.S:

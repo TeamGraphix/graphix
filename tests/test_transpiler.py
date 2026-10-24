@@ -395,7 +395,7 @@ class TestTranspilerUnitGates:
 
     def test_cnot_cz(self, fx_rng: Generator) -> None:
         """Test regression about output node reordering."""
-        circuit = Circuit(width=3, instr=[instruction.CNOT(0, 1), instruction.CZ((0, 1))])
+        circuit = Circuit(width=3, instr=[instruction.CNOT(0, 1), instruction.CZ(0, 1)])
         state = circuit.simulate(rng=fx_rng).state
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate(rng=fx_rng)
@@ -496,13 +496,13 @@ class TestCircuits:
     @pytest.mark.parametrize(
         ("instruction", "msg"),
         [
-            (instruction.CCX(0, (1, 1)), r"Control qubits cannot be the same. Qubit index: 1"),
-            (instruction.CCX(0, (0, 1)), r"Target and control-0 qubits cannot be the same. Qubit index: 0"),
+            (instruction.CCX(1, 1, 0), r"Control qubits cannot be the same. Qubit index: 1"),
+            (instruction.CCX(0, 1, 0), r"Target and control-0 qubits cannot be the same. Qubit index: 0"),
             (instruction.RZZ(2, 2, 0.3), r"Target and control qubits cannot be the same. Qubit index: 2"),
-            (instruction.CZ((1, 1)), r"Target qubits cannot be the same. Qubit index: 1"),
+            (instruction.CZ(1, 1), r"Target and control qubits cannot be the same. Qubit index: 1"),
             (instruction.CNOT(0, 0), r"Target and control qubits cannot be the same. Qubit index: 0"),
-            (instruction.SWAP((1, 1)), r"Target qubits cannot be the same. Qubit index: 1"),
-            (instruction.CONDINSTR((instruction.SWAP((1, 1)),)), r"Target qubits cannot be the same. Qubit index: 1"),
+            (instruction.SWAP(1, 1), r"Target qubits cannot be the same. Qubit index: 1"),
+            (instruction.CONDINSTR((instruction.SWAP(1, 1),)), r"Target qubits cannot be the same. Qubit index: 1"),
         ],
     )
     def test_repeated_qubits(self, instruction: InstructionType, msg: str) -> None:
@@ -512,7 +512,7 @@ class TestCircuits:
 
     def test_simple(self) -> None:
         rng = np.random.default_rng(420)
-        circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
+        circuit = Circuit(3, instr=[instruction.CCX(0, 1, 2)])
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
         input_state = rand_state_vector(3, rng=rng)
@@ -754,8 +754,8 @@ class TestCircuits:
         qc_ref.extend(
             [
                 Instruction.CNOT(control=0, target=1),
-                Instruction.SWAP((0, 1)),
-                Instruction.CZ((0, 1)),
+                Instruction.SWAP(0, 1),
+                Instruction.CZ(0, 1),
                 Instruction.H(0),
                 Instruction.S(0),
                 Instruction.X(0),

@@ -28,19 +28,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #596, #597: Pattern's `n_node` property updated after Pauli removal.
 
-- #595: Fixed the export of circuit measurements and `RZZ` gates to OpenQASM. `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
+- #598, #608:
+  - The order of the attributes of the controlled instructions has been changed to put the control qubits first, to ensure consistency between all controlled instructions, with the matrix description of the gates, and with the `Circuit` methods that add instructions to the circuit.
+  - `CZ` is now a `ControlledSingleTargetInstruction` and takes a `control` and a `target` instead of a pair of `targets`.
+  - Allow pairs of qubits and nodes to be passed as tuples or separate arguments. This applies to:
+    - `Circuit` methods: `swap`, `cswap`, `ccx`.
+    - `Instruction` constructors: `SWAP`, `CSWAP`, `CCX`.
+    - `E` command in patterns.
+  - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
 
-- #592:
-  - Added the following gates specified in the OpenQASM 3.0 specification: SDG, T, TDG, SX, SXDG, CY, P, U, CP, CRX, CRY, CRZ, CU, CSWAP, and GPHASE.
-  - Subsumed `Circuit.transpile_measurements_to_z_axis`, `Circuit.transpile_j_to_rzh` and `Circuit.transpile_rzz` by `Circuit.transpile_to_qasm_gates`
-
-### Changed
+## Changed
 
 - #587;
   - Factorized instruction-validity checks in method `Circuit.add` via an instruction visitor.
   - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
 
-  
+- #592:
+  - Added the following gates specified in the OpenQASM 3.0 specification: SDG, T, TDG, SX, SXDG, CY, P, U, CP, CRX, CRY, CRZ, CU, CSWAP, and GPHASE.
+  - Subsumed `Circuit.transpile_measurements_to_z_axis`, `Circuit.transpile_j_to_rzh` and `Circuit.transpile_rzz` by `Circuit.transpile_to_qasm_gates`
+
+- #595: Fixed the export of circuit measurements and `RZZ` gates to OpenQASM. `RZZ` gates are no longer incorrectly exported as `crz`; transpilation to `CNOT`-`RZ`-`CNOT` is provided.
+
 ## [0.4] - 2026-08-18
 
 ### Added

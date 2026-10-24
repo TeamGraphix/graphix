@@ -71,3 +71,13 @@ class EnumReprMixin:
             msg = "EnumMixin can only be used with Enum classes."
             raise TypeError(msg)
         return f"{self.__class__.__name__}.{self.name}"
+
+
+def repr_pair(pair: tuple[int, int]) -> str:
+    """
+    Return the representation string of a pair of integers without parentheses.
+
+    This is used for pretty-printing commands and instructions with pairs where parentheses are optional.
+    """
+    u, v = pair
+    return f"{u}, {v}"

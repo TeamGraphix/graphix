@@ -1205,8 +1205,8 @@ class TestPattern:
             (Pattern(), Circuit(0)),
             (Pattern(input_nodes=[0, 1]), Circuit(2)),
             (Pattern(input_nodes=[0, 1], cmds=[N(2)]), Circuit(2, ancillas=1)),
-            (Pattern(input_nodes=[0, 1], cmds=[N(2), E((0, 1))]), Circuit(2, [Instruction.CZ((0, 1))], ancillas=1)),
-            (Pattern(input_nodes=[6, 3], cmds=[N(2), E((6, 3))]), Circuit(2, [Instruction.CZ((0, 1))], ancillas=1)),
+            (Pattern(input_nodes=[0, 1], cmds=[N(2), E(0, 1)]), Circuit(2, [Instruction.CZ(0, 1)], ancillas=1)),
+            (Pattern(input_nodes=[6, 3], cmds=[N(2), E(6, 3)]), Circuit(2, [Instruction.CZ(0, 1)], ancillas=1)),
             (
                 Pattern(
                     input_nodes=[0],
@@ -1217,13 +1217,13 @@ class TestPattern:
                         C(1, Clifford.X),
                     ],
                 ),
-                Circuit(1, [Instruction.CZ((0, 1)), Instruction.H(0), Instruction.X(1)], ancillas=1),
+                Circuit(1, [Instruction.CZ(0, 1), Instruction.H(0), Instruction.X(1)], ancillas=1),
             ),
             (
-                Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Measurement.XY(0)), X(1, {0})]),
+                Pattern(input_nodes=[0], cmds=[N(1), E(0, 1), M(0, Measurement.XY(0)), X(1, {0})]),
                 Circuit(
                     1,
-                    [Instruction.CZ((0, 1)), Instruction.M(0, Axis.X), Instruction.CONDINSTR((Instruction.X(1),), {0})],
+                    [Instruction.CZ(0, 1), Instruction.M(0, Axis.X), Instruction.CONDINSTR((Instruction.X(1),), {0})],
                     ancillas=1,
                 ),
             ),
