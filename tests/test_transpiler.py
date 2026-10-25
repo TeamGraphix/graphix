@@ -709,7 +709,7 @@ class TestCircuits:
 
         assert state_ref.isclose(state_test)
 
-    def test_chained_instructions(self, fx_rng: Generator) -> None:
+    def test_chained_instructions(self) -> None:
         angle = 0.3
         axis = Axis.X  # We measure the ancilla along X, circuit is deterministic
         qc_test = (
@@ -736,6 +736,7 @@ class TestCircuits:
             .sx(0)
             .sxdg(0)
             .cy(0, 1)
+            .ch(0, 1)
             .p(0, angle)
             .u(0, angle, angle, angle)
             .cj(0, 1, angle)
@@ -775,6 +776,7 @@ class TestCircuits:
                 Instruction.SX(0),
                 Instruction.SXDG(0),
                 Instruction.CY(control=0, target=1),
+                Instruction.CH(0, 1),
                 Instruction.P(0, angle),
                 Instruction.U(0, angle, angle, angle),
                 Instruction.CJ(control=0, target=1, angle=angle),
@@ -790,11 +792,14 @@ class TestCircuits:
                 Instruction.CONDINSTR((Instruction.H(0), Instruction.X(0)), {3}),
             ]
         )
-
-        input_state = rand_state_vector(3, rng=fx_rng)
-        state_ref = qc_ref.simulate(rng=fx_rng, input_state=input_state).state
-        state_test = qc_test.simulate(rng=fx_rng, input_state=input_state).state
-        assert state_ref.isclose(state_test)
+        print(
+            {
+                key: (vars(qc_ref).get(key), vars(qc_test).get(key))
+                for key in vars(qc_ref).keys() | vars(qc_test).keys()
+                if vars(qc_ref).get(key) != vars(qc_test).get(key)
+            }
+        )
+        assert qc_ref == qc_test
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -1010,6 +1015,11 @@ def test_cr() -> None:
         Instruction.CRY(control=1, target=0, angle=ANGLE_PI / 4),
         Instruction.CRZ(control=0, target=1, angle=ANGLE_PI / 8),
     ]
+
+
+def test_condinstr_to_jcz() -> None:
+    with pytest.raises(NotImplementedError):
+        next(instruction_to_jcz(Instruction.CONDINSTR((Instruction.H(0),), {1})))
 
 
 def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWithoutM]:

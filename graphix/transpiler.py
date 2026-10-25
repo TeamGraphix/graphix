@@ -145,9 +145,6 @@ class Circuit(InplaceParameterizable):
         Number of ancilla qubits.
     ancilla_state : State
         Initial state of the ancilla qubits.
-    active_qubits : set of int
-        Indices of qubits currently active in the circuit, including logical
-        and ancilla qubits.
     """
 
     instruction: list[InstructionType]
@@ -184,10 +181,16 @@ class Circuit(InplaceParameterizable):
         self.ancillas = ancillas
         self.ancilla_state = ancilla_state
         self.instruction = []
-        self.active_qubits = set(range(width + ancillas))
         self._visitor = _InstructionValidatorVisitor(width + ancillas)
         if instr is not None:
             self.extend(instr)
+
+    def _tuple(self) -> tuple[int, int, State, list[InstructionType]]:
+        return (self.width, self.ancillas, self.ancilla_state, self.instruction)
+
+    def __eq__(self, other: object, /) -> bool:
+        """Check equality between two circuits."""
+        return isinstance(other, Circuit) and self._tuple() == other._tuple()
 
     @property
     def nqubit(self) -> int:
@@ -201,7 +204,6 @@ class Circuit(InplaceParameterizable):
         """Add an instruction to the circuit."""
         self.instruction.append(instr.visit(self._visitor))
         if instr.kind == InstructionKind.M:
-            self.active_qubits.remove(instr.target)
             self._visitor.output_kind[instr.target] = OutputKind.Bit
         return self
 
