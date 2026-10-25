@@ -14,6 +14,7 @@ from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import InstructionKind
 from graphix.qasm3_exporter import circuit_to_qasm3
 from graphix.random_objects import rand_circuit
+from graphix.states import BasicStates
 from tests.test_instruction import INSTRUCTION_TEST_CASES
 
 # `graphix-qasm-parser` depends on the `graphix` package, so we cannot have
@@ -40,12 +41,13 @@ except ImportError:
         sys.exit(1)
 
 if TYPE_CHECKING:
+    from graphix.states import PlanarState
     from tests.test_instruction import InstructionTestCase
 
 
 def check_round_trip(circuit: Circuit) -> None:
     qasm = circuit_to_qasm3(circuit)
-    check_circuit = circuit.transpile_to_qasm_gates()
+    check_circuit = circuit.transpile_to_qasm_gates().transpile_ancilla_state(BasicStates.ZERO)
     parser = OpenQASMParser()
     parsed_circuit = parser.parse_str(qasm)
     for parsed_instr, instr in zip(parsed_circuit.instruction, check_circuit.instruction, strict=True):
@@ -88,6 +90,11 @@ def test_j_to_qasm3_failure() -> None:
         circuit_to_qasm3(circuit, transpile=False)
 
 
+def test_measurement() -> None:
+    circuit = Circuit(1, instr=[Instruction.M(target=0, axis=Axis.Z)])
+    check_round_trip(circuit)
+
+
 def test_cj_to_qasm3() -> None:
     circuit = Circuit(2, instr=[Instruction.CJ(control=0, target=1, angle=ANGLE_PI / 4)])
     qasm = circuit_to_qasm3(circuit)
@@ -113,6 +120,43 @@ def test_gphase_to_qasm3() -> None:
     assert parsed_circuit.instruction == [instr]
 
 
-def test_measurement() -> None:
-    circuit = Circuit(1, instr=[Instruction.M(target=0, axis=Axis.Z)])
+def test_condinstr_to_qasm3() -> None:
+    circuit = Circuit(
+        3,
+        instr=[
+            Instruction.M(2, Axis.Z),
+            Instruction.CONDINSTR((Instruction.X(0),), {2}),
+            Instruction.M(0, Axis.Z),
+            Instruction.M(3, Axis.X),
+            Instruction.CONDINSTR(
+                (
+                    Instruction.X(1),
+                    Instruction.Z(1),
+                ),
+                {0, 2, 3},
+            ),
+        ],
+        ancillas=1,
+    )
+    check_round_trip(circuit)
+
+
+@pytest.mark.parametrize(
+    "ancilla_state",
+    [
+        BasicStates.PLUS,
+        BasicStates.MINUS,
+        BasicStates.ZERO,
+        BasicStates.ONE,
+        BasicStates.PLUS_I,
+        BasicStates.MINUS_I,
+    ],
+)
+def test_to_qasm3_ancillas(ancilla_state: PlanarState) -> None:
+    circuit = Circuit(
+        1,
+        instr=[Instruction.RX(0, 0.3), Instruction.RY(1, 0.4), Instruction.RZ(2, 0.35)],
+        ancillas=2,
+        ancilla_state=ancilla_state,
+    )
     check_round_trip(circuit)
