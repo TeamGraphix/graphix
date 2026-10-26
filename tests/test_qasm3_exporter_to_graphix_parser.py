@@ -125,15 +125,15 @@ def test_condinstr_to_qasm3() -> None:
         3,
         instr=[
             Instruction.M(2, Axis.Z),
-            Instruction.CONDINSTR((Instruction.X(0),), {2}),
+            Instruction.CONDINSTR({2}, (Instruction.X(0),)),
             Instruction.M(0, Axis.Z),
             Instruction.M(3, Axis.X),
             Instruction.CONDINSTR(
+                {0, 2, 3},
                 (
                     Instruction.X(1),
                     Instruction.Z(1),
                 ),
-                {0, 2, 3},
             ),
         ],
         ancillas=1,

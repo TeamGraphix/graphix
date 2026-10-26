@@ -760,15 +760,15 @@ class Circuit(InplaceParameterizable):
         """
         return self.add(Instruction.GPHASE(angle))
 
-    def condinstr(self, instrs: Iterable[InstructionTypeWithoutM], domain: AbstractSet[int] | None = None) -> Self:
+    def condinstr(self, domain: AbstractSet[int], instrs: Iterable[InstructionTypeWithoutM]) -> Self:
         """Apply a conditional sequence of gates.
 
         Parameters
         ----------
+        domain : AbstractSet[int]
+            Indices of measured qubits whose outcomes determine the condition.
         instrs : Iterable[InstructionTypeWithoutM]
             Sequence of instructions to apply conditionally.
-        domain : AbstractSet[int] or None, optional
-            Indices of measured qubits whose outcomes determine the condition. Defaults to ``None``.
 
         Notes
         -----
@@ -776,8 +776,7 @@ class Circuit(InplaceParameterizable):
 
         .. Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
         """
-        domain_set = set(domain) if domain is not None else set()
-        return self.add(Instruction.CONDINSTR(instructions=tuple(instrs), domain=domain_set))
+        return self.add(Instruction.CONDINSTR(set(domain), tuple(instrs)))
 
     def transpile_to_causalflow(self) -> TranspiledFlow:
         """Transpile a circuit via J-∧z decomposition to a causal flow.
@@ -1499,7 +1498,7 @@ def insert_control(
                 yield Instruction.P(target=control, angle=instr.angle)
             case InstructionKind.CONDINSTR:
                 controlled_instr = insert_control(control, instr.instructions)
-                yield Instruction.CONDINSTR(tuple(controlled_instr), instr.domain)
+                yield Instruction.CONDINSTR(instr.domain, tuple(controlled_instr))
             case _:
                 assert_never(instr.kind)
 

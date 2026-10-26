@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- #626, #635: The `domain` argument of the `X` and `Z` commands is now mandatory. Previously, it defaulted to the empty set, so that `X(1)` silently had no effect; write `X(1, set())` to state this explicitly.
+
 ## [0.4.1] - 2026-10-13
 
 ### Added

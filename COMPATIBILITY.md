@@ -14,6 +14,8 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
     - `ControlledRotationInstruction` (`CP`, `CRX`, `CRY`, `CRZ`, `CJ`).
   - `CZ` is now a `ControlledSingleTargetInstruction` and takes a `control` and a `target` instead of a pair of `targets`.
 
+- #626: The `domain` argument of the `X` and `Z` commands no longer defaults to the empty set. `X(node)` and `Z(node)` must be replaced by `X(node, set())` and `Z(node, set())` (these commands have no effect).
+
 ## [0.4] - 2026-08-18
 
 - #484: J & CZ transpilation.
