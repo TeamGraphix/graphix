@@ -792,13 +792,6 @@ class TestCircuits:
                 Instruction.CONDINSTR((Instruction.H(0), Instruction.X(0)), {3}),
             ]
         )
-        print(
-            {
-                key: (vars(qc_ref).get(key), vars(qc_test).get(key))
-                for key in vars(qc_ref).keys() | vars(qc_test).keys()
-                if vars(qc_ref).get(key) != vars(qc_test).get(key)
-            }
-        )
         assert qc_ref == qc_test
 
 
