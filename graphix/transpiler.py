@@ -1490,6 +1490,17 @@ def insert_control(
                     ),
                 )
             case InstructionKind.CH:
+                # A simpler implementation would be to use the generic
+                # case implemented for S and related gates: `yield
+                # from insert_control(control,
+                # instruction_to_jcz(instr))`. This would result in a
+                # circuit with 30 gates (producing a pattern with 94
+                # nodes after Pauli removal), whereas the current
+                # implementation results in a circuit with 7 gates
+                # (producing a pattern with 78 nodes after Pauli
+                # removal). It would be interesting to investigate
+                # whether some kind of optimization procedure could
+                # transform one circuit into the other.
                 yield from insert_control(
                     control, insert_control(instr.control, instruction_to_jcz(Instruction.H(instr.target)))
                 )
