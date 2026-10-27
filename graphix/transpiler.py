@@ -145,9 +145,6 @@ class Circuit(InplaceParameterizable):
         Number of ancilla qubits.
     ancilla_state : State
         Initial state of the ancilla qubits.
-    active_qubits : set of int
-        Indices of qubits currently active in the circuit, including logical
-        and ancilla qubits.
     """
 
     instruction: list[InstructionType]
@@ -184,10 +181,16 @@ class Circuit(InplaceParameterizable):
         self.ancillas = ancillas
         self.ancilla_state = ancilla_state
         self.instruction = []
-        self.active_qubits = set(range(width + ancillas))
         self._visitor = _InstructionValidatorVisitor(width + ancillas)
         if instr is not None:
             self.extend(instr)
+
+    def _tuple(self) -> tuple[int, int, State, list[InstructionType]]:
+        return (self.width, self.ancillas, self.ancilla_state, self.instruction)
+
+    def __eq__(self, other: object, /) -> bool:
+        """Check equality between two circuits."""
+        return isinstance(other, Circuit) and self._tuple() == other._tuple()
 
     @property
     def nqubit(self) -> int:
@@ -201,7 +204,6 @@ class Circuit(InplaceParameterizable):
         """Add an instruction to the circuit."""
         self.instruction.append(instr.visit(self._visitor))
         if instr.kind == InstructionKind.M:
-            self.active_qubits.remove(instr.target)
             self._visitor.output_kind[instr.target] = OutputKind.Bit
         return self
 
@@ -554,6 +556,20 @@ class Circuit(InplaceParameterizable):
         """
         return self.add(Instruction.CY(control=control, target=target))
 
+    def ch(self, control: int, target: int) -> Self:
+        """Apply a Controlled-H gate.
+
+        See :class:`~graphix.instruction.CH` for more information.
+
+        Parameters
+        ----------
+        control : int
+            control qubit
+        target : int
+            target qubit
+        """
+        return self.add(Instruction.CH(control=control, target=target))
+
     def p(self, target: int, angle: ParameterizedAngle) -> Self:
         """Apply a Phase rotation gate.
 
@@ -812,40 +828,41 @@ class Circuit(InplaceParameterizable):
 
         instructions = circuit.instruction
 
-        for instr in instructions_to_jcz(instructions):
-            match instr.kind:
-                case InstructionKind.M:
-                    target = indices[instr.target]
-                    if target is None:
-                        raise RuntimeError("Ill-formed circuit")
-                    classical_outputs[target] = command.M(target, PauliMeasurement(instr.axis))
-                    indices[instr.target] = None
-                    continue
-                case InstructionKind.J:
-                    target = indices[instr.target]
-                    if target is None:
-                        raise RuntimeError("Ill-formed circuit")
-                    graph.add_edge(target, n_nodes)  # Also adds nodes
-                    measurements[target] = Measurement.XY(normalize_angle(-instr.angle))
-                    indices[instr.target] = n_nodes
-                    x_corrections[target] = {n_nodes}  # X correction on ancilla
-                    n_nodes += 1
-                    continue
-                case InstructionKind.CZ:
-                    i0, i1 = indices[instr.control], indices[instr.target]
-                    if i0 is None or i1 is None:
-                        raise RuntimeError("Ill-formed circuit")
-                    # If edge exists, remove it; else, add it
-                    if graph.has_edge(i0, i1):
-                        graph.remove_edge(i0, i1)
-                    else:
-                        graph.add_edge(i0, i1)
-                    continue
-                case InstructionKind.GPHASE:
-                    # Global phase is currently ignored
-                    pass
-                case _:
-                    assert_never(instr.kind)
+        for instr in instructions:
+            if instr.kind == InstructionKind.M:
+                target = indices[instr.target]
+                if target is None:
+                    raise RuntimeError("Ill-formed circuit")
+                classical_outputs[target] = command.M(target, PauliMeasurement(instr.axis))
+                indices[instr.target] = None
+                continue
+            for decomposed in instruction_to_jcz(instr):
+                match decomposed.kind:
+                    case InstructionKind.J:
+                        target = indices[decomposed.target]
+                        if target is None:
+                            raise RuntimeError("Ill-formed circuit")
+                        graph.add_edge(target, n_nodes)  # Also adds nodes
+                        measurements[target] = Measurement.XY(normalize_angle(-decomposed.angle))
+                        indices[decomposed.target] = n_nodes
+                        x_corrections[target] = {n_nodes}  # X correction on ancilla
+                        n_nodes += 1
+                        continue
+                    case InstructionKind.CZ:
+                        i0, i1 = indices[decomposed.control], indices[decomposed.target]
+                        if i0 is None or i1 is None:
+                            raise RuntimeError("Ill-formed circuit")
+                        # If edge exists, remove it; else, add it
+                        if graph.has_edge(i0, i1):
+                            graph.remove_edge(i0, i1)
+                        else:
+                            graph.add_edge(i0, i1)
+                        continue
+                    case InstructionKind.GPHASE:
+                        # Global phase is currently ignored
+                        pass
+                    case _:
+                        assert_never(decomposed.kind)
         outputs = [i for i in indices if i is not None]
         outputs.extend(classical_outputs.keys())  # Necessary for flow-finding step
         og = OpenGraph(
@@ -1443,7 +1460,7 @@ def insert_control(
             case InstructionKind.Z:
                 yield Instruction.CZ(control=control, target=instr.target)
             case InstructionKind.H:
-                yield Instruction.CJ(control=control, target=instr.target, angle=0)
+                yield Instruction.CH(control=control, target=instr.target)
             case InstructionKind.J:
                 yield Instruction.CJ(control=control, target=instr.target, angle=instr.angle)
             case InstructionKind.P:
@@ -1464,10 +1481,29 @@ def insert_control(
                     gamma=0,
                 )
             case InstructionKind.CZ:
-                # Controlled-(H(1), CNOT(control=0, target=1), H(1))
-                yield Instruction.CJ(control=control, target=instr.target, angle=0)
-                yield Instruction.CCX(target=instr.target, controls=(control, instr.control))
-                yield Instruction.CJ(control=control, target=instr.target, angle=0)
+                yield from insert_control(
+                    control,
+                    (
+                        Instruction.H(instr.target),
+                        Instruction.CNOT(control=instr.control, target=instr.target),
+                        Instruction.H(instr.target),
+                    ),
+                )
+            case InstructionKind.CH:
+                # A simpler implementation would be to use the generic
+                # case implemented for S and related gates:
+                # `yield from insert_control(control, instruction_to_jcz(instr))`.
+                # This would result in a circuit with 30 gates
+                # (producing a pattern with 94 nodes after Pauli
+                # removal), whereas the current implementation results
+                # in a circuit with 7 gates (producing a pattern with
+                # 78 nodes after Pauli removal). It would be
+                # interesting to investigate whether some kind of
+                # optimization procedure could transform one circuit
+                # into the other.
+                yield from insert_control(
+                    control, insert_control(instr.control, instruction_to_jcz(Instruction.H(instr.target)))
+                )
             case InstructionKind.CU:
                 yield from insert_control(control, decompose_cu(instr))
             case InstructionKind.CNOT:
@@ -1494,7 +1530,7 @@ def insert_control(
                 | InstructionKind.CY
                 | InstructionKind.CSWAP
             ):
-                yield from insert_control(control, _without_m(instructions_to_jcz([instr])))
+                yield from insert_control(control, instruction_to_jcz(instr))
             case InstructionKind.GPHASE:
                 yield Instruction.P(target=control, angle=instr.angle)
             case InstructionKind.CONDINSTR:
@@ -1504,9 +1540,9 @@ def insert_control(
                 assert_never(instr.kind)
 
 
-def instructions_to_jcz(
-    instrs: Iterable[InstructionType],
-) -> Iterator[Instruction.J | Instruction.CZ | Instruction.M | Instruction.GPHASE]:
+def instruction_to_jcz(
+    instr: InstructionTypeWithoutM,
+) -> Iterator[Instruction.J | Instruction.CZ | Instruction.GPHASE]:
     """Yield a J-∧z decomposition of the instruction.
 
     Parameters
@@ -1518,84 +1554,104 @@ def instructions_to_jcz(
         the decomposition.
 
     """
+    match instr.kind:
+        case InstructionKind.J | InstructionKind.CZ:
+            yield instr
+        case InstructionKind.I:
+            return
+        case InstructionKind.H:
+            yield Instruction.J(instr.target, 0)
+        case InstructionKind.S:
+            yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI / 2))
+        case InstructionKind.SDG:
+            yield from decompose_rz(Instruction.RZ(instr.target, -ANGLE_PI / 2))
+        case InstructionKind.T:
+            yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI / 4))
+        case InstructionKind.TDG:
+            yield from decompose_rz(Instruction.RZ(instr.target, -ANGLE_PI / 4))
+        case InstructionKind.SX:
+            yield from decompose_rx(Instruction.RX(instr.target, ANGLE_PI / 2))
+        case InstructionKind.SXDG:
+            yield from decompose_rx(Instruction.RX(instr.target, -ANGLE_PI / 2))
+        case InstructionKind.X:
+            yield from decompose_rx(Instruction.RX(instr.target, ANGLE_PI))
+        case InstructionKind.Y:
+            yield from instructions_to_jcz(decompose_y(instr))
+        case InstructionKind.Z:
+            yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI))
+        case InstructionKind.RX:
+            yield from decompose_rx(instr)
+        case InstructionKind.RY:
+            yield from decompose_ry(instr)
+        case InstructionKind.RZ:
+            yield from decompose_rz(instr)
+        case InstructionKind.P:
+            yield from instructions_to_jcz(decompose_p(instr))
+        case InstructionKind.U:
+            yield from decompose_u(instr)
+        case InstructionKind.CCX:
+            yield from instructions_to_jcz(decompose_ccx(instr))
+        case InstructionKind.RZZ:
+            yield from instructions_to_jcz(decompose_rzz(instr))
+        case InstructionKind.CNOT:
+            yield from instructions_to_jcz(decompose_cnot(instr))
+        case InstructionKind.SWAP:
+            yield from instructions_to_jcz(decompose_swap(instr))
+        case InstructionKind.CY:
+            yield from instructions_to_jcz(insert_control(instr.control, decompose_y(Instruction.Y(instr.target))))
+        case InstructionKind.CH:
+            yield from instructions_to_jcz(
+                insert_control(instr.control, instruction_to_jcz(Instruction.H(instr.target)))
+            )
+        case InstructionKind.CJ:
+            yield from instructions_to_jcz(decompose_cj(instr))
+        case InstructionKind.CP:
+            yield from instructions_to_jcz(
+                insert_control(instr.control, decompose_p(Instruction.P(instr.target, instr.angle)))
+            )
+        case InstructionKind.CRX:
+            yield from instructions_to_jcz(
+                insert_control(instr.control, decompose_rx(Instruction.RX(instr.target, instr.angle)))
+            )
+        case InstructionKind.CRY:
+            yield from instructions_to_jcz(
+                insert_control(instr.control, decompose_ry(Instruction.RY(instr.target, instr.angle)))
+            )
+        case InstructionKind.CRZ:
+            yield from instructions_to_jcz(
+                insert_control(instr.control, decompose_rz(Instruction.RZ(instr.target, instr.angle)))
+            )
+        case InstructionKind.CU:
+            yield from instructions_to_jcz(decompose_cu(instr))
+        case InstructionKind.CSWAP:
+            yield from instructions_to_jcz(
+                insert_control(instr.control, decompose_swap(Instruction.SWAP(instr.targets)))
+            )
+        case InstructionKind.GPHASE:
+            yield instr
+        case InstructionKind.CONDINSTR:
+            raise NotImplementedError(
+                "Direct transpilation of conditional instructions is not supported. First remove conditional instructions with the `Circuit.transpile_condinstr()` method."
+            )
+        case _:
+            assert_never(instr.kind)
+
+
+def instructions_to_jcz(
+    instrs: Iterable[InstructionTypeWithoutM],
+) -> Iterator[Instruction.J | Instruction.CZ | Instruction.GPHASE]:
+    """Yield a J-∧z decomposition of the instructions.
+
+    Parameters
+    ----------
+        instr: the instructions to decompose.
+
+    Returns
+    -------
+        the decomposition.
+    """
     for instr in instrs:
-        match instr.kind:
-            case InstructionKind.J | InstructionKind.CZ | InstructionKind.M:
-                yield instr
-            case InstructionKind.I:
-                return
-            case InstructionKind.H:
-                yield Instruction.J(instr.target, 0)
-            case InstructionKind.S:
-                yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI / 2))
-            case InstructionKind.SDG:
-                yield from decompose_rz(Instruction.RZ(instr.target, -ANGLE_PI / 2))
-            case InstructionKind.T:
-                yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI / 4))
-            case InstructionKind.TDG:
-                yield from decompose_rz(Instruction.RZ(instr.target, -ANGLE_PI / 4))
-            case InstructionKind.SX:
-                yield from decompose_rx(Instruction.RX(instr.target, ANGLE_PI / 2))
-            case InstructionKind.SXDG:
-                yield from decompose_rx(Instruction.RX(instr.target, -ANGLE_PI / 2))
-            case InstructionKind.X:
-                yield from decompose_rx(Instruction.RX(instr.target, ANGLE_PI))
-            case InstructionKind.Y:
-                yield from instructions_to_jcz(decompose_y(instr))
-            case InstructionKind.Z:
-                yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI))
-            case InstructionKind.RX:
-                yield from decompose_rx(instr)
-            case InstructionKind.RY:
-                yield from decompose_ry(instr)
-            case InstructionKind.RZ:
-                yield from decompose_rz(instr)
-            case InstructionKind.P:
-                yield from instructions_to_jcz(decompose_p(instr))
-            case InstructionKind.U:
-                yield from decompose_u(instr)
-            case InstructionKind.CCX:
-                yield from instructions_to_jcz(decompose_ccx(instr))
-            case InstructionKind.RZZ:
-                yield from instructions_to_jcz(decompose_rzz(instr))
-            case InstructionKind.CNOT:
-                yield from instructions_to_jcz(decompose_cnot(instr))
-            case InstructionKind.SWAP:
-                yield from instructions_to_jcz(decompose_swap(instr))
-            case InstructionKind.CY:
-                yield from instructions_to_jcz(insert_control(instr.control, decompose_y(Instruction.Y(instr.target))))
-            case InstructionKind.CJ:
-                yield from instructions_to_jcz(decompose_cj(instr))
-            case InstructionKind.CP:
-                yield from instructions_to_jcz(
-                    insert_control(instr.control, decompose_p(Instruction.P(instr.target, instr.angle)))
-                )
-            case InstructionKind.CRX:
-                yield from instructions_to_jcz(
-                    insert_control(instr.control, decompose_rx(Instruction.RX(instr.target, instr.angle)))
-                )
-            case InstructionKind.CRY:
-                yield from instructions_to_jcz(
-                    insert_control(instr.control, decompose_ry(Instruction.RY(instr.target, instr.angle)))
-                )
-            case InstructionKind.CRZ:
-                yield from instructions_to_jcz(
-                    insert_control(instr.control, decompose_rz(Instruction.RZ(instr.target, instr.angle)))
-                )
-            case InstructionKind.CU:
-                yield from instructions_to_jcz(decompose_cu(instr))
-            case InstructionKind.CSWAP:
-                yield from instructions_to_jcz(
-                    insert_control(instr.control, decompose_swap(Instruction.SWAP(instr.targets)))
-                )
-            case InstructionKind.GPHASE:
-                yield instr
-            case InstructionKind.CONDINSTR:
-                raise NotImplementedError(
-                    "Direct transpilation of conditional instructions is not supported. First remove conditional instructions with the `Circuit.transpile_condinstr()` method."
-                )
-            case _:
-                assert_never(instr.kind)
+        yield from instruction_to_jcz(instr)
 
 
 def normalize_angle(angle: ParameterizedAngle) -> ParameterizedAngle:
@@ -1615,13 +1671,6 @@ def normalize_angle(angle: ParameterizedAngle) -> ParameterizedAngle:
     if isinstance(angle, float):
         return angle % (2 * ANGLE_PI)
     return angle
-
-
-def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWithoutM]:
-    """Narrow ``InstructionType`` to ``InstructionTypeWithoutM``."""
-    for instr in instrs:
-        assert instr.kind != InstructionKind.M
-        yield instr
 
 
 def transpile_to_plus(ancilla_state: State) -> tuple[Callable[[int], InstructionType], ...]:
@@ -1972,6 +2021,8 @@ def simulate_instructions(
                 evolve_single(Ops.j(instr.angle), instr.target)
             case InstructionKind.CJ:
                 evolve(Ops.cj(instr.angle), [instr.control, instr.target])
+            case InstructionKind.CH:
+                evolve(Ops.CH, [instr.control, instr.target])
             case InstructionKind.U:
                 evolve_single(Ops.u(instr.theta, instr.phi, instr.lambda_), instr.target)
             case InstructionKind.CU:

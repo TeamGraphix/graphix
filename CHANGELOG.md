@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `E` command in patterns.
   - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
 
+- #694: CH gate is now supported (its support was missing as it is a standard OpenQASM gate).
+
 ### Changed
 
 - #587:

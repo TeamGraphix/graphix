@@ -1515,6 +1515,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         To extract a unitary circuit from a pattern, see :meth:`OpenGraph.to_circuit`.
         """
         from graphix import Circuit  # noqa: PLC0415 # Avoid circular imports
+        from graphix.transpiler import OutputKind  # noqa: PLC0415 # Avoid circular imports
 
         width = len(self.input_nodes)
         all_nodes = [*self.input_nodes, *(cmd.node for cmd in self.__seq if cmd.kind == CommandKind.N)]
@@ -1589,7 +1590,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
 
         active_qubit_idx = 0
         for qubit in range(circuit.nqubit):
-            if qubit in circuit.active_qubits:
+            if circuit._visitor.output_kind[qubit] == OutputKind.Qubit:
                 idx = sorted_idx.index(qubit)
                 if active_qubit_idx != idx:
                     circuit.swap(qubit, sorted_idx[active_qubit_idx])
