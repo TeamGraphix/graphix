@@ -7,7 +7,7 @@ import pytest
 
 from graphix import Pattern
 from graphix.clifford import Clifford
-from graphix.command import C, CommandKind, E, M, N, S, T, X, Z
+from graphix.command import BaseCommand, C, CommandKind, E, M, N, S, T, X, Z
 from graphix.noise_models import (
     AmplitudeDampingNoise,
     AmplitudeDampingNoiseModel,
@@ -271,3 +271,21 @@ def test_amplitude_damping_command_rejects_signal() -> None:
     s_cmd = S(node=0)
     with pytest.raises(ValueError, match="Unexpected signal"):
         model.command(s_cmd)
+
+
+def test_apply_noise_is_command() -> None:
+    noise = DepolarisingNoise(0.1)
+    cmd = ApplyNoise(noise=noise, nodes=[0, 1], domain={2})
+    assert isinstance(cmd, BaseCommand)
+    assert repr(cmd) == f"ApplyNoise({noise!r}, [0, 1], {{2}})"
+
+
+@pytest.mark.parametrize("domain", [None, {2, 3}])
+def test_apply_noise_reindex(domain: set[int] | None) -> None:
+    noise = DepolarisingNoise(0.1)
+    cmd = ApplyNoise(noise=noise, nodes=[0, 1], domain=domain)
+    reindexed = cmd.reindex(lambda node: node + 10)
+    expected_domain = None if domain is None else {node + 10 for node in domain}
+    assert reindexed == ApplyNoise(noise=noise, nodes=[10, 11], domain=expected_domain)
+    # The original command is left unchanged.
+    assert cmd == ApplyNoise(noise=noise, nodes=[0, 1], domain=domain)

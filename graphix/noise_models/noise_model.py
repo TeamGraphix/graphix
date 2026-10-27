@@ -16,10 +16,10 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 # override introduced in Python 3.12
 from typing_extensions import override
 
-from graphix.command import BaseM, CommandKind, Node, _KindChecker
+from graphix.command import BaseCommand, BaseM, CommandKind, Node, _KindChecker
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from typing import TypeAlias
 
     from numpy.random import Generator
@@ -42,8 +42,8 @@ class Noise(ABC):
         """Return the Kraus channel describing the noise."""
 
 
-@dataclass
-class ApplyNoise(_KindChecker):
+@dataclass(repr=False)
+class ApplyNoise(_KindChecker, BaseCommand):
     """Apply noise command.
 
     Parameters
@@ -66,6 +66,11 @@ class ApplyNoise(_KindChecker):
     noise: Noise
     nodes: list[Node]
     domain: set[Node] | None = None
+
+    @override
+    def reindex(self, f: Callable[[Node], Node]) -> ApplyNoise:
+        domain = None if self.domain is None else set(map(f, self.domain))
+        return ApplyNoise(self.noise, list(map(f, self.nodes)), domain)
 
 
 if TYPE_CHECKING:
