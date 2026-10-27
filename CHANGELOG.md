@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Factorized instruction-validity checks in method `Circuit.add` via an instruction visitor.
   - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
 
+- #626, #635: The `domain` argument of the `X` and `Z` commands is now mandatory. Previously, it defaulted to the empty set, so that `X(1)` silently had no effect; write `X(1, set())` to state this explicitly.
+
 ## [0.4.1] - 2026-10-13
 
 ### Added

@@ -1201,8 +1201,8 @@ class CONDINSTR(_KindChecker, BaseInstruction):
     Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the attribute ``instructions`` cannot contain instances of `Instruction.M`.
     """
 
+    domain: set[int]
     instructions: tuple[InstructionTypeWithoutM, ...]
-    domain: set[int] = field(default_factory=set)
     kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
 
     @override
@@ -1210,7 +1210,7 @@ class CONDINSTR(_KindChecker, BaseInstruction):
         instructions = tuple(instr.visit(visitor, copy=copy) for instr in self.instructions)
         domain = visitor.visit_domain(self.domain)
         if copy:
-            return type(self)(instructions, domain)
+            return type(self)(domain, instructions)
         self.instructions = instructions
         self.domain = domain
         return self

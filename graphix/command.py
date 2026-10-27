@@ -251,12 +251,12 @@ class X(_KindChecker, BaseCommand):
     ----------
     node : int
         Node to correct.
-    domain : set[int], optional
+    domain : set[int]
         Domain for the byproduct operator.
     """
 
     node: Node
-    domain: set[Node] = dataclasses.field(default_factory=set)
+    domain: set[Node]
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
     @override
@@ -272,12 +272,12 @@ class Z(_KindChecker, BaseCommand):
     ----------
     node : int
         Node to correct.
-    domain : set[int], optional
+    domain : set[int]
         Domain for the byproduct operator.
     """
 
     node: Node
-    domain: set[Node] = dataclasses.field(default_factory=set)
+    domain: set[Node]
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
     @override

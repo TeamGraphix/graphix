@@ -1541,9 +1541,9 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                 case CommandKind.M:
                     qubit = node_idx.index(cmd.node)
                     if cmd.s_domain:
-                        circuit.condinstr((Instruction.X(qubit),), {node_idx.index(node) for node in cmd.s_domain})
+                        circuit.condinstr({node_idx.index(node) for node in cmd.s_domain}, (Instruction.X(qubit),))
                     if cmd.t_domain:
-                        circuit.condinstr((Instruction.Z(qubit),), {node_idx.index(node) for node in cmd.t_domain})
+                        circuit.condinstr({node_idx.index(node) for node in cmd.t_domain}, (Instruction.Z(qubit),))
 
                     meas = cmd.measurement.to_pauli_or_none()
                     if meas is not None and meas.sign == Sign.PLUS:
@@ -1557,9 +1557,9 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                     qubit = node_idx.index(cmd.node)
                     domain = {node_idx.index(node) for node in cmd.domain}
                     if cmd.kind == CommandKind.X:
-                        circuit.condinstr((Instruction.X(qubit),), domain)
+                        circuit.condinstr(domain, (Instruction.X(qubit),))
                     else:
-                        circuit.condinstr((Instruction.Z(qubit),), domain)
+                        circuit.condinstr(domain, (Instruction.Z(qubit),))
                 case CommandKind.C:
                     qubit = node_idx.index(cmd.node)
                     for clifford_str in cmd.clifford.qasm3:

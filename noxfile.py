@@ -98,7 +98,7 @@ REVERSE_DEPENDENCIES = {
     "graphix-qasm-parser": ReverseDependency(
         # Keep in sync with .github/qasm-parser-requirements.txt
         "https://github.com/TeamGraphix/graphix-qasm-parser",
-        branch="refs/pull/20/head",
+        branch="refs/pull/22/head",
     ),
     "graphix-ibmq": ReverseDependency(
         "https://github.com/TeamGraphix/graphix-ibmq",
@@ -127,6 +127,7 @@ REVERSE_DEPENDENCIES = {
         # Bumping to Python 3.15 requires qiskit-aer to support Python 3.15.
         # See Qiskit/qiskit-aer#2468
         version_constraint=VersionRange(upper=Version("3.15")),
+        branch="refs/pull/45/head",
     ),
     "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/7/head"),
 }
