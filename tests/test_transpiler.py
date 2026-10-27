@@ -1015,7 +1015,7 @@ def test_cr() -> None:
 
 def test_condinstr_to_jcz() -> None:
     with pytest.raises(NotImplementedError):
-        next(instruction_to_jcz(Instruction.CONDINSTR((Instruction.H(0),), {1})))
+        next(instruction_to_jcz(Instruction.CONDINSTR({1}, (Instruction.H(0),))))
 
 
 def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWithoutM]:
