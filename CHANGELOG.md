@@ -27,11 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `E` command in patterns.
   - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
 
+- #636: `ApplyNoise` now derives from `BaseCommand`, like other commands. In particular, it implements `reindex`.
+
 ### Changed
 
 - #587:
   - Factorized instruction-validity checks in method `Circuit.add` via an instruction visitor.
   - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
+
 
 ## [0.4.1] - 2026-10-13
 
