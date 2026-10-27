@@ -96,7 +96,9 @@ REVERSE_DEPENDENCIES = {
     "graphix-symbolic": ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
     "graphix-stim-backend": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
     "graphix-qasm-parser": ReverseDependency(
-        "https://github.com/TeamGraphix/graphix-qasm-parser", branch="refs/pull/22/head"
+        # Keep in sync with .github/qasm-parser-requirements.txt
+        "https://github.com/TeamGraphix/graphix-qasm-parser",
+        branch="refs/pull/22/head",
     ),
     "graphix-ibmq": ReverseDependency(
         "https://github.com/TeamGraphix/graphix-ibmq",
@@ -127,7 +129,7 @@ REVERSE_DEPENDENCIES = {
         version_constraint=VersionRange(upper=Version("3.15")),
         branch="refs/pull/45/head",
     ),
-    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/6/head"),
+    "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/7/head"),
 }
 
 

@@ -20,7 +20,6 @@ from graphix.transpiler import (
     Circuit,
     OutputIndex,
     OutputKind,
-    _without_m,
     decompose_ccx,
     decompose_cu,
     decompose_p,
@@ -28,13 +27,14 @@ from graphix.transpiler import (
     decompose_rz,
     decompose_y,
     insert_control,
-    instructions_to_jcz,
+    instruction_to_jcz,
     transpile_swaps,
 )
 from tests.test_branch_selector import CheckedBranchSelector
 from tests.test_instruction import INSTRUCTION_TEST_CASES, VisitAngle
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
     from typing import Literal
 
     from graphix.instruction import InstructionType, InstructionTypeWithoutM
@@ -712,7 +712,7 @@ class TestCircuits:
 
         assert state_ref.isclose(state_test)
 
-    def test_chained_instructions(self, fx_rng: Generator) -> None:
+    def test_chained_instructions(self) -> None:
         angle = 0.3
         axis = Axis.X  # We measure the ancilla along X, circuit is deterministic
         qc_test = (
@@ -739,6 +739,7 @@ class TestCircuits:
             .sx(0)
             .sxdg(0)
             .cy(0, 1)
+            .ch(0, 1)
             .p(0, angle)
             .u(0, angle, angle, angle)
             .cj(0, 1, angle)
@@ -778,6 +779,7 @@ class TestCircuits:
                 Instruction.SX(0),
                 Instruction.SXDG(0),
                 Instruction.CY(control=0, target=1),
+                Instruction.CH(0, 1),
                 Instruction.P(0, angle),
                 Instruction.U(0, angle, angle, angle),
                 Instruction.CJ(control=0, target=1, angle=angle),
@@ -793,11 +795,7 @@ class TestCircuits:
                 Instruction.CONDINSTR({3}, (Instruction.H(0), Instruction.X(0))),
             ]
         )
-
-        input_state = rand_state_vector(3, rng=fx_rng)
-        state_ref = qc_ref.simulate(rng=fx_rng, input_state=input_state).state
-        state_test = qc_test.simulate(rng=fx_rng, input_state=input_state).state
-        assert state_ref.isclose(state_test)
+        assert qc_ref == qc_test
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -997,8 +995,9 @@ def test_insert_control_condinstr(
 
 @pytest.mark.parametrize("test_case", INSTRUCTION_TEST_CASES)
 def test_instructions_to_jcz(fx_rng: Generator, test_case: InstructionTestCase) -> None:
-    circuit = Circuit(3, instr=[test_case.instruction(fx_rng)])
-    decomposed_circuit = Circuit(3, instr=instructions_to_jcz(circuit.instruction))
+    instruction = test_case.instruction(fx_rng)
+    circuit = Circuit(3, instr=[instruction])
+    decomposed_circuit = Circuit(3, instr=instruction_to_jcz(instruction))
     assert check_circuit_equivalence(circuit, decomposed_circuit, rng=fx_rng)
 
 
@@ -1012,3 +1011,15 @@ def test_cr() -> None:
         Instruction.CRY(control=1, target=0, angle=ANGLE_PI / 4),
         Instruction.CRZ(control=0, target=1, angle=ANGLE_PI / 8),
     ]
+
+
+def test_condinstr_to_jcz() -> None:
+    with pytest.raises(NotImplementedError):
+        next(instruction_to_jcz(Instruction.CONDINSTR((Instruction.H(0),), {1})))
+
+
+def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWithoutM]:
+    """Narrow ``InstructionType`` to ``InstructionTypeWithoutM``."""
+    for instr in instrs:
+        assert instr.kind != InstructionKind.M
+        yield instr

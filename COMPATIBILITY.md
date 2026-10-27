@@ -4,9 +4,6 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
 
 ## Unreleased
 
-- #592:
-  - `Circuit.transpile_measurements_to_z_axis`, `Circuit.transpile_j_to_rzh` and `Circuit.transpile_rzz` are subsumed by `Circuit.transpile_to_qasm_gates`
-
 - #598, #608:
   - The order of the attributes of the controlled instructions has been changed to put the control qubits first, to ensure consistency between all controlled instructions, with the matrix description of the gates, and with the `Circuit` methods that add instructions to the circuit. The modified gates are:
     - `CCX` and `RZZ`,
@@ -15,6 +12,13 @@ Graphix does not guarantee backwards compatibility between 0.x version releases.
   - `CZ` is now a `ControlledSingleTargetInstruction` and takes a `control` and a `target` instead of a pair of `targets`.
 
 - #626: The `domain` argument of the `X` and `Z` commands no longer defaults to the empty set. `X(node)` and `Z(node)` must be replaced by `X(node, set())` and `Z(node, set())` (these commands have no effect).
+
+## [0.4.1] - 2026-10-13
+
+- #592:
+  - `Circuit.transpile_measurements_to_z_axis`, `Circuit.transpile_j_to_rzh` and `Circuit.transpile_rzz` are subsumed by `Circuit.transpile_to_qasm_gates`
+
+- #614: Drop support for Python 3.10 (end-of-life: 2026-10-01)
 
 ## [0.4] - 2026-08-18
 

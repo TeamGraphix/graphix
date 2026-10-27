@@ -172,6 +172,8 @@ def instruction_to_qasm3(instruction: InstructionType) -> Iterable[str]:
             yield qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
         case InstructionKind.CY:
             yield qasm3_gate_call("cy", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+        case InstructionKind.CH:
+            yield qasm3_gate_call("ch", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
         case InstructionKind.SWAP:
             yield qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
         case InstructionKind.CSWAP:
