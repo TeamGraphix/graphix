@@ -11,6 +11,7 @@ from graphix import Instruction, instruction
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.fundamentals import ANGLE_PI, Axis, Plane, Sign
 from graphix.instruction import I, InstructionKind
+from graphix.ops import Ops, controlled
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevector, StatevectorBackend
@@ -36,6 +37,8 @@ from tests.test_instruction import INSTRUCTION_TEST_CASES, VisitAngle
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from typing import Literal
+
+    import numpy.typing as npt
 
     from graphix.instruction import InstructionType, InstructionTypeWithoutM
     from graphix.measurements import Outcome
@@ -1011,6 +1014,93 @@ def test_cr() -> None:
         Instruction.CRY(control=1, target=0, angle=ANGLE_PI / 4),
         Instruction.CRZ(control=0, target=1, angle=ANGLE_PI / 8),
     ]
+
+
+@pytest.mark.parametrize(
+    ("instrs", "u"),
+    [
+        ([Instruction.H(1)], Ops.H),
+        ([Instruction.S(1)], Ops.S),
+        ([Instruction.SDG(1)], Ops.SDG),
+        ([Instruction.T(1)], Ops.T),
+        ([Instruction.TDG(1)], Ops.TDG),
+        ([Instruction.SX(1)], Ops.SX),
+        ([Instruction.SXDG(1)], Ops.SXDG),
+        ([Instruction.CCX((1, 2), 3)], Ops.CCX),
+        ([Instruction.CSWAP(1, (2, 3))], Ops.CSWAP),
+        (list(instruction_to_jcz(Instruction.X(1))), Ops.X),
+        (list(instruction_to_jcz(Instruction.Y(1))), Ops.Y),
+        (list(instruction_to_jcz(Instruction.Z(1))), Ops.Z),
+        (list(decompose_ccx(Instruction.CCX((1, 2), 3))), Ops.CCX),
+    ],
+)
+def test_insert_control_global_phase(instrs: list[InstructionTypeWithoutM], u: npt.NDArray[np.complex128]) -> None:
+    """Check that `insert_control` is exact when the control is in superposition (#637)."""
+    n = int(np.log2(len(u))) + 1
+    state = Circuit(n, instr=insert_control(0, instrs)).simulate(input_state=BasicStates.PLUS).state
+    assert isinstance(state, Statevector)
+    expected = controlled(u) @ np.full(2**n, 2 ** (-n / 2))
+    assert np.allclose(state.flatten(), expected)
+
+
+@pytest.mark.parametrize(
+    ("instr", "u"),
+    [
+        (Instruction.I(1), Ops.I),
+        (Instruction.X(1), Ops.X),
+        (Instruction.Y(1), Ops.Y),
+        (Instruction.Z(1), Ops.Z),
+        (Instruction.H(1), Ops.H),
+        (Instruction.S(1), Ops.S),
+        (Instruction.SDG(1), Ops.SDG),
+        (Instruction.T(1), Ops.T),
+        (Instruction.TDG(1), Ops.TDG),
+        (Instruction.SX(1), Ops.SX),
+        (Instruction.SXDG(1), Ops.SXDG),
+        (Instruction.J(1, ANGLE_PI / 3), Ops.j(ANGLE_PI / 3)),
+        (Instruction.P(1, ANGLE_PI / 3), Ops.p(ANGLE_PI / 3)),
+        (Instruction.RX(1, ANGLE_PI / 3), Ops.rx(ANGLE_PI / 3)),
+        (Instruction.RY(1, ANGLE_PI / 3), Ops.ry(ANGLE_PI / 3)),
+        (Instruction.RZ(1, ANGLE_PI / 3), Ops.rz(ANGLE_PI / 3)),
+        (Instruction.U(1, ANGLE_PI / 3, ANGLE_PI / 5, ANGLE_PI / 7), Ops.u(ANGLE_PI / 3, ANGLE_PI / 5, ANGLE_PI / 7)),
+        (Instruction.CNOT(1, 2), Ops.CNOT),
+        (Instruction.CY(1, 2), Ops.CY),
+        (Instruction.CZ(1, 2), Ops.CZ),
+        (Instruction.CH(1, 2), Ops.CH),
+        (Instruction.CJ(1, 2, ANGLE_PI / 3), Ops.cj(ANGLE_PI / 3)),
+        (Instruction.CP(1, 2, ANGLE_PI / 3), Ops.cp(ANGLE_PI / 3)),
+        (Instruction.CRX(1, 2, ANGLE_PI / 3), Ops.crx(ANGLE_PI / 3)),
+        (Instruction.CRY(1, 2, ANGLE_PI / 3), Ops.cry(ANGLE_PI / 3)),
+        (Instruction.CRZ(1, 2, ANGLE_PI / 3), Ops.crz(ANGLE_PI / 3)),
+        (
+            Instruction.CU(1, 2, ANGLE_PI / 3, ANGLE_PI / 5, ANGLE_PI / 7, ANGLE_PI / 9),
+            Ops.cu(ANGLE_PI / 3, ANGLE_PI / 5, ANGLE_PI / 7, ANGLE_PI / 9),
+        ),
+        (Instruction.RZZ(1, 2, ANGLE_PI / 3), Ops.rzz(ANGLE_PI / 3)),
+        (Instruction.SWAP(1, 2), Ops.SWAP),
+        (Instruction.CCX((1, 2), 3), Ops.CCX),
+        (Instruction.CSWAP(1, (2, 3)), Ops.CSWAP),
+    ],
+)
+def test_controlled_jcz_global_phase(
+    instr: InstructionTypeWithoutM, u: npt.NDArray[np.complex128], fx_rng: Generator
+) -> None:
+    """Check that the J-∧z decomposition of `instr` keeps the global phase (#637).
+
+    The statevector simulator ignores top-level `GPHASE` instructions,
+    so a global phase cannot be observed by simulating the
+    decomposition alone: it only becomes a relative phase, and thus
+    observable, once the decomposition is controlled. We therefore
+    control the decomposition with qubit 0 and compare the result,
+    on a random input state, with the exact controlled gate
+    `controlled(u)`, where `u` is the matrix of `instr` acting on
+    qubits 1, 2, ...
+    """
+    n = int(np.log2(len(u))) + 1
+    input_state = rand_state_vector(n, rng=fx_rng)
+    state = Circuit(n, instr=insert_control(0, instruction_to_jcz(instr))).simulate(input_state=input_state).state
+    assert isinstance(state, Statevector)
+    assert np.allclose(state.flatten(), controlled(u) @ input_state)
 
 
 def test_condinstr_to_jcz() -> None:
