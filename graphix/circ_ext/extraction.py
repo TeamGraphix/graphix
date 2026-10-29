@@ -554,7 +554,8 @@ def extraction_ps_from_corrected_node(flow: PauliFlow[Measurement], node: Node) 
     negative_sign ^= bool(len(inter_c_odd_set) // 2 % 2)
 
     # One phase flip per node in the graph state stabilizer that is absorbed from a Pauli measurement with angle π.
-    for n in c_set | odd_c_set:
+    # The current vertex remains unprojected in its extraction string.
+    for n in (c_set | odd_c_set) - {node}:
         meas = og.measurements.get(n, None)
         if isinstance(meas, PauliMeasurement):
             negative_sign ^= meas.sign == Sign.MINUS
