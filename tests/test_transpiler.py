@@ -10,7 +10,8 @@ from numpy.random import PCG64, Generator
 from graphix import Instruction, instruction
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.fundamentals import ANGLE_PI, Axis, Plane, Sign
-from graphix.instruction import I, InstructionKind
+from graphix.instruction import I, InstructionKind, InstructionVisitor
+from graphix.pauli import Pauli
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevector, StatevectorBackend
@@ -28,6 +29,7 @@ from graphix.transpiler import (
     decompose_y,
     insert_control,
     instruction_to_jcz,
+    transpile_discard,
     transpile_swaps,
 )
 from tests.test_branch_selector import CheckedBranchSelector
@@ -81,9 +83,9 @@ class TestTranspilerUnitGates:
 
         instr: list[InstructionType] = [
             Instruction.M(3, axis),
-            Instruction.CONDINSTR({3}, instr_1),
+            Instruction.CONDINSTR({0}, instr_1),
             Instruction.M(4, axis),
-            Instruction.CONDINSTR({3, 4}, instr_2),
+            Instruction.CONDINSTR({0, 1}, instr_2),
         ]
 
         circuit_ref = Circuit(5, instr)
@@ -483,8 +485,8 @@ class TestCircuits:
                 instruction.CONDINSTR({0}, (instruction.H(1), instruction.X(2), instruction.SWAP((1, 4)))),
                 r"Qubit 4 is not an active qubit.",
             ),
-            (instruction.CONDINSTR({0, 1}, (instruction.RX(2, 0.2),)), r"Qubit 1 is not a measured qubit."),
-            (instruction.CONDINSTR({0, 4}, (instruction.J(1, 0.2),)), r"Qubit 4 is not a measured qubit."),
+            (instruction.CONDINSTR({0, 1}, (instruction.RX(2, 0.2),)), r"Bit 1 has not been measured."),
+            (instruction.CONDINSTR({0, 4}, (instruction.J(1, 0.2),)), r"Bit 4 has not been measured."),
         ],
     )
     def test_wrong_qubits(self, instruction: InstructionType, msg: str) -> None:
@@ -652,7 +654,7 @@ class TestCircuits:
 
         instr: list[InstructionType] = [
             Instruction.M(3, axis),
-            Instruction.CONDINSTR({3}, (test_case.instruction(fx_rng),)),
+            Instruction.CONDINSTR({0}, (test_case.instruction(fx_rng),)),
         ]
 
         circuit_ref = Circuit(4, instr)
@@ -687,9 +689,9 @@ class TestCircuits:
 
         instr: list[InstructionType] = [
             Instruction.M(3, axis),
-            Instruction.CONDINSTR({3}, instr_1),
+            Instruction.CONDINSTR({0}, instr_1),
             Instruction.M(4, axis),
-            Instruction.CONDINSTR({3, 4}, instr_2),
+            Instruction.CONDINSTR({0, 1}, instr_2),
         ]
 
         circuit_ref = Circuit(5, instr)
@@ -752,7 +754,7 @@ class TestCircuits:
             .cswap(0, 1, 2)
             .gphase(angle)
             .m(3, axis)
-            .condinstr({3}, [Instruction.H(0), Instruction.X(0)])
+            .condinstr({0}, [Instruction.H(0), Instruction.X(0)])
         )
         qc_ref = Circuit(3, ancillas=1, ancilla_state=BasicStates.MINUS)
         qc_ref.extend(
@@ -792,7 +794,7 @@ class TestCircuits:
                 Instruction.CSWAP(control=0, targets=(1, 2)),
                 Instruction.GPHASE(angle),
                 Instruction.M(3, axis),
-                Instruction.CONDINSTR({3}, (Instruction.H(0), Instruction.X(0))),
+                Instruction.CONDINSTR({0}, (Instruction.H(0), Instruction.X(0))),
             ]
         )
         assert qc_ref == qc_test
@@ -967,7 +969,7 @@ def test_insert_control_condinstr(
 ) -> None:
 
     meas = Instruction.M(3, axis)
-    instr = [Instruction.CONDINSTR({3}, (test_case.instruction(fx_rng),))]
+    instr = [Instruction.CONDINSTR({0}, (test_case.instruction(fx_rng),))]
 
     instr_ref: list[Instruction.M | Instruction.CONDINSTR] = (
         [meas, *instr] if ancilla_state == BasicStates.ONE else [meas]
@@ -1023,3 +1025,171 @@ def _without_m(instrs: Iterable[InstructionType]) -> Iterator[InstructionTypeWit
     for instr in instrs:
         assert instr.kind != InstructionKind.M
         yield instr
+
+
+def circuit_with_measurements_without_discard(axis: Axis, ancilla_state: State = BasicStates.PLUS) -> Circuit:
+    circuit = Circuit(3, ancillas=1, ancilla_state=ancilla_state)
+    circuit.h(0).cnot(0, 1).ry(2, 0.3).cnot(3, 2)
+    circuit.m(1, axis, discard=False)
+    circuit.cnot(1, 2).rx(1, 0.4).swap(0, 1)
+    circuit.condinstr({0}, [Instruction.X(2)])
+    # With the swap, qubit 0 holds the former qubit 1, which is measured again.
+    circuit.m(0, axis, discard=False)
+    circuit.condinstr({1}, [Instruction.Z(3)])
+    circuit.rz(0, 0.7).m(2, Axis.Z)
+    return circuit
+
+
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+@pytest.mark.parametrize("outcome", [0, 1])
+def test_measure_without_discard(fx_rng: Generator, axis: Axis, outcome: Outcome) -> None:
+    circuit = Circuit(1).m(0, axis, discard=False)
+    result = circuit.simulate(
+        input_state=rand_state_vector(1, rng=fx_rng), branch_selector=ConstBranchSelector(outcome), rng=fx_rng
+    )
+    assert result.classical_measures == (outcome,)
+    eigenstate = Statevector(data=Pauli.from_axis(axis).eigenstate(outcome))
+    assert result.state.isclose(eigenstate)
+
+
+def test_measure_without_discard_validation() -> None:
+    circuit = Circuit(2).m(0, Axis.Z, discard=False)
+    # The measured qubit can still be used, and its outcome can be used in domains.
+    circuit.h(0).condinstr({0}, [Instruction.X(1)])
+    circuit.m(0, Axis.Z)
+    with pytest.raises(ValueError, match=r"Qubit 0 is not an active qubit."):
+        circuit.h(0)
+    assert repr(Instruction.M(0, Axis.X)) == "M(0, Axis.X)"
+    assert repr(Instruction.M(0, Axis.X, discard=False)) == "M(0, Axis.X, discard=False)"
+
+
+@pytest.mark.parametrize(("domain", "output"), [({0}, BasicStates.ZERO), ({1}, BasicStates.ONE)])
+def test_domain_of_qubit_measured_twice(fx_rng: Generator, domain: set[int], output: State) -> None:
+    # The two outcomes are 0 and 1: the domain tells them apart.
+    circuit = Circuit(2).m(0, Axis.Z, discard=False).x(0).m(0, Axis.Z)
+    circuit.condinstr(domain, [Instruction.X(1)])
+    assert circuit.measurement_count == 2
+    result = circuit.simulate(input_state=[BasicStates.ZERO, BasicStates.ZERO], rng=fx_rng)
+    assert result.classical_measures == (0, 1)
+    assert result.state.isclose(Statevector(data=output))
+
+
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+@pytest.mark.parametrize("outcome", [0, 1])
+@pytest.mark.parametrize(
+    "ancilla_state",
+    [
+        BasicStates.PLUS,
+        BasicStates.MINUS,
+        BasicStates.ZERO,
+        BasicStates.ONE,
+        BasicStates.PLUS_I,
+        BasicStates.MINUS_I,
+    ],
+)
+def test_transpile_discard(fx_rng: Generator, axis: Axis, outcome: Outcome, ancilla_state: State) -> None:
+    circuit = circuit_with_measurements_without_discard(axis, ancilla_state)
+    result = transpile_discard(circuit)
+    assert all(instr.discard for instr in result.circuit.instruction if instr.kind == InstructionKind.M)
+    # Qubit 0 ends on the second new ancilla, qubit 1 on the first one.
+    assert result.outputs == (5, 4, 3)
+
+    input_state = rand_state_vector(3, rng=fx_rng)
+    simulation = circuit.simulate(input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng)
+    simulation_test = result.circuit.simulate(
+        input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng
+    )
+    assert simulation_test.classical_measures == simulation.classical_measures
+    state = simulation_test.state
+    state.permute(list(result.restore_output_nodes(range(len(result.outputs)))))
+    assert state.isclose(simulation.state)
+
+
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+@pytest.mark.parametrize("outcome", [0, 1])
+@pytest.mark.parametrize("transpile_swaps", [True, False])
+def test_transpile_pattern_without_discard(
+    fx_rng: Generator, axis: Axis, outcome: Outcome, transpile_swaps: bool
+) -> None:
+    circuit = circuit_with_measurements_without_discard(axis)
+    pattern = circuit.transpile(transpile_swaps=transpile_swaps).pattern
+    input_state = rand_state_vector(3, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng).state
+    state_mbqc = pattern.simulate(
+        input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng, optimized=False
+    )
+    assert state_mbqc.isclose(state)
+
+
+def test_transpile_discard_without_measurements_without_discard(fx_rng: Generator) -> None:
+    circuit = rand_circuit(3, 3, fx_rng)
+    circuit.m(1, Axis.X)
+    result = transpile_discard(circuit)
+    assert result.circuit is circuit
+    assert result.outputs == (0, 2)
+
+
+def test_measure_without_discard_unsupported() -> None:
+    circuit = Circuit(2).m(0, Axis.Z, discard=False)
+    with pytest.raises(NotImplementedError, match="transpile_discard"):
+        circuit.transpile_to_causalflow()
+    with pytest.raises(NotImplementedError, match="transpile_discard"):
+        circuit.transpile_condinstr()
+    with pytest.raises(NotImplementedError):
+        transpile_discard(Circuit(1, ancillas=1, ancilla_state=PlanarState(Plane.XY, 0.3)).m(0, Axis.Z, discard=False))
+
+
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
+@pytest.mark.parametrize("outcome", [0, 1])
+def test_transpile_to_qasm_gates_without_discard(fx_rng: Generator, axis: Axis, outcome: Outcome) -> None:
+    circuit = Circuit(2).ry(0, 0.3).cnot(0, 1).m(0, axis, discard=False).rx(0, 0.4)
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng).state
+    state_test = (
+        circuit.transpile_to_qasm_gates()
+        .simulate(input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng)
+        .state
+    )
+    assert state_test.isclose(state)
+
+
+def test_measurement_count_after_transformations() -> None:
+    circuit = Circuit(2, ancillas=1, ancilla_state=BasicStates.ZERO)
+    circuit.m(0, Axis.Z, discard=False).swap(0, 1).m(1, Axis.X).cnot(0, 2)
+    assert circuit.measurement_count == 2
+    assert circuit.visit(InstructionVisitor(), copy=True).measurement_count == 2
+    assert circuit.transpile_ancilla_state(BasicStates.PLUS).measurement_count == 2
+    swapped = transpile_swaps(circuit.transpile_ancilla_state(BasicStates.PLUS), copy=False).circuit
+    assert swapped.measurement_count == 2
+    # The swap has been transpiled: the qubit measured with discard is now qubit 0.
+    with pytest.raises(ValueError, match=r"Qubit 0 is not an active qubit."):
+        swapped.h(0)
+
+
+@pytest.mark.parametrize("outcome", [0, 1])
+@pytest.mark.parametrize("transpile_swaps", [True, False])
+def test_condinstr_after_swap(fx_rng: Generator, outcome: Outcome, transpile_swaps: bool) -> None:
+    # Regression test for https://github.com/TeamGraphix/graphix/issues/640
+    circuit = Circuit(2).swap(0, 1).m(0, Axis.Z).condinstr({0}, [Instruction.X(1)])
+    pattern = circuit.transpile(transpile_swaps=transpile_swaps).pattern
+    input_state = rand_state_vector(2, rng=fx_rng)
+    state = circuit.simulate(input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng).state
+    state_mbqc = pattern.simulate(
+        input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng, optimized=False
+    )
+    assert state_mbqc.isclose(state)
+
+
+@pytest.mark.parametrize("transpile_swaps", [True, False])
+def test_condinstr_after_swap_reads_right_outcome(fx_rng: Generator, transpile_swaps: bool) -> None:
+    # Regression test for https://github.com/TeamGraphix/graphix/issues/640: when both
+    # qubits are measured, the domain must still refer to the first measurement
+    # (outcome 1), not to the measurement of the qubit that had index 0 before the swap.
+    circuit = Circuit(3).swap(0, 1).m(0, Axis.Z).m(1, Axis.Z).condinstr({0}, [Instruction.X(2)])
+    input_state = [BasicStates.ZERO, BasicStates.ONE, BasicStates.ZERO]
+    result = circuit.simulate(input_state=input_state, rng=fx_rng)
+    assert result.classical_measures == (1, 0)
+    assert result.state.isclose(Statevector(data=BasicStates.ONE))
+    pattern = circuit.transpile(transpile_swaps=transpile_swaps).pattern
+    state_mbqc = pattern.simulate(input_state=input_state, rng=fx_rng, optimized=False)
+    assert state_mbqc.isclose(result.state)

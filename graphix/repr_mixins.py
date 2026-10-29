@@ -38,7 +38,7 @@ class DataclassReprMixin:
                     continue
             custom_repr = field.metadata.get("repr")
             value_str = custom_repr(value) if custom_repr else repr(value)
-            if saw_omitted:
+            if saw_omitted or field.kw_only is True:
                 arguments.append(f"{field.name}={value_str}")
             else:
                 arguments.append(value_str)
