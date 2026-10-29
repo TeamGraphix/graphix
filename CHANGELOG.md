@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #474, #564: Added `FocusedPauliFlow` and `FocusedGFlow` classes to encapsulate operations specific to focused flows. Flow-finding algorithms return focused flows by construction. Having dedicated classes removes the need to dynamically recheck that a flow is focused during circuit extraction.
 
+- #644: Added measurements without discard: `Circuit.m(target, axis, discard=False)` (and the new attribute `discard` of `Instruction.M`) measures a qubit and leaves it active, in the eigenstate corresponding to the outcome. The new function `transpile_discard` rewrites these measurements into measurements with discard followed by the preparation of a fresh ancilla; `Circuit.transpile` applies it automatically.
+
 ### Fixed
 
 - #598, #608:
@@ -27,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `E` command in patterns.
   - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
 
+- #640, #644: `transpile_swaps` no longer breaks conditional instructions whose domain refers to a qubit measured after a `SWAP`, since domains now refer to classical bits, which do not depend on qubit indices.
+
+- #644: The OpenQASM 3 exporter now terminates measurement statements with a semicolon.
+
 - #694: CH gate is now supported (its support was missing as it is a standard OpenQASM gate).
 
 ### Changed
@@ -36,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
 
 - #626, #635: The `domain` argument of the `X` and `Z` commands is now mandatory. Previously, it defaulted to the empty set, so that `X(1)` silently had no effect; write `X(1, set())` to state this explicitly.
+
+- #644: The domains of conditional instructions (`CONDINSTR`) now refer to classical bits instead of measured qubits: the bit `i` is the outcome of the `i`-th measurement of the circuit (see the new property `Circuit.measurement_count`). Accordingly, `simulate_instructions` no longer takes a `results` argument, and the function `instruction_to_qasm3` is replaced by the method `ToQASM3.instruction_to_qasm3`, where `ToQASM3` keeps track of the classical bit written by the next measurement.
 
 ## [0.4.1] - 2026-10-13
 

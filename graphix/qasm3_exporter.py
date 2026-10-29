@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
 
 from graphix._version import version
@@ -81,10 +82,11 @@ def circuit_to_qasm3_lines(circuit: Circuit, *, transpile: bool = True, stacklev
     yield "OPENQASM 3;"
     yield 'include "stdgates.inc";'
     yield f"qubit[{circuit.nqubit}] q;"
-    if any(instr.kind == InstructionKind.M for instr in circuit.instruction):
-        yield f"bit[{circuit.nqubit}] b;"
+    if circuit.measurement_count:
+        yield f"bit[{circuit.measurement_count}] b;"
+    converter = ToQASM3()
     for instr in circuit.instruction:
-        yield from instruction_to_qasm3(instr)
+        yield from converter.instruction_to_qasm3(instr)
 
 
 def qasm3_qubit(index: int) -> str:
@@ -108,119 +110,138 @@ def angle_to_qasm3(angle: ParameterizedAngle) -> str:
     return angle_to_str(angle, output=OutputFormat.ASCII, multiplication_sign=True)
 
 
-def instruction_to_qasm3(instruction: InstructionType) -> Iterable[str]:
-    """Get the OpenQASM3 representation of a single circuit instruction.
+@dataclass
+class ToQASM3:
+    """Converter of circuit instructions to OpenQASM 3.0.
 
-    Parameters
-    ----------
-    instruction : Instruction
-        The instruction to convert.
-
-    Returns
-    -------
-    str
-        The OpenQASM3 representation of the instruction.
-
-    Raises
-    ------
-    ValueError
-        If the instruction is not supported by OpenQASM3.
+    The converter keeps track of the classical bits: the outcome of the
+    ``i``-th converted measurement is written to the bit ``b[i]``.
     """
-    match instruction.kind:
-        case InstructionKind.M:
-            if instruction.axis != Axis.Z:
-                raise ValueError(
-                    "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes, or setting `transpile=True`."
+
+    measurement_count: int = 0
+    """Number of measurements converted so far.
+
+    It is also the index of the classical bit written by the next
+    measurement, since the ``i``-th measurement writes the bit ``b[i]``.
+    """
+
+    def instruction_to_qasm3(self, instruction: InstructionType) -> Iterator[str]:
+        """Get the OpenQASM3 representation of a single circuit instruction.
+
+        If the instruction is a measurement, its outcome is written to the
+        classical bit ``self.measurement_count``, and ``self.measurement_count`` is incremented.
+
+        Parameters
+        ----------
+        instruction : Instruction
+            The instruction to convert.
+
+        Returns
+        -------
+        Iterator[str]
+            The OpenQASM3 lines that represent the instruction.
+
+        Raises
+        ------
+        ValueError
+            If the instruction is not supported by OpenQASM3.
+        """
+        match instruction.kind:
+            case InstructionKind.M:
+                if instruction.axis != Axis.Z:
+                    raise ValueError(
+                        "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes, or setting `transpile=True`."
+                    )
+                yield f"b[{self.measurement_count}] = measure q[{instruction.target}];"
+                self.measurement_count += 1
+            case InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ | InstructionKind.P:
+                angle = angle_to_qasm3(instruction.angle)
+                yield qasm3_gate_call(
+                    instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
                 )
-            yield f"b[{instruction.target}] = measure q[{instruction.target}]"
-        case InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ | InstructionKind.P:
-            angle = angle_to_qasm3(instruction.angle)
-            yield qasm3_gate_call(
-                instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
-            )
-        case InstructionKind.CRX | InstructionKind.CRY | InstructionKind.CRZ | InstructionKind.CP:
-            angle = angle_to_qasm3(instruction.angle)
-            yield qasm3_gate_call(
-                instruction.kind.name.lower(),
-                args=[angle],
-                operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)],
-            )
-        case InstructionKind.J:
-            raise ValueError(
-                "J gates must be decomposed before QASM3 export using `Circuit.transpile_j_to_rzh`, or setting `transpile=True`."
-            )
-        case InstructionKind.CJ:
-            raise ValueError(
-                "CJ gates must be decomposed before QASM3 export using `Circuit.transpile_cj`, or setting `transpile=True`."
-            )
-        case (
-            InstructionKind.H
-            | InstructionKind.S
-            | InstructionKind.SDG
-            | InstructionKind.T
-            | InstructionKind.TDG
-            | InstructionKind.SX
-            | InstructionKind.SXDG
-            | InstructionKind.X
-            | InstructionKind.Y
-            | InstructionKind.Z
-        ):
-            yield qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
-        case InstructionKind.I:
-            yield qasm3_gate_call("id", [qasm3_qubit(instruction.target)])
-        case InstructionKind.CNOT:
-            yield qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
-        case InstructionKind.CY:
-            yield qasm3_gate_call("cy", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
-        case InstructionKind.CH:
-            yield qasm3_gate_call("ch", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
-        case InstructionKind.SWAP:
-            yield qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
-        case InstructionKind.CSWAP:
-            yield qasm3_gate_call(
-                "cswap",
-                [qasm3_qubit(qubit) for qubit in [instruction.control, *[instruction.targets[i] for i in (0, 1)]]],
-            )
-        case InstructionKind.CZ:
-            yield qasm3_gate_call("cz", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
-        case InstructionKind.RZZ:
-            raise ValueError(
-                "RZZ gates must be decomposed before QASM3 export using `Circuit.transpile_rzz`, or setting `transpile=True`."
-            )
-        case InstructionKind.CCX:
-            yield qasm3_gate_call(
-                "ccx",
-                [
-                    qasm3_qubit(instruction.controls[0]),
-                    qasm3_qubit(instruction.controls[1]),
-                    qasm3_qubit(instruction.target),
-                ],
-            )
-        case InstructionKind.U:
-            theta = angle_to_qasm3(instruction.theta)
-            phi = angle_to_qasm3(instruction.phi)
-            lambda_ = angle_to_qasm3(instruction.lambda_)
-            yield qasm3_gate_call("U", args=[theta, phi, lambda_], operands=[qasm3_qubit(instruction.target)])
-        case InstructionKind.CU:
-            theta = angle_to_qasm3(instruction.theta)
-            phi = angle_to_qasm3(instruction.phi)
-            lambda_ = angle_to_qasm3(instruction.lambda_)
-            gamma = angle_to_qasm3(instruction.gamma)
-            yield qasm3_gate_call(
-                "cu",
-                args=[theta, phi, lambda_, gamma],
-                operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)],
-            )
-        case InstructionKind.GPHASE:
-            yield qasm3_gate_call("gphase", operands=[], args=[angle_to_qasm3(instruction.angle)])
-        case InstructionKind.CONDINSTR:
-            yield from domain_to_qasm3_lines(
-                instruction.domain,
-                (line for instr in instruction.instructions for line in instruction_to_qasm3(instr)),
-                _circuit_bit_to_qasm3,
-            )
-        case _:
-            assert_never(instruction.kind)
+            case InstructionKind.CRX | InstructionKind.CRY | InstructionKind.CRZ | InstructionKind.CP:
+                angle = angle_to_qasm3(instruction.angle)
+                yield qasm3_gate_call(
+                    instruction.kind.name.lower(),
+                    args=[angle],
+                    operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)],
+                )
+            case InstructionKind.J:
+                raise ValueError(
+                    "J gates must be decomposed before QASM3 export using `Circuit.transpile_j_to_rzh`, or setting `transpile=True`."
+                )
+            case InstructionKind.CJ:
+                raise ValueError(
+                    "CJ gates must be decomposed before QASM3 export using `Circuit.transpile_cj`, or setting `transpile=True`."
+                )
+            case (
+                InstructionKind.H
+                | InstructionKind.S
+                | InstructionKind.SDG
+                | InstructionKind.T
+                | InstructionKind.TDG
+                | InstructionKind.SX
+                | InstructionKind.SXDG
+                | InstructionKind.X
+                | InstructionKind.Y
+                | InstructionKind.Z
+            ):
+                yield qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
+            case InstructionKind.I:
+                yield qasm3_gate_call("id", [qasm3_qubit(instruction.target)])
+            case InstructionKind.CNOT:
+                yield qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+            case InstructionKind.CY:
+                yield qasm3_gate_call("cy", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+            case InstructionKind.CH:
+                yield qasm3_gate_call("ch", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+            case InstructionKind.SWAP:
+                yield qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+            case InstructionKind.CSWAP:
+                yield qasm3_gate_call(
+                    "cswap",
+                    [qasm3_qubit(qubit) for qubit in [instruction.control, *[instruction.targets[i] for i in (0, 1)]]],
+                )
+            case InstructionKind.CZ:
+                yield qasm3_gate_call("cz", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+            case InstructionKind.RZZ:
+                raise ValueError(
+                    "RZZ gates must be decomposed before QASM3 export using `Circuit.transpile_rzz`, or setting `transpile=True`."
+                )
+            case InstructionKind.CCX:
+                yield qasm3_gate_call(
+                    "ccx",
+                    [
+                        qasm3_qubit(instruction.controls[0]),
+                        qasm3_qubit(instruction.controls[1]),
+                        qasm3_qubit(instruction.target),
+                    ],
+                )
+            case InstructionKind.U:
+                theta = angle_to_qasm3(instruction.theta)
+                phi = angle_to_qasm3(instruction.phi)
+                lambda_ = angle_to_qasm3(instruction.lambda_)
+                yield qasm3_gate_call("U", args=[theta, phi, lambda_], operands=[qasm3_qubit(instruction.target)])
+            case InstructionKind.CU:
+                theta = angle_to_qasm3(instruction.theta)
+                phi = angle_to_qasm3(instruction.phi)
+                lambda_ = angle_to_qasm3(instruction.lambda_)
+                gamma = angle_to_qasm3(instruction.gamma)
+                yield qasm3_gate_call(
+                    "cu",
+                    args=[theta, phi, lambda_, gamma],
+                    operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)],
+                )
+            case InstructionKind.GPHASE:
+                yield qasm3_gate_call("gphase", operands=[], args=[angle_to_qasm3(instruction.angle)])
+            case InstructionKind.CONDINSTR:
+                yield from domain_to_qasm3_lines(
+                    instruction.domain,
+                    (line for instr in instruction.instructions for line in self.instruction_to_qasm3(instr)),
+                    _circuit_bit_to_qasm3,
+                )
+            case _:
+                assert_never(instruction.kind)
 
 
 def pattern_to_qasm3(pattern: Pattern, input_state: dict[int, State] | State = BasicStates.PLUS) -> str:
@@ -365,5 +386,5 @@ def _pattern_node_to_qasm3(node: int) -> str:
     return f"c{node}"
 
 
-def _circuit_bit_to_qasm3(node: int) -> str:
-    return f"b[{node}]"
+def _circuit_bit_to_qasm3(bit: int) -> str:
+    return f"b[{bit}]"

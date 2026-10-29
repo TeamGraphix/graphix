@@ -686,10 +686,27 @@ class I(_KindChecker, SingleTargetInstruction):
 
 @dataclass(repr=False)
 class M(_KindChecker, BaseInstruction):
-    """M circuit instruction."""
+    """M circuit instruction.
+
+    Attributes
+    ----------
+    target : int
+        Index of the measured qubit.
+    axis : Axis
+        Measurement basis.
+    discard : bool, optional
+        Keyword-only. If ``True`` (the default), the measured qubit is discarded and
+        cannot be used afterwards. If ``False``, the qubit remains active,
+        in the eigenstate corresponding to the measurement outcome.
+        In both cases, the outcome is written to a new classical bit,
+        which can be used in the domain of a subsequent conditional
+        instruction: the outcome of the ``i``-th measurement of a circuit
+        is the bit ``i``.
+    """
 
     target: int
     axis: Axis
+    discard: bool = field(default=True, kw_only=True)
     kind: ClassVar[Literal[InstructionKind.M]] = field(default=InstructionKind.M, init=False)
 
     @override
@@ -697,7 +714,7 @@ class M(_KindChecker, BaseInstruction):
         target = visitor.visit_qubit(self.target)
         axis = visitor.visit_axis(self.axis)
         if copy:
-            return M(target, axis)
+            return M(target, axis, discard=self.discard)
         self.target = target
         self.axis = axis
         return self
@@ -1197,6 +1214,9 @@ InstructionTypeWithoutM: TypeAlias = """(
 @dataclass(repr=False)
 class CONDINSTR(_KindChecker, BaseInstruction):
     """Base class for conditional circuit instructions.
+
+    The instructions are applied when the XOR of the classical bits in ``domain`` is ``1``.
+    The bit ``i`` is the outcome of the ``i``-th measurement of the circuit.
 
     Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the attribute ``instructions`` cannot contain instances of `Instruction.M`.
     """

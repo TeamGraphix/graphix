@@ -1,2 +1,2 @@
 # Keep in sync with noxfile.py
-graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser@refs/pull/22/head
+graphix-qasm-parser @ git+https://github.com/thierry-martinez/graphix-qasm-parser@measure-without-discard
