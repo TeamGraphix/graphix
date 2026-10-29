@@ -747,7 +747,7 @@ def _(obj: OpenGraph[AbstractMeasurement]) -> dict[int, _Point]:
     g_prime.add_edges_from(obj.graph.edges())
     l_max = max(layers.values())
     l_reverse = {v: l_max - l for v, l in layers.items()}
-    nx.set_node_attributes(g_prime, l_reverse, name="subset")  # type: ignore[arg-type]
+    nx.set_node_attributes(g_prime, l_reverse, name="subset")
     pos = nx.multipartite_layout(g_prime)
     vert = list({pos[node][1] for node in obj.graph.nodes()})
     vert.sort()
