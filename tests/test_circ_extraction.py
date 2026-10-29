@@ -437,6 +437,19 @@ class TestCliffordMap:
 
 
 class TestExtraction:
+    def test_extract_negative_x_input(self) -> None:
+        og = OpenGraph(
+            graph=nx.path_graph(2),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: -Measurement.X},
+        )
+        clifford_map = og.to_pauliflow().extract_circuit().clifford_map
+
+        # The outcome-zero branch implements HZ.
+        assert clifford_map.x_map == (PauliString.from_str("-Z"),)
+        assert clifford_map.z_map == (PauliString.from_str("+X"),)
+
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_extract_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
