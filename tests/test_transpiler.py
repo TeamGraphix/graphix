@@ -1039,7 +1039,7 @@ def test_insert_control_global_phase(instrs: list[InstructionTypeWithoutM], u: n
     n = int(np.log2(len(u))) + 1
     state = Circuit(n, instr=insert_control(0, instrs)).simulate(input_state=BasicStates.PLUS).state
     assert isinstance(state, Statevector)
-    expected = controlled(u) @ np.full(2**n, 2 ** (-n / 2))
+    expected = controlled(u) @ Statevector(nqubit=n, data=BasicStates.PLUS).flatten()
     assert np.allclose(state.flatten(), expected)
 
 
