@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
 
 import typing_extensions
@@ -10,8 +11,9 @@ from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depol
 from graphix.command import BaseM, CommandKind
 from graphix.measurements import toggle_outcome
 from graphix.noise_models.noise_model import ApplyNoise, Noise, NoiseModel
+from graphix.repr_mixins import DataclassReprMixin
 from graphix.rng import ensure_rng
-from graphix.utils import Probability
+from graphix.utils import check_probability
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -22,20 +24,21 @@ if TYPE_CHECKING:
     from graphix.noise_models.noise_model import CommandOrNoise
 
 
-class DepolarisingNoise(Noise):
-    """One-qubit depolarising noise with probabibity ``prob``."""
+@dataclass(frozen=True, repr=False)
+class DepolarisingNoise(DataclassReprMixin, Noise):
+    """One-qubit depolarising noise with probability ``prob``.
 
-    prob = Probability()
+    Parameters
+    ----------
+    prob : float
+        Probability parameter of the noise, between 0 and 1.
+    """
 
-    def __init__(self, prob: float) -> None:
-        """Initialize one-qubit depolarizing noise.
+    prob: float
 
-        Parameters
-        ----------
-        prob : float
-            Probability parameter of the noise, between 0 and 1.
-        """
-        self.prob = prob
+    def __post_init__(self) -> None:
+        """Check that ``prob`` is a probability."""
+        check_probability(self.prob)
 
     @property
     @typing_extensions.override
@@ -49,20 +52,21 @@ class DepolarisingNoise(Noise):
         return depolarising_channel(self.prob)
 
 
-class TwoQubitDepolarisingNoise(Noise):
-    """Two-qubits depolarising noise with probabibity ``prob``."""
+@dataclass(frozen=True, repr=False)
+class TwoQubitDepolarisingNoise(DataclassReprMixin, Noise):
+    """Two-qubits depolarising noise with probability ``prob``.
 
-    prob = Probability()
+    Parameters
+    ----------
+    prob : float
+        Probability parameter of the noise, between 0 and 1.
+    """
 
-    def __init__(self, prob: float) -> None:
-        """Initialize two-qubit depolarizing noise.
+    prob: float
 
-        Parameters
-        ----------
-        prob : float
-            Probability parameter of the noise, between 0 and 1.
-        """
-        self.prob = prob
+    def __post_init__(self) -> None:
+        """Check that ``prob`` is a probability."""
+        check_probability(self.prob)
 
     @property
     @typing_extensions.override

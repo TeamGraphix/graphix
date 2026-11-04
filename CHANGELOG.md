@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
 
 - #636: `ApplyNoise` now derives from `BaseCommand`, like other commands. In particular, it implements `reindex`.
+  Noise classes (`DepolarisingNoise`, `TwoQubitDepolarisingNoise`, `AmplitudeDampingNoise`, `TwoQubitAmplitudeDampingNoise`) are now immutable (frozen dataclasses) with an eval-friendly `repr`: `repr(DepolarisingNoise(0.1)) == "DepolarisingNoise(0.1)"`. `graphix.utils.check_probability` validates probabilities.
 
 ### Changed
 

@@ -158,6 +158,12 @@ class Probability(BoundedFloat):
         super().__init__(minvalue=0, maxvalue=1)
 
 
+def check_probability(value: float) -> None:
+    """Raise :class:`ValueError` if ``value`` is not a probability (between 0 and 1)."""
+    if not 0 <= value <= 1:
+        raise ValueError(f"Expected {value!r} to be a probability, between 0 and 1")
+
+
 Qubits: TypeAlias = int | tuple["Qubits", ...]
 
 

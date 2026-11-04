@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -277,7 +278,30 @@ def test_apply_noise_is_command() -> None:
     noise = DepolarisingNoise(0.1)
     cmd = ApplyNoise(noise=noise, nodes=[0, 1], domain={2})
     assert isinstance(cmd, BaseCommand)
-    assert repr(cmd) == f"ApplyNoise({noise!r}, [0, 1], {{2}})"
+    assert repr(cmd) == "ApplyNoise(DepolarisingNoise(0.1), [0, 1], {2})"
+
+
+@pytest.mark.parametrize(
+    "noise_class",
+    [DepolarisingNoise, TwoQubitDepolarisingNoise, AmplitudeDampingNoise, TwoQubitAmplitudeDampingNoise],
+)
+def test_noise_repr_and_immutability(
+    noise_class: type[
+        DepolarisingNoise | TwoQubitDepolarisingNoise | AmplitudeDampingNoise | TwoQubitAmplitudeDampingNoise
+    ],
+) -> None:
+    noise = noise_class(0.1)
+    expected = f"{noise_class.__name__}(0.1)"
+    assert repr(noise) == expected
+    assert str(noise) == expected
+    assert noise == noise_class(0.1)
+    assert hash(noise) == hash(noise_class(0.1))
+    assert noise != noise_class(0.2)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        noise.prob = 0.2  # type: ignore[misc]
+    for prob in (-0.1, 1.1):
+        with pytest.raises(ValueError, match="to be a probability"):
+            noise_class(prob)
 
 
 @pytest.mark.parametrize("domain", [None, {2, 3}])
@@ -287,5 +311,7 @@ def test_apply_noise_reindex(domain: set[int] | None) -> None:
     reindexed = cmd.reindex(lambda node: node + 10)
     expected_domain = None if domain is None else {node + 10 for node in domain}
     assert reindexed == ApplyNoise(noise=noise, nodes=[10, 11], domain=expected_domain)
+    # The noise is shared, which is safe since it is immutable.
+    assert reindexed.noise is noise
     # The original command is left unchanged.
     assert cmd == ApplyNoise(noise=noise, nodes=[0, 1], domain=domain)

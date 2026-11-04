@@ -30,7 +30,13 @@ if TYPE_CHECKING:
 
 
 class Noise(ABC):
-    """Abstract base class for noise."""
+    """Abstract base class for noise.
+
+    Noise instances are expected to be immutable: they can be shared
+    between several :class:`ApplyNoise` commands (in particular, the
+    command returned by :meth:`ApplyNoise.reindex` shares the noise of
+    the original command).
+    """
 
     @property
     @abstractmethod
@@ -69,6 +75,10 @@ class ApplyNoise(_KindChecker, BaseCommand):
 
     @override
     def reindex(self, f: Callable[[Node], Node]) -> ApplyNoise:
+        """Return a copy of the command with nodes and domain mapped by ``f``.
+
+        The noise is not copied: since noise instances are immutable, it is shared with the original command.
+        """
         domain = None if self.domain is None else set(map(f, self.domain))
         return ApplyNoise(self.noise, list(map(f, self.nodes)), domain)
 
