@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
 
 import typing_extensions
@@ -14,8 +15,9 @@ from graphix.channels import (
 from graphix.command import BaseM, CommandKind
 from graphix.measurements import toggle_outcome
 from graphix.noise_models.noise_model import ApplyNoise, Noise, NoiseModel
+from graphix.repr_mixins import DataclassReprMixin
 from graphix.rng import ensure_rng
-from graphix.utils import Probability
+from graphix.utils import check_probability
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -26,20 +28,21 @@ if TYPE_CHECKING:
     from graphix.noise_models.noise_model import CommandOrNoise
 
 
-class AmplitudeDampingNoise(Noise):
-    """One-qubit amplitude damping noise with damping parameter ``prob``."""
+@dataclass(frozen=True, repr=False)
+class AmplitudeDampingNoise(DataclassReprMixin, Noise):
+    r"""One-qubit amplitude damping noise with damping parameter ``prob``.
 
-    prob = Probability()
+    Parameters
+    ----------
+    prob : float
+        Damping parameter :math:`\gamma` of the noise, between 0 and 1.
+    """
 
-    def __init__(self, prob: float) -> None:
-        r"""Initialize one-qubit amplitude damping noise.
+    prob: float
 
-        Parameters
-        ----------
-        prob : float
-            Damping parameter :math:`\\gamma` of the noise, between 0 and 1.
-        """
-        self.prob = prob
+    def __post_init__(self) -> None:
+        """Check that ``prob`` is a probability."""
+        check_probability(self.prob)
 
     @property
     @typing_extensions.override
@@ -53,20 +56,21 @@ class AmplitudeDampingNoise(Noise):
         return amplitude_damping_channel(self.prob)
 
 
-class TwoQubitAmplitudeDampingNoise(Noise):
-    """Two-qubit amplitude damping noise with damping parameter ``prob``."""
+@dataclass(frozen=True, repr=False)
+class TwoQubitAmplitudeDampingNoise(DataclassReprMixin, Noise):
+    r"""Two-qubit amplitude damping noise with damping parameter ``prob``.
 
-    prob = Probability()
+    Parameters
+    ----------
+    prob : float
+        Damping parameter :math:`\gamma` of the noise, between 0 and 1.
+    """
 
-    def __init__(self, prob: float) -> None:
-        r"""Initialize two-qubit amplitude damping noise.
+    prob: float
 
-        Parameters
-        ----------
-        prob : float
-            Damping parameter :math:`\\gamma` of the noise, between 0 and 1.
-        """
-        self.prob = prob
+    def __post_init__(self) -> None:
+        """Check that ``prob`` is a probability."""
+        check_probability(self.prob)
 
     @property
     @typing_extensions.override
