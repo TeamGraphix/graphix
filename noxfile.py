@@ -106,7 +106,6 @@ REVERSE_DEPENDENCIES = {
         # Bumping to Python 3.15 requires qiskit-aer to support Python 3.15.
         # See Qiskit/qiskit-aer#2468
         version_constraint=VersionRange(upper=Version("3.15")),
-        branch="refs/pull/27/head",
     ),
     "graphix-stim-compiler": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-compiler"),
     "graphix-pyzx": ReverseDependency(
@@ -127,7 +126,7 @@ REVERSE_DEPENDENCIES = {
         # Bumping to Python 3.15 requires qiskit-aer to support Python 3.15.
         # See Qiskit/qiskit-aer#2468
         version_constraint=VersionRange(upper=Version("3.15")),
-        branch="refs/pull/45/head",
+        branch="refs/pull/48/head",
     ),
     "graphix-mqtbench": ReverseDependency("https://github.com/TeamGraphix/graphix-mqtbench", branch="refs/pull/7/head"),
 }
