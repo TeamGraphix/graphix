@@ -16,12 +16,14 @@ from graphix.instruction import CNOT, RX, RY, RZ, H, S
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
-from graphix.random_objects import rand_circuit
+from graphix.random_objects import rand_circuit, rand_state_vector
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from numpy.random import PCG64
+
+    from graphix.measurements import PauliMeasurement
 
 
 class PauliExpTestCase(NamedTuple):
@@ -437,6 +439,33 @@ class TestCliffordMap:
 
 
 class TestExtraction:
+    @pytest.mark.parametrize(
+        ("meas", "x_map"),
+        [
+            (-Measurement.X, (PauliString.from_str("-Z"),)),  # The outcome-zero branch implements HZ.
+            (-Measurement.Y, (PauliString.from_str("-Y"),)),  # The outcome-zero branch implements HS.
+        ],
+        ids=["-X", "-Y"],
+    )
+    def test_extract_negative_pauli_input(
+        self, meas: PauliMeasurement, x_map: tuple[PauliString, ...], fx_rng: Generator
+    ) -> None:
+        og = OpenGraph(
+            graph=nx.path_graph(2),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: meas},
+        )
+        clifford_map = og.to_pauliflow().extract_circuit().clifford_map
+
+        assert clifford_map.x_map == x_map
+        assert clifford_map.z_map == (PauliString.from_str("+X"),)
+
+        input_state = rand_state_vector(nqubits=1, rng=fx_rng)
+        state_qc = og.to_circuit().simulate(rng=fx_rng, input_state=input_state).state
+        state_pattern = og.simulate(rng=fx_rng, input_state=input_state)
+        assert state_qc.isclose(state_pattern)
+
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_extract_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
