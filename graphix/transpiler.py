@@ -27,7 +27,8 @@ from graphix.opengraph import OpenGraph
 from graphix.ops import Ops
 from graphix.parameter import InplaceParameterizable
 from graphix.pattern import Pattern
-from graphix.sim.base_backend import DenseStateBackend
+from graphix.pauli import Pauli
+from graphix.sim.base_backend import DenseStateBackend, NodeIndex
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import Statevector, StatevectorBackend
 from graphix.states import BasicStates
@@ -110,9 +111,12 @@ class _InstructionValidatorVisitor(InstructionVisitor):
     """Instruction visitor that validates operations on active qubits."""
 
     output_kind: dict[int, OutputKind]
+    measurement_count: int
+    """Number of measurements so far: the next measurement writes the bit of this index."""
 
     def __init__(self, nqubit: int) -> None:
         self.output_kind = dict.fromkeys(range(nqubit), OutputKind.Qubit)
+        self.measurement_count = 0
 
     @override
     def visit_qubit(self, qubit: int) -> int:
@@ -123,8 +127,8 @@ class _InstructionValidatorVisitor(InstructionVisitor):
     @override
     def visit_domain(self, domain: set[int]) -> set[int]:
         for bit in domain:
-            if self.output_kind.get(bit) is not OutputKind.Bit:
-                raise ValueError(f"Qubit {bit} is not a measured qubit.")
+            if not 0 <= bit < self.measurement_count:
+                raise ValueError(f"Bit {bit} has not been measured.")
         return domain
 
 
@@ -134,6 +138,11 @@ class Circuit(InplaceParameterizable):
     Stores a sequence of gate operations. Supports transpilation into
     measurement-based quantum computing (MBQC) measurement patterns and
     state vector simulation.
+
+    Each measurement writes its outcome to a classical bit: the outcome
+    of the first measurement of the circuit is bit 0, the outcome of the
+    second measurement is bit 1, etc. The domains of conditional
+    instructions refer to these bits.
 
     Attributes
     ----------
@@ -200,11 +209,18 @@ class Circuit(InplaceParameterizable):
         """
         return self.width + self.ancillas
 
+    @property
+    def measurement_count(self) -> int:
+        """Number of measurements in the circuit, that is to say, the number of classical bits."""
+        return self._visitor.measurement_count
+
     def add(self, instr: InstructionType) -> Self:
         """Add an instruction to the circuit."""
         self.instruction.append(instr.visit(self._visitor))
         if instr.kind == InstructionKind.M:
-            self._visitor.output_kind[instr.target] = OutputKind.Bit
+            self._visitor.measurement_count += 1
+            if instr.discard:
+                self._visitor.output_kind[instr.target] = OutputKind.Bit
         return self
 
     def extend(self, instrs: Iterable[InstructionType]) -> Self:
@@ -466,10 +482,11 @@ class Circuit(InplaceParameterizable):
         """
         return self.add(Instruction.I(target=target))
 
-    def m(self, target: int, axis: Axis) -> Self:
+    def m(self, target: int, axis: Axis, *, discard: bool = True) -> Self:
         """Measure a quantum qubit.
 
-        The measured qubit cannot be used afterwards.
+        If ``discard`` is ``True`` (the default), the measured qubit cannot be used afterwards.
+        The outcome is written to the next classical bit (see :class:`Circuit`).
 
         See :class:`~graphix.instruction.M` for more information.
 
@@ -479,8 +496,10 @@ class Circuit(InplaceParameterizable):
             target qubit
         axis : Axis
             measurement basis
+        discard : bool, optional
+            If ``False``, the qubit remains active after the measurement, in the eigenstate corresponding to the outcome.
         """
-        return self.add(Instruction.M(target=target, axis=axis))
+        return self.add(Instruction.M(target=target, axis=axis, discard=discard))
 
     def sdg(self, target: int) -> Self:
         """Apply an SDG gate.
@@ -782,13 +801,14 @@ class Circuit(InplaceParameterizable):
         Parameters
         ----------
         domain : AbstractSet[int]
-            Indices of measured qubits whose outcomes determine the condition.
+            Indices of the classical bits whose values determine the condition
+            (the bit ``i`` is the outcome of the ``i``-th measurement of the circuit).
         instrs : Iterable[InstructionTypeWithoutM]
             Sequence of instructions to apply conditionally.
 
         Notes
         -----
-        .. The instruction sequence is applied when the XOR of the measurement outcomes of the qubits in ``domain`` evaluates to ``1``.
+        .. The instruction sequence is applied when the XOR of the bits in ``domain`` evaluates to ``1``.
 
         .. Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the parameter ``instrs`` cannot contain instances of `Instruction.M`. This is statically ensured by the type checker.
         """
@@ -804,7 +824,18 @@ class Circuit(InplaceParameterizable):
         Returns
         -------
             the result of the transpilation: a causal flow and classical outputs.
+
+        Raises
+        ------
+        NotImplementedError
+            If the circuit contains measurements without discard. These
+            measurements can be removed with :meth:`transpile_discard`, which
+            :meth:`transpile` calls automatically.
         """
+        if _has_measurements_without_discard(self):
+            raise NotImplementedError(
+                "Direct transpilation of measurements without discard is not supported. First remove them with `transpile_discard`."
+            )
         n_nodes = self.nqubit
         indices: list[int | None] = list(range(n_nodes))
         measurements: dict[int, BlochMeasurement] = {}
@@ -813,11 +844,7 @@ class Circuit(InplaceParameterizable):
         graph: nx.Graph[int] = nx.empty_graph(n_nodes)
         x_corrections: dict[int, set[int]] = {}
 
-        circuit = (
-            self.transpile_ancilla_state(BasicStates.PLUS)
-            if self.ancillas and self.ancilla_state is not BasicStates.PLUS
-            else self
-        )
+        circuit = self.transpile_ancilla_state(BasicStates.PLUS) if self.ancillas else self
 
         circuit = (
             circuit.transpile_condinstr()
@@ -893,6 +920,8 @@ class Circuit(InplaceParameterizable):
         TranspiledPattern
             The result of the transpilation: a pattern and classical outputs.
         """
+        if _has_measurements_without_discard(self):
+            return self.transpile_discard().transpile(transpile_swaps=transpile_swaps)
         if not transpile_swaps:
             return self.transpile_to_causalflow().to_pattern()
         swap = _transpile_swaps(self, copy=True)
@@ -975,10 +1004,17 @@ class Circuit(InplaceParameterizable):
             _backend.add_nodes(range(self.width, self.nqubit), self.ancilla_state)
 
         classical_measures: list[Outcome] = []
-        results: dict[int, Outcome] = {}  # Mimics `DefaultMeasureMethod.results`
 
-        # Modifies in place `_backend`, `results`, `classical_measures`
-        simulate_instructions(self.instruction, _backend, rng, results, classical_measures, stacklevel=stacklevel + 1)
+        # Modifies in place `_backend` and `classical_measures`
+        simulate_instructions(self.instruction, _backend, rng, classical_measures, stacklevel=stacklevel + 1)
+        # `backend.measure` removes the measured node from `node_index`, and a qubit
+        # measured without discard is then re-added by `add_nodes` at the *end* of
+        # `node_index`. The state is therefore no longer ordered by qubit index:
+        # permute it back so that the returned state is ordered as if the qubit had
+        # never been measured. This is a no-op for circuits that only discard.
+        output_nodes = sorted(_backend.node_index)
+        if list(_backend.node_index) != output_nodes:
+            _backend.finalize(output_nodes)
         return SimulateResult(_backend.state, tuple(classical_measures))
 
     def visit(self, visitor: InstructionVisitor, *, copy: bool = False) -> Circuit:
@@ -1001,8 +1037,7 @@ class Circuit(InplaceParameterizable):
         """
         if copy:
             result = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
-            for instr in self.instruction:
-                result.instruction.append(instr.visit(visitor, copy=True))
+            result.extend(instr.visit(visitor, copy=True) for instr in self.instruction)
             return result
         for instr in self.instruction:
             instr.visit(visitor, copy=False)
@@ -1078,10 +1113,14 @@ class Circuit(InplaceParameterizable):
                     match instr.axis:
                         case Axis.X:
                             new_circuit.h(instr.target)
-                            new_circuit.m(instr.target, Axis.Z)
+                            new_circuit.m(instr.target, Axis.Z, discard=instr.discard)
+                            if not instr.discard:
+                                new_circuit.h(instr.target)
                         case Axis.Y:
                             new_circuit.rx(instr.target, ANGLE_PI / 2)
-                            new_circuit.m(instr.target, Axis.Z)
+                            new_circuit.m(instr.target, Axis.Z, discard=instr.discard)
+                            if not instr.discard:
+                                new_circuit.rx(instr.target, -ANGLE_PI / 2)
                         case Axis.Z:
                             new_circuit.add(instr)
                         case _:
@@ -1102,12 +1141,15 @@ class Circuit(InplaceParameterizable):
         -------
         Circuit
             Equivalent circuit with the required initialization gates prepended.
+            If `target_state` equals `self.ancilla_state`, then `self` is returned unchanged.
 
         Raises
         ------
         NotImplementedError
             If ``target_state`` is not supported.
         """
+        if self.ancilla_state == target_state:
+            return self
         new_circuit = Circuit(self.width, ancillas=self.ancillas, ancilla_state=target_state)
         match target_state:
             case BasicStates.PLUS:
@@ -1122,7 +1164,7 @@ class Circuit(InplaceParameterizable):
         for qubit in range(self.width, self.nqubit):
             for instr in initialization:
                 new_circuit.add(instr(qubit))
-        new_circuit.instruction += self.instruction
+        new_circuit.extend(self.instruction)
         return new_circuit
 
     def transpile_condinstr(self) -> Circuit:
@@ -1138,8 +1180,8 @@ class Circuit(InplaceParameterizable):
 
         Notes
         -----
-        For each qubit that appears in the domain of a conditional instruction,
-        its measurement is transpiled to a :math:`Z`-axis measurement. If the original
+        For each bit that appears in the domain of a conditional instruction,
+        the measurement of the corresponding qubit is transpiled to a :math:`Z`-axis measurement. If the original
         measurement is in the :math:`X` or :math:`Y` basis, the corresponding basis rotation
         is inserted before the controlled instruction:
         .. :math:`X`-axis measurements are preceded by a Hadamard gate.
@@ -1151,25 +1193,31 @@ class Circuit(InplaceParameterizable):
         Non-conditional instructions are preserved unchanged.
 
         All measurements are deferred to the end of the circuit, even if they do not appear in any
-        conditional instruction.
+        conditional instruction. Therefore, measurements without discard are not supported: they can
+        be removed first with :meth:`transpile_discard`.
         """
+        if _has_measurements_without_discard(self):
+            raise NotImplementedError(
+                "Transpilation of conditional instructions with measurements without discard is not supported. First remove them with `transpile_discard`."
+            )
         circuit = Circuit(width=self.width, ancillas=self.ancillas, ancilla_state=self.ancilla_state)
-        measurements: dict[int, Instruction.M] = {}
+        # Indexed by classical bit. Measurements are deferred in the same order, so bits are preserved.
+        measurements: list[Instruction.M] = []
         for instr in self.instruction:
             match instr.kind:
                 case InstructionKind.M:
-                    measurements[instr.target] = instr
+                    measurements.append(instr)
                 case InstructionKind.CONDINSTR:
                     if instr.domain:
-                        domain_list = list(instr.domain)
-                        for cbit in domain_list:
+                        # Every qubit is measured at most once, since measurements discard qubits.
+                        domain_list = [measurements[cbit].target for cbit in instr.domain]
+                        for cbit in instr.domain:
                             meas_instr = measurements[cbit]
-                            assert cbit == meas_instr.target
                             if meas_instr.axis == Axis.X:
-                                circuit.h(cbit)
+                                circuit.h(meas_instr.target)
                             elif meas_instr.axis == Axis.Y:
-                                circuit.rx(cbit, ANGLE_PI / 2)
-                            measurements[cbit] = Instruction.M(cbit, Axis.Z)  # Record updated measurement
+                                circuit.rx(meas_instr.target, ANGLE_PI / 2)
+                            measurements[cbit] = Instruction.M(meas_instr.target, Axis.Z)  # Record updated measurement
                         cnot_instr = [
                             Instruction.CNOT(control=control, target=target)
                             for control, target in itertools.pairwise(domain_list)
@@ -1180,10 +1228,105 @@ class Circuit(InplaceParameterizable):
                 case _:
                     circuit.add(instr)
 
-        for instr in measurements.values():
-            circuit.add(instr)
+        circuit.extend(measurements)
 
         return circuit
+
+    def transpile_discard(self) -> Circuit:
+        r"""Return an equivalent circuit where all measurements discard the measured qubit.
+
+        Each measurement without discard of a qubit :math:`q` along an axis is
+        replaced by the following sequence: :math:`q` is measured along the
+        axis and discarded, then a new ancilla :math:`a` is prepared, with
+        conditional instructions, in the eigenstate of the axis that
+        corresponds to the outcome, and :math:`a` replaces :math:`q` in the
+        tail of the circuit. The measurements keep their order, so the
+        classical bits, and therefore the domains of conditional instructions,
+        are unchanged. Finally, SWAP gates are appended (with
+        :meth:`reorder_active_qubits_with_swaps`) so that the output qubits
+        are in the same order as in the original circuit: the returned
+        circuit has the same semantics as the original one.
+
+        The new ancillas are initialized in :math:`|+\rangle`: if the ancillas
+        of the original circuit are initialized in another state, they are
+        transpiled to :math:`|+\rangle` first, with :meth:`transpile_ancilla_state`.
+
+        The original circuit remains unchanged.
+
+        Returns
+        -------
+        Circuit
+            The transpiled circuit.
+
+        Raises
+        ------
+        NotImplementedError
+            If the circuit contains measurements without discard and its ancillas
+            are not initialized in a basic state.
+        """
+        nmeasurements = sum(1 for instr in self.instruction if instr.kind == InstructionKind.M and not instr.discard)
+        visitor = _TranspileDiscardVisitor(self.nqubit)
+        if nmeasurements == 0:
+            return self.visit(visitor, copy=True)
+        source = (
+            self.transpile_ancilla_state(BasicStates.PLUS)
+            if self.ancillas and self.ancilla_state != BasicStates.PLUS
+            else self
+        )
+        new_circuit = Circuit(self.width, ancillas=self.ancillas + nmeasurements, ancilla_state=BasicStates.PLUS)
+        ancilla = self.nqubit
+        measurement_count = 0
+        for instr in source.instruction:
+            if instr.kind == InstructionKind.M:
+                new_circuit.m(visitor.visit_qubit(instr.target), instr.axis)
+                if not instr.discard:
+                    new_circuit.extend(_prepare_eigenstate(ancilla, instr.axis, measurement_count))
+                    visitor.qubits[instr.target] = ancilla
+                    ancilla += 1
+                measurement_count += 1
+            else:
+                new_circuit.add(instr.visit(visitor, copy=True))
+        new_circuit.reorder_active_qubits_with_swaps([visitor.qubits[qubit] for qubit in self._active_qubits()])
+        return new_circuit
+
+    def _active_qubits(self) -> list[int]:
+        """Return the qubits that have not been discarded by a measurement, in increasing order."""
+        return [qubit for qubit in range(self.nqubit) if self._visitor.output_kind[qubit] == OutputKind.Qubit]
+
+    def reorder_active_qubits_with_swaps(self, qubits: Sequence[int]) -> Circuit:
+        """Append SWAP gates to reorder the active qubits.
+
+        After the SWAP gates, for every index ``i``, the ``i``-th active
+        qubit (that is, the ``i``-th qubit, in increasing order, that has
+        not been discarded by a measurement) holds the state that the qubit
+        ``qubits[i]`` holds before the SWAP gates.
+
+        Parameters
+        ----------
+        qubits : Sequence[int]
+            A permutation of the active qubits.
+
+        Returns
+        -------
+        Circuit
+            The circuit itself, with the SWAP gates appended.
+
+        Raises
+        ------
+        ValueError
+            If ``qubits`` is not a permutation of the active qubits.
+        """
+        active_qubits = self._active_qubits()
+        if sorted(qubits) != active_qubits:
+            raise ValueError(f"{list(qubits)} is not a permutation of the active qubits {active_qubits}.")
+        sorted_idx = NodeIndex()
+        sorted_idx.extend(qubits)
+        for active_qubit_idx, qubit in enumerate(active_qubits):
+            idx = sorted_idx.index(qubit)
+            if active_qubit_idx != idx:
+                self.swap(qubit, sorted_idx[active_qubit_idx])
+                sorted_idx.swap(active_qubit_idx, idx)
+        return self
 
 
 def decompose_rzz(instr: Instruction.RZZ) -> Iterator[Instruction.CNOT | Instruction.RZ]:
@@ -1857,13 +2000,16 @@ def transpile_swaps(circuit: Circuit, *, copy: bool = False) -> TranspileSwapsRe
             visitor.outputs[u], visitor.outputs[v] = visitor.outputs[v], visitor.outputs[u]
         elif instr.kind == InstructionKind.M:
             old_target = instr.target
+            discard = instr.discard
             new_circuit.add(instr.visit(visitor, copy=copy))
-            visitor.outputs[old_target] = OutputIndex(OutputKind.Bit, measurement_index)
+            if discard:
+                visitor.outputs[old_target] = OutputIndex(OutputKind.Bit, measurement_index)
             measurement_index += 1
         else:
             new_circuit.add(instr.visit(visitor, copy=copy))
     if not copy:
         circuit.instruction = new_circuit.instruction
+        circuit._visitor = new_circuit._visitor
         new_circuit = circuit
     return TranspileSwapsResult(new_circuit, tuple(visitor.outputs))
 
@@ -1871,6 +2017,39 @@ def transpile_swaps(circuit: Circuit, *, copy: bool = False) -> TranspileSwapsRe
 # Alias `_transpile_swaps` to call the function in `Circuit.transpile`
 # method where `transpile_swaps` is shadowed by the keyword parameter.
 _transpile_swaps = transpile_swaps
+
+
+class _TranspileDiscardVisitor(InstructionVisitor):
+    """Renumber the qubits of the tail of a circuit."""
+
+    qubits: list[int]
+    """Index of the qubit that currently holds each qubit of the original circuit."""
+
+    def __init__(self, nqubit: int) -> None:
+        self.qubits = list(range(nqubit))
+
+    @override
+    def visit_qubit(self, qubit: int) -> int:
+        return self.qubits[qubit]
+
+
+def _has_measurements_without_discard(circuit: Circuit) -> bool:
+    return any(instr.kind == InstructionKind.M and not instr.discard for instr in circuit.instruction)
+
+
+def _prepare_eigenstate(qubit: int, axis: Axis, bit: int) -> Iterator[InstructionType]:
+    r"""Yield instructions that prepare ``qubit``, initially in :math:`|+\rangle`, in the eigenstate of ``axis`` for the outcome ``bit``."""
+    match axis:
+        case Axis.X:
+            yield Instruction.CONDINSTR({bit}, (Instruction.Z(qubit),))
+        case Axis.Y:
+            yield Instruction.S(qubit)
+            yield Instruction.CONDINSTR({bit}, (Instruction.Z(qubit),))
+        case Axis.Z:
+            yield Instruction.H(qubit)
+            yield Instruction.CONDINSTR({bit}, (Instruction.X(qubit),))
+        case _:
+            assert_never(axis)
 
 
 @overload
@@ -1940,7 +2119,6 @@ def simulate_instructions(
     instructions: Iterable[InstructionType],
     backend: _BuiltinDenseStateBackend | DenseStateBackend[_DenseStateT],
     rng: Generator | None,
-    results: dict[int, Outcome],
     classical_outputs: list[Outcome],
     *,
     stacklevel: int = 1,
@@ -1955,10 +2133,8 @@ def simulate_instructions(
         Backend containing the quantum state.
     rng : Generator or None
         Random number generator used for stochastic measurements. If ``None``, the backend's default random number generation behavior is used.
-    results : dict[int, Outcome]
-        Mapping from measured qubit indices to their measurement outcomes. This mapping is updated in place as measurement instructions are simulated.
     classical_outputs : list[Outcome]
-        List of measurement outcomes. This list is updated in place and retained for backwards compatibility.
+        List of measurement outcomes, indexed by classical bit. This list is updated in place as measurement instructions are simulated.
     stacklevel : int, default=1
         Stack level used when reporting warnings generated during measurement.
     """
@@ -1971,7 +2147,7 @@ def simulate_instructions(
 
     # Mimics `MeasureMethod.check_domain`
     def check_domain(domain: set[int]) -> bool:
-        return sum(results[j] for j in domain) % 2 == 1
+        return sum(classical_outputs[j] for j in domain) % 2 == 1
 
     for instr in instructions:
         match instr.kind:
@@ -2042,16 +2218,17 @@ def simulate_instructions(
                 evolve(Ops.CSWAP, [instr.control, instr.targets[0], instr.targets[1]])
             case InstructionKind.M:
                 result = backend.measure(instr.target, PauliMeasurement(instr.axis), rng=rng, stacklevel=stacklevel + 1)
-                # We keep `classical_outputs` for backwards compatibility but ``results`` contains the same information
                 classical_outputs.append(result)
-                results[instr.target] = result
+                if not instr.discard:
+                    # The measured qubit is re-added in the post-measurement state.
+                    backend.add_nodes([instr.target], Pauli.from_axis(instr.axis).eigenstate(result))
             case InstructionKind.GPHASE:
                 # Global phase is currently ignored
                 pass
             case InstructionKind.CONDINSTR:
                 if check_domain(instr.domain):
                     simulate_instructions(
-                        instr.instructions, backend, rng, results, classical_outputs, stacklevel=stacklevel + 1
+                        instr.instructions, backend, rng, classical_outputs, stacklevel=stacklevel + 1
                     )
             case _:
                 assert_never(instr.kind)
