@@ -1205,8 +1205,8 @@ def decompose_rzz(instr: Instruction.RZZ) -> Iterator[Instruction.CNOT | Instruc
 
 def decompose_ccx(
     instr: Instruction.CCX,
-) -> Iterator[Instruction.H | Instruction.CNOT | Instruction.RZ]:
-    """Yield a decomposition of the CCX gate into H, CNOT, T and T-dagger gates.
+) -> Iterator[Instruction.H | Instruction.CNOT | Instruction.T | Instruction.TDG | Instruction.S]:
+    """Yield a decomposition of the CCX gate into H, CNOT, T, T-dagger and S gates.
 
     This decomposition of the Toffoli gate can be found in
     Michael A. Nielsen and Isaac L. Chuang,
@@ -1226,20 +1226,20 @@ def decompose_ccx(
     c0, c1, t = instr.controls[0], instr.controls[1], instr.target
     yield Instruction.H(t)
     yield Instruction.CNOT(control=c1, target=t)
-    yield Instruction.RZ(t, -ANGLE_PI / 4)
+    yield Instruction.TDG(t)
     yield Instruction.CNOT(control=c0, target=t)
-    yield Instruction.RZ(t, ANGLE_PI / 4)
+    yield Instruction.T(t)
     yield Instruction.CNOT(control=c1, target=t)
-    yield Instruction.RZ(t, -ANGLE_PI / 4)
+    yield Instruction.TDG(t)
     yield Instruction.CNOT(control=c0, target=t)
-    yield Instruction.RZ(c1, -ANGLE_PI / 4)
-    yield Instruction.RZ(t, ANGLE_PI / 4)
+    yield Instruction.TDG(c1)
+    yield Instruction.T(t)
     yield Instruction.CNOT(control=c0, target=c1)
     yield Instruction.H(t)
-    yield Instruction.RZ(c1, -ANGLE_PI / 4)
+    yield Instruction.TDG(c1)
     yield Instruction.CNOT(control=c0, target=c1)
-    yield Instruction.RZ(c0, ANGLE_PI / 4)
-    yield Instruction.RZ(c1, ANGLE_PI / 2)
+    yield Instruction.T(c0)
+    yield Instruction.S(c1)
 
 
 def decompose_cnot(instr: Instruction.CNOT) -> Iterator[Instruction.H | Instruction.CZ]:
@@ -1560,24 +1560,34 @@ def instruction_to_jcz(
             return
         case InstructionKind.H:
             yield Instruction.J(instr.target, 0)
+        # Global phases are kept so that the decomposition remains
+        # correct when it is controlled (see `insert_control`).
         case InstructionKind.S:
-            yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI / 2))
+            yield from instructions_to_jcz(decompose_p(Instruction.P(instr.target, ANGLE_PI / 2)))
         case InstructionKind.SDG:
-            yield from decompose_rz(Instruction.RZ(instr.target, -ANGLE_PI / 2))
+            yield from instructions_to_jcz(decompose_p(Instruction.P(instr.target, -ANGLE_PI / 2)))
         case InstructionKind.T:
-            yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI / 4))
+            yield from instructions_to_jcz(decompose_p(Instruction.P(instr.target, ANGLE_PI / 4)))
         case InstructionKind.TDG:
-            yield from decompose_rz(Instruction.RZ(instr.target, -ANGLE_PI / 4))
+            yield from instructions_to_jcz(decompose_p(Instruction.P(instr.target, -ANGLE_PI / 4)))
         case InstructionKind.SX:
+            # SX = e^{iπ/4} Rx(π/2)
             yield from decompose_rx(Instruction.RX(instr.target, ANGLE_PI / 2))
+            yield Instruction.GPHASE(ANGLE_PI / 4)
         case InstructionKind.SXDG:
+            # SXDG = e^{-iπ/4} Rx(-π/2)
             yield from decompose_rx(Instruction.RX(instr.target, -ANGLE_PI / 2))
+            yield Instruction.GPHASE(-ANGLE_PI / 4)
         case InstructionKind.X:
+            # X = i Rx(π)
             yield from decompose_rx(Instruction.RX(instr.target, ANGLE_PI))
+            yield Instruction.GPHASE(ANGLE_PI / 2)
         case InstructionKind.Y:
             yield from instructions_to_jcz(decompose_y(instr))
         case InstructionKind.Z:
+            # Z = i Rz(π)
             yield from decompose_rz(Instruction.RZ(instr.target, ANGLE_PI))
+            yield Instruction.GPHASE(ANGLE_PI / 2)
         case InstructionKind.RX:
             yield from decompose_rx(instr)
         case InstructionKind.RY:
