@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #474, #564: Added `FocusedPauliFlow` and `FocusedGFlow` classes to encapsulate operations specific to focused flows. Flow-finding algorithms return focused flows by construction. Having dedicated classes removes the need to dynamically recheck that a flow is focused during circuit extraction.
 
-- #644: Added measurements without discard: `Circuit.m(target, axis, discard=False)` (and the new attribute `discard` of `Instruction.M`) measures a qubit and leaves it active, in the eigenstate corresponding to the outcome. The new function `transpile_discard` rewrites these measurements into measurements with discard followed by the preparation of a fresh ancilla; `Circuit.transpile` applies it automatically.
+- #644:
+  - Added measurements without discard: `Circuit.m(target, axis, discard=False)` (and the new attribute `discard` of `Instruction.M`) measures a qubit and leaves it active, in the eigenstate corresponding to the outcome. The new method `Circuit.transpile_discard` returns an equivalent circuit where these measurements are rewritten into measurements with discard followed by the preparation of a fresh ancilla, and where SWAP gates restore the order of the output qubits; `Circuit.transpile` applies it automatically.
+  - The new method `Circuit.reorder_active_qubits_with_swaps` appends the SWAP gates that permute the active qubits.
 
 ### Fixed
 

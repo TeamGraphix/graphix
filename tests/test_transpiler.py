@@ -29,7 +29,6 @@ from graphix.transpiler import (
     decompose_y,
     insert_control,
     instruction_to_jcz,
-    transpile_discard,
     transpile_swaps,
 )
 from tests.test_branch_selector import CheckedBranchSelector
@@ -1069,7 +1068,7 @@ def test_domain_of_qubit_measured_twice(fx_rng: Generator, domain: set[int], out
     circuit = Circuit(2).m(0, Axis.Z, discard=False).x(0).m(0, Axis.Z)
     circuit.condinstr(domain, [Instruction.X(1)])
     assert circuit.measurement_count == 2
-    result = circuit.simulate(input_state=[BasicStates.ZERO, BasicStates.ZERO], rng=fx_rng)
+    result = circuit.simulate(input_state=BasicStates.ZERO, rng=fx_rng)
     assert result.classical_measures == (0, 1)
     assert result.state.isclose(Statevector(data=output))
 
@@ -1089,20 +1088,36 @@ def test_domain_of_qubit_measured_twice(fx_rng: Generator, domain: set[int], out
 )
 def test_transpile_discard(fx_rng: Generator, axis: Axis, outcome: Outcome, ancilla_state: State) -> None:
     circuit = circuit_with_measurements_without_discard(axis, ancilla_state)
-    result = transpile_discard(circuit)
-    assert all(instr.discard for instr in result.circuit.instruction if instr.kind == InstructionKind.M)
-    # Qubit 0 ends on the second new ancilla, qubit 1 on the first one.
-    assert result.outputs == (5, 4, 3)
+    instructions = list(circuit.instruction)
+    transpiled = circuit.transpile_discard()
+    assert circuit.instruction == instructions
+    assert all(instr.discard for instr in transpiled.instruction if instr.kind == InstructionKind.M)
+    # Qubit 0 ends on the second new ancilla (5), qubit 1 on the first one (4), and qubit 3 stays in place:
+    # a final swap restores the order of the output qubits.
+    assert transpiled.instruction[-2:] == [Instruction.M(2, Axis.Z), Instruction.SWAP((3, 5))]
 
     input_state = rand_state_vector(3, rng=fx_rng)
     simulation = circuit.simulate(input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng)
-    simulation_test = result.circuit.simulate(
+    simulation_test = transpiled.simulate(
         input_state=input_state, branch_selector=ConstBranchSelector(outcome), rng=fx_rng
     )
     assert simulation_test.classical_measures == simulation.classical_measures
-    state = simulation_test.state
-    state.permute(list(result.restore_output_nodes(range(len(result.outputs)))))
-    assert state.isclose(simulation.state)
+    assert simulation_test.state.isclose(simulation.state)
+
+
+def test_transpile_discard_reorders_outputs(fx_rng: Generator) -> None:
+    # Example from https://github.com/TeamGraphix/graphix/pull/644#discussion_r4482277320
+    input_state = rand_state_vector(3, rng=fx_rng)
+    circuit = Circuit(3).m(0, Axis.Z, discard=False).m(2, Axis.Z, discard=False).m(0, Axis.Z, discard=False)
+    for outcome in (0, 1):
+        branch_selector = ConstBranchSelector(outcome)
+        state = circuit.simulate(input_state=input_state, branch_selector=branch_selector, rng=fx_rng).state
+        state_transpiled = (
+            circuit.transpile_discard()
+            .simulate(input_state=input_state, branch_selector=branch_selector, rng=fx_rng)
+            .state
+        )
+        assert state_transpiled.isclose(state)
 
 
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
@@ -1124,9 +1139,25 @@ def test_transpile_pattern_without_discard(
 def test_transpile_discard_without_measurements_without_discard(fx_rng: Generator) -> None:
     circuit = rand_circuit(3, 3, fx_rng)
     circuit.m(1, Axis.X)
-    result = transpile_discard(circuit)
-    assert result.circuit is circuit
-    assert result.outputs == (0, 2)
+    transpiled = circuit.transpile_discard()
+    assert transpiled is not circuit
+    assert transpiled.instruction == circuit.instruction
+    # The copy has its own validator state.
+    transpiled.h(0)
+    assert len(transpiled.instruction) == len(circuit.instruction) + 1
+    with pytest.raises(ValueError, match=r"Qubit 1 is not an active qubit."):
+        transpiled.h(1)
+
+
+def test_reorder_active_qubits_with_swaps() -> None:
+    circuit = Circuit(4).m(1, Axis.Z)
+    input_state = [BasicStates.ZERO, BasicStates.PLUS, BasicStates.ONE, BasicStates.PLUS_I]
+    reordered = circuit.visit(InstructionVisitor(), copy=True).reorder_active_qubits_with_swaps([3, 0, 2])
+    state = reordered.simulate(input_state=input_state, branch_selector=ConstBranchSelector(0)).state
+    # The active qubits are 0, 2, 3: after the swaps, they hold the former qubits 3, 0, 2.
+    assert state.isclose(Statevector(data=[BasicStates.PLUS_I, BasicStates.ZERO, BasicStates.ONE]))
+    with pytest.raises(ValueError, match="not a permutation of the active qubits"):
+        circuit.reorder_active_qubits_with_swaps([0, 1, 2])
 
 
 def test_measure_without_discard_unsupported() -> None:
@@ -1136,7 +1167,7 @@ def test_measure_without_discard_unsupported() -> None:
     with pytest.raises(NotImplementedError, match="transpile_discard"):
         circuit.transpile_condinstr()
     with pytest.raises(NotImplementedError):
-        transpile_discard(Circuit(1, ancillas=1, ancilla_state=PlanarState(Plane.XY, 0.3)).m(0, Axis.Z, discard=False))
+        Circuit(1, ancillas=1, ancilla_state=PlanarState(Plane.XY, 0.3)).m(0, Axis.Z, discard=False).transpile_discard()
 
 
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])

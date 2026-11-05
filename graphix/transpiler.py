@@ -28,7 +28,7 @@ from graphix.ops import Ops
 from graphix.parameter import InplaceParameterizable
 from graphix.pattern import Pattern
 from graphix.pauli import Pauli
-from graphix.sim.base_backend import DenseStateBackend
+from graphix.sim.base_backend import DenseStateBackend, NodeIndex
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import Statevector, StatevectorBackend
 from graphix.states import BasicStates
@@ -829,7 +829,7 @@ class Circuit(InplaceParameterizable):
         ------
         NotImplementedError
             If the circuit contains measurements without discard. These
-            measurements can be removed with :func:`transpile_discard`, which
+            measurements can be removed with :meth:`transpile_discard`, which
             :meth:`transpile` calls automatically.
         """
         if _has_measurements_without_discard(self):
@@ -844,11 +844,7 @@ class Circuit(InplaceParameterizable):
         graph: nx.Graph[int] = nx.empty_graph(n_nodes)
         x_corrections: dict[int, set[int]] = {}
 
-        circuit = (
-            self.transpile_ancilla_state(BasicStates.PLUS)
-            if self.ancillas and self.ancilla_state is not BasicStates.PLUS
-            else self
-        )
+        circuit = self.transpile_ancilla_state(BasicStates.PLUS) if self.ancillas else self
 
         circuit = (
             circuit.transpile_condinstr()
@@ -925,10 +921,7 @@ class Circuit(InplaceParameterizable):
             The result of the transpilation: a pattern and classical outputs.
         """
         if _has_measurements_without_discard(self):
-            discard = transpile_discard(self)
-            result = discard.circuit.transpile(transpile_swaps=transpile_swaps)
-            result.pattern.reorder_output_nodes(discard.restore_output_nodes(result.pattern.output_nodes))
-            return result
+            return self.transpile_discard().transpile(transpile_swaps=transpile_swaps)
         if not transpile_swaps:
             return self.transpile_to_causalflow().to_pattern()
         swap = _transpile_swaps(self, copy=True)
@@ -1148,12 +1141,15 @@ class Circuit(InplaceParameterizable):
         -------
         Circuit
             Equivalent circuit with the required initialization gates prepended.
+            If `target_state` equals `self.ancilla_state`, then `self` is returned unchanged.
 
         Raises
         ------
         NotImplementedError
             If ``target_state`` is not supported.
         """
+        if self.ancilla_state == target_state:
+            return self
         new_circuit = Circuit(self.width, ancillas=self.ancillas, ancilla_state=target_state)
         match target_state:
             case BasicStates.PLUS:
@@ -1198,7 +1194,7 @@ class Circuit(InplaceParameterizable):
 
         All measurements are deferred to the end of the circuit, even if they do not appear in any
         conditional instruction. Therefore, measurements without discard are not supported: they can
-        be removed first with :func:`transpile_discard`.
+        be removed first with :meth:`transpile_discard`.
         """
         if _has_measurements_without_discard(self):
             raise NotImplementedError(
@@ -1235,6 +1231,102 @@ class Circuit(InplaceParameterizable):
         circuit.extend(measurements)
 
         return circuit
+
+    def transpile_discard(self) -> Circuit:
+        r"""Return an equivalent circuit where all measurements discard the measured qubit.
+
+        Each measurement without discard of a qubit :math:`q` along an axis is
+        replaced by the following sequence: :math:`q` is measured along the
+        axis and discarded, then a new ancilla :math:`a` is prepared, with
+        conditional instructions, in the eigenstate of the axis that
+        corresponds to the outcome, and :math:`a` replaces :math:`q` in the
+        tail of the circuit. The measurements keep their order, so the
+        classical bits, and therefore the domains of conditional instructions,
+        are unchanged. Finally, SWAP gates are appended (with
+        :meth:`reorder_active_qubits_with_swaps`) so that the output qubits
+        are in the same order as in the original circuit: the returned
+        circuit has the same semantics as the original one.
+
+        The new ancillas are initialized in :math:`|+\rangle`: if the ancillas
+        of the original circuit are initialized in another state, they are
+        transpiled to :math:`|+\rangle` first, with :meth:`transpile_ancilla_state`.
+
+        The original circuit remains unchanged.
+
+        Returns
+        -------
+        Circuit
+            The transpiled circuit.
+
+        Raises
+        ------
+        NotImplementedError
+            If the circuit contains measurements without discard and its ancillas
+            are not initialized in a basic state.
+        """
+        nmeasurements = sum(1 for instr in self.instruction if instr.kind == InstructionKind.M and not instr.discard)
+        visitor = _TranspileDiscardVisitor(self.nqubit)
+        if nmeasurements == 0:
+            return self.visit(visitor, copy=True)
+        source = (
+            self.transpile_ancilla_state(BasicStates.PLUS)
+            if self.ancillas and self.ancilla_state != BasicStates.PLUS
+            else self
+        )
+        new_circuit = Circuit(self.width, ancillas=self.ancillas + nmeasurements, ancilla_state=BasicStates.PLUS)
+        ancilla = self.nqubit
+        measurement_count = 0
+        for instr in source.instruction:
+            if instr.kind == InstructionKind.M:
+                new_circuit.m(visitor.visit_qubit(instr.target), instr.axis)
+                if not instr.discard:
+                    new_circuit.extend(_prepare_eigenstate(ancilla, instr.axis, measurement_count))
+                    visitor.qubits[instr.target] = ancilla
+                    ancilla += 1
+                measurement_count += 1
+            else:
+                new_circuit.add(instr.visit(visitor, copy=True))
+        new_circuit.reorder_active_qubits_with_swaps([visitor.qubits[qubit] for qubit in self._active_qubits()])
+        return new_circuit
+
+    def _active_qubits(self) -> list[int]:
+        """Return the qubits that have not been discarded by a measurement, in increasing order."""
+        return [qubit for qubit in range(self.nqubit) if self._visitor.output_kind[qubit] == OutputKind.Qubit]
+
+    def reorder_active_qubits_with_swaps(self, qubits: Sequence[int]) -> Circuit:
+        """Append SWAP gates to reorder the active qubits.
+
+        After the SWAP gates, for every index ``i``, the ``i``-th active
+        qubit (that is, the ``i``-th qubit, in increasing order, that has
+        not been discarded by a measurement) holds the state that the qubit
+        ``qubits[i]`` holds before the SWAP gates.
+
+        Parameters
+        ----------
+        qubits : Sequence[int]
+            A permutation of the active qubits.
+
+        Returns
+        -------
+        Circuit
+            The circuit itself, with the SWAP gates appended.
+
+        Raises
+        ------
+        ValueError
+            If ``qubits`` is not a permutation of the active qubits.
+        """
+        active_qubits = self._active_qubits()
+        if sorted(qubits) != active_qubits:
+            raise ValueError(f"{list(qubits)} is not a permutation of the active qubits {active_qubits}.")
+        sorted_idx = NodeIndex()
+        sorted_idx.extend(qubits)
+        for active_qubit_idx, qubit in enumerate(active_qubits):
+            idx = sorted_idx.index(qubit)
+            if active_qubit_idx != idx:
+                self.swap(qubit, sorted_idx[active_qubit_idx])
+                sorted_idx.swap(active_qubit_idx, idx)
+        return self
 
 
 def decompose_rzz(instr: Instruction.RZZ) -> Iterator[Instruction.CNOT | Instruction.RZ]:
@@ -1927,37 +2019,6 @@ def transpile_swaps(circuit: Circuit, *, copy: bool = False) -> TranspileSwapsRe
 _transpile_swaps = transpile_swaps
 
 
-@dataclass(frozen=True)
-class TranspileDiscardResult:
-    """The result returned by :func:`transpile_discard`."""
-
-    circuit: Circuit
-    """Circuit where all measurements discard the measured qubit."""
-
-    outputs: tuple[int, ...]
-    """
-    For every output qubit of the original circuit (that is, every qubit
-    that is not measured with discard), in increasing order, the index of
-    the qubit that holds it at the end of the transpiled circuit.
-    """
-
-    def restore_output_nodes(self, output_nodes: Sequence[Node]) -> tuple[Node, ...]:
-        """Reorder the output nodes of a pattern obtained from the transpiled circuit to restore the qubit ordering of the original circuit.
-
-        Parameters
-        ----------
-        output_nodes : Sequence[Node]
-            Output nodes, in the order of the output qubits of the transpiled circuit.
-
-        Returns
-        -------
-        tuple[Node, ...]
-            Output nodes, in the order of the output qubits of the original circuit.
-        """
-        rank = {qubit: i for i, qubit in enumerate(sorted(self.outputs))}
-        return tuple(output_nodes[rank[qubit]] for qubit in self.outputs)
-
-
 class _TranspileDiscardVisitor(InstructionVisitor):
     """Renumber the qubits of the tail of a circuit."""
 
@@ -1989,71 +2050,6 @@ def _prepare_eigenstate(qubit: int, axis: Axis, bit: int) -> Iterator[Instructio
             yield Instruction.CONDINSTR({bit}, (Instruction.X(qubit),))
         case _:
             assert_never(axis)
-
-
-def _active_qubits(circuit: Circuit) -> list[int]:
-    """Return the qubits that are not discarded by a measurement, in increasing order."""
-    discarded = {instr.target for instr in circuit.instruction if instr.kind == InstructionKind.M and instr.discard}
-    return [qubit for qubit in range(circuit.nqubit) if qubit not in discarded]
-
-
-def transpile_discard(circuit: Circuit) -> TranspileDiscardResult:
-    r"""Return a circuit equivalent to the original one where all measurements discard the measured qubit.
-
-    Each measurement without discard of a qubit :math:`q` along an axis is
-    replaced by the following sequence: :math:`q` is measured along the
-    axis and discarded, then a new ancilla :math:`a` is prepared, with
-    conditional instructions, in the eigenstate of the axis that
-    corresponds to the outcome, and :math:`a` replaces :math:`q` in the
-    tail of the circuit. The measurements keep their order, so the
-    classical bits, and therefore the domains of conditional instructions,
-    are unchanged.
-
-    If the circuit contains no measurement without discard, it is returned
-    as is, without copy.
-
-    The new ancillas are initialized in :math:`|+\rangle`: the ancillas of
-    the original circuit are transpiled to :math:`|+\rangle` first, with
-    :meth:`Circuit.transpile_ancilla_state`.
-
-    Parameters
-    ----------
-    circuit : Circuit
-        The original circuit.
-
-    Returns
-    -------
-    TranspileDiscardResult
-        The field ``circuit`` contains the transpiled circuit, and the field
-        ``outputs`` maps the output qubits of the original circuit to the
-        qubits of the transpiled circuit.
-
-    Raises
-    ------
-    NotImplementedError
-        If the circuit contains measurements without discard and its ancillas
-        are not initialized in a basic state.
-    """
-    nmeasurements = sum(1 for instr in circuit.instruction if instr.kind == InstructionKind.M and not instr.discard)
-    if nmeasurements == 0:
-        return TranspileDiscardResult(circuit, tuple(_active_qubits(circuit)))
-    visitor = _TranspileDiscardVisitor(circuit.nqubit)
-    source = circuit.transpile_ancilla_state(BasicStates.PLUS) if circuit.ancillas else circuit
-    new_circuit = Circuit(circuit.width, ancillas=circuit.ancillas + nmeasurements, ancilla_state=BasicStates.PLUS)
-    ancilla = circuit.nqubit
-    measurement_count = 0
-    for instr in source.instruction:
-        if instr.kind == InstructionKind.M:
-            new_circuit.m(visitor.visit_qubit(instr.target), instr.axis)
-            if not instr.discard:
-                new_circuit.extend(_prepare_eigenstate(ancilla, instr.axis, measurement_count))
-                visitor.qubits[instr.target] = ancilla
-                ancilla += 1
-            measurement_count += 1
-        else:
-            new_circuit.add(instr.visit(visitor, copy=True))
-    outputs = tuple(visitor.qubits[qubit] for qubit in _active_qubits(circuit))
-    return TranspileDiscardResult(new_circuit, outputs)
 
 
 @overload

@@ -1515,7 +1515,6 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         To extract a unitary circuit from a pattern, see :meth:`OpenGraph.to_circuit`.
         """
         from graphix import Circuit  # noqa: PLC0415 # Avoid circular imports
-        from graphix.transpiler import OutputKind  # noqa: PLC0415 # Avoid circular imports
 
         width = len(self.input_nodes)
         all_nodes = [*self.input_nodes, *(cmd.node for cmd in self.__seq if cmd.kind == CommandKind.N)]
@@ -1586,21 +1585,8 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                             case _:
                                 raise RuntimeError("Invalid Clifford decomposition.")
 
-        # The following code adds SWAP gates so that qubits are in the same
-        # order as the output nodes.
-
-        sorted_qubits = (node_idx.index(node) for node in self.output_nodes)
-        sorted_idx = NodeIndex()
-        sorted_idx.extend(sorted_qubits)
-
-        active_qubit_idx = 0
-        for qubit in range(circuit.nqubit):
-            if circuit._visitor.output_kind[qubit] == OutputKind.Qubit:
-                idx = sorted_idx.index(qubit)
-                if active_qubit_idx != idx:
-                    circuit.swap(qubit, sorted_idx[active_qubit_idx])
-                    sorted_idx.swap(active_qubit_idx, idx)
-                active_qubit_idx += 1
+        # Add SWAP gates so that qubits are in the same order as the output nodes.
+        circuit.reorder_active_qubits_with_swaps([node_idx.index(node) for node in self.output_nodes])
 
         if ancilla_state is not None:
             circuit.ancilla_state = ancilla_state
