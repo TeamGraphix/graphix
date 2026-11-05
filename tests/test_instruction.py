@@ -59,6 +59,7 @@ INSTRUCTION_TEST_CASES: tuple[InstructionTestCase, ...] = (
         ),
     ),
     InstructionTestCase("CY", lambda _rng: Instruction.CY(0, 1)),
+    InstructionTestCase("CH", lambda _rng: Instruction.CH(0, 1)),
     InstructionTestCase("CJ", lambda rng: Instruction.CJ(0, 1, rng.random() * 2 * ANGLE_PI)),
     InstructionTestCase("CP", lambda rng: Instruction.CP(0, 1, rng.random() * 2 * ANGLE_PI)),
     InstructionTestCase("CRX", lambda rng: Instruction.CRX(0, 1, rng.random() * 2 * ANGLE_PI)),

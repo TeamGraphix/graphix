@@ -64,6 +64,7 @@ class InstructionKind(Enum):
     SX = enum.auto()
     SXDG = enum.auto()
     CY = enum.auto()
+    CH = enum.auto()
     P = enum.auto()
     U = enum.auto()
     CJ = enum.auto()
@@ -315,6 +316,36 @@ class CY(_KindChecker, ControlledSingleTargetInstruction):
     """
 
     kind: ClassVar[Literal[InstructionKind.CY]] = field(default=InstructionKind.CY, init=False)
+
+
+@dataclass(repr=False)
+class CH(_KindChecker, ControlledSingleTargetInstruction):
+    r"""CH circuit instruction.
+
+    The CH gate applies the matrix
+
+    .. math::
+
+      \left[\begin{matrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & \frac 1 {\sqrt 2} & \frac 1 {\sqrt 2}\\
+        0 & 0 & \frac 1 {\sqrt 2} & -\frac 1 {\sqrt 2}
+      \end{matrix}\right]
+
+    in the computational basis. The basis states use big-endian
+    ordering, with the most significant qubit first. The qubits are
+    numbered in the order ``control``, ``target``.
+
+    Attributes
+    ----------
+    control : int
+        Index of the control qubit.
+    target : int
+        Index of the target qubit.
+    """
+
+    kind: ClassVar[Literal[InstructionKind.CH]] = field(default=InstructionKind.CH, init=False)
 
 
 @dataclass(repr=False)
@@ -1153,6 +1184,7 @@ InstructionTypeWithoutM: TypeAlias = """(
     | CNOT
     | CY
     | CZ
+    | CH
     | CCX
     | RZZ
     | SWAP
@@ -1169,8 +1201,8 @@ class CONDINSTR(_KindChecker, BaseInstruction):
     Conditional measurements are not well defined since they would result in circuits with an indeterminate number of qubits. Therefore, the attribute ``instructions`` cannot contain instances of `Instruction.M`.
     """
 
+    domain: set[int]
     instructions: tuple[InstructionTypeWithoutM, ...]
-    domain: set[int] = field(default_factory=set)
     kind: ClassVar[Literal[InstructionKind.CONDINSTR]] = field(default=InstructionKind.CONDINSTR, init=False)
 
     @override
@@ -1178,7 +1210,7 @@ class CONDINSTR(_KindChecker, BaseInstruction):
         instructions = tuple(instr.visit(visitor, copy=copy) for instr in self.instructions)
         domain = visitor.visit_domain(self.domain)
         if copy:
-            return type(self)(instructions, domain)
+            return type(self)(domain, instructions)
         self.instructions = instructions
         self.domain = domain
         return self
@@ -1219,6 +1251,7 @@ class Instruction:
     CNOT: TypeAlias = CNOT
     CY: TypeAlias = CY
     CZ: TypeAlias = CZ
+    CH: TypeAlias = CH
     CCX: TypeAlias = CCX
     RZZ: TypeAlias = RZZ
     SWAP: TypeAlias = SWAP
@@ -1236,6 +1269,7 @@ if TYPE_CHECKING:
         Instruction.CNOT
         | Instruction.CY
         | Instruction.CZ
+        | Instruction.CH
         | Instruction.CJ
         | Instruction.CCX
         | Instruction.CRX

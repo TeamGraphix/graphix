@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed incorrect Clifford signs during circuit extraction for input vertices measured in negative Pauli X or Y bases.
+
 - #598, #608:
   - The order of the attributes of the controlled instructions has been changed to put the control qubits first, to ensure consistency between all controlled instructions, with the matrix description of the gates, and with the `Circuit` methods that add instructions to the circuit.
   - `CZ` is now a `ControlledSingleTargetInstruction` and takes a `control` and a `target` instead of a pair of `targets`.
@@ -27,8 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `E` command in patterns.
   - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
 
-- #636: `ApplyNoise` now derives from `BaseCommand`, like other commands. In particular, it implements `reindex`.
+- #624: CH gate is now supported (its support was missing as it is a standard OpenQASM gate).
+
+- #636, #639: `ApplyNoise` now derives from `BaseCommand`, like other commands. In particular, it implements `reindex`.
   Noise classes (`DepolarisingNoise`, `TwoQubitDepolarisingNoise`, `AmplitudeDampingNoise`, `TwoQubitAmplitudeDampingNoise`) are now immutable (frozen dataclasses) with an eval-friendly `repr`: `repr(DepolarisingNoise(0.1)) == "DepolarisingNoise(0.1)"`. `graphix.utils.check_probability` validates probabilities.
+
+- #645: Fix negative sign in circuit extraction strings
 
 ### Changed
 
@@ -36,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Factorized instruction-validity checks in method `Circuit.add` via an instruction visitor.
   - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
 
+<<<<<<< HEAD
+||||||| ff6349ce
+=======
+- #626, #635: The `domain` argument of the `X` and `Z` commands is now mandatory. Previously, it defaulted to the empty set, so that `X(1)` silently had no effect; write `X(1, set())` to state this explicitly.
+>>>>>>> master
 
 ## [0.4.1] - 2026-10-13
 
