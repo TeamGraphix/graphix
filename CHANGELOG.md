@@ -31,7 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #624: CH gate is now supported (its support was missing as it is a standard OpenQASM gate).
 
-- #637: Decompositions no longer drop global phases, which made controlled gates produced by `insert_control` wrong. `instruction_to_jcz` now keeps the global phase of `S`, `SDG`, `T`, `TDG`, `SX`, `SXDG`, `X`, `Y` and `Z`, and `decompose_ccx` now uses `T`, `TDG` and `S` gates as in Nielsen & Chuang instead of `RZ` rotations.
+- #636, #639: `ApplyNoise` now derives from `BaseCommand`, like other commands. In particular, it implements `reindex`.
+  Noise classes (`DepolarisingNoise`, `TwoQubitDepolarisingNoise`, `AmplitudeDampingNoise`, `TwoQubitAmplitudeDampingNoise`) are now immutable (frozen dataclasses) with an eval-friendly `repr`: `repr(DepolarisingNoise(0.1)) == "DepolarisingNoise(0.1)"`. `graphix.utils.check_probability` validates probabilities.
+
+- #637, #643: Decompositions no longer drop global phases, which made controlled gates produced by `insert_control` wrong. `instruction_to_jcz` now keeps the global phase of `S`, `SDG`, `T`, `TDG`, `SX`, `SXDG`, `X`, `Y` and `Z`, and `decompose_ccx` now uses `T`, `TDG` and `S` gates as in Nielsen & Chuang instead of `RZ` rotations.
+
+- #645: Fix negative sign in circuit extraction strings
 
 ### Changed
 
