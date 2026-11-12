@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #626, #635: The `domain` argument of the `X` and `Z` commands is now mandatory. Previously, it defaulted to the empty set, so that `X(1)` silently had no effect; write `X(1, set())` to state this explicitly.
 
+- #613: The default space minimization heuristic `SpaceMinimizationHeuristics.extended_causal_flow`
+  replaces `causal_flow`, and is optimal for patterns with extended causal flow.
+
 ## [0.4.1] - 2026-10-13
 
 ### Added

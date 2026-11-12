@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 import pytest
+from numpy.random import Generator
 
+from graphix import Circuit
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
     CausalFlow,
@@ -38,12 +40,13 @@ from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
+from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from numpy.random import Generator
+    from numpy.random import PCG64
 
 
 def generate_causal_flow_0() -> CausalFlow[Plane]:
@@ -1236,3 +1239,52 @@ class TestIncorrectXZC:
         for field in fields(exc_info.value):
             attr = field.name
             assert getattr(exc_info.value, attr) == getattr(test_case.exception, attr)
+
+
+def test_ecf_yz_node() -> None:
+    # 0 (XY, input) -> 2 (output), 1 (YZ) is a phase gadget on 2: 0 < 1 < 2.
+    og = OpenGraph(
+        graph=nx.Graph([(0, 2), (1, 2)]),
+        input_nodes=[0],
+        output_nodes=[2],
+        measurements={0: Plane.XY, 1: Plane.YZ},
+    )
+    ecf = og.to_extendedcausalflow()
+    ecf.check_well_formed()
+    assert ecf.correction_function == {0: {2}, 1: {1}}
+    assert [set(layer) for layer in ecf.partial_order_layers] == [{2}, {1}, {0}]
+
+
+def test_ecf_yz_cannot_correct() -> None:
+    # The only candidate corrector of 0 is the YZ node 1, which must precede 0.
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2)]),
+        input_nodes=[0],
+        output_nodes=[2],
+        measurements={0: Plane.XY, 1: Plane.YZ},
+    )
+    assert og.to_extendedcausalflow_or_none() is None
+
+
+def test_ecf_adjacent_yz() -> None:
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (0, 2)]),
+        input_nodes=[],
+        output_nodes=[2],
+        measurements={0: Plane.YZ, 1: Plane.YZ},
+    )
+    assert og.to_extendedcausalflow_or_none() is None
+
+
+def test_cflow_none_still_returned() -> None:
+    # Regression: `find_cflow` must return None (not raise) when there is no causal flow.
+    # Browne et al. 2007, Fig. 2: gflow but no causal flow.
+    og = OpenGraph(
+        graph=nx.Graph([(0, 3), (0, 5), (1, 3), (1, 4), (1, 5), (2, 4), (2, 5)]),
+        input_nodes=[0, 1, 2],
+        output_nodes=[3, 4, 5],
+        measurements=dict.fromkeys([0, 1, 2], Plane.XY),
+    )
+    assert og.to_causalflow_or_none() is None
+    assert og.to_extendedcausalflow_or_none() is None
+

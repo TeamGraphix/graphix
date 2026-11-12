@@ -16,6 +16,7 @@ import numpy as np
 from typing_extensions import override
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
+from graphix.circ_ext.ecflow import ecflow_to_circuit
 from graphix.circ_ext.extraction import (
     CliffordMap,
     ExtractionResult,
@@ -23,6 +24,7 @@ from graphix.circ_ext.extraction import (
     extraction_ps_from_corrected_node,
 )
 from graphix.command import C, E, M, N, X, Z
+from graphix.flow._find_cflow import ECFlowLabel, ecflow_labels
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
     compute_partial_order_layers,
@@ -64,6 +66,7 @@ if TYPE_CHECKING:
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
+    from graphix.transpiler import Circuit
     from graphix.visualization import DrawKwargs
 
 
@@ -248,6 +251,42 @@ class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         cf = CausalFlow(self.og, self.x_corrections, self.partial_order_layers)
         cf.check_well_formed()  # Raises a ``FlowError`` if the partial order and the correction function are not compatible, if a measured node is corrected by more than one node, or if nodes are not measured on the XY plane.
         return cf
+
+    def to_extendedcausalflow(self) -> ExtendedCausalFlow[_AM_co]:
+        r"""Extract an extended causal flow from XZ-corrections.
+
+        This method does not invoke the flow-extraction routine on the underlying open graph.
+        Instead, it assigns the ``x_corrections`` mapping to the correction function of the
+        :math:`XY`-measured nodes, makes the :math:`YZ`-measured nodes self-corrected, and
+        verifies that the result is compatible with the intrinsic partial order of the
+        XZ-corrections. A ``FlowError`` is raised otherwise, or if the open graph contains
+        measurements in the XZ plane.
+
+        Returns
+        -------
+        ExtendedCausalFlow[_AM_co]
+
+        Notes
+        -----
+        See Definition 10 in Ref. [1]. Pauli measurements are labelled as in
+        :meth:`ExtendedCausalFlow.node_measurement_label`: a Pauli :math:`Y`-measured
+        node with an X-correction is labelled :math:`XY`, otherwise :math:`YZ`.
+
+        References
+        ----------
+        [1] Backens and Perdrix, (2026), Completeness for flow-preserving rewrite rules, arXiv:2608.13035
+        """
+        correction_function: dict[int, set[int]] = {}
+        for i, meas in self.og.measurements.items():
+            x_corrections = set(self.x_corrections.get(i, set()))
+            labels = ecflow_labels(meas)
+            # A node that can be labelled XY and has an X-correction is labelled XY.
+            correction_function[i] = (
+                x_corrections if ECFlowLabel.XY in labels and (x_corrections or ECFlowLabel.YZ not in labels) else {i}
+            )
+        ecf = ExtendedCausalFlow(self.og, correction_function, self.partial_order_layers)
+        ecf.check_well_formed()
+        return ecf
 
     def to_gflow(self: XZCorrections[_PM_co]) -> GFlow[_PM_co]:
         r"""Extract a gflow from XZ-corrections.
@@ -1365,6 +1404,186 @@ class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
     @override
     def to_focused(self) -> FocusedGFlow[_PM_co]:
         return self
+
+
+@dataclass(frozen=True)
+class ExtendedCausalFlow(PauliFlow[_AM_co], Generic[_AM_co]):
+    """An unmutable subclass of ``PauliFlow`` providing a representation of an extended causal flow.
+
+    Extended causal flows are defined on labelled open graphs with :math:`XY` and :math:`YZ`
+    labels only (Definition 10 in Ref. [1]). Following the convention of Pauli flow, planar
+    measurements are labelled by their plane, and Pauli measurements can be labelled with any
+    of the planes :math:`XY` and :math:`YZ` that contain them (see
+    :meth:`ExtendedCausalFlow.node_measurement_label`). This is why this class derives from
+    ``PauliFlow`` rather than ``GFlow``: an extended causal flow is a gflow on the labelled
+    open graph, but a Pauli :math:`Y` measurement may be labelled :math:`YZ`.
+
+    This class differs from its parent class in the following:
+        - The method :func:`ExtendedCausalFlow.check_well_formed` verifies the definition of extended causal flow (Definition 10 in Ref. [1]).
+        - XZ-corrections are computed as for gflows: :math:`R_f` already puts every corrected node in the future of the measured node.
+
+    References
+    ----------
+    [1] Miriam Backens and Simon Perdrix, Completeness for flow-preserving rewrite rules, 2026 (arXiv:2608.13035).
+    """
+
+    _CF_PREFIX: str = "c"  # Correction function prefix for printing
+
+    @override
+    def to_xzcorrections(self) -> XZCorrections[_AM_co]:
+        r"""Compute the XZ-corrections induced by the extended causal flow encoded in ``self``.
+
+        For a measured node :math:`v` with corrector :math:`c = f(v)`, the X-correction is
+        applied on :math:`c` if :math:`c \neq v` and the Z-corrections on
+        :math:`N(c) \setminus \{v\}`.
+
+        Returns
+        -------
+        XZCorrections[_AM_co]
+        """
+        x_corrections: dict[int, AbstractSet[int]] = {}
+        z_corrections: dict[int, AbstractSet[int]] = {}
+        for measured_node, correcting_set in self.correction_function.items():
+            if x_corrected_nodes := correcting_set - {measured_node}:
+                x_corrections[measured_node] = frozenset(x_corrected_nodes)
+            if z_corrected_nodes := self.og.odd_neighbors(correcting_set) - {measured_node}:
+                z_corrections[measured_node] = frozenset(z_corrected_nodes)
+        return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
+
+    def to_circuit(self: ExtendedCausalFlow[Measurement]) -> Circuit:
+        """Extract a circuit from the extended causal flow.
+
+        Chains of the flow become wires, :math:`XY`-measurements become :math:`J` gates,
+        edges become :math:`CZ` gates and :math:`YZ`-measurements become phase gadgets
+        (multi-qubit :math:`Z` rotations), see :func:`graphix.circ_ext.ecflow.ecflow_to_circuit`.
+
+        Returns
+        -------
+        Circuit
+            A circuit implementing the same unitary as the flow, up to a global phase.
+        """
+        return ecflow_to_circuit(self)
+
+    @override
+    def node_measurement_label(self, node: int) -> Plane:
+        """Get the label of a given node in the extended causal flow.
+
+        Planar measurements are labelled by their plane. Pauli measurements can be labelled
+        with any of the planes :math:`XY` and :math:`YZ` that contain them (see
+        :func:`~graphix.flow._find_cflow.ecflow_labels`): a node that can take both labels
+        (Pauli :math:`Y`) is labelled :math:`YZ` if and only if it is its own corrector.
+        Nodes that cannot be labelled are reported as :math:`XZ`.
+
+        Parameters
+        ----------
+        node : int
+
+        Returns
+        -------
+        Plane
+        """
+        labels = ecflow_labels(self.og.measurements[node])
+        if labels == ECFlowLabel.XY | ECFlowLabel.YZ:
+            return Plane.YZ if node in self.correction_function[node] else Plane.XY
+        if labels == ECFlowLabel.XY:
+            return Plane.XY
+        if labels == ECFlowLabel.YZ:
+            return Plane.YZ
+        return Plane.XZ
+
+    def check_well_formed(self) -> None:
+        r"""Verify if the extended causal flow is well formed.
+
+        Raises
+        ------
+        FlowError
+            if the extended causal flow is not well formed.
+
+        Notes
+        -----
+        General properties of flows:
+            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
+            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
+            - The nodes in the partial order are the nodes in the open graph.
+            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow, unless it is an empty open graph.
+
+        Specific properties of extended causal flows (the names in brackets are those of
+        :class:`~graphix.flow.exceptions.FlowPropositionErrorReason` and
+        :class:`~graphix.flow.exceptions.FlowPropositionOrderErrorReason`):
+            - Correction sets have one element only (C0),
+            - (C.XY) if :math:`\lambda(i) = XY`, then :math:`i \sim c(i)` (C1),
+            - (C.YZ) if :math:`\lambda(i) = YZ`, then :math:`c(i) = i` (CYZ),
+            - :math:`R_c^*` is a strict partial order, i.e., :math:`i \prec c(i)` if :math:`c(i) \neq i` (C2),
+              and :math:`\forall k \in N_G(c(i)) \setminus \{i\}, i \prec k` (C3),
+        where :math:`i \in O^c`, :math:`c` is the correction function and :math:`\prec` denotes the partial order.
+
+        Extended causal flows are defined on open graphs with XY and YZ measurements only.
+
+        See Definition 10 in Ref. [1], where conditions (C.XY) and (C.YZ) are introduced; (C0)-(C3)
+        are the conditions of causal flow, see Definition 2 in Ref. [2].
+
+        References
+        ----------
+        [1] Miriam Backens and Simon Perdrix, Completeness for flow-preserving rewrite rules, 2026 (arXiv:2608.13035).
+        [2] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+        """
+        _check_flow_general_properties(self)
+
+        o_set = set(self.og.output_nodes)
+        oc_set = set(self.og.measurements)
+
+        layer_idx = len(self.partial_order_layers) - 1
+        past_and_present_nodes: set[int] = set()
+        shift = 1 if o_set else 0
+        for layer in reversed(self.partial_order_layers[shift:]):
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
+
+            past_and_present_nodes.update(layer)
+
+            for node in layer:
+                correction_set = set(self.correction_function[node])
+
+                if len(correction_set) != 1:
+                    raise FlowPropositionError(FlowPropositionErrorReason.C0, node=node, correction_set=correction_set)
+
+                neighbors = self.og.neighbors(correction_set)
+
+                meas = self.node_measurement_label(node)
+                match meas:
+                    case Plane.XZ:
+                        raise FlowGenericError(FlowGenericErrorReason.XZPlane)
+                    case Plane.XY:
+                        if node not in neighbors:
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.C1, node=node, correction_set=correction_set
+                            )
+                        # If some nodes of the correction set are in the past or in the present of the current node, they cannot be in its future, so the flow is incorrrect.
+                        if correction_set & past_and_present_nodes:
+                            raise FlowPropositionOrderError(
+                                FlowPropositionOrderErrorReason.C2,
+                                node=node,
+                                correction_set=correction_set,
+                                past_and_present_nodes=past_and_present_nodes,
+                            )
+                    case Plane.YZ:
+                        if node not in correction_set:
+                            raise FlowPropositionError(
+                                FlowPropositionErrorReason.CYZ, node=node, correction_set=correction_set
+                            )
+
+                if (neighbors - {node}) & past_and_present_nodes:
+                    raise FlowPropositionOrderError(
+                        FlowPropositionOrderErrorReason.C3,
+                        node=node,
+                        correction_set=correction_set,
+                        past_and_present_nodes=past_and_present_nodes,
+                    )
+
+            layer_idx -= 1
+
+        if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
+            raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
 
 @dataclass(frozen=True)
