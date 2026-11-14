@@ -1270,7 +1270,7 @@ class Circuit(InplaceParameterizable):
             return self.visit(visitor, copy=True)
         source = (
             self.transpile_ancilla_state(BasicStates.PLUS)
-            if self.ancillas and self.ancilla_state != BasicStates.PLUS
+            if self.ancillas
             else self
         )
         new_circuit = Circuit(self.width, ancillas=self.ancillas + nmeasurements, ancilla_state=BasicStates.PLUS)
