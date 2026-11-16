@@ -9,6 +9,7 @@ import pytest
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
     CausalFlow,
+    ExtendedCausalFlow,
     FocusedGFlow,
     FocusedPauliFlow,
     GFlow,
@@ -839,6 +840,14 @@ class TestIncorrectFlows:
         output_nodes=[3],
         measurements={0: Plane.XY, 1: Axis.X, 2: Plane.XY},
     )
+    # [0]-1-2-(3) with a YZ-measured node 4 attached to 1. A well-formed extended causal flow is
+    # c = {0: {1}, 1: {2}, 2: {3}, 4: {4}} with partial order layers [{3}, {2}, {1}, {4}, {0}].
+    og_e = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3), (1, 4)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements={0: Plane.XY, 1: Plane.XY, 2: Plane.XY, 4: Plane.YZ},
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -968,6 +977,121 @@ class TestIncorrectFlows:
                 FlowPropositionOrderError(
                     FlowPropositionOrderErrorReason.C3, node=0, correction_set={1}, past_and_present_nodes={0, 2}
                 ),
+            ),
+            # Correct extended causal flow checked as a causal flow (open graph with YZ measurements).
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {2}, 2: {3}, 4: {4}},
+                    partial_order_layers=[{3}, {2}, {1}, {4}, {0}],
+                ),
+                FlowGenericError(FlowGenericErrorReason.XYPlane),
+            ),
+            # Extended causal flow on an open graph with XZ measurements.
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=OpenGraph(
+                        graph=nx.Graph([(0, 1)]),
+                        input_nodes=[0],
+                        output_nodes=[1],
+                        measurements={0: Plane.XZ},
+                    ),
+                    correction_function={0: {1}},
+                    partial_order_layers=[{1}, {0}],
+                ),
+                FlowGenericError(FlowGenericErrorReason.XZPlane),
+            ),
+            # Extended causal flow: YZ-measured input node (it should be in its own correction set).
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=OpenGraph(
+                        graph=nx.Graph([(0, 1)]),
+                        input_nodes=[0],
+                        output_nodes=[1],
+                        measurements={0: Plane.YZ},
+                    ),
+                    correction_function={0: {0}},
+                    partial_order_layers=[{1}, {0}],
+                ),
+                FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionImage),
+            ),
+            # Extended causal flow: incomplete correction function (missing YZ-measured node).
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {1}, {4}, {0}],
+                ),
+                FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain),
+            ),
+            # Extended causal flow: C0 on a YZ-measured node.
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {2}, 2: {3}, 4: {1, 4}},
+                    partial_order_layers=[{3}, {2}, {1}, {4}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.C0, node=4, correction_set={1, 4}),
+            ),
+            # Extended causal flow: C1 (C.XY) on an XY-measured node.
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {2}, 1: {2}, 2: {3}, 4: {4}},
+                    partial_order_layers=[{3}, {2}, {1}, {4}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.C1, node=0, correction_set={2}),
+            ),
+            # Extended causal flow: CYZ (C.YZ), the YZ-measured node is not its own corrector.
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {2}, 2: {3}, 4: {1}},
+                    partial_order_layers=[{3}, {2}, {1}, {4}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.CYZ, node=4, correction_set={1}),
+            ),
+            # Extended causal flow: C2 on an XY-measured node.
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {2}, 2: {3}, 4: {4}},
+                    partial_order_layers=[{3}, {2}, {4}, {0, 1}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.C2, node=0, correction_set={1}, past_and_present_nodes={0, 1}
+                ),
+            ),
+            # Extended causal flow: C3 on a YZ-measured node, its neighbor 1 is not in its future.
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {2}, 2: {3}, 4: {4}},
+                    partial_order_layers=[{3}, {2}, {1, 4}, {0}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.C3, node=4, correction_set={4}, past_and_present_nodes={0, 1, 4}
+                ),
+            ),
+            # Extended causal flow: C3, a YZ-measured node cannot correct another node.
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {4}, 2: {3}, 4: {4}},
+                    partial_order_layers=[{3}, {2}, {4}, {1}, {0}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.C3, node=4, correction_set={4}, past_and_present_nodes={0, 1, 4}
+                ),
+            ),
+            # Extended causal flow: incomplete partial order (missing YZ-measured node).
+            IncorrectFlowTestCase(
+                ExtendedCausalFlow(
+                    og=og_e,
+                    correction_function={0: {1}, 1: {2}, 2: {3}, 4: {4}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                PartialOrderError(PartialOrderErrorReason.IncorrectNodes),
             ),
             # G1
             IncorrectFlowTestCase(

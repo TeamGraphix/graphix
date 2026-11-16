@@ -88,7 +88,7 @@ class FlowGenericErrorReason(Enum):
     """The image of the correction function is not a subset of non-input nodes (prepared qubits) of the open graph."""
 
     XYPlane = enum.auto()
-    "A causal flow is defined on an open graphs with non-XY measurements."
+    "A causal flow is defined on an open graph with non-XY measurements."
 
     XZPlane = enum.auto()
     "An extended causal flow is defined on an open graph with XZ measurements."
