@@ -140,7 +140,7 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         except TypeError:
             flow: PauliFlow[Measurement] | None = None
         else:
-            flow = bloch_case.to_causalflow_or_none()
+            flow = bloch_case.to_extendedcausalflow_or_none()
         if flow is None:
             flow = self.to_pauliflow_or_none(stacklevel=stacklevel + 1)
         if flow is not None:

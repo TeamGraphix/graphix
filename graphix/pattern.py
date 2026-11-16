@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
     from graphix.clifford import Clifford
     from graphix.command import CommandType
-    from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
+    from graphix.flow.core import CausalFlow, ExtendedCausalFlow, GFlow, PauliFlow, XZCorrections
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.space_minimization import SpaceMinimizationHeuristic
@@ -1055,7 +1055,6 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         FlowError
             If the pattern:
             - Contains measurements in forbidden planes (XZ or YZ),
-            - Is empty, or
             - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
         ValueError
             If `N` commands in the pattern do not represent a :math:`|+\rangle` state or if the pattern corrections form closed loops.
@@ -1066,6 +1065,31 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         - This method requires that all the measurements in the pattern are represented as Bloch measurements (i.e., there are no :class:`PauliMeasurement`s). Use :meth:`to_bloch()` to convert all Pauli measurements.
         """
         return self.to_xzcorrections().downcast_bloch().to_causalflow()
+
+    def to_extendedcausalflow(self) -> ExtendedCausalFlow[BlochMeasurement]:
+        r"""Extract the extended causal flow structure from the current measurement pattern.
+
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
+
+        Returns
+        -------
+        ExtendedCausalFlow[Measurement]
+            The extended causal flow associated with the current pattern.
+
+        Raises
+        ------
+        FlowError
+            If the pattern:
+            - Contains measurements in XZ planes,
+            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
+        ValueError
+            If `N` commands in the pattern do not represent a :math:`|+\rangle` state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        See notes in :meth:`to_causalflow`.
+        """
+        return self.to_xzcorrections().downcast_bloch().to_extendedcausalflow()
 
     def to_gflow(self) -> GFlow[BlochMeasurement]:
         r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
@@ -1449,7 +1473,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
                         try:
                             # We first try to extract a causal flow because the plotting
                             # algorithm for causal flows yields nicer plots.
-                            flow = xzcorrections.downcast_bloch().to_causalflow()
+                            flow = xzcorrections.downcast_bloch().to_extendedcausalflow()
                         except (TypeError, FlowError):
                             try:
                                 # If the pattern is not consistent with a Pauli flow,
