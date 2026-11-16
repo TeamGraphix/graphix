@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 import pytest
-from numpy.random import Generator
 
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
@@ -43,6 +42,8 @@ from graphix.states import PlanarState
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    from numpy.random import Generator
 
 
 def generate_causal_flow_0() -> CausalFlow[Plane]:
@@ -523,6 +524,19 @@ class TestFlow:
         with pytest.raises(FlowGenericError) as exc_info:
             bad_flow_focused.check_well_formed()
         assert exc_info.value.reason == FlowGenericErrorReason.NotFocused
+
+    def test_ecf_yz_node(self) -> None:
+        # 0 (XY, input) -> 2 (output), 1 (YZ) is a phase gadget on 2: 0 < 1 < 2.
+        og = OpenGraph(
+            graph=nx.Graph([(0, 2), (1, 2)]),
+            input_nodes=[0],
+            output_nodes=[2],
+            measurements={0: Plane.XY, 1: Plane.YZ},
+        )
+        ecf = og.to_extendedcausalflow()
+        ecf.check_well_formed()
+        assert ecf.correction_function == {0: {2}, 1: {1}}
+        assert [set(layer) for layer in ecf.partial_order_layers] == [{2}, {1}, {0}]
 
 
 class TestXZCorrections:
@@ -1235,17 +1249,3 @@ class TestIncorrectXZC:
         for field in fields(exc_info.value):
             attr = field.name
             assert getattr(exc_info.value, attr) == getattr(test_case.exception, attr)
-
-
-def test_ecf_yz_node() -> None:
-    # 0 (XY, input) -> 2 (output), 1 (YZ) is a phase gadget on 2: 0 < 1 < 2.
-    og = OpenGraph(
-        graph=nx.Graph([(0, 2), (1, 2)]),
-        input_nodes=[0],
-        output_nodes=[2],
-        measurements={0: Plane.XY, 1: Plane.YZ},
-    )
-    ecf = og.to_extendedcausalflow()
-    ecf.check_well_formed()
-    assert ecf.correction_function == {0: {2}, 1: {1}}
-    assert [set(layer) for layer in ecf.partial_order_layers] == [{2}, {1}, {0}]

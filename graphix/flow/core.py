@@ -1488,8 +1488,6 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
                 meas = self.node_measurement_label(node)
                 match meas:
-                    case Plane.XZ:
-                        raise FlowGenericError(FlowGenericErrorReason.XZPlane)
                     case Plane.XY:
                         if node not in neighbors:
                             raise FlowPropositionError(
@@ -1504,10 +1502,9 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
                                 past_and_present_nodes=past_and_present_nodes,
                             )
                     case Plane.YZ:
-                        if node not in correction_set:
-                            raise FlowPropositionError(
-                                FlowPropositionErrorReason.CYZ, node=node, correction_set=correction_set
-                            )
+                        self._check_yzplane(node)
+                    case Plane.XZ:
+                        self._check_xzplane()
 
                 if (neighbors - {node}) & past_and_present_nodes:
                     raise FlowPropositionOrderError(
@@ -1521,6 +1518,14 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
+
+    def _check_xzplane(self) -> None:
+        raise FlowGenericError(FlowGenericErrorReason.XZPlane)
+
+    def _check_yzplane(self, node: int) -> None:
+        correction_set = set(self.correction_function[node])
+        if node not in correction_set:
+            raise FlowPropositionError(FlowPropositionErrorReason.CYZ, node=node, correction_set=correction_set)
 
 
 @dataclass(frozen=True)
@@ -1552,114 +1557,12 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
     _CF_PREFIX: str = "c"  # Correction function prefix for printing
 
     @override
-    def to_xzcorrections(self) -> XZCorrections[_PM_co]:
-        r"""Compute the XZ-corrections induced by the causal flow encoded in ``self``.
+    def _check_xzplane(self) -> None:
+        raise FlowGenericError(FlowGenericErrorReason.XYPlane)
 
-        Returns
-        -------
-        XZCorrections[_PM_co]
-
-        Notes
-        -----
-        This function partially implements Theorem 1 in Ref. [1]. The generated XZ-corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
-
-        References
-        ----------
-        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
-        """
-        x_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
-        z_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
-
-        for measured_node, correcting_set in self.correction_function.items():
-            # Conditionals avoid storing empty correction sets
-            if x_corrected_nodes := correcting_set:
-                x_corrections[measured_node] = frozenset(x_corrected_nodes)
-            if z_corrected_nodes := self.og.neighbors(correcting_set) - {measured_node}:
-                z_corrections[measured_node] = frozenset(z_corrected_nodes)
-
-        return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
-
-    def check_well_formed(self) -> None:
-        r"""Verify if the causal flow is well formed.
-
-        Raises
-        ------
-        FlowError
-            if the causal flow is not well formed.
-
-        Notes
-        -----
-        General properties of flows:
-            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
-            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
-            - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow, unless it is an empty open graph.
-
-        Specific properties of causal flows:
-            - Correction sets have one element only (C0),
-            - :math:`i \sim c(i)` (C1),
-            - :math:`i \prec c(i)` (C2),
-            - :math:`\forall k \in N_G(c(i)) \setminus \{i\}, i \prec k` (C3),
-        where :math:`i \in O^c`, :math:`c` is the correction function and :math:`prec` denotes the partial order.
-
-        Causal flows are defined on open graphs with XY measurements only.
-
-        See Definition 2 in Ref. [1].
-
-        References
-        ----------
-        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
-        """
-        _check_flow_general_properties(self)
-
-        o_set = set(self.og.output_nodes)
-        oc_set = set(self.og.measurements)
-
-        layer_idx = len(self.partial_order_layers) - 1
-        past_and_present_nodes: set[int] = set()
-        shift = 1 if o_set else 0
-        for layer in reversed(self.partial_order_layers[shift:]):
-            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
-                raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
-
-            past_and_present_nodes.update(layer)
-
-            for node in layer:
-                correction_set = set(self.correction_function[node])
-
-                if len(correction_set) != 1:
-                    raise FlowPropositionError(FlowPropositionErrorReason.C0, node=node, correction_set=correction_set)
-
-                meas = self.node_measurement_label(node)
-                if meas != Plane.XY:
-                    raise FlowGenericError(FlowGenericErrorReason.XYPlane)
-
-                neighbors = self.og.neighbors(correction_set)
-
-                if node not in neighbors:
-                    raise FlowPropositionError(FlowPropositionErrorReason.C1, node=node, correction_set=correction_set)
-
-                # If some nodes of the correction set are in the past or in the present of the current node, they cannot be in its future, so the flow is incorrrect.
-                if correction_set & past_and_present_nodes:
-                    raise FlowPropositionOrderError(
-                        FlowPropositionOrderErrorReason.C2,
-                        node=node,
-                        correction_set=correction_set,
-                        past_and_present_nodes=past_and_present_nodes,
-                    )
-
-                if (neighbors - {node}) & past_and_present_nodes:
-                    raise FlowPropositionOrderError(
-                        FlowPropositionOrderErrorReason.C3,
-                        node=node,
-                        correction_set=correction_set,
-                        past_and_present_nodes=past_and_present_nodes,
-                    )
-
-            layer_idx -= 1
-
-        if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
-            raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
+    @override
+    def _check_yzplane(self, node: int) -> None:
+        raise FlowGenericError(FlowGenericErrorReason.XYPlane)
 
 
 def _corrections_to_dag(
