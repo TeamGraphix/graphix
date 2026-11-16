@@ -187,20 +187,16 @@ class SpaceMinimizationHeuristics:
 
     @staticmethod
     def extended_causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
-        pass
+        """Use the extended causal flow layers to minimize space.
 
-    @staticmethod
-    def causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
-        """Use the causal flow layer to minimize space.
-
-        This minimization heuristic is optimal but requires the pattern to have a causal flow.
+        This minimization heuristic is optimal but requires the pattern to have an extended causal flow.
         """
         try:
-            cf = pattern.to_xzcorrections().downcast_bloch().to_extendedcausalflow()
+            ecf = pattern.to_xzcorrections().downcast_bloch().to_extendedcausalflow()
         except (TypeError, FlowError, ValueError):
             return None
         else:
-            meas_order = tuple(chain(*reversed(cf.partial_order_layers[1:])))
+            meas_order = tuple(chain(*reversed(ecf.partial_order_layers[1:])))
             return SpaceMinimizationHeuristicResult(meas_order, True)
 
     @staticmethod
@@ -271,11 +267,11 @@ def minimize_space(
 
     The default heuristics are as follows:
 
-    - If the pattern has a causal flow, then the layers of the flow
-      are used to provide an optimal measurement order for the
-      pattern. See :func:`causal_flow`.
+    - If the pattern has an extended causal flow, then the layers
+      of the flow are used to provide an optimal measurement order
+      for the pattern. See :func:`extended_causal_flow`.
 
-    - If the pattern has no causal flow, then a greedy algorithm is
+    - If the pattern has no extended causal flow, then a greedy algorithm is
       applied to choose at each step to measure the node with the
       minimal degree.  This particular heuristic has no guarantee to
       produce an optimal pattern and can even increase the maximal

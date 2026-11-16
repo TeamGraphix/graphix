@@ -31,7 +31,7 @@ def test_minimize_space_deprecated() -> None:
     # former heuristics, without `keep_measurement_order_unchanged`
     p.minimize_space(
         [
-            SpaceMinimizationHeuristics.causal_flow,
+            SpaceMinimizationHeuristics.extended_causal_flow,
             SpaceMinimizationHeuristics.greedy_degree,
         ]
     )

@@ -18,8 +18,8 @@ from graphix.fundamentals import Plane
 if TYPE_CHECKING:
     from typing import TypeAlias, TypeVar
 
-    from graphix.opengraph import OpenGraph
     from graphix.fundamentals import AbstractPlanarMeasurement
+    from graphix.opengraph import OpenGraph
 
     FlowArguments: TypeAlias = tuple[dict[int, frozenset[int]], tuple[frozenset[int], ...]]
     _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
