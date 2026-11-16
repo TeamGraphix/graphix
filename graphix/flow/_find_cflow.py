@@ -203,51 +203,53 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     ----------
     [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
     """
-    from graphix.flow.core import CausalFlow  # noqa: PLC0415 (circular import)
+    yz_candidates: set[int] = set()
 
-    for measurement in og.measurements.values():
-        if measurement.to_plane() in {Plane.XZ, Plane.YZ}:
+    for node, measurement in og.measurements.items():
+        plane = measurement.to_plane()
+        if plane == Plane.XZ:
+            return None
+        elif plane == Plane.YZ:
+            yz_candidates.add(node)
+
+    flow = ExtendedCausalFlow if yz_candidates else CausalFlow
+
+    graph_nodes = set(og.graph.nodes)
+    corrected_nodes = set(og.output_nodes)
+    iset = set(og.input_nodes)
+    corrector_candidates = corrected_nodes - iset
+
+    cf: dict[int, frozenset[int]] = {}
+    # Output nodes are always in layer 0.
+    # If the open graph has causal flow, it must have outputs (unless it is an empty open graph).
+    layers: list[frozenset[int]] = [frozenset(og.output_nodes)] if og.output_nodes else []
+
+    while corrected_nodes != graph_nodes:
+        corrected_nodes_new: set[int] = set()
+        corrector_nodes_new: set[int] = set()
+
+        for p in corrector_candidates:
+            non_corrected_neighbors = og.neighbors({p}) - corrected_nodes
+            if len(non_corrected_neighbors) == 1:
+                (q,) = non_corrected_neighbors
+                if og.measurements[q].to_plane() == Plane.XY:
+                    cf[q] = frozenset({p})
+                    corrected_nodes_new.add(q)
+                    corrector_nodes_new.add(p)
+
+        for q in yz_candidates - corrected_nodes_new:
+            if og.neighbors({q}) <= corrected_nodes:
+                cf[q] = frozenset({q})
+                corrected_nodes_new.add(q)
+
+        if len(corrected_nodes_new) == 0:
             return None
 
-    result = find_ecflow_layers(og.graph, set(og.input_nodes), set(og.output_nodes), og.measurements.keys())
-    if result is None:
-        return None
-    cf, layers = result
-    return CausalFlow(og, cf, tuple(layers))
+        layers.append(frozenset(corrected_nodes_new))
+        corrected_nodes |= corrected_nodes_new
+        yz_candidates -= corrected_nodes_new
+        corrector_candidates = (corrector_candidates - corrector_nodes_new) | {
+            q for q in corrected_nodes_new if q not in iset and q not in cf[q]
+        }
 
-
-def find_ecflow(og: OpenGraph[_AM_co]) -> ExtendedCausalFlow[_AM_co] | None:
-    """Return the extended causal flow of the input open graph if it exists.
-
-    Parameters
-    ----------
-    og : OpenGraph[_AM_co]
-        Open graph whose extended causal flow is calculated.
-
-    Returns
-    -------
-    ExtendedCausalFlow[_AM_co] | None
-        An extended causal flow object if the open graph has extended causal flow, `None` otherwise.
-
-    Notes
-    -----
-    The algorithm is derived from Algorithm 1 in Ref. [1], see :func:`find_ecflow_layers`.
-    Pauli measurements (i.e., measurements interpreted as axes, such as inferred
-    :class:`~graphix.measurements.PauliMeasurement`) can be labelled with any plane
-    containing them, see :func:`ecflow_labels`.
-
-    References
-    ----------
-    [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
-    [2] Backens and Perdrix, (2026), Completeness for flow-preserving rewrite rules, arXiv:2608.13035
-    """
-    from graphix.flow.core import ExtendedCausalFlow  # noqa: PLC0415 (circular import)
-
-    label_sets = ecflow_label_sets(og.measurements)
-    if label_sets is None:
-        return None
-    result = find_ecflow_layers(og.graph, set(og.input_nodes), set(og.output_nodes), *label_sets)
-    if result is None:
-        return None
-    cf, layers = result
-    return ExtendedCausalFlow(og, cf, tuple(layers))
+    return flow(og, cf, tuple(layers))
