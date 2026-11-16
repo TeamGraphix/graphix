@@ -41,14 +41,21 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     ----------
     [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
     """
-    for measurement in og.measurements.values():
-        if measurement.to_plane() in {Plane.XZ, Plane.YZ}:
+    yz_candidates: set[int] = set()
+
+    for node, measurement in og.measurements.items():
+        plane = measurement.to_plane()
+        if plane == Plane.XZ:
             return None
+        elif plane == Plane.YZ:
+            yz_candidates.add(node)
+
+    flow = ExtendedCausalFlow if yz_candidates else CausalFlow
 
     graph_nodes = set(og.graph.nodes)
     corrected_nodes = set(og.output_nodes)
-    corrector_candidates = corrected_nodes - set(og.input_nodes)
-    non_input_nodes = og.graph.nodes - set(og.input_nodes)
+    iset = set(og.input_nodes)
+    corrector_candidates = corrected_nodes - iset
 
     cf: dict[int, frozenset[int]] = {}
     # Output nodes are always in layer 0.
@@ -58,25 +65,28 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     while corrected_nodes != graph_nodes:
         corrected_nodes_new: set[int] = set()
         corrector_nodes_new: set[int] = set()
-        curr_layer: set[int] = set()
-
-        non_corrected_nodes = og.graph.nodes - corrected_nodes
 
         for p in corrector_candidates:
-            non_corrected_neighbors = og.neighbors({p}) & non_corrected_nodes
+            non_corrected_neighbors = og.neighbors({p}) - corrected_nodes
             if len(non_corrected_neighbors) == 1:
                 (q,) = non_corrected_neighbors
-                cf[q] = frozenset({p})
-                curr_layer.add(q)
-                corrected_nodes_new |= {q}
-                corrector_nodes_new |= {p}
+                if og.measurements[q].to_plane() == Plane.XY:
+                    cf[q] = frozenset({p})
+                    corrected_nodes_new.add(q)
+                    corrector_nodes_new.add(p)
 
-        layers.append(frozenset(curr_layer))
+        for q in yz_candidates - corrected_nodes_new:
+            if og.neighbors({q}) <= corrected_nodes:
+                cf[q] = frozenset({q})
+                corrected_nodes_new.add(q)
 
         if len(corrected_nodes_new) == 0:
             return None
 
-        corrected_nodes |= corrected_nodes_new
-        corrector_candidates = (corrector_candidates - corrector_nodes_new) | (corrected_nodes_new & non_input_nodes)
 
-    return CausalFlow(og, cf, tuple(layers))
+        layers.append(frozenset(corrected_nodes_new))
+        corrected_nodes |= corrected_nodes_new
+        yz_candidates -= corrected_nodes_new
+        corrector_candidates = (corrector_candidates - corrector_nodes_new) | {q for q in corrected_nodes_new if q not in iset and q not in cf[q]}
+
+    return flow(og, cf, tuple(layers))
