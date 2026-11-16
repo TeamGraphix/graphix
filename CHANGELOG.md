@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed incorrect Clifford signs during circuit extraction for input vertices measured in negative Pauli X or Y bases.
+
 - #598, #608:
   - The order of the attributes of the controlled instructions has been changed to put the control qubits first, to ensure consistency between all controlled instructions, with the matrix description of the gates, and with the `Circuit` methods that add instructions to the circuit.
   - `CZ` is now a `ControlledSingleTargetInstruction` and takes a `control` and a `target` instead of a pair of `targets`.
@@ -31,11 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `E` command in patterns.
   - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
 
-- #640, #644: `transpile_swaps` no longer breaks conditional instructions whose domain refers to a qubit measured after a `SWAP`, since domains now refer to classical bits, which do not depend on qubit indices.
+- #624: CH gate is now supported (its support was missing as it is a standard OpenQASM gate).
 
-- #644: The OpenQASM 3 exporter now terminates measurement statements with a semicolon.
+- #636, #639: `ApplyNoise` now derives from `BaseCommand`, like other commands. In particular, it implements `reindex`.
+  Noise classes (`DepolarisingNoise`, `TwoQubitDepolarisingNoise`, `AmplitudeDampingNoise`, `TwoQubitAmplitudeDampingNoise`) are now immutable (frozen dataclasses) with an eval-friendly `repr`: `repr(DepolarisingNoise(0.1)) == "DepolarisingNoise(0.1)"`. `graphix.utils.check_probability` validates probabilities.
 
-- #694: CH gate is now supported (its support was missing as it is a standard OpenQASM gate).
+- #637, #643: Decompositions no longer drop global phases, which made controlled gates produced by `insert_control` wrong. `instruction_to_jcz` now keeps the global phase of `S`, `SDG`, `T`, `TDG`, `SX`, `SXDG`, `X`, `Y` and `Z`, and `decompose_ccx` now uses `T`, `TDG` and `S` gates as in Nielsen & Chuang instead of `RZ` rotations.
+
+- #640, #644: `transpile_swaps` no longer breaks conditional instructions whose domain refers to a qubit measured after a `SWAP`, since domains now refer to classical bits, which do not depend on qubit indices. The OpenQASM 3 exporter now terminates measurement statements with a semicolon.
+
+- #645: Fix negative sign in circuit extraction strings
 
 ### Changed
 
