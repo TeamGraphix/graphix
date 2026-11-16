@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 class OpenGraphFlowTestCase(NamedTuple):
     og: OpenGraph[Measurement]
     has_cflow: bool
+    has_ecflow: bool
     has_gflow: bool
     has_pflow: bool
 
@@ -71,7 +72,7 @@ def _og_0() -> OpenGraphFlowTestCase:
         output_nodes=[0, 1],
         measurements=meas,
     )
-    return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=True, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -94,7 +95,7 @@ def _og_1() -> OpenGraphFlowTestCase:
             4: Measurement.Y,
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=True, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -118,7 +119,7 @@ def _og_2() -> OpenGraphFlowTestCase:
             4: Measurement.XY(0.4),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=True, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -147,7 +148,7 @@ def _og_3() -> OpenGraphFlowTestCase:
             3: Measurement.XY(0.3),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -173,7 +174,7 @@ def _og_4() -> OpenGraphFlowTestCase:
             3: Measurement.YZ(0.3),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -197,7 +198,7 @@ def _og_5() -> OpenGraphFlowTestCase:
             2: Measurement.XY(0.1),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
 
 
 @register_open_graph_flow_test_case
@@ -223,7 +224,7 @@ def _og_6() -> OpenGraphFlowTestCase:
             3: Measurement.X,  # X
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -244,7 +245,7 @@ def _og_7() -> OpenGraphFlowTestCase:
             1: Measurement.YZ(0.5),  # Y
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -270,7 +271,7 @@ def _og_8() -> OpenGraphFlowTestCase:
             5: Measurement.YZ(0.1),  # YZ
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
 
 
 @register_open_graph_flow_test_case
@@ -296,7 +297,7 @@ def _og_9() -> OpenGraphFlowTestCase:
             5: Measurement.Y,  # Y
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=True, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -328,7 +329,7 @@ def _og_10() -> OpenGraphFlowTestCase:
             4: Measurement.Z,  # Z
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -354,7 +355,7 @@ def _og_11() -> OpenGraphFlowTestCase:
             7: Measurement.X,
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=True, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -373,7 +374,7 @@ def _og_12() -> OpenGraphFlowTestCase:
         output_nodes=[1, 3, 4],
         measurements={0: Measurement.XY(0.1), 2: Measurement.YZ(0.5)},
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -400,7 +401,7 @@ def _og_13() -> OpenGraphFlowTestCase:
             5: Measurement.YZ(0.1),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -419,7 +420,7 @@ def _og_14() -> OpenGraphFlowTestCase:
         output_nodes=[1, 3, 4],
         measurements={0: Measurement.X, 2: Measurement.Z, 6: Measurement.XY(0.2)},
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -446,7 +447,7 @@ def _og_15() -> OpenGraphFlowTestCase:
             5: Measurement.XY(0.1),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
 
 
 @register_open_graph_flow_test_case
@@ -465,7 +466,7 @@ def _og_16() -> OpenGraphFlowTestCase:
         output_nodes=[1, 3, 4],
         measurements={0: Measurement.XZ(0.1), 2: Measurement.Z, 6: Measurement.XY(0.2)},
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
 
 
 @register_open_graph_flow_test_case
@@ -499,7 +500,7 @@ def _og_17() -> OpenGraphFlowTestCase:
             8: Measurement.XY(0.1),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
 
 
 @register_open_graph_flow_test_case
@@ -525,7 +526,7 @@ def _og_18() -> OpenGraphFlowTestCase:
             7: Measurement.Z,
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
 
 
 @register_open_graph_flow_test_case
@@ -555,7 +556,7 @@ def _og_19() -> OpenGraphFlowTestCase:
             7: Measurement.Z,
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -582,7 +583,7 @@ def _og_20() -> OpenGraphFlowTestCase:
             0: Measurement.YZ(angle=0),
         },
     )
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -595,7 +596,7 @@ def _og_21() -> OpenGraphFlowTestCase:
     https://github.com/TeamGraphix/graphix/issues/531
     """
     og: OpenGraph[Measurement] = OpenGraph(graph=nx.Graph(), input_nodes=[], output_nodes=[], measurements={})
-    return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=True, has_ecflow=True, has_gflow=True, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -613,7 +614,7 @@ def _og_22() -> OpenGraphFlowTestCase:
     https://github.com/TeamGraphix/graphix/issues/531#issuecomment-4797042493
     """
     og = OpenGraph(nx.complete_graph(3), (), (), dict.fromkeys(range(3), Measurement.Z))
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=True)
 
 
 @register_open_graph_flow_test_case
@@ -632,7 +633,77 @@ def _og_23() -> OpenGraphFlowTestCase:
     https://github.com/TeamGraphix/graphix/issues/531#issuecomment-4797042493
     """
     og = OpenGraph(nx.empty_graph(2), (), (), {0: Measurement.YZ(0.3), 1: Measurement.YZ(0.25)})
-    return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=True, has_gflow=True, has_pflow=True)
+
+
+@register_open_graph_flow_test_case
+def _og_24() -> OpenGraphFlowTestCase:
+    r"""Generate open graph with adjacent YZ.
+
+    Structure:
+
+    0-1-(2)
+    |____|
+    """
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (0, 2)]),
+        input_nodes=[],
+        output_nodes=[2],
+        measurements={0: Measurement.YZ(0.3), 1: Measurement.YZ(0.3)},
+    )
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
+
+
+@register_open_graph_flow_test_case
+def _og_25() -> OpenGraphFlowTestCase:
+    r"""Generate open graph. YZ can't correct.
+
+    Structure:
+
+    [0]-1-(2)
+     |_____|
+    """
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (0, 2)]),
+        input_nodes=[0],
+        output_nodes=[2],
+        measurements={0: Measurement.XY(0.3), 1: Measurement.YZ(0.3)},
+    )
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
+
+
+@register_open_graph_flow_test_case
+def _og_26() -> OpenGraphFlowTestCase:
+    r"""Generate open graph. YZ can't correct.
+
+    Structure:
+
+    0-(2)-1
+    """
+    og = OpenGraph(
+        graph=nx.Graph([(0, 2), (1, 2)]),
+        input_nodes=[],
+        output_nodes=[2],
+        measurements={0: Measurement.XY(0.3), 1: Measurement.YZ(0.3)},
+    )
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=True, has_gflow=True, has_pflow=True)
+
+
+@register_open_graph_flow_test_case
+def _og_27() -> OpenGraphFlowTestCase:
+    r"""Generate open graph. YZ can't correct.
+
+    Structure:
+
+    0-(2)-1
+    """
+    og = OpenGraph(
+        graph=nx.Graph([(0, 2), (1, 2)]),
+        input_nodes=[],
+        output_nodes=[2],
+        measurements={0: Measurement.XY(0.3), 1: Measurement.XY(0.3)},
+    )
+    return OpenGraphFlowTestCase(og, has_cflow=False, has_ecflow=False, has_gflow=False, has_pflow=False)
 
 
 class OpenGraphComposeTestCase(NamedTuple):
@@ -1097,6 +1168,21 @@ class TestOpenGraph:
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a causal flow."):
                 og.to_causalflow()
+
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
+    def test_ecflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
+        og = test_case.og.to_bloch()
+
+        if test_case.has_ecflow:
+            ecf = og.to_extendedcausalflow()
+            ecf.check_well_formed()
+            xz = ecf.to_xzcorrections()
+            xz.check_well_formed()
+            pattern = xz.to_pattern()
+            assert check_determinism(pattern, fx_rng)
+        else:
+            with pytest.raises(OpenGraphError, match=r"The open graph does not have an extended causal flow."):
+                og.to_extendedcausalflow()
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     @pytest.mark.filterwarnings("ignore:Non-Pauli measurement on an isolated node was removed.")

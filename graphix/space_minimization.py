@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, TypeAlias
 import graphix
 from graphix import command
 from graphix.command import CommandKind
-from graphix.flow._find_cflow import ecflow_label_sets, find_ecflow_layers
 from graphix.flow.exceptions import FlowError
 
 if TYPE_CHECKING:
@@ -188,36 +187,7 @@ class SpaceMinimizationHeuristics:
 
     @staticmethod
     def extended_causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
-        """Use an extended causal flow to minimize space.
-
-        The measurement order follows the layers of a maximally delayed extended causal flow
-        of the pattern's open graph (see :func:`~graphix.flow._find_cflow.find_ecflow_layers`).
-        Pauli measurements are labelled as in :func:`~graphix.flow._find_cflow.ecflow_labels`.
-
-        Since every measurement only activates its corrector (or, for :math:`YZ`-measured
-        nodes, the node itself), the number of active nodes stays at most one more than the
-        number of chains of the flow: this heuristic is optimal, and subsumes
-        :func:`causal_flow`. It returns ``None`` if the open graph has no extended causal flow
-        or if the dependencies of the pattern are not compatible with the layers (i.e., the
-        corrections of the pattern were not derived from the same flow).
-        """
-        label_sets = ecflow_label_sets({m.node: m.measurement for m in pattern.m_list})
-        if label_sets is None:
-            return None
-        graph = pattern.graph()
-        result = find_ecflow_layers(graph, set(pattern.input_nodes), set(pattern.output_nodes), *label_sets)
-        if result is None:
-            return None
-        _correction_function, layers = result
-        layer_index = {node: index for index, layer in enumerate(layers) for node in layer}
-        for node, domain in _extract_dependency(pattern).items():
-            if node in layer_index and any(
-                layer_index[dependency] <= layer_index[node] for dependency in domain if dependency in layer_index
-            ):
-                return None
-        # Earliest nodes first: the last layer is measured first, and the first layer contains the outputs.
-        meas_order = tuple(chain.from_iterable(reversed(layers[1:] if pattern.output_nodes else layers)))
-        return SpaceMinimizationHeuristicResult(meas_order, True)
+        pass
 
     @staticmethod
     def causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
@@ -226,7 +196,7 @@ class SpaceMinimizationHeuristics:
         This minimization heuristic is optimal but requires the pattern to have a causal flow.
         """
         try:
-            cf = pattern.to_xzcorrections().downcast_bloch().to_causalflow()
+            cf = pattern.to_xzcorrections().downcast_bloch().to_extendedcausalflow()
         except (TypeError, FlowError, ValueError):
             return None
         else:

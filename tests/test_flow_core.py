@@ -7,7 +7,6 @@ import networkx as nx
 import pytest
 from numpy.random import Generator
 
-from graphix import Circuit
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
     CausalFlow,
@@ -40,13 +39,10 @@ from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
-from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-    from numpy.random import PCG64
 
 
 def generate_causal_flow_0() -> CausalFlow[Plane]:

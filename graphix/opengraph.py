@@ -405,7 +405,7 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
             raise OpenGraphError("The open graph does not have a causal flow.")
         return cf
 
-    def to_extendedcausalflow(self) -> ExtendedCausalFlow[_AM_co]:
+    def to_extendedcausalflow(self: OpenGraph[_PM_co]) -> ExtendedCausalFlow[_PM_co]:
         """Try to extract an extended causal flow on the open graph.
 
         This method is a wrapper over :func:`OpenGraph.to_extendedcausalflow_or_none` with a single return type.
@@ -516,7 +516,7 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         """
         return find_cflow(self)
 
-    def to_extendedcausalflow_or_none(self) -> ExtendedCausalFlow[_AM_co] | None:
+    def to_extendedcausalflow_or_none(self: OpenGraph[_PM_co]) -> ExtendedCausalFlow[_PM_co] | None:
         """Return an extended causal flow on the open graph if it exists.
 
         As for Pauli flow, planar measurements (including Bloch measurements

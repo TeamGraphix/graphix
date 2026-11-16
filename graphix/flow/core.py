@@ -23,7 +23,6 @@ from graphix.circ_ext.extraction import (
     extraction_ps_from_corrected_node,
 )
 from graphix.command import C, E, M, N, X, Z
-from graphix.flow._find_cflow import ECFlowLabel, ecflow_labels
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
     compute_partial_order_layers,
@@ -65,7 +64,6 @@ if TYPE_CHECKING:
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
-    from graphix.transpiler import Circuit
     from graphix.visualization import DrawKwargs
 
 
@@ -251,7 +249,7 @@ class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         cf.check_well_formed()  # Raises a ``FlowError`` if the partial order and the correction function are not compatible, if a measured node is corrected by more than one node, or if nodes are not measured on the XY plane.
         return cf
 
-    def to_extendedcausalflow(self) -> ExtendedCausalFlow[_AM_co]:
+    def to_extendedcausalflow(self: XZCorrections[_PM_co]) -> ExtendedCausalFlow[_PM_co]:
         r"""Extract an extended causal flow from XZ-corrections.
 
         This method does not invoke the flow-extraction routine on the underlying open graph.
@@ -276,15 +274,17 @@ class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         [1] Backens and Perdrix, (2026), Completeness for flow-preserving rewrite rules, arXiv:2608.13035
         """
         correction_function: dict[int, set[int]] = {}
+
         for i, meas in self.og.measurements.items():
-            x_corrections = set(self.x_corrections.get(i, set()))
-            labels = ecflow_labels(meas)
-            # A node that can be labelled XY and has an X-correction is labelled XY.
-            correction_function[i] = (
-                x_corrections if ECFlowLabel.XY in labels and (x_corrections or ECFlowLabel.YZ not in labels) else {i}
-            )
+            corrections = set(self.x_corrections.get(i, set()))
+
+            if meas.to_plane() == Plane.YZ:
+                corrections.add(i)
+
+            correction_function[i] = corrections
+
         ecf = ExtendedCausalFlow(self.og, correction_function, self.partial_order_layers)
-        ecf.check_well_formed()
+        ecf.check_well_formed()  # Raises a ``FlowError`` if the partial order and the correction function are not compatible.
         return ecf
 
     def to_gflow(self: XZCorrections[_PM_co]) -> GFlow[_PM_co]:
@@ -1406,7 +1406,7 @@ class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
 
 
 @dataclass(frozen=True)
-class ExtendedCausalFlow(PauliFlow[_AM_co], Generic[_AM_co]):
+class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     """An unmutable subclass of ``PauliFlow`` providing a representation of an extended causal flow.
 
     Extended causal flows are defined on labelled open graphs with :math:`XY` and :math:`YZ`
@@ -1427,54 +1427,6 @@ class ExtendedCausalFlow(PauliFlow[_AM_co], Generic[_AM_co]):
     """
 
     _CF_PREFIX: str = "c"  # Correction function prefix for printing
-
-    @override
-    def to_xzcorrections(self) -> XZCorrections[_AM_co]:
-        r"""Compute the XZ-corrections induced by the extended causal flow encoded in ``self``.
-
-        For a measured node :math:`v` with corrector :math:`c = f(v)`, the X-correction is
-        applied on :math:`c` if :math:`c \neq v` and the Z-corrections on
-        :math:`N(c) \setminus \{v\}`.
-
-        Returns
-        -------
-        XZCorrections[_AM_co]
-        """
-        x_corrections: dict[int, AbstractSet[int]] = {}
-        z_corrections: dict[int, AbstractSet[int]] = {}
-        for measured_node, correcting_set in self.correction_function.items():
-            if x_corrected_nodes := correcting_set - {measured_node}:
-                x_corrections[measured_node] = frozenset(x_corrected_nodes)
-            if z_corrected_nodes := self.og.neighbors(correcting_set) - {measured_node}:
-                z_corrections[measured_node] = frozenset(z_corrected_nodes)
-        return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
-
-    @override
-    def node_measurement_label(self, node: int) -> Plane:
-        """Get the label of a given node in the extended causal flow.
-
-        Planar measurements are labelled by their plane. Pauli measurements can be labelled
-        with any of the planes :math:`XY` and :math:`YZ` that contain them (see
-        :func:`~graphix.flow._find_cflow.ecflow_labels`): a node that can take both labels
-        (Pauli :math:`Y`) is labelled :math:`YZ` if and only if it is its own corrector.
-        Nodes that cannot be labelled are reported as :math:`XZ`.
-
-        Parameters
-        ----------
-        node : int
-
-        Returns
-        -------
-        Plane
-        """
-        labels = ecflow_labels(self.og.measurements[node])
-        if labels == ECFlowLabel.XY | ECFlowLabel.YZ:
-            return Plane.YZ if node in self.correction_function[node] else Plane.XY
-        if labels == ECFlowLabel.XY:
-            return Plane.XY
-        if labels == ECFlowLabel.YZ:
-            return Plane.YZ
-        return Plane.XZ
 
     def check_well_formed(self) -> None:
         r"""Verify if the extended causal flow is well formed.
@@ -1572,7 +1524,7 @@ class ExtendedCausalFlow(PauliFlow[_AM_co], Generic[_AM_co]):
 
 
 @dataclass(frozen=True)
-class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
+class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
     """An unmutable subclass of ``GFlow`` providing a representation of a causal flow.
 
     This class differs from its parent class in the following:
