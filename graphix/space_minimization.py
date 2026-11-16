@@ -189,7 +189,24 @@ class SpaceMinimizationHeuristics:
     def extended_causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
         """Use the extended causal flow layers to minimize space.
 
-        This minimization heuristic is optimal but requires the pattern to have an extended causal flow.
+        This minimization heuristic is optimal but requires the
+        corrections of the pattern to be induced by an extended causal
+        flow (see :meth:`XZCorrections.to_extendedcausalflow`). This
+        includes patterns whose corrections are induced by a causal flow.
+
+        Parameters
+        ----------
+        pattern : StandardizedPattern
+            The pattern whose measurement order is optimized.
+
+        Returns
+        -------
+        SpaceMinimizationHeuristicResult | None
+            The measurement order given by the layers of the extended
+            causal flow, from the first to the last measured layer
+            (marked as known to be optimal), or
+            ``None`` if the corrections of the pattern are not induced
+            by an extended causal flow.
         """
         try:
             ecf = pattern.to_xzcorrections().downcast_bloch().to_extendedcausalflow()

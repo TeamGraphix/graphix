@@ -412,7 +412,7 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
 
         Returns
         -------
-        ExtendedCausalFlow[_AM_co]
+        ExtendedCausalFlow[_PM_co]
             An extended causal flow object if the open graph has extended causal flow.
 
         Raises
@@ -519,15 +519,14 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     def to_extendedcausalflow_or_none(self: OpenGraph[_PM_co]) -> ExtendedCausalFlow[_PM_co] | None:
         """Return an extended causal flow on the open graph if it exists.
 
-        As for Pauli flow, planar measurements (including Bloch measurements
-        with a Pauli angle) are labelled by their plane, and Pauli
-        measurements (e.g., inferred with :meth:`OpenGraph.infer_pauli_measurements`)
-        can be labelled with any of the planes :math:`XY` and :math:`YZ` that
-        contain them.
+        As for gflow, measurements (including Bloch measurements with a
+        Pauli angle) are labelled by their plane. In particular, Pauli
+        measurements must be converted into Bloch measurements first, e.g.,
+        with :meth:`OpenGraph.to_bloch`.
 
         Returns
         -------
-        ExtendedCausalFlow[_AM_co] | None
+        ExtendedCausalFlow[_PM_co] | None
             An extended causal flow object if the open graph has extended causal flow or ``None`` otherwise.
 
         See Also
@@ -536,12 +535,13 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
 
         Notes
         -----
-        - The extended causal flow is only defined on open graphs with measurements that can be labelled :math:`XY` or :math:`YZ`: there is none if some measurement is in the :math:`XZ` plane (and not a Pauli measurement).
-        - This function implements an adaptation of the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^2)`.
+        - The extended causal flow is only defined on open graphs with :math:`XY` and :math:`YZ` measurements: ``None`` is returned if some measurement is in the :math:`XZ` plane. See Definition 10 in Ref. [1].
+        - This function implements an adaptation of the algorithm presented in Ref. [2] with polynomial complexity on the number of nodes, :math:`O(N^2)`.
 
         References
         ----------
-        [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
+        [1] Backens and Perdrix, (2026), Completeness for flow-preserving rewrite rules, arXiv:2608.13035
+        [2] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
         """
         return find_ecflow(self)
 
