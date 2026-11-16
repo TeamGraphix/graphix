@@ -1630,6 +1630,7 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
         ----------
         [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
+        # Overridden only to provide the causal-flow-specific documentation above; the checks are those of the parent class.
         super().check_well_formed()
 
     @override

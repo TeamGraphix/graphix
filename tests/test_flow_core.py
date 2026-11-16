@@ -543,6 +543,28 @@ class TestFlow:
 class TestXZCorrections:
     """Bundle for unit tests of :class:`XZCorrections`."""
 
+    def test_to_extendedcausalflow(self) -> None:
+        # [0]-1-2-(3) with a YZ-measured node 4 attached to 1: extended causal flow but no causal flow.
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3), (1, 4)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements={0: Plane.XY, 1: Plane.XY, 2: Plane.XY, 4: Plane.YZ},
+        )
+        ecf_ref = og.to_extendedcausalflow()
+        corrections = ecf_ref.to_xzcorrections()
+        assert 4 not in corrections.x_corrections  # The YZ-measured node has no X-correction.
+
+        ecf = corrections.to_extendedcausalflow()
+        ecf.check_well_formed()
+        assert ecf.correction_function == {0: {1}, 1: {2}, 2: {3}, 4: {4}}
+        assert ecf.correction_function == ecf_ref.correction_function
+        assert ecf.partial_order_layers == ecf_ref.partial_order_layers
+
+        # The same corrections are not induced by a causal flow (the YZ-measured node has no X-correction).
+        with pytest.raises(FlowError):
+            corrections.to_causalflow()
+
     # See `:func: generate_causal_flow_0`
     def test_order_0(self) -> None:
         corrections = generate_causal_flow_0().to_xzcorrections()

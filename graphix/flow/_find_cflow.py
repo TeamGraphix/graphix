@@ -106,7 +106,7 @@ def _find_flow(og: OpenGraph[_PM_co], yz_candidates: AbstractSet[int] | None = N
     og : OpenGraph[_PM_co]
         Open graph whose flow is calculated. The caller is responsible for discarding open graphs with measurements in the :math:`XZ` plane (and in the :math:`YZ` plane when looking for a causal flow).
     yz_candidates : AbstractSet[int] | None, optional
-        Non-output nodes measured in the :math:`YZ` plane. The set is not modified. If ``None`` (default), it is considered to be empty and the routine looks for a causal flow.
+        Non-output nodes measured in the :math:`YZ` plane. The set is not modified. If ``None`` (default), it is considered to be empty.
 
     Returns
     -------
