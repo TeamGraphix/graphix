@@ -1268,11 +1268,7 @@ class Circuit(InplaceParameterizable):
         visitor = _TranspileDiscardVisitor(self.nqubit)
         if nmeasurements == 0:
             return self.visit(visitor, copy=True)
-        source = (
-            self.transpile_ancilla_state(BasicStates.PLUS)
-            if self.ancillas
-            else self
-        )
+        source = self.transpile_ancilla_state(BasicStates.PLUS) if self.ancillas else self
         new_circuit = Circuit(self.width, ancillas=self.ancillas + nmeasurements, ancilla_state=BasicStates.PLUS)
         ancilla = self.nqubit
         measurement_count = 0
