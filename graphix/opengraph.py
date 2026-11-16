@@ -425,10 +425,10 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         :func:`OpenGraph.to_extendedcausalflow_or_none`
 
         """
-        cf = self.to_extendedcausalflow_or_none()
-        if cf is None:
+        ecf = self.to_extendedcausalflow_or_none()
+        if ecf is None:
             raise OpenGraphError("The open graph does not have an extended causal flow.")
-        return cf
+        return ecf
 
     def to_gflow(self: OpenGraph[_PM_co]) -> FocusedGFlow[_PM_co]:
         r"""Try to extract a maximally delayed generalised flow (gflow) on the open graph.

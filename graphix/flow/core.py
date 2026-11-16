@@ -16,7 +16,6 @@ import numpy as np
 from typing_extensions import override
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
-from graphix.circ_ext.ecflow import ecflow_to_circuit
 from graphix.circ_ext.extraction import (
     CliffordMap,
     ExtractionResult,
@@ -1446,23 +1445,9 @@ class ExtendedCausalFlow(PauliFlow[_AM_co], Generic[_AM_co]):
         for measured_node, correcting_set in self.correction_function.items():
             if x_corrected_nodes := correcting_set - {measured_node}:
                 x_corrections[measured_node] = frozenset(x_corrected_nodes)
-            if z_corrected_nodes := self.og.odd_neighbors(correcting_set) - {measured_node}:
+            if z_corrected_nodes := self.og.neighbors(correcting_set) - {measured_node}:
                 z_corrections[measured_node] = frozenset(z_corrected_nodes)
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
-
-    def to_circuit(self: ExtendedCausalFlow[Measurement]) -> Circuit:
-        """Extract a circuit from the extended causal flow.
-
-        Chains of the flow become wires, :math:`XY`-measurements become :math:`J` gates,
-        edges become :math:`CZ` gates and :math:`YZ`-measurements become phase gadgets
-        (multi-qubit :math:`Z` rotations), see :func:`graphix.circ_ext.ecflow.ecflow_to_circuit`.
-
-        Returns
-        -------
-        Circuit
-            A circuit implementing the same unitary as the flow, up to a global phase.
-        """
-        return ecflow_to_circuit(self)
 
     @override
     def node_measurement_label(self, node: int) -> Plane:

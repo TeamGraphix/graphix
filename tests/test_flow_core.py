@@ -1287,4 +1287,3 @@ def test_cflow_none_still_returned() -> None:
     )
     assert og.to_causalflow_or_none() is None
     assert og.to_extendedcausalflow_or_none() is None
-
