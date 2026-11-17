@@ -272,8 +272,7 @@ class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         Notes
         -----
         - See Definition 10 in Ref. [1].
-        - Measurements are labelled by their plane (see :meth:`GFlow.node_measurement_label`).
-        - Only the ``x_corrections`` mapping and the partial order are used to build the flow:
+        - Only the ``x_corrections`` mapping and the partial order are used to build the flow,
           the ``z_corrections`` mapping is not checked against the flow.
 
         References
@@ -1110,6 +1109,7 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
 
         return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
 
+    @override
     def check_well_formed(self) -> None:
         """Verify that the Pauli flow is well-formed and focused.
 
@@ -1417,16 +1417,13 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     r"""An unmutable subclass of ``GFlow`` providing a representation of an extended causal flow.
 
     Extended causal flows are defined on open graphs with :math:`XY` and :math:`YZ`
-    measurements only (Definition 10 in Ref. [1]). As for gflows, measurements are
-    labelled by their plane (see :meth:`GFlow.node_measurement_label`). The correction
-    set of an :math:`XY`-measured node :math:`i` is a single neighbor of :math:`i`, as
-    in a causal flow, and the correction set of a :math:`YZ`-measured node :math:`i`
-    is :math:`\{i\}`. An extended causal flow is therefore a gflow, and causal flows
-    are extended causal flows on open graphs with :math:`XY` measurements only.
+    measurements only (Definition 10 in Ref. [1]). The correction set of an :math:`XY`-measured
+    node :math:`i` is a single neighbor of :math:`i`, as in a causal flow, and the correction set
+    of a :math:`YZ`-measured node :math:`i` is :math:`\{i\}`. An extended causal flow is therefore
+    a gflow, and causal flows are extended causal flows on open graphs with :math:`XY` measurements only.
 
-    This class differs from its parent class in the following:
-        - The method :meth:`ExtendedCausalFlow.check_well_formed` verifies the definition of extended causal flow (Definition 10 in Ref. [1]).
-        - XZ-corrections are computed as for gflows (see :meth:`GFlow.to_xzcorrections`).
+    This class differs from its parent class in the method :meth:`ExtendedCausalFlow.check_well_formed`.
+    XZ-corrections are computed as for gflows (see :meth:`GFlow.to_xzcorrections`).
 
     The methods :meth:`OpenGraph.to_extendedcausalflow` and
     :meth:`XZCorrections.to_extendedcausalflow` return well-formed
@@ -1448,15 +1445,14 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
     _CF_PREFIX: str = "c"  # Correction function prefix for printing
 
+    @override
     def check_well_formed(self) -> None:
         r"""Verify if the extended causal flow is well formed.
 
         Raises
         ------
         FlowError
-            If the extended causal flow is not well formed. In particular, a ``FlowGenericError``
-            with reason ``XZPlane`` is raised if the open graph contains measurements in the
-            :math:`XZ` plane.
+            If the extended causal flow is not well formed.
 
         Notes
         -----
@@ -1464,21 +1460,22 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
             - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
             - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
             - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow, unless it is an empty open graph.
+            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed
+            because open graphs without outputs do not have flow, unless it is an empty open graph.
 
         Specific properties of extended causal flows (the names in brackets are those of
         :class:`~graphix.flow.exceptions.FlowPropositionErrorReason` and
         :class:`~graphix.flow.exceptions.FlowPropositionOrderErrorReason`):
             - Correction sets have one element only (C0),
-            - (C.XY) if :math:`\lambda(i) = XY`, then :math:`i \sim c(i)` (C1),
-            - (C.YZ) if :math:`\lambda(i) = YZ`, then :math:`c(i) = i` (CYZ),
+            - if :math:`\lambda(i) = XY`, then :math:`i \sim c(i)` (C1),
+            - if :math:`\lambda(i) = YZ`, then :math:`c(i) = i` (CYZ),
             - :math:`i \prec c(i)` if :math:`\lambda(i) = XY` (C2),
             - :math:`\forall k \in N_G(c(i)) \setminus \{i\}, i \prec k` (C3),
-        where :math:`i \in O^c`, :math:`\lambda(i)` is the measurement plane of :math:`i`, :math:`c` is the correction function and :math:`\prec` denotes the partial order. Conditions (C2) and (C3) state that the order induced by the correction function is compatible with the partial order.
+        where :math:`i \in O^c`, :math:`\lambda(i)` is the measurement plane of :math:`i`, :math:`c` is the correction function and :math:`\prec` denotes the partial order.
 
-        Extended causal flows are defined on open graphs with XY and YZ measurements only. Since the image of the correction function is a subset of the non-input nodes, condition (C.YZ) implies that :math:`YZ`-measured nodes cannot be inputs.
+        Extended causal flows are defined on open graphs with XY and YZ measurements only. Since the image of the correction function is a subset of the non-input nodes, condition (CYZ) implies that :math:`YZ`-measured nodes cannot be inputs.
 
-        See Definition 10 in Ref. [1], where conditions (C.XY) and (C.YZ) are introduced; (C0)-(C3)
+        See Definition 10 in Ref. [1], where condition (CYZ) is introduced; (C0)-(C3)
         are the conditions of causal flow, see Definition 2 in Ref. [2].
 
         References
@@ -1576,7 +1573,8 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
     A causal flow is an extended causal flow on an open graph with :math:`XY` measurements only.
 
     This class differs from its parent class in the following:
-        - The method :meth:`CausalFlow.check_well_formed` verifies the definition of causal flow (Definition 2 in Ref. [1]): open graphs with measurements in the :math:`XZ` or :math:`YZ` planes are rejected.
+        - The method :meth:`CausalFlow.check_well_formed` verifies the definition of causal flow (Definition 2 in Ref. [1]):
+          open graphs with measurements in the :math:`XZ` or :math:`YZ` planes are rejected.
 
     The methods :meth:`OpenGraph.to_causalflow` and
     :meth:`Pattern.to_causalflow` return well-formed causal flows by

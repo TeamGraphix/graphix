@@ -1081,7 +1081,7 @@ class Pattern(InplaceParameterizable, Simulable[Measurement]):
         FlowError
             If the pattern:
             - Contains measurements in XZ planes,
-            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
+            - Induces a correction function and a partial order which fail the well-formedness checks for a valid extended causal flow.
         ValueError
             If `N` commands in the pattern do not represent a :math:`|+\rangle` state or if the pattern corrections form closed loops.
 

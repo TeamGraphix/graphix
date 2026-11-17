@@ -674,7 +674,7 @@ def _og_25() -> OpenGraphFlowTestCase:
 
 @register_open_graph_flow_test_case
 def _og_26() -> OpenGraphFlowTestCase:
-    r"""Generate open graph. YZ can't correct.
+    r"""Generate open graph.
 
     Structure:
 
@@ -691,7 +691,7 @@ def _og_26() -> OpenGraphFlowTestCase:
 
 @register_open_graph_flow_test_case
 def _og_27() -> OpenGraphFlowTestCase:
-    r"""Generate open graph. YZ can't correct.
+    r"""Generate open graph.
 
     Structure:
 

@@ -111,7 +111,7 @@ def _find_flow(og: OpenGraph[_PM_co], yz_candidates: AbstractSet[int] | None = N
     Returns
     -------
     FlowArguments | None
-        A tuple ``(correction_function, partial_order_layers)`` used to instantiate a :class:`CausalFlow` or an :class:`ExtendedCausalFlow` if the flow exists, ``None`` otherwise. ``correction_function`` maps each non-output node to its (single-element) correction set, and ``partial_order_layers[0]`` is the set of output nodes.
+        A tuple ``(correction_function, partial_order_layers)`` used to instantiate a :class:`CausalFlow` or an :class:`ExtendedCausalFlow` if the flow exists, ``None`` otherwise.
 
     Notes
     -----

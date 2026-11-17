@@ -1055,7 +1055,7 @@ class TestIncorrectFlows:
                 ),
                 FlowPropositionError(FlowPropositionErrorReason.C0, node=4, correction_set={1, 4}),
             ),
-            # Extended causal flow: C1 (C.XY) on an XY-measured node.
+            # Extended causal flow: C1 on an XY-measured node.
             IncorrectFlowTestCase(
                 ExtendedCausalFlow(
                     og=og_e,
@@ -1064,7 +1064,7 @@ class TestIncorrectFlows:
                 ),
                 FlowPropositionError(FlowPropositionErrorReason.C1, node=0, correction_set={2}),
             ),
-            # Extended causal flow: CYZ (C.YZ), the YZ-measured node is not its own corrector.
+            # Extended causal flow: CYZ, the YZ-measured node is not its own corrector.
             IncorrectFlowTestCase(
                 ExtendedCausalFlow(
                     og=og_e,

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import networkx as nx
-import numpy as np
 
 from graphix import Pattern, command
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.optimization import StandardizedPattern
 from graphix.space_minimization import SpaceMinimizationHeuristics
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
 def counter_example_issue_454(sz: int, depth: int) -> Pattern:
@@ -45,7 +49,7 @@ def test_minimize_space_deprecated() -> None:
     assert after > before
 
 
-def test_minimize_space_extended_causal_flow() -> None:
+def test_minimize_space_extended_causal_flow(fx_rng: Generator) -> None:
     # [0]-1-2-(3) with a YZ-measured node 4 attached to 1: extended causal flow but no causal flow.
     og = OpenGraph(
         graph=nx.Graph([(0, 1), (1, 2), (2, 3), (1, 4)]),
@@ -61,11 +65,11 @@ def test_minimize_space_extended_causal_flow() -> None:
     assert result.known_optimal
     assert result.new_order == (0, 4, 1, 2)
 
-    state_ref = p.simulate(rng=np.random.default_rng(42))
+    state_ref = p.simulate(rng=fx_rng)
     before = p.max_space()
     p.minimize_space([SpaceMinimizationHeuristics.extended_causal_flow])
     assert p.max_space() < before
-    state = p.simulate(rng=np.random.default_rng(43))
+    state = p.simulate(rng=fx_rng)
     assert state.isclose(state_ref)
 
 
