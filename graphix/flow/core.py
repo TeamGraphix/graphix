@@ -279,16 +279,7 @@ class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         ----------
         [1] Backens and Perdrix, (2026), Completeness for flow-preserving rewrite rules, arXiv:2608.13035
         """
-        correction_function: dict[int, set[int]] = {}
-
-        for i, meas in self.og.measurements.items():
-            corrections = set(self.x_corrections.get(i, set()))
-
-            if meas.to_plane() == Plane.YZ:
-                corrections.add(i)
-
-            correction_function[i] = corrections
-
+        correction_function = _reconstruct_correction_function(self)
         ecf = ExtendedCausalFlow(self.og, correction_function, self.partial_order_layers)
         ecf.check_well_formed()  # Raises a ``FlowError`` if the partial order and the correction function are not compatible.
         return ecf
@@ -314,16 +305,7 @@ class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         ----------
         [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
-        correction_function: dict[int, set[int]] = {}
-
-        for i, meas in self.og.measurements.items():
-            corrections = set(self.x_corrections.get(i, set()))
-
-            if meas.to_plane() in {Plane.XZ, Plane.YZ}:
-                corrections.add(i)
-
-            correction_function[i] = corrections
-
+        correction_function = _reconstruct_correction_function(self)
         gf = GFlow(self.og, correction_function, self.partial_order_layers)
         gf.check_well_formed()  # Raises a ``FlowError`` if the partial order and the correction function are not compatible.
         return gf
@@ -1923,6 +1905,21 @@ def _solve_pauli_correction_set(
     correction_set = set(fixed_in_p)
     correction_set.update(v for v, bit in zip(variables, solution, strict=True) if bit)
     return correction_set
+
+
+def _reconstruct_correction_function(xz: XZCorrections[AbstractPlanarMeasurement]) -> dict[int, set[int]]:
+    """Reconstruct an extended causal flow or a gflow correction function from XZ-corrections.
+
+    See :meth:`XZCorrections.to_extendedcausalflow` and :meth:`XZCorrections.to_gflow`.
+    """
+    correction_function: dict[int, set[int]] = {}
+    for i, meas in xz.og.measurements.items():
+        corrections = set(xz.x_corrections.get(i, set()))
+        if meas.to_plane() in {Plane.XZ, Plane.YZ}:
+            corrections.add(i)
+        correction_function[i] = corrections
+
+    return correction_function
 
 
 def _reconstruct_pauli_correction_function(xz: XZCorrections[AbstractMeasurement]) -> dict[int, set[int]]:
