@@ -886,7 +886,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}},
                     partial_order_layers=[{1}, {0}],
                 ),
-                FlowGenericError(FlowGenericErrorReason.XYPlane),
+                FlowGenericError(FlowGenericErrorReason.XZPlane),
             ),
             # Incomplete correction function
             IncorrectFlowTestCase(
@@ -1007,7 +1007,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}, 4: {4}},
                     partial_order_layers=[{3}, {2}, {1}, {4}, {0}],
                 ),
-                FlowGenericError(FlowGenericErrorReason.XYPlane),
+                FlowGenericError(FlowGenericErrorReason.YZPlane),
             ),
             # Extended causal flow on an open graph with XZ measurements.
             IncorrectFlowTestCase(

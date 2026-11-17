@@ -87,11 +87,11 @@ class FlowGenericErrorReason(Enum):
     IncorrectCorrectionFunctionImage = enum.auto()
     """The image of the correction function is not a subset of non-input nodes (prepared qubits) of the open graph."""
 
-    XYPlane = enum.auto()
-    "A causal flow is defined on an open graph with non-XY measurements."
+    YZPlane = enum.auto()
+    "A causal flow is defined on an open graph with YZ measurements."
 
     XZPlane = enum.auto()
-    "An extended causal flow is defined on an open graph with XZ measurements."
+    "A causal flow or extended causal flow is defined on an open graph with XZ measurements."
 
     NoPauliFlow = enum.auto()
     """No Pauli flow is compatible with the given XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."""
@@ -233,10 +233,10 @@ class FlowGenericError(FlowError):
                 return "The domain of the correction function must be the set of non-output nodes (measured qubits) of the open graph."
             case FlowGenericErrorReason.IncorrectCorrectionFunctionImage:
                 return "The image of the correction function must be a subset of non-input nodes (prepared qubits) of the open graph."
-            case FlowGenericErrorReason.XYPlane:
-                return "Causal flow is only defined on open graphs with XY measurements."
+            case FlowGenericErrorReason.YZPlane:
+                return "Causal flow is not defined on open graphs with YZ measurements."
             case FlowGenericErrorReason.XZPlane:
-                return "Extended causal flow is only defined on open graphs without XZ measurements."
+                return "Causal flow and extended causal flows are not defined on open graphs with XZ measurements."
             case FlowGenericErrorReason.NoPauliFlow:
                 return "No Pauli flow is compatible with the XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."
             case FlowGenericErrorReason.NotFocused:

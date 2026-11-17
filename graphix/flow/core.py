@@ -1505,7 +1505,7 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
                     case Plane.YZ:
                         self._check_yzplane(node)
                     case Plane.XZ:
-                        self._check_xzplane()
+                        raise FlowGenericError(FlowGenericErrorReason.XZPlane)
 
                 if (neighbors - {node}) & past_and_present_nodes:
                     raise FlowPropositionOrderError(
@@ -1519,16 +1519,6 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
-
-    def _check_xzplane(self) -> None:
-        """Handle a node measured in the :math:`XZ` plane in :meth:`check_well_formed`.
-
-        Raises
-        ------
-        FlowGenericError
-            Always, with reason ``XZPlane``, since extended causal flows are not defined on open graphs with :math:`XZ` measurements.
-        """
-        raise FlowGenericError(FlowGenericErrorReason.XZPlane)
 
     def _check_yzplane(self, node: int) -> None:
         """Verify condition (C.YZ) for a node measured in the :math:`YZ` plane in :meth:`check_well_formed`.
@@ -1614,17 +1604,6 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
         super().check_well_formed()
 
     @override
-    def _check_xzplane(self) -> None:
-        """Handle a node measured in the :math:`XZ` plane in :meth:`check_well_formed`.
-
-        Raises
-        ------
-        FlowGenericError
-            Always, with reason ``XYPlane``, since causal flows are only defined on open graphs with :math:`XY` measurements.
-        """
-        raise FlowGenericError(FlowGenericErrorReason.XYPlane)
-
-    @override
     def _check_yzplane(self, node: int) -> None:
         """Handle a node measured in the :math:`YZ` plane in :meth:`check_well_formed`.
 
@@ -1638,7 +1617,7 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
         FlowGenericError
             Always, with reason ``XYPlane``, since causal flows are only defined on open graphs with :math:`XY` measurements.
         """
-        raise FlowGenericError(FlowGenericErrorReason.XYPlane)
+        raise FlowGenericError(FlowGenericErrorReason.YZPlane)
 
 
 def _corrections_to_dag(
