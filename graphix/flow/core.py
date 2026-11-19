@@ -1425,7 +1425,7 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     [1] Miriam Backens and Simon Perdrix, Completeness for flow-preserving rewrite rules, 2026 (arXiv:2608.13035).
     """
 
-    _CF_PREFIX: str = "c"  # Correction function prefix for printing
+    _CF_PREFIX: str = "e"  # Correction function prefix for printing
 
     @override
     def check_well_formed(self) -> None:
