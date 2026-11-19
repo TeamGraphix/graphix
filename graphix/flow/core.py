@@ -1431,7 +1431,7 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     Notes
     -----
     An extended causal flow on an open graph :math:`(G, I, O, \lambda)` with :math:`XY` and
-    :math:`YZ` measurements is a pair :math:`(c, \prec)`, where :math:`c: O^c \to 2^{I^c}` is
+    :math:`YZ` measurements is a pair :math:`(c, \prec)`, where :math:`c: O^c \to I^c` is
     the correction function and :math:`\prec` is a strict partial order on the nodes of the open
     graph, such that, for all :math:`i \in O^c`:
 
@@ -1571,7 +1571,7 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
     Notes
     -----
     A causal flow on an open graph :math:`(G, I, O, \lambda)` with :math:`XY` measurements only
-    is a pair :math:`(c, \prec)`, where :math:`c: O^c \to 2^{I^c}` is the correction function
+    is a pair :math:`(c, \prec)`, where :math:`c: O^c \to I^c` is the correction function
     and :math:`\prec` is a strict partial order on the nodes of the open graph, such that, for
     all :math:`i \in O^c`:
 
