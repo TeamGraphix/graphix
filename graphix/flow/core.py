@@ -612,7 +612,7 @@ class XZCorrections(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
 
 @dataclass(frozen=True)
 class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
-    """An unmutable dataclass providing a representation of a Pauli flow.
+    r"""An unmutable dataclass providing a representation of a Pauli flow.
 
     The methods :meth:`OpenGraph.to_pauliflow` and
     :meth:`Pattern.to_pauliflow` return well-formed Pauli flows by
@@ -623,7 +623,7 @@ class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
     correction function may not be valid, and the layers may be
     incompatible with the open graph or the corrections. The caller is
     responsible for ensuring that the provided attributes form a
-    well-formed Pauli flow. The :meth`:check_well_formed` method can
+    well-formed Pauli flow. The :meth:`check_well_formed` method can
     be called to explicitly verify that the flow is well-formed.
 
     Attributes
@@ -637,9 +637,36 @@ class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
 
     Notes
     -----
-    - See Definition 5 in Ref. [1] for a definition of Pauli flow.
+    A Pauli flow on an open graph :math:`(G, I, O, \lambda)` is a pair :math:`(p, \prec)`, where
+    :math:`p: O^c \to 2^{I^c}` is the correction function and :math:`\prec` is a strict partial
+    order on the nodes of the open graph, such that, for all :math:`i \in O^c`:
 
-    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only ``og`` and ``correction_function`` are necessary to initialize an ``PauliFlow`` instance (see :func:`PauliFlow.from_correctionmatrix_or_none`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
+    - If :math:`j \in p(i), i \neq j, \lambda(j) \notin \{X, Y\}`, then :math:`i \prec j` (P1).
+    - If :math:`j \in Odd(p(i)), i \neq j, \lambda(j) \notin \{Y, Z\}`, then :math:`i \prec j` (P2).
+    - If :math:`\neg (i \prec j), i \neq j, \lambda(j) = Y`, then either :math:`j \notin p(i)` and :math:`j \in Odd(p(i))` or :math:`j \in p(i)` and :math:`j \notin Odd(p(i))` (P3).
+    - If :math:`\lambda(i) = XY`, then :math:`i \notin p(i)` and :math:`i \in Odd(p(i))` (P4).
+    - If :math:`\lambda(i) = XZ`, then :math:`i \in p(i)` and :math:`i \in Odd(p(i))` (P5).
+    - If :math:`\lambda(i) = YZ`, then :math:`i \in p(i)` and :math:`i \notin Odd(p(i))` (P6).
+    - If :math:`\lambda(i) = X`, then :math:`i \in Odd(p(i))` (P7).
+    - If :math:`\lambda(i) = Z`, then :math:`i \in p(i)` (P8).
+    - If :math:`\lambda(i) = Y`, then either :math:`i \notin p(i)` and :math:`i \in Odd(p(i))` or :math:`i \in p(i)` and :math:`i \notin Odd(p(i))` (P9),
+
+    where :math:`\lambda(i)` is the measurement plane or axis of node :math:`i` (see
+    :meth:`node_measurement_label`) and :math:`Odd(s)` is the odd neighbourhood of the set
+    :math:`s` in the open graph. See Definition 5 in Ref. [1] or Definition 2.4 in Ref. [2].
+    The names in brackets are those of
+    :class:`~graphix.flow.exceptions.FlowPropositionErrorReason` and
+    :class:`~graphix.flow.exceptions.FlowPropositionOrderErrorReason`.
+
+    In addition, the following general properties are required for the attributes to
+    represent a flow. They are shared by all the flow classes:
+
+    - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
+    - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
+    - The nodes in the partial order layers are the nodes of the open graph, and each node appears in exactly one layer.
+    - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph, if there are any.
+
+    The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only ``og`` and ``correction_function`` are necessary to initialize an ``PauliFlow`` instance (see :func:`PauliFlow.from_correctionmatrix_or_none`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
 
     References
     ----------
@@ -713,65 +740,30 @@ class PauliFlow(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         return True
 
     def check_well_formed(self) -> None:
-        r"""Verify that the Pauli flow is well-formed.
+        """Verify that the flow is well-formed.
+
+        This method checks the validity of the flow, and, if ``self`` is an instance of
+        :class:`FocusedPauliFlow`, that the flow is focused. See the class docstring for the
+        flow definition. Use :meth:`check_flow_properties` to check only flow validity.
 
         Raises
         ------
         FlowError
-            if the Pauli flow is not well-formed.
-
-        Notes
-        -----
-        This method checks that the instance is indeed a valid Pauli
-        flow.  Moreover, if ``self`` is an instance of
-        :class:`FocusedPauliFlow`, it also checks that the flow is
-        focused.  Use :meth:`check_flow_properties` to check only flow
-        properties.
+            If the flow is not well-formed.
         """
         self.check_flow_properties()
 
     def check_flow_properties(self) -> None:
-        r"""Verify that the Pauli flow satisfies the flow properties.
+        """Verify that the flow satisfies the flow properties.
+
+        This method checks the validity of the flow, see the class docstring for the flow
+        definition. It does not check whether the flow is focused, even if ``self`` is an
+        instance of :class:`FocusedPauliFlow`.
 
         Raises
         ------
         FlowError
-            if the Pauli flow does not satisfy the flow properties.
-
-        Notes
-        -----
-        This method checks the properties for the instance to be a
-        valid Pauli flow.  It does not check whether the flow is
-        focused, even if ``self`` is an instance of
-        :class:`FocusedPauliFlow`.  By contrast,
-        :meth:`check_well_formed` checks that the flow is valid and,
-        for instances of :class:`FocusedPauliFlow`, also checks that
-        the flow is focused.
-
-        General properties of flows:
-            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
-            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
-            - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers contains the outputs of the open graph if there are any.
-
-        Specific properties of Pauli flows:
-            - If :math:`j \in p(i), i \neq j, \lambda(j) \notin \{X, Y\}`, then :math:`i \prec j` (P1).
-            - If :math:`j \in Odd(p(i)), i \neq j, \lambda(j) \notin \{Y, Z\}`, then :math:`i \prec j` (P2).
-            - If :math:`neg i \prec j, i \neq j, \lambda(j) = Y`, then either :math:`j \notin p(i)` and :math:`j \in Odd((p(i)))` or :math:`j \in p(i)` and :math:`j \notin Odd((p(i)))` (P3).
-            - If :math:`\lambda(i) = XY`, then :math:`i \notin p(i)` and :math:`i \in Odd((p(i)))` (P4).
-            - If :math:`\lambda(i) = XZ`, then :math:`i \in p(i)` and :math:`i \in Odd((p(i)))` (P5).
-            - If :math:`\lambda(i) = YZ`, then :math:`i \in p(i)` and :math:`i \notin Odd((p(i)))` (P6).
-            - If :math:`\lambda(i) = X`, then :math:`i \in Odd((p(i)))` (P7).
-            - If :math:`\lambda(i) = Z`, then :math:`i \in p(i)` (P8).
-            - If :math:`\lambda(i) = Y`, then either :math:`i \notin p(i)` and :math:`i \in Odd((p(i)))` or :math:`i \in p(i)` and :math:`i \notin Odd((p(i)))` (P9),
-        where :math:`i \in O^c`, :math:`c` is the correction function, :math:`prec` denotes the partial order, :math:`\lambda(i)` is the measurement plane or axis of node :math:`i`, and :math:`Odd(s)` is the odd neighbourhood of the set :math:`s` in the open graph.
-
-        See Definition 5 in Ref. [1] or Definition 2.4 in Ref. [2].
-
-        References
-        ----------
-        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
-        [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
+            If the flow does not satisfy the flow properties.
         """
         _check_flow_general_properties(self)
 
@@ -1057,9 +1049,15 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
     or the corrections, and the flow, if any, may not be focused. The
     caller is responsible for ensuring that the provided attributes
     form a well-formed and focused Pauli flow. The
-    :meth`:check_well_formed` method can be called to explicitly
-    verify that the flow is well-formed, and the `is_focused` method
-    can be called to explicitly verify that the flow is focused.
+    :meth:`check_well_formed` method can be called to explicitly
+    verify that the flow is well-formed and focused, and the
+    :meth:`is_focused` method can be called to explicitly verify that
+    the flow is focused.
+
+    Notes
+    -----
+    See :class:`PauliFlow` for the definition of Pauli flow and :meth:`PauliFlow.is_focused`
+    for the definition of focused Pauli flow.
     """
 
     @classmethod
@@ -1093,9 +1091,16 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
 
     @override
     def check_well_formed(self) -> None:
-        """Verify that the Pauli flow is well-formed and focused.
+        """Verify that the flow is well-formed and focused.
 
-        See :meth:`PauliFlow.check_well_formed` and :meth:`PauliFlow.is_focused` for details.
+        This method checks the validity of the flow and that the flow is focused. See the class
+        docstring for the flow definition.
+
+        Raises
+        ------
+        FlowError
+            If the flow is not well-formed. A ``FlowGenericError`` with reason ``NotFocused`` is
+            raised if the flow is valid but not focused.
         """
         super().check_well_formed()
         if not self.is_focused():
@@ -1165,12 +1170,13 @@ class FocusedPauliFlow(PauliFlow[_AM_co], Generic[_AM_co]):
 
 @dataclass(frozen=True)
 class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
-    """An unmutable subclass of ``PauliFlow`` providing a representation of a generalised flow (gflow).
+    r"""An unmutable subclass of ``PauliFlow`` providing a representation of a generalised flow (gflow).
 
     This class differs from its parent class in the following:
         - It cannot be constructed from ``OpenGraph[Axis]`` instances, since the gflow is only defined for planar measurements.
+        - Measurements are labelled by their plane (see :meth:`GFlow.node_measurement_label`).
         - The extraction of XZ-corrections from the gflow does not require knowledge on the partial order.
-        - The method :func:`GFlow.is_well_formed` verifies the definition of gflow (Definition 2.36 in Ref. [1]).
+        - The methods :meth:`check_well_formed` and :meth:`check_flow_properties` verify the definition of gflow below.
 
     The methods :meth:`OpenGraph.to_gflow` and
     :meth:`Pattern.to_gflow` return well-formed gflows by
@@ -1181,8 +1187,28 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
     correction function may not be valid, and the layers may be
     incompatible with the open graph or the corrections. The caller is
     responsible for ensuring that the provided attributes form a
-    well-formed gflow. The :meth`:check_well_formed` method can be
+    well-formed gflow. The :meth:`check_well_formed` method can be
     called to explicitly verify that the flow is well-formed.
+
+    Notes
+    -----
+    A gflow on an open graph :math:`(G, I, O, \lambda)` with planar measurements is a pair
+    :math:`(g, \prec)`, where :math:`g: O^c \to 2^{I^c}` is the correction function and
+    :math:`\prec` is a strict partial order on the nodes of the open graph, such that, for all
+    :math:`i \in O^c`:
+
+    - If :math:`j \in g(i), i \neq j`, then :math:`i \prec j` (G1).
+    - If :math:`j \in Odd(g(i)), i \neq j`, then :math:`i \prec j` (G2).
+    - If :math:`\lambda(i) = XY`, then :math:`i \notin g(i)` and :math:`i \in Odd(g(i))` (G3).
+    - If :math:`\lambda(i) = XZ`, then :math:`i \in g(i)` and :math:`i \in Odd(g(i))` (G4).
+    - If :math:`\lambda(i) = YZ`, then :math:`i \in g(i)` and :math:`i \notin Odd(g(i))` (G5),
+
+    where :math:`\lambda(i)` is the measurement plane of node :math:`i` and :math:`Odd(s)` is
+    the odd neighbourhood of the set :math:`s` in the open graph. See Definition 2.36 in Ref. [1].
+    The names in brackets are those of
+    :class:`~graphix.flow.exceptions.FlowPropositionErrorReason` and
+    :class:`~graphix.flow.exceptions.FlowPropositionOrderErrorReason`. The general properties
+    of flows listed in :class:`PauliFlow` are also required.
 
     References
     ----------
@@ -1224,41 +1250,16 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
     @override
     def check_flow_properties(self) -> None:
-        r"""Verify that the generalised flow satisfies the flow properties.
+        """Verify that the flow satisfies the flow properties.
+
+        This method checks the validity of the flow, see the class docstring for the flow
+        definition. It does not check whether the flow is focused, even if ``self`` is an
+        instance of :class:`FocusedGFlow`.
 
         Raises
         ------
         FlowError
-            if the gflow does not satisfy the flow properties.
-
-        Notes
-        -----
-        This method checks the properties for the instance to be a
-        valid generalised flow.  It does not check whether the flow is
-        focused, even if ``self`` is an instance of
-        :class:`FocusedGFlow`.  By contrast, :meth:`check_well_formed`
-        checks that the flow is valid and, for instances of
-        :class:`FocusedGFlow`, also checks that the flow is focused.
-
-        General properties of flows:
-            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
-            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
-            - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers contains the outputs of the open graph if there are any.
-
-        Specific properties of gflows:
-            - If :math:`j \in g(i), i \neq j`, then :math:`i \prec j` (G1).
-            - If :math:`j \in Odd(g(i)), i \neq j`, then :math:`i \prec j` (G2).
-            - If :math:`\lambda(i) = XY`, then :math:`i \notin g(i)`` and :math:`i \in Odd((g(i)))` (G3).
-            - If :math:`\lambda(i) = XZ`, then :math:`i \in g(i)`` and :math:`i \in Odd((g(i)))` (G4).
-            - If :math:`\lambda(i) = YZ`, then :math:`i \in g(i)`` and :math:`i \notin Odd((g(i)))` (G5),
-        where :math:`i \in O^c`, :math:`g` is the correction function, :math:`prec` denotes the partial order, :math:`\lambda(i)` is the measurement plane of node :math:`i`, and :math:`Odd(s)` is the odd neighbourhood of the set :math:`s` in the open graph.
-
-        See Definition 2.36 in Ref. [1].
-
-        References
-        ----------
-        [1] Backens et al., Quantum 5, 421 (2021), doi.org/10.22331/q-2021-03-25-421
+            If the flow does not satisfy the flow properties.
         """
         _check_flow_general_properties(self)
 
@@ -1384,9 +1385,15 @@ class FocusedGFlow(GFlow[_PM_co], FocusedPauliFlow[_PM_co], Generic[_PM_co]):
     the corrections, and the flow, if any, may not be focused. The
     caller is responsible for ensuring that the provided attributes
     form a well-formed and focused gflow. The
-    :meth`:check_well_formed` method can be called to explicitly
-    verify that the flow is well-formed, and the `is_focused` method
-    can be called to explicitly verify that the flow is focused.
+    :meth:`check_well_formed` method can be called to explicitly
+    verify that the flow is well-formed and focused, and the
+    :meth:`is_focused` method can be called to explicitly verify that
+    the flow is focused.
+
+    Notes
+    -----
+    See :class:`GFlow` for the definition of gflow and :meth:`PauliFlow.is_focused` for the
+    definition of focused flow.
     """
 
     @override
@@ -1404,8 +1411,9 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     of a :math:`YZ`-measured node :math:`i` is :math:`\{i\}`. An extended causal flow is therefore
     a gflow, and causal flows are extended causal flows on open graphs with :math:`XY` measurements only.
 
-    This class differs from its parent class in the method :meth:`ExtendedCausalFlow.check_well_formed`.
-    XZ-corrections are computed as for gflows (see :meth:`GFlow.to_xzcorrections`).
+    This class differs from its parent class in the following:
+        - The method :meth:`check_well_formed` verifies the definition of extended causal flow below.
+        - XZ-corrections are computed as for gflows (see :meth:`GFlow.to_xzcorrections`).
 
     The methods :meth:`OpenGraph.to_extendedcausalflow` and
     :meth:`XZCorrections.to_extendedcausalflow` return well-formed
@@ -1420,50 +1428,50 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     method can be called to explicitly verify that the flow is
     well-formed.
 
+    Notes
+    -----
+    An extended causal flow on an open graph :math:`(G, I, O, \lambda)` with :math:`XY` and
+    :math:`YZ` measurements is a pair :math:`(c, \prec)`, where :math:`c: O^c \to 2^{I^c}` is
+    the correction function and :math:`\prec` is a strict partial order on the nodes of the open
+    graph, such that, for all :math:`i \in O^c`:
+
+    - :math:`c(i)` has one element only (C0).
+    - If :math:`\lambda(i) = XY`, then :math:`i \sim c(i)` (C1).
+    - If :math:`\lambda(i) = YZ`, then :math:`c(i) = \{i\}` (CYZ).
+    - If :math:`\lambda(i) = XY`, then :math:`i \prec c(i)` (C2).
+    - For all :math:`k \in N_G(c(i)) \setminus \{i\}`, :math:`i \prec k` (C3),
+
+    where :math:`\lambda(i)` is the measurement plane of node :math:`i` and :math:`N_G(s)` is the
+    neighbourhood of the set :math:`s` in the graph. The names in brackets are those of
+    :class:`~graphix.flow.exceptions.FlowPropositionErrorReason` and
+    :class:`~graphix.flow.exceptions.FlowPropositionOrderErrorReason`. The general properties
+    of flows listed in :class:`PauliFlow` are also required. Since the image of the correction
+    function is a subset of the non-input nodes, condition (CYZ) implies that
+    :math:`YZ`-measured nodes cannot be inputs. Open graphs with :math:`XZ` measurements do
+    not have extended causal flow.
+
+    See Definition 10 in Ref. [1], where condition (CYZ) is introduced. Conditions (C0)-(C3)
+    are those of causal flow, see Definition 2 in Ref. [2].
+
     References
     ----------
     [1] Miriam Backens and Simon Perdrix, Completeness for flow-preserving rewrite rules, 2026 (arXiv:2608.13035).
+    [2] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
     """
 
     _CF_PREFIX: str = "e"  # Correction function prefix for printing
 
     @override
     def check_well_formed(self) -> None:
-        r"""Verify if the extended causal flow is well formed.
+        """Verify that the flow is well-formed.
+
+        This method checks the validity of the flow, see the class docstring for the flow
+        definition.
 
         Raises
         ------
         FlowError
-            If the extended causal flow is not well formed.
-
-        Notes
-        -----
-        General properties of flows:
-            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
-            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
-            - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed
-            because open graphs without outputs do not have flow, unless it is an empty open graph.
-
-        Specific properties of extended causal flows (the names in brackets are those of
-        :class:`~graphix.flow.exceptions.FlowPropositionErrorReason` and
-        :class:`~graphix.flow.exceptions.FlowPropositionOrderErrorReason`):
-            - Correction sets have one element only (C0),
-            - if :math:`\lambda(i) = XY`, then :math:`i \sim c(i)` (C1),
-            - if :math:`\lambda(i) = YZ`, then :math:`c(i) = i` (CYZ),
-            - :math:`i \prec c(i)` if :math:`\lambda(i) = XY` (C2),
-            - :math:`\forall k \in N_G(c(i)) \setminus \{i\}, i \prec k` (C3),
-        where :math:`i \in O^c`, :math:`\lambda(i)` is the measurement plane of :math:`i`, :math:`c` is the correction function and :math:`\prec` denotes the partial order.
-
-        Extended causal flows are defined on open graphs with XY and YZ measurements only. Since the image of the correction function is a subset of the non-input nodes, condition (CYZ) implies that :math:`YZ`-measured nodes cannot be inputs.
-
-        See Definition 10 in Ref. [1], where condition (CYZ) is introduced; (C0)-(C3)
-        are the conditions of causal flow, see Definition 2 in Ref. [2].
-
-        References
-        ----------
-        [1] Miriam Backens and Simon Perdrix, Completeness for flow-preserving rewrite rules, 2026 (arXiv:2608.13035).
-        [2] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+            If the flow is not well-formed.
         """
         _check_flow_general_properties(self)
 
@@ -1521,7 +1529,7 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
     def _check_yzplane(self, node: int) -> None:
-        """Verify condition (C.YZ) for a node measured in the :math:`YZ` plane in :meth:`check_well_formed`.
+        """Verify condition (CYZ) for a node measured in the :math:`YZ` plane in :meth:`check_well_formed`.
 
         Parameters
         ----------
@@ -1540,12 +1548,12 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
 @dataclass(frozen=True)
 class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
-    """An unmutable subclass of ``ExtendedCausalFlow`` providing a representation of a causal flow.
+    r"""An unmutable subclass of ``ExtendedCausalFlow`` providing a representation of a causal flow.
 
     A causal flow is an extended causal flow on an open graph with :math:`XY` measurements only.
 
     This class differs from its parent class in the following:
-        - The method :meth:`CausalFlow.check_well_formed` verifies the definition of causal flow (Definition 2 in Ref. [1]):
+        - The method :meth:`check_well_formed` verifies the definition of causal flow below:
           open graphs with measurements in the :math:`XZ` or :math:`YZ` planes are rejected.
 
     The methods :meth:`OpenGraph.to_causalflow` and
@@ -1560,48 +1568,28 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
     well-formed causal flow. The :meth:`check_well_formed` method can
     be called to explicitly verify that the flow is well-formed.
 
+    Notes
+    -----
+    A causal flow on an open graph :math:`(G, I, O, \lambda)` with :math:`XY` measurements only
+    is a pair :math:`(c, \prec)`, where :math:`c: O^c \to 2^{I^c}` is the correction function
+    and :math:`\prec` is a strict partial order on the nodes of the open graph, such that, for
+    all :math:`i \in O^c`:
+
+    - :math:`c(i)` has one element only (C0).
+    - :math:`i \sim c(i)` (C1).
+    - :math:`i \prec c(i)` (C2).
+    - For all :math:`k \in N_G(c(i)) \setminus \{i\}`, :math:`i \prec k` (C3),
+
+    where :math:`N_G(s)` is the neighbourhood of the set :math:`s` in the graph. The names in
+    brackets are those of :class:`~graphix.flow.exceptions.FlowPropositionErrorReason` and
+    :class:`~graphix.flow.exceptions.FlowPropositionOrderErrorReason`. The general properties
+    of flows listed in :class:`PauliFlow` are also required. See Definition 2 in Ref. [1].
+
     References
     ----------
     [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
 
     """
-
-    @override
-    def check_well_formed(self) -> None:
-        r"""Verify if the causal flow is well formed.
-
-        Raises
-        ------
-        FlowError
-            If the causal flow is not well formed. In particular, a ``FlowGenericError``
-            with reason ``XYPlane`` is raised if the open graph contains measurements in the
-            :math:`XZ` or :math:`YZ` planes.
-
-        Notes
-        -----
-        General properties of flows:
-            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
-            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
-            - The nodes in the partial order are the nodes in the open graph.
-            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow, unless it is an empty open graph.
-
-        Specific properties of causal flows:
-            - Correction sets have one element only (C0),
-            - :math:`i \sim c(i)` (C1),
-            - :math:`i \prec c(i)` (C2),
-            - :math:`\forall k \in N_G(c(i)) \setminus \{i\}, i \prec k` (C3),
-        where :math:`i \in O^c`, :math:`c` is the correction function and :math:`\prec` denotes the partial order.
-
-        Causal flows are defined on open graphs with XY measurements only.
-
-        See Definition 2 in Ref. [1].
-
-        References
-        ----------
-        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
-        """
-        # Overridden only to provide the causal-flow-specific documentation above; the checks are those of the parent class.
-        super().check_well_formed()
 
     @override
     def _check_yzplane(self, node: int) -> None:
@@ -1615,7 +1603,7 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
         Raises
         ------
         FlowGenericError
-            Always, with reason ``XYPlane``, since causal flows are only defined on open graphs with :math:`XY` measurements.
+            Always, with reason ``YZPlane``, since causal flows are only defined on open graphs with :math:`XY` measurements.
         """
         raise FlowGenericError(FlowGenericErrorReason.YZPlane)
 
