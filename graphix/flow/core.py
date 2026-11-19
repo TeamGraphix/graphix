@@ -1431,15 +1431,15 @@ class ExtendedCausalFlow(GFlow[_PM_co], Generic[_PM_co]):
     Notes
     -----
     An extended causal flow on an open graph :math:`(G, I, O, \lambda)` with :math:`XY` and
-    :math:`YZ` measurements is a pair :math:`(c, \prec)`, where :math:`c: O^c \to I^c` is
+    :math:`YZ` measurements is a pair :math:`(e, \prec)`, where :math:`e: O^c \to I^c` is
     the correction function and :math:`\prec` is a strict partial order on the nodes of the open
     graph, such that, for all :math:`i \in O^c`:
 
-    - :math:`c(i)` has one element only (C0).
-    - If :math:`\lambda(i) = XY`, then :math:`i \sim c(i)` (C1).
-    - If :math:`\lambda(i) = YZ`, then :math:`c(i) = \{i\}` (CYZ).
-    - If :math:`\lambda(i) = XY`, then :math:`i \prec c(i)` (C2).
-    - For all :math:`k \in N_G(c(i)) \setminus \{i\}`, :math:`i \prec k` (C3),
+    - :math:`e(i)` has one element only (C0).
+    - If :math:`\lambda(i) = XY`, then :math:`i \sim e(i)` (C1).
+    - If :math:`\lambda(i) = YZ`, then :math:`e(i) = \{i\}` (CYZ).
+    - If :math:`\lambda(i) = XY`, then :math:`i \prec e(i)` (C2).
+    - For all :math:`k \in N_G(e(i)) \setminus \{i\}`, :math:`i \prec k` (C3),
 
     where :math:`\lambda(i)` is the measurement plane of node :math:`i` and :math:`N_G(s)` is the
     neighbourhood of the set :math:`s` in the graph. The names in brackets are those of
@@ -1590,6 +1590,8 @@ class CausalFlow(ExtendedCausalFlow[_PM_co], Generic[_PM_co]):
     [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
 
     """
+
+    _CF_PREFIX: str = "c"  # Correction function prefix for printing
 
     @override
     def _check_yzplane(self, node: int) -> None:
