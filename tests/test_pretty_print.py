@@ -189,6 +189,28 @@ def test_cflow_str() -> None:
     assert flow.to_unicode(multiline=True) == "c(3) = {5}\nc(4) = {6}\nc(1) = {3}\nc(2) = {4}\n{1, 2} ≺ {3, 4} ≺ {5, 6}"
 
 
+def test_ecflow_str() -> None:
+    flow = example_og().to_bloch().to_extendedcausalflow()
+
+    assert str(flow) == "e(3) = {5}, e(4) = {6}, e(1) = {3}, e(2) = {4}; {1, 2} < {3, 4} < {5, 6}"
+
+    assert (
+        flow.to_latex()
+        == r"e(3) = \{5\}, \;e(4) = \{6\}, \;e(1) = \{3\}, \;e(2) = \{4\}; \;\{1, 2\} \prec \{3, 4\} \prec \{5, 6\}"
+    )
+
+    assert flow.to_unicode() == "e(3) = {5}, e(4) = {6}, e(1) = {3}, e(2) = {4}; {1, 2} ≺ {3, 4} ≺ {5, 6}"
+
+    assert flow.to_ascii(multiline=True) == "e(3) = {5}\ne(4) = {6}\ne(1) = {3}\ne(2) = {4}\n{1, 2} < {3, 4} < {5, 6}"
+
+    assert (
+        flow.to_latex(multiline=True)
+        == r"e(3) = \{5\},\\e(4) = \{6\},\\e(1) = \{3\},\\e(2) = \{4\};\\\{1, 2\} \prec \{3, 4\} \prec \{5, 6\}"
+    )
+
+    assert flow.to_unicode(multiline=True) == "e(3) = {5}\ne(4) = {6}\ne(1) = {3}\ne(2) = {4}\n{1, 2} ≺ {3, 4} ≺ {5, 6}"
+
+
 def test_gflow_str() -> None:
     flow = example_og().to_bloch().to_gflow()
 

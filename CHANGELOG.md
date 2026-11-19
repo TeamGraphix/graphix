@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #474, #564: Added `FocusedPauliFlow` and `FocusedGFlow` classes to encapsulate operations specific to focused flows. Flow-finding algorithms return focused flows by construction. Having dedicated classes removes the need to dynamically recheck that a flow is focused during circuit extraction.
 
+- #651:
+  - Added new class `ExtendedCausalFlow`.
+  - Added methods `OpenGraph.to_extendedcausalflow`, `XZCorrections.to_extendedcausalflow`, and `Pattern.to_extendedcausalflow`.
+
 ### Fixed
 
 - Fixed incorrect Clifford signs during circuit extraction for input vertices measured in negative Pauli X or Y bases.
@@ -45,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
 
 - #626, #635: The `domain` argument of the `X` and `Z` commands is now mandatory. Previously, it defaulted to the empty set, so that `X(1)` silently had no effect; write `X(1, set())` to state this explicitly.
+
+- #651:
+  - The default space minimization heuristic `SpaceMinimizationHeuristics.extended_causal_flow`
+  replaces `causal_flow`, and is optimal for patterns with extended causal flow.
+  - The specific implementation of `CausalFlow.to_xzcorrections` is removed since it was equivalent to that in its parent class, `GFlow`.
+  - `OpenGraph.to_pattern` and `Pattern.draw` attempt to extract an extended causal flow rather than a causal flow.
 
 ## [0.4.1] - 2026-10-13
 

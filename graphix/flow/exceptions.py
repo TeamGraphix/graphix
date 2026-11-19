@@ -20,7 +20,10 @@ class FlowPropositionErrorReason(Enum):
     """A correction set in a causal flow has more than one element."""
 
     C1 = enum.auto()
-    """Causal flow (C1). A node and its corrector must be neighbors."""
+    """Causal flow (C1). A node and its corrector must be neighbors. For extended causal flows, this is condition (C.XY) of Definition 10 in [BP26] and only applies to nodes measured on plane XY."""
+
+    CYZ = enum.auto()
+    """Extended causal flow (C.YZ). Nodes measured on plane YZ must be their own corrector (Definition 10 in [BP26])."""
 
     G3 = enum.auto()
     """Gflow (G3). Nodes measured on plane XY cannot be in their own correcting set and must belong to the odd neighbourhood of their own correcting set."""
@@ -84,8 +87,11 @@ class FlowGenericErrorReason(Enum):
     IncorrectCorrectionFunctionImage = enum.auto()
     """The image of the correction function is not a subset of non-input nodes (prepared qubits) of the open graph."""
 
-    XYPlane = enum.auto()
-    "A causal flow is defined on an open graphs with non-XY measurements."
+    YZPlane = enum.auto()
+    "A causal flow is defined on an open graph with YZ measurements."
+
+    XZPlane = enum.auto()
+    "A causal flow or extended causal flow is defined on an open graph with XZ measurements."
 
     NoPauliFlow = enum.auto()
     """No Pauli flow is compatible with the given XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."""
@@ -153,7 +159,7 @@ class XZCorrectionsError(Exception):
 
 @dataclass
 class FlowPropositionError(FlowError):
-    """Exception subclass to handle violations of the flow-definition propositions which concern the correction function only (C0, C1, G1, G3, G4, G5, P4, P5, P6, P7, P8, P9)."""
+    """Exception subclass to handle violations of the flow-definition propositions which concern the correction function only (C0, C1, CYZ, G1, G3, G4, G5, P4, P5, P6, P7, P8, P9)."""
 
     reason: FlowPropositionErrorReason
     node: int
@@ -167,6 +173,8 @@ class FlowPropositionError(FlowError):
                 return f"Correction set c({self.node}) = {self.correction_set} has more than one element."
             case FlowPropositionErrorReason.C1:
                 return f"{self.reason.name}: a node and its corrector must be neighbors. {error_help}"
+            case FlowPropositionErrorReason.CYZ:
+                return f"{self.reason.name}: nodes measured on plane YZ must be their own corrector. {error_help}"
             case FlowPropositionErrorReason.G3 | FlowPropositionErrorReason.P4:
                 return f"{self.reason.name}: nodes measured on plane XY cannot be in their own correcting set and must belong to the odd neighbourhood of their own correcting set.\n{error_help}"
             case FlowPropositionErrorReason.G4 | FlowPropositionErrorReason.P5:
@@ -225,8 +233,10 @@ class FlowGenericError(FlowError):
                 return "The domain of the correction function must be the set of non-output nodes (measured qubits) of the open graph."
             case FlowGenericErrorReason.IncorrectCorrectionFunctionImage:
                 return "The image of the correction function must be a subset of non-input nodes (prepared qubits) of the open graph."
-            case FlowGenericErrorReason.XYPlane:
-                return "Causal flow is only defined on open graphs with XY measurements."
+            case FlowGenericErrorReason.YZPlane:
+                return "Causal flow is not defined on open graphs with YZ measurements."
+            case FlowGenericErrorReason.XZPlane:
+                return "Causal flow and extended causal flows are not defined on open graphs with XZ measurements."
             case FlowGenericErrorReason.NoPauliFlow:
                 return "No Pauli flow is compatible with the XZ-corrections: the GF(2) system that reconstructs the correction function has no solution for at least one measured node."
             case FlowGenericErrorReason.NotFocused:

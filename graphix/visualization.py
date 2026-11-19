@@ -16,7 +16,7 @@ import numpy as np
 import numpy.typing as npt
 from matplotlib import pyplot as plt
 
-from graphix.flow.core import CausalFlow, PauliFlow, XZCorrections
+from graphix.flow.core import ExtendedCausalFlow, PauliFlow, XZCorrections
 from graphix.measurements import PauliMeasurement
 from graphix.opengraph import OpenGraph
 
@@ -650,7 +650,7 @@ def _compute_positions(
     obj: OpenGraph[AbstractMeasurement]
     | PauliFlow[AbstractMeasurement]
     | XZCorrections[AbstractMeasurement]
-    | CausalFlow[AbstractPlanarMeasurement],
+    | ExtendedCausalFlow[AbstractPlanarMeasurement],
 ) -> dict[int, _Point]:
     """Compute node positions dispatch."""
     raise NotImplementedError
@@ -784,8 +784,8 @@ def _(
     return {node: (l_max - layer_idx, index[pos[node][1]]) for layer_idx, layer in enumerate(pol) for node in layer}
 
 
-@_compute_positions.register(CausalFlow)
-def _(obj: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
+@_compute_positions.register(ExtendedCausalFlow)
+def _(obj: ExtendedCausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
     """Compute node positions for causal flow graph layout.
 
     Parameters

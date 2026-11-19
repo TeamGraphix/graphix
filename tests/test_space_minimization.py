@@ -1,7 +1,17 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import networkx as nx
+
 from graphix import Pattern, command
+from graphix.measurements import Measurement
+from graphix.opengraph import OpenGraph
+from graphix.optimization import StandardizedPattern
 from graphix.space_minimization import SpaceMinimizationHeuristics
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
 def counter_example_issue_454(sz: int, depth: int) -> Pattern:
@@ -31,12 +41,36 @@ def test_minimize_space_deprecated() -> None:
     # former heuristics, without `keep_measurement_order_unchanged`
     p.minimize_space(
         [
-            SpaceMinimizationHeuristics.causal_flow,
+            SpaceMinimizationHeuristics.extended_causal_flow,
             SpaceMinimizationHeuristics.greedy_degree,
         ]
     )
     after = p.max_space()
     assert after > before
+
+
+def test_minimize_space_extended_causal_flow(fx_rng: Generator) -> None:
+    # [0]-1-2-(3) with a YZ-measured node 4 attached to 1: extended causal flow but no causal flow.
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3), (1, 4)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements={0: Measurement.XY(0.1), 1: Measurement.XY(0.2), 2: Measurement.XY(0.3), 4: Measurement.YZ(0.4)},
+    )
+    assert og.to_causalflow_or_none() is None
+    p = og.to_extendedcausalflow().to_xzcorrections().to_pattern()
+
+    result = SpaceMinimizationHeuristics.extended_causal_flow(StandardizedPattern.from_pattern(p))
+    assert result is not None
+    assert result.known_optimal
+    assert result.new_order == (0, 4, 1, 2)
+
+    state_ref = p.simulate(rng=fx_rng)
+    before = p.max_space()
+    p.minimize_space([SpaceMinimizationHeuristics.extended_causal_flow])
+    assert p.max_space() < before
+    state = p.simulate(rng=fx_rng)
+    assert state.isclose(state_ref)
 
 
 def test_minimization_by_degree_edge_ordering() -> None:

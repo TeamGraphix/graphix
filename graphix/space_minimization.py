@@ -186,17 +186,34 @@ class SpaceMinimizationHeuristics:
     """Predefined heuristics."""
 
     @staticmethod
-    def causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
-        """Use the causal flow layer to minimize space.
+    def extended_causal_flow(pattern: StandardizedPattern) -> SpaceMinimizationHeuristicResult | None:
+        """Use the extended causal flow layers to minimize space.
 
-        This minimization heuristic is optimal but requires the pattern to have a causal flow.
+        This minimization heuristic is optimal but requires the
+        corrections of the pattern to be induced by an extended causal
+        flow (see :meth:`XZCorrections.to_extendedcausalflow`). This
+        includes patterns whose corrections are induced by a causal flow.
+
+        Parameters
+        ----------
+        pattern : StandardizedPattern
+            The pattern whose measurement order is optimized.
+
+        Returns
+        -------
+        SpaceMinimizationHeuristicResult | None
+            The measurement order given by the layers of the extended
+            causal flow, from the first to the last measured layer
+            (marked as known to be optimal), or
+            ``None`` if the corrections of the pattern are not induced
+            by an extended causal flow.
         """
         try:
-            cf = pattern.to_xzcorrections().downcast_bloch().to_causalflow()
+            ecf = pattern.to_xzcorrections().downcast_bloch().to_extendedcausalflow()
         except (TypeError, FlowError, ValueError):
             return None
         else:
-            meas_order = tuple(chain(*reversed(cf.partial_order_layers[1:])))
+            meas_order = tuple(chain(*reversed(ecf.partial_order_layers[1:])))
             return SpaceMinimizationHeuristicResult(meas_order, True)
 
     @staticmethod
@@ -239,7 +256,7 @@ class SpaceMinimizationHeuristics:
 
 
 DEFAULT_HEURISTICS: tuple[SpaceMinimizationHeuristic, ...] = (
-    SpaceMinimizationHeuristics.causal_flow,
+    SpaceMinimizationHeuristics.extended_causal_flow,
     SpaceMinimizationHeuristics.greedy_degree,
     SpaceMinimizationHeuristics.order_unchanged,
 )
@@ -247,8 +264,8 @@ DEFAULT_HEURISTICS: tuple[SpaceMinimizationHeuristic, ...] = (
 
 By default, the following heuristics will be tried in that order:
 
-- :func:`causal_flow` gives an optimal measurement order, but only for
-  patterns with causal flow.
+- :func:`extended_causal_flow` gives an optimal measurement order, but only for
+  patterns with extended causal flow (this includes patterns with causal flow).
 
 - :func:`greedy_degree` can improve but can also worsen the max space
   in some situations.
@@ -267,11 +284,11 @@ def minimize_space(
 
     The default heuristics are as follows:
 
-    - If the pattern has a causal flow, then the layers of the flow
-      are used to provide an optimal measurement order for the
-      pattern. See :func:`causal_flow`.
+    - If the pattern has an extended causal flow, then the layers
+      of the flow are used to provide an optimal measurement order
+      for the pattern. See :func:`extended_causal_flow`.
 
-    - If the pattern has no causal flow, then a greedy algorithm is
+    - If the pattern has no extended causal flow, then a greedy algorithm is
       applied to choose at each step to measure the node with the
       minimal degree.  This particular heuristic has no guarantee to
       produce an optimal pattern and can even increase the maximal

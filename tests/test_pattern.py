@@ -819,6 +819,7 @@ class TestPattern:
     class PatternFlowTestCase(NamedTuple):
         pattern: Pattern
         has_cflow: bool
+        has_ecflow: bool
         has_gflow: bool
 
     PATTERN_FLOW_TEST_CASES: list[PatternFlowTestCase] = [  # noqa: RUF012
@@ -865,24 +866,28 @@ class TestPattern:
                 output_nodes=[6, 7],
             ),
             has_cflow=True,
+            has_ecflow=True,
             has_gflow=True,
         ),
         PatternFlowTestCase(
             # No measurements or corrections
             Pattern(input_nodes=[0, 1], cmds=[E((0, 1))]),
             has_cflow=True,
+            has_ecflow=True,
             has_gflow=True,
         ),
         PatternFlowTestCase(
             # Disconnected nodes and unordered outputs
             Pattern(input_nodes=[2], cmds=[N(0), N(1), E((0, 1)), M(0), X(1, {0})], output_nodes=[2, 1]),
             has_cflow=True,
+            has_ecflow=True,
             has_gflow=True,
         ),
         PatternFlowTestCase(
             # Pattern with XZ measurements.
             Pattern(cmds=[N(0), N(1), E((0, 1)), M(0, Measurement.XZ(0.3)), Z(1, {0}), X(1, {0})], output_nodes=[1]),
             has_cflow=False,
+            has_ecflow=False,
             has_gflow=True,
         ),
         PatternFlowTestCase(
@@ -914,18 +919,40 @@ class TestPattern:
                 output_nodes=[4, 5, 6],
             ),
             has_cflow=False,
+            has_ecflow=False,
             has_gflow=True,
         ),
         PatternFlowTestCase(
             # Non-deterministic pattern
             Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Measurement.XY(0.3))]),
             has_cflow=False,
+            has_ecflow=False,
             has_gflow=False,
         ),
         PatternFlowTestCase(
             # Empty pattern
             Pattern(),
             has_cflow=True,
+            has_ecflow=True,
+            has_gflow=True,
+        ),
+        PatternFlowTestCase(
+            Pattern(
+                cmds=[
+                    N(0),
+                    N(1),
+                    N(2),
+                    E(0, 2),
+                    E(2, 1),
+                    M(0, Measurement.XY(0.3)),
+                    Z(1, {0}),
+                    X(2, {0}),
+                    M(1, Measurement.YZ(0.3)),
+                    Z(2, {1}),
+                ]
+            ),
+            has_cflow=False,
+            has_ecflow=True,
             has_gflow=True,
         ),
     ]
@@ -941,6 +968,22 @@ class TestPattern:
         p_ref = circuit_1.transpile().pattern
         p_ref.infer_pauli_measurements()
         f_test = p_ref.to_bloch().to_causalflow()
+
+        s_ref = p_ref.simulate(rng=rng)
+        s_test = f_test.simulate(rng=rng)
+        assert s_ref.isclose(s_test)
+
+    # Extract extended causal flow from random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_to_extendedcausalflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        """Tests the round trip Pattern -> XZCorrections -> ExtendedCausalFlow -> XZCorrections -> Pattern."""
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        p_ref = circuit_1.transpile().pattern
+        p_ref.infer_pauli_measurements()
+        f_test = p_ref.to_bloch().to_extendedcausalflow()
 
         s_ref = p_ref.simulate(rng=rng)
         s_test = f_test.simulate(rng=rng)
@@ -993,6 +1036,20 @@ class TestPattern:
                 test_case.pattern.to_causalflow()
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
+    def test_to_extendedcausalflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+        if test_case.has_ecflow:
+            alpha = 2 * np.pi * fx_rng.random()
+            s_ref = test_case.pattern.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+            f_test = test_case.pattern.to_bloch().to_extendedcausalflow()
+            s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+            assert s_ref.isclose(s_test)
+        else:
+            with pytest.raises(FlowError):
+                test_case.pattern.to_extendedcausalflow()
+
+    @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
     def test_to_gflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
         """Tests the round trip Pattern -> XZCorrections -> GFlow -> XZCorrections -> Pattern."""
         if test_case.has_gflow:
@@ -1042,6 +1099,30 @@ class TestPattern:
         s_ref = p_ref.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         f_test = p_ref.to_causalflow()
+        s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+        assert s_ref.isclose(s_test)
+
+    # From open graph
+    def test_extract_ecflow_og(self, fx_rng: Generator) -> None:
+        alpha = 2 * np.pi * fx_rng.random()
+
+        og = OpenGraph(
+            graph=nx.Graph([(1, 3), (2, 4), (3, 4), (3, 5), (4, 6), (4, 7)]),
+            input_nodes=[1, 2],
+            output_nodes=[6, 5],
+            measurements={
+                1: Measurement.XY(0.1),
+                2: Measurement.XY(0.2),
+                3: Measurement.XY(0.3),
+                4: Measurement.XY(0.4),
+                7: Measurement.YZ(0.3),
+            },
+        )
+        p_ref = og.to_extendedcausalflow().to_pattern()
+        s_ref = p_ref.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+        f_test = p_ref.to_extendedcausalflow()
         s_test = f_test.simulate(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
         assert s_ref.isclose(s_test)

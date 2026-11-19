@@ -13,7 +13,7 @@ import networkx as nx
 from typing_extensions import override
 
 from graphix.clifford import Clifford
-from graphix.flow._find_cflow import find_cflow
+from graphix.flow._find_cflow import find_cflow, find_ecflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import FocusedGFlow, FocusedPauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from graphix import CausalFlow, Pattern, PauliFlow
     from graphix.circ_ext.extraction import CliffordMap, PauliExponentialDAG
+    from graphix.flow.core import ExtendedCausalFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.transpiler import Circuit
     from graphix.visualization import DrawKwargs
@@ -139,7 +140,7 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         except TypeError:
             flow: PauliFlow[Measurement] | None = None
         else:
-            flow = bloch_case.to_causalflow_or_none()
+            flow = bloch_case.to_extendedcausalflow_or_none()
         if flow is None:
             flow = self.to_pauliflow_or_none(stacklevel=stacklevel + 1)
         if flow is not None:
@@ -404,6 +405,31 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
             raise OpenGraphError("The open graph does not have a causal flow.")
         return cf
 
+    def to_extendedcausalflow(self: OpenGraph[_PM_co]) -> ExtendedCausalFlow[_PM_co]:
+        """Try to extract an extended causal flow on the open graph.
+
+        This method is a wrapper over :func:`OpenGraph.to_extendedcausalflow_or_none` with a single return type.
+
+        Returns
+        -------
+        ExtendedCausalFlow[_PM_co]
+            An extended causal flow object if the open graph has extended causal flow.
+
+        Raises
+        ------
+        OpenGraphError
+            If the open graph does not have an extended causal flow.
+
+        See Also
+        --------
+        :func:`OpenGraph.to_extendedcausalflow_or_none`
+
+        """
+        ecf = self.to_extendedcausalflow_or_none()
+        if ecf is None:
+            raise OpenGraphError("The open graph does not have an extended causal flow.")
+        return ecf
+
     def to_gflow(self: OpenGraph[_PM_co]) -> FocusedGFlow[_PM_co]:
         r"""Try to extract a maximally delayed generalised flow (gflow) on the open graph.
 
@@ -473,7 +499,7 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         Returns
         -------
         CausalFlow[_PM_co] | None
-            A causal flow object if the open graph has causal flow  or ``None`` otherwise.
+            A causal flow object if the open graph has causal flow or ``None`` otherwise.
 
         See Also
         --------
@@ -489,6 +515,35 @@ class OpenGraph(Parameterizable, Simulable[_AM_co], Generic[_AM_co]):
         [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
         """
         return find_cflow(self)
+
+    def to_extendedcausalflow_or_none(self: OpenGraph[_PM_co]) -> ExtendedCausalFlow[_PM_co] | None:
+        """Return an extended causal flow on the open graph if it exists.
+
+        As for gflow, measurements (including Bloch measurements with a
+        Pauli angle) are labelled by their plane. In particular, Pauli
+        measurements must be converted into Bloch measurements first, e.g.,
+        with :meth:`OpenGraph.to_bloch`.
+
+        Returns
+        -------
+        ExtendedCausalFlow[_PM_co] | None
+            An extended causal flow object if the open graph has extended causal flow or ``None`` otherwise.
+
+        See Also
+        --------
+        :func:`OpenGraph.to_extendedcausalflow`
+
+        Notes
+        -----
+        - The extended causal flow is only defined on open graphs with :math:`XY` and :math:`YZ` measurements: ``None`` is returned if some measurement is in the :math:`XZ` plane. See Definition 10 in Ref. [1].
+        - This function implements an adaptation of the algorithm presented in Ref. [2] with polynomial complexity on the number of nodes, :math:`O(N^2)`.
+
+        References
+        ----------
+        [1] Backens and Perdrix, (2026), Completeness for flow-preserving rewrite rules, arXiv:2608.13035
+        [2] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
+        """
+        return find_ecflow(self)
 
     def to_gflow_or_none(self: OpenGraph[_PM_co]) -> FocusedGFlow[_PM_co] | None:
         r"""Return a maximally delayed Pauli on the open graph if it exists.
