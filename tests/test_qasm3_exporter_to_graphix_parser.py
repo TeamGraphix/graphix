@@ -125,11 +125,11 @@ def test_condinstr_to_qasm3() -> None:
         3,
         instr=[
             Instruction.M(2, Axis.Z),
-            Instruction.CONDINSTR({2}, (Instruction.X(0),)),
+            Instruction.CONDINSTR({0}, (Instruction.X(0),)),
             Instruction.M(0, Axis.Z),
             Instruction.M(3, Axis.X),
             Instruction.CONDINSTR(
-                {0, 2, 3},
+                {0, 1, 2},
                 (
                     Instruction.X(1),
                     Instruction.Z(1),
@@ -139,6 +139,16 @@ def test_condinstr_to_qasm3() -> None:
         ancillas=1,
     )
     check_round_trip(circuit)
+
+
+def test_measurement_without_discard_to_qasm3() -> None:
+    circuit = Circuit(2)
+    circuit.m(0, Axis.Z, discard=False).x(0).m(0, Axis.Z, discard=False)
+    circuit.condinstr({0, 1}, [Instruction.X(1)])
+    qasm = circuit_to_qasm3(circuit)
+    parser = OpenQASMParser(discard_measurements=False)
+    parsed_circuit = parser.parse_str(qasm)
+    assert parsed_circuit.instruction == circuit.instruction
 
 
 @pytest.mark.parametrize(
