@@ -24,6 +24,7 @@ jobs:
         # built from source, which fails with MSVC 14.52 (VS 2026+) shipped on
         # windows-latest since 2026-11-19. Build on windows-2022 (MSVC 14.44)
         # until stim publishes Python 3.15 wheels.
+        # See https://github.com/quantumlib/Stim/issues/1148
         exclude:
           - os: windows-latest
             python: "3.15"
