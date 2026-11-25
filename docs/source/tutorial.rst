@@ -246,6 +246,7 @@ The statevector backend simulates the pattern ideally, without any noise.
 
 To run noisy simulations, we use a :class:`NoiseModel`, which transpiles ideal patterns into patterns containing some ``ApplyNoise`` commands.
 Each ``ApplyNoise`` command applies noise to certain qubits. The noise to be applied is described by an instance of :class:`Noise`, which is an abstract base class for classes that define a Kraus channel.
+Noise instances are expected to be immutable, since they can be shared between several ``ApplyNoise`` commands: we define them as frozen dataclasses.
 
 In the following example, we apply dephasing noise to qubit preparation commands (denoted by ``N``) by defining a noise model, ``NoisyGraphState``, that transpiles ideal patterns by inserting an ``ApplyNoise`` command carrying a ``DephasingNoise`` after each ``N`` command.
 
@@ -257,11 +258,15 @@ In the following example, we apply dephasing noise to qubit preparation commands
     from graphix.command import BaseM, CommandKind
     from graphix.channels import KrausChannel, dephasing_channel
     from graphix.noise_models.noise_model import ApplyNoise, CommandOrNoise, Noise, NoiseCommands, NoiseModel
-    from graphix.utils import Probability
+    from graphix.repr_mixins import DataclassReprMixin
+    from graphix.utils import check_probability
 
-    @dataclass
-    class DephasingNoise(Noise):
-        prob: Probability = Probability()
+    @dataclass(frozen=True, repr=False)
+    class DephasingNoise(DataclassReprMixin, Noise):
+        prob: float
+
+        def __post_init__(self) -> None:
+            check_probability(self.prob)
 
         @property
         @typing_extensions.override
@@ -274,7 +279,7 @@ In the following example, we apply dephasing noise to qubit preparation commands
 
     @dataclass
     class NoisyGraphState(NoiseModel):
-        p_z: Probability = Probability()
+        p_z: float = 0.0
 
         @typing_extensions.override
         def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:

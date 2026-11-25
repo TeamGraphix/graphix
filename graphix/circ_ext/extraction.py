@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
     from graphix.command import Node
-    from graphix.flow.core import PauliFlow
+    from graphix.flow.core import FocusedPauliFlow, PauliFlow
     from graphix.opengraph import OpenGraph
     from graphix.transpiler import Circuit
 
@@ -303,12 +303,12 @@ class PauliExponential:
     pauli_string: PauliString
 
     @staticmethod
-    def from_measured_node(flow: PauliFlow[Measurement], node: Node) -> PauliExponential:
+    def from_measured_node(flow: FocusedPauliFlow[Measurement], node: Node) -> PauliExponential:
         """Extract the Pauli exponential of a measured node and its focused correction set.
 
         Parameters
         ----------
-        flow : PauliFlow[Measurement]
+        flow : FocusedPauliFlow[Measurement]
             A focused Pauli flow. The resulting Pauli string is extracted from its correction function.
         node : int
             A measured node whose associated Pauli string is computed.
@@ -364,7 +364,7 @@ class PauliExponentialDAG:
     output_nodes: Sequence[int]
 
     @staticmethod
-    def from_focused_flow(flow: PauliFlow[Measurement]) -> PauliExponentialDAG:
+    def from_focusedflow(flow: FocusedPauliFlow[Measurement]) -> PauliExponentialDAG:
         """Extract a Pauli exponential rotation from a focused Pauli flow.
 
         This routine associates a Pauli exponential to each measured node in ``flow``. The flow's partial order defines a partial order between the Pauli exponentials such that Pauli exponentials in the same layer commute.
@@ -444,14 +444,14 @@ class CliffordMap:
     output_nodes: Sequence[int]
 
     @staticmethod
-    def from_focused_flow(flow: PauliFlow[Measurement], *, stacklevel: int = 1) -> CliffordMap:
+    def from_focusedflow(flow: FocusedPauliFlow[Measurement], *, stacklevel: int = 1) -> CliffordMap:
         """Extract a Clifford map from a focused Pauli flow.
 
         This routine associates two Pauli strings (one per generator of the Pauli group, X and Z) to each input node in ``flow.og``.
 
         Parameters
         ----------
-        flow : PauliFlow[Measurement]
+        flow : FocusedPauliFlow[Measurement]
             A focused Pauli flow.
         stacklevel : int, optional
             Stack level to use for warnings. Defaults to 1, meaning that warnings
@@ -554,7 +554,15 @@ def extraction_ps_from_corrected_node(flow: PauliFlow[Measurement], node: Node) 
     negative_sign ^= bool(len(inter_c_odd_set) // 2 % 2)
 
     # One phase flip per node in the graph state stabilizer that is absorbed from a Pauli measurement with angle π.
-    for n in c_set | odd_c_set:
+    # The current vertex remains unprojected in its extraction string.
+    # The equation for c after Eq. 35 in [Simmons 21](https://arxiv.org/abs/2109.05654)
+    # should instead read:
+    # $$
+    # c = b + |(p(v) \cup \text{Odd}[p(v)]) \cap \lbrace u \in \overline{O}\setminus \lbrace v \rbrace
+    # | \lambda(u) \in \lbrace X, Y, Z\rbrace \land  \alpha(u) = \pi \rbrace |
+    # $$
+    # See discussion in #645 for further information.
+    for n in (c_set | odd_c_set) - {node}:
         meas = og.measurements.get(n, None)
         if isinstance(meas, PauliMeasurement):
             negative_sign ^= meas.sign == Sign.MINUS
@@ -615,14 +623,14 @@ def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], di
     return replace(og, graph=graph, input_nodes=new_input_nodes[::-1], measurements=measurements), ancillary_inputs_map
 
 
-def clifford_z_map_from_focused_flow(flow: PauliFlow[Measurement]) -> tuple[PauliString, ...]:
+def clifford_z_map_from_focused_flow(flow: FocusedPauliFlow[Measurement]) -> tuple[PauliString, ...]:
     r"""Extract the images of the Z generators of a Clifford map from a focused Pauli flow.
 
     If the input node is a measured node, the resulting Pauli string is given by the correction set. If the input node is also an output node, the resulting Pauli string is Z (representing the identity map).
 
     Parameters
     ----------
-    flow : PauliFlow[Measurement]
+    flow : FocusedPauliFlow[Measurement]
         A focused Pauli flow.
 
     Returns

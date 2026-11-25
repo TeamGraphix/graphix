@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import inspect
+import sys
 import typing
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, Self, SupportsInt, TypeVar, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, SupportsInt, TypeAlias, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 
 # override introduced in Python 3.12
-from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -33,8 +31,15 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
         msg = f"{cls.__name__} must have a tag attribute named kind."
         raise TypeError(msg)
 
+    module = sys.modules.get(cls.__module__)
+    # Patch in a self-reference: while __init_subclass__ runs, `cls` has not
+    # yet been bound to its name in the module namespace, so any field whose
+    # annotation refers back to the class being defined (e.g. CONDINSTR)
+    # would otherwise fail to resolve.
+    globalns = {**getattr(module, "__dict__", {}), cls.__name__: cls}
+
     # Type annotation to work around a regression in mypy 1.17, see https://github.com/python/mypy/issues/19458
-    ann: Any | None = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
+    ann: Any | None = inspect.get_annotations(cls, eval_str=True, locals=scope, globals=globalns).get("kind")
     if ann is None:
         msg = "kind must be annotated."
         raise TypeError(msg)
@@ -85,65 +90,71 @@ def iter_empty(it: Iterator[_T]) -> bool:
     return all(False for _ in it)
 
 
-_ValueT = TypeVar("_ValueT")
+def check_probability(value: float) -> None:
+    """Raise :class:`ValueError` if ``value`` is not a probability (between 0 and 1)."""
+    if not 0 <= value <= 1:
+        raise ValueError(f"Expected {value!r} to be a probability, between 0 and 1")
 
 
-class Validator(ABC, Generic[_ValueT]):
-    """Descriptor to validate value.
+Qubits: TypeAlias = int | tuple["Qubits", ...]
 
-    https://docs.python.org/3/howto/descriptor.html#custom-validators
+
+def flat_qubits(qubits: Qubits) -> tuple[int, ...]:
+    """Return a flat tuple of ints from nested qubits."""
+    if isinstance(qubits, int):
+        return (qubits,)
+    return tuple(qubit for item in qubits for qubit in flat_qubits(item))
+
+
+QubitTemplate = TypeVar("QubitTemplate", bound=tuple[int, ...])
+
+
+def extract_qubits(qubits: Qubits, template: QubitTemplate) -> QubitTemplate:
+    """Return a flat tuple of ints from nested qubits and check its length.
+
+    Notes
+    -----
+    The expected length is specified by a tuple, since there is no
+    direct way to express a tuple length dependent on an integer
+    argument.  The type variable ``QubitTemplate`` occurs both as a
+    parameter and as a result, ensuring that the result has the same
+    type as the given ``template``. The ``template`` parameter can be
+    of any tuple type containing ints. In particular, fixed-length
+    tuple types allow the result to be deconstructed with the
+    corresponding number of components.
+
+    The following line is well-typed:
+
+    .. code-block:: python
+
+        _a, _b = extract_qubits((0, 1), (0, 0))
+
+    but the following line is not:
+
+    .. code-block:: python
+
+        _a, _b, _c = extract_qubits((0, 1), (0, 0))
+
+    The function is only intended to be called with tuple literals for
+    the ``template`` argument.  It is unsafe to use it with arbitrary
+    values. For example, the following assignments are well-typed but
+    result in ``_x`` being assigned ``(1,)`` while having the type
+    ``tuple[Literal[0]]``.
+
+    .. code-block:: python
+
+        s: tuple[Literal[0]] = (0,)
+        _x: tuple[Literal[0]] = extract_qubits((1,), s)
+
+    Parameters
+    ----------
+    qubits: Qubits
+        Qubits, given as arbitrary nested tuples of ints
+    template: QubitTemplate
+        Int-tuple of the expected length.
     """
-
-    def __set_name__(self, owner: object, name: str) -> None:
-        """Set private field name."""
-        self.private_name = "_" + name
-
-    @overload
-    def __get__(self, obj: None, objtype: type | None = None) -> Self:  # access on class
-        ...
-
-    @overload
-    def __get__(self, obj: object, objtype: type | None = None) -> _ValueT:  # access on instance
-        ...
-
-    def __get__(self, obj: object, objtype: object = None) -> _ValueT | Self:
-        """Get the validated value from the private field."""
-        if obj is None:  # access on the class, not an instance
-            return self
-        result: _ValueT = getattr(obj, self.private_name)
-        return result
-
-    def __set__(self, obj: object, value: _ValueT) -> None:
-        """Validate and set the value in the private field."""
-        self.validate(value)
-        setattr(obj, self.private_name, value)
-
-    @abstractmethod
-    def validate(self, value: _ValueT) -> None:
-        """Validate the assigned value."""
-
-
-@dataclass
-class BoundedFloat(Validator[float]):
-    """Descriptor to validate numbers with given bounds.
-
-    https://docs.python.org/3/howto/descriptor.html#custom-validators
-    """
-
-    minvalue: float | None = None
-    maxvalue: float | None = None
-
-    @override
-    def validate(self, value: float) -> None:
-        """Validate the assigned value."""
-        if self.minvalue is not None and value < self.minvalue:
-            raise ValueError(f"Expected {value!r} to be at least {self.minvalue!r}")
-        if self.maxvalue is not None and value > self.maxvalue:
-            raise ValueError(f"Expected {value!r} to be no more than {self.maxvalue!r}")
-
-
-class Probability(BoundedFloat):
-    """Descriptor for probability (between 0 and 1)."""
-
-    def __init__(self) -> None:
-        super().__init__(minvalue=0, maxvalue=1)
+    flat = flat_qubits(qubits)
+    if len(flat) != len(template):
+        msg = f"{len(template)} qubits expected but {len(flat)} provided."
+        raise ValueError(msg)
+    return cast("QubitTemplate", flat)

@@ -38,7 +38,7 @@ class DataclassReprMixin:
                     continue
             custom_repr = field.metadata.get("repr")
             value_str = custom_repr(value) if custom_repr else repr(value)
-            if saw_omitted:
+            if saw_omitted or field.kw_only is True:
                 arguments.append(f"{field.name}={value_str}")
             else:
                 arguments.append(value_str)
@@ -71,3 +71,13 @@ class EnumReprMixin:
             msg = "EnumMixin can only be used with Enum classes."
             raise TypeError(msg)
         return f"{self.__class__.__name__}.{self.name}"
+
+
+def repr_pair(pair: tuple[int, int]) -> str:
+    """
+    Return the representation string of a pair of integers without parentheses.
+
+    This is used for pretty-printing commands and instructions with pairs where parentheses are optional.
+    """
+    u, v = pair
+    return f"{u}, {v}"

@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- #587:
+  - Added ancilla qubits to `Circuit` API (new attributes `ancillas` and `ancilla_state`).
+  - Added conditional instructions (`CONDINSTR`). Added simulation, transpilation and qasm-conversion capabilities.
+  - Added `Pattern.to_circuit` method to convert a `Pattern` into a `Circuit` with ancillas and classical control.
+
+- #474, #564: Added `FocusedPauliFlow` and `FocusedGFlow` classes to encapsulate operations specific to focused flows. Flow-finding algorithms return focused flows by construction. Having dedicated classes removes the need to dynamically recheck that a flow is focused during circuit extraction.
+
+- #644:
+  - Added measurements without discard: `Circuit.m(target, axis, discard=False)` (and the new attribute `discard` of `Instruction.M`) measures a qubit and leaves it active, in the eigenstate corresponding to the outcome. The new method `Circuit.transpile_discard` returns an equivalent circuit where these measurements are rewritten into measurements with discard followed by the preparation of a fresh ancilla, and where SWAP gates restore the order of the output qubits; `Circuit.transpile` applies it automatically.
+  - The new method `Circuit.reorder_active_qubits_with_swaps` appends the SWAP gates that permute the active qubits.
+
+### Fixed
+
+- Fixed incorrect Clifford signs during circuit extraction for input vertices measured in negative Pauli X or Y bases.
+
+- #598, #608:
+  - The order of the attributes of the controlled instructions has been changed to put the control qubits first, to ensure consistency between all controlled instructions, with the matrix description of the gates, and with the `Circuit` methods that add instructions to the circuit.
+  - `CZ` is now a `ControlledSingleTargetInstruction` and takes a `control` and a `target` instead of a pair of `targets`.
+  - Allow pairs of qubits and nodes to be passed as tuples or separate arguments. This applies to:
+    - `Circuit` methods: `swap`, `cswap`, `ccx`.
+    - `Instruction` constructors: `SWAP`, `CSWAP`, `CCX`.
+    - `E` command in patterns.
+  - The pretty-printing (`repr`) of instructions and commands is updated to use notation without parentheses: `repr(E((0, 1))) == "E(0, 1)"`.
+
+- #624: CH gate is now supported (its support was missing as it is a standard OpenQASM gate).
+
+- #636, #639: `ApplyNoise` now derives from `BaseCommand`, like other commands. In particular, it implements `reindex`.
+  Noise classes (`DepolarisingNoise`, `TwoQubitDepolarisingNoise`, `AmplitudeDampingNoise`, `TwoQubitAmplitudeDampingNoise`) are now immutable (frozen dataclasses) with an eval-friendly `repr`: `repr(DepolarisingNoise(0.1)) == "DepolarisingNoise(0.1)"`. `graphix.utils.check_probability` validates probabilities.
+
+- #637, #643: Decompositions no longer drop global phases, which made controlled gates produced by `insert_control` wrong. `instruction_to_jcz` now keeps the global phase of `S`, `SDG`, `T`, `TDG`, `SX`, `SXDG`, `X`, `Y` and `Z`, and `decompose_ccx` now uses `T`, `TDG` and `S` gates as in Nielsen & Chuang instead of `RZ` rotations.
+
+- #640, #644: `transpile_swaps` no longer breaks conditional instructions whose domain refers to a qubit measured after a `SWAP`, since domains now refer to classical bits, which do not depend on qubit indices. The OpenQASM 3 exporter now terminates measurement statements with a semicolon.
+
+- #645: Fix negative sign in circuit extraction strings
+
+### Changed
+
+- #587:
+  - Factorized instruction-validity checks in method `Circuit.add` via an instruction visitor.
+  - Instruction methods of the `Circuit` class now return `self` allowing method chaining.
+
+- #626, #635: The `domain` argument of the `X` and `Z` commands is now mandatory. Previously, it defaulted to the empty set, so that `X(1)` silently had no effect; write `X(1, set())` to state this explicitly.
+
+- #644: The domains of conditional instructions (`CONDINSTR`) now refer to classical bits instead of measured qubits: the bit `i` is the outcome of the `i`-th measurement of the circuit (see the new property `Circuit.measurement_count`). Accordingly, `simulate_instructions` no longer takes a `results` argument, and the function `instruction_to_qasm3` is replaced by the method `ToQASM3.instruction_to_qasm3`, where `ToQASM3` keeps track of the classical bit written by the next measurement.
+
 ## [0.4.1] - 2026-10-13
 
 ### Added
