@@ -147,7 +147,7 @@ def test_measurement_without_discard_to_qasm3() -> None:
     circuit.condinstr({0, 1}, [Instruction.X(1)])
     qasm = circuit_to_qasm3(circuit)
     parser = OpenQASMParser(discard_measurements=False)
-    parsed_circuit = parser.parse_str(qasm)
+    parsed_circuit = parser.parse_str(qasm).circuit
     assert parsed_circuit.instruction == circuit.instruction
 
 
