@@ -97,7 +97,7 @@ REVERSE_DEPENDENCIES = {
     "graphix-stim-backend": ReverseDependency("https://github.com/TeamGraphix/graphix-stim-backend"),
     "graphix-qasm-parser": ReverseDependency(
         # Keep in sync with .github/qasm-parser-requirements.txt
-        "https://github.com/thierry-martinez/graphix-qasm-parser",
+        "https://github.com/TeamGraphix/graphix-qasm-parser",
         branch="refs/pull/21/head",
     ),
     "graphix-ibmq": ReverseDependency(
